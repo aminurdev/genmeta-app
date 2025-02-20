@@ -1,0 +1,17 @@
+{
+  "name": "gen-meta-app",
+  "version": "1.0.0",
+  "description": "This application generates tags and titles for images using machine learning algorithms.",
+  "keywords": [
+    "keywords",
+    "image",
+    "seo"
+  ],
+  "license": "ISC",
+  "author": "Aminur Rahman",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
