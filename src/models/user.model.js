@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
   loginProvider: { type: String, enum: ["email", "google"], required: true },
   googleId: { type: String, unique: true, sparse: true },
+  refreshToken: { type: String },
   tokens: { type: Number, default: 10 },
   createdAt: { type: Date, default: Date.now },
 });
@@ -47,6 +48,4 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-userSchema.methods.generateRefreshToken = function () {};
-
-export default mongoose.model("User", userSchema);
+export const User = mongoose.model("User", userSchema);
