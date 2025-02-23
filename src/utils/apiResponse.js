@@ -1,9 +1,23 @@
-const apiResponse = (res, data) => {
-  res.status(data?.statusCode).json({
-    success: data.success || true,
-    message: data.message,
-    data: data.data,
-  });
-};
+class ApiResponse {
+  constructor(
+    statusCode = 200,
+    success = true,
+    message = "Request successful",
+    data = null
+  ) {
+    this.statusCode = statusCode;
+    this.success = success;
+    this.message = message;
+    this.data = data;
+  }
 
-export { apiResponse };
+  send(res) {
+    return res.status(this.statusCode).json({
+      success: this.success,
+      message: this.message,
+      data: this.data,
+    });
+  }
+}
+
+export { ApiResponse };
