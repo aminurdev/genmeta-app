@@ -1,9 +1,8 @@
 import cors from "cors";
 import express from "express";
 import config from "./config/index.js";
-
-import { notFound } from "./middlewares/notFound.js";
-import GlobalErrorHandler from "./middlewares/globalErrorHandler.js";
+import ApiError from "./utils/api.error.js";
+import globalErrorHandler from "./middlewares/handleGlobal.error.js";
 
 const app = express();
 
@@ -23,7 +22,10 @@ import userRoutes from "./routes/user.routes.js";
 
 app.use("/api/v1/users", userRoutes);
 
-app.use(GlobalErrorHandler);
-app.use(notFound);
+// 404 route handler
+app.use("*", (req) => {
+  throw new ApiError(404, `cant't find ${req.originalUrl} on this server.`);
+});
 
+app.use(globalErrorHandler);
 export { app };

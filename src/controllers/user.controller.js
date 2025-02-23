@@ -1,8 +1,11 @@
-import AppError from "../errors/app.error.js";
+import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-const registerUser = asyncHandler(async (req, res) => {
-  throw new AppError(404, "User not found!");
+const registerUser = asyncHandler(async (req) => {
+  throw new ApiError(
+    200,
+    `Email and password are required! ${req.originalUrl}`
+  );
 });
 
 export { registerUser };
