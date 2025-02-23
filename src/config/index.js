@@ -6,7 +6,7 @@ const DB_NAME = "gen-meta-ai";
 
 const config = {
   port: process.env.PORT || 5000,
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV: process.env.NODE_ENV || "development",
   mongodb_uri: process.env.MONGODB_URI + "/" + DB_NAME,
   cors_origin: process.env.CORS_ORIGIN,
   access_token_secret: process.env.ACCESS_TOKEN_SECRET,

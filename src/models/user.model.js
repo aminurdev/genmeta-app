@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
   loginProvider: { type: String, enum: ["email", "google"], required: true },
   googleId: { type: String, unique: true, sparse: true },
   tokens: { type: Number, default: 10 },
-  refreshToken: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -25,6 +24,7 @@ userSchema.pre("save", async function (next) {
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
+
 userSchema.methods.generateAccessToken = function () {
   jwt.sign(
     {
@@ -36,6 +36,7 @@ userSchema.methods.generateAccessToken = function () {
     { expiresIn: config.access_token_expiry }
   );
 };
+
 userSchema.methods.generateRefreshToken = function () {
   jwt.sign(
     {
