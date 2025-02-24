@@ -2,13 +2,14 @@ import jwt from "jsonwebtoken";
 import config from "../config/index.js";
 import { User } from "../models/user.model.js";
 import ApiError from "../utils/api.error.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-export const verifyToken = async (req, _, next) => {
+export const verifyToken = asyncHandler(async (req, _, next) => {
   try {
     const authHeader = req.headers["authorization"];
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new ApiError(401, false, "Unauthorized request");
+      throw new ApiError(401, "Unauthorized request");
     }
 
     const token = authHeader.split(" ")[1];
@@ -17,13 +18,12 @@ export const verifyToken = async (req, _, next) => {
       "-password -refreshToken"
     );
     if (!user) {
-      throw new ApiError(401, false, "Invalid access token");
+      throw new ApiError(401, "Invalid access token");
     }
 
     req.user = user;
     next();
   } catch (error) {
-    console.log(error);
-    throw new ApiError(401, false, "Unauthorized request");
+    throw new ApiError(401, error?.message || "Unauthorized request");
   }
-};
+});
