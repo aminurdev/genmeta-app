@@ -15,7 +15,7 @@ app.use(
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public"));
+app.use("/public", express.static("public"));
 
 // Routes import
 import userRoutes from "./routes/user.routes.js";
