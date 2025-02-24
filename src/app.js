@@ -19,8 +19,10 @@ app.use(express.static("public"));
 
 // Routes import
 import userRoutes from "./routes/user.routes.js";
+import imagesRoutes from "./routes/images.routes.js";
 
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/images", imagesRoutes);
 
 // 404 route handler
 app.use("*", (req) => {
