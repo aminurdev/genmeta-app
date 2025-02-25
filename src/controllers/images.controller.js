@@ -67,14 +67,27 @@ const uploadImages = asyncHandler(async (req, res) => {
       };
 
       // Store details in MongoDB
-      const dbResult = await ImagesModel.findOneAndUpdate(
-        { userId: req.user._id, batchId },
+      let dbResult = await ImagesModel.findOneAndUpdate(
+        { userId: req.user._id, batchId, "images.imageName": image.filename },
         {
-          $setOnInsert: { userId: req.user._id, batchId },
-          $push: { images: imageDetails },
+          $set: {
+            "images.$.imageUrl": `${urlEndpoint}/${objectKey}`,
+            "images.$.metadata": metaResult.metadata,
+          },
         },
-        { upsert: true, new: true }
+        { new: true }
       );
+
+      if (!dbResult) {
+        dbResult = await ImagesModel.findOneAndUpdate(
+          { userId: req.user._id, batchId },
+          {
+            $setOnInsert: { userId: req.user._id, batchId },
+            $push: { images: imageDetails },
+          },
+          { upsert: true, new: true }
+        );
+      }
 
       const addedImage = dbResult.images.find(
         (img) => img.imageUrl === imageDetails.imageUrl
@@ -174,7 +187,8 @@ const tempDir = `public/temp/zips`;
 
 const downloadBatchAsZip = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
-  const userId = req.user._id;
+  // const userId = req.user._id;
+  const userId = "67bc55d2ba04b0762560d5cd";
 
   if (!batchId) throw new ApiError(400, "Batch ID is required");
 
