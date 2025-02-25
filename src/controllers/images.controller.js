@@ -187,8 +187,7 @@ const tempDir = `public/temp/zips`;
 
 const downloadBatchAsZip = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
-  // const userId = req.user._id;
-  const userId = "67bc55d2ba04b0762560d5cd";
+  const userId = req.user._id;
 
   if (!batchId) throw new ApiError(400, "Batch ID is required");
 
