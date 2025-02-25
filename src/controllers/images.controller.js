@@ -1,4 +1,5 @@
 import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -24,10 +25,17 @@ const uploadImages = asyncHandler(async (req, res) => {
   const images = req.files.images;
   if (!images) return new ApiError(400, "No images uploaded");
 
+  const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
+  const newBatchId = batchId || uuidv4();
+
   const uploadPromises = images.map(async (image) => {
-    const metaResult = await processImage(image, requestDir);
+    const metaResult = await processImage(image, requestDir, {
+      titleLength,
+      descriptionLength,
+      keywordCount,
+    });
     const fileContent = fs.readFileSync(metaResult.imagePath);
-    const objectKey = `uploads/${image.filename}`;
+    const objectKey = `uploads/${req.user._id}/${newBatchId}/${image.filename}`;
 
     const uploadParams = {
       Bucket: bucketName,

@@ -2,12 +2,17 @@ import fs from "fs/promises";
 import path from "path";
 import { generate } from "../ai/gemini.service.js";
 
-export async function processImage(file, processDir) {
+export async function processImage(file, processDir, promptData = {}) {
   const fileExtension = path.extname(file.originalname).toLowerCase().slice(1);
 
   try {
     // Process the image with AI and add metadata
-    const generateResult = await generate(file.path, fileExtension, processDir);
+    const generateResult = await generate(
+      file.path,
+      fileExtension,
+      processDir,
+      promptData
+    );
 
     // Clean up original upload
     await fs.unlink(file.path);

@@ -22,7 +22,7 @@ async function uploadToGemini(filePath, mimeType) {
   return uploadResult.file;
 }
 
-export async function generate(filePath, type, outputPath) {
+export async function generate(filePath, type, outputPath, promptData = {}) {
   try {
     const optimizedFilePath = await resizeImage(
       filePath,
@@ -50,7 +50,7 @@ export async function generate(filePath, type, outputPath) {
 
     const forbiddenKeywordsStr = FORBIDDEN_KEYWORDS.join(", ");
     const dataResult = await chatSession.sendMessage(
-      `${prompt(90, 120, 45)}: ${forbiddenKeywordsStr}`
+      `${prompt(promptData?.titleLength || 90, promptData?.descriptionLength || 120, promptData?.keywordCount || 20)}: ${forbiddenKeywordsStr}`
     );
     const jsonResponse = dataResult.response.text();
     const cleanedResponse = jsonResponse
