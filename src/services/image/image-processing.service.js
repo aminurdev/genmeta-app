@@ -1,15 +1,15 @@
+import mime from "mime";
 import fs from "fs/promises";
-import path from "path";
 import { generate } from "../ai/gemini.service.js";
 
 export async function processImage(file, processDir, promptData = {}) {
-  const fileExtension = path.extname(file.originalname).toLowerCase().slice(1);
+  const mimeType = mime.getType(file.originalname);
 
   try {
     // Process the image with AI and add metadata
     const generateResult = await generate(
       file.path,
-      fileExtension,
+      mimeType,
       processDir,
       promptData
     );

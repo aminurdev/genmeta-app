@@ -21,13 +21,9 @@ async function resizeImage(inputPath, outputDir) {
       await sharp(inputPath)
         .resize({ width: 1500 }) // Resize width to 1500px, auto height
         .toFile(outputPath);
-      console.log(`✅ Image resized to 1500px width: ${outputPath}`);
     } else {
       // No need to resize, just copy the file
       fs.copyFileSync(inputPath, outputPath);
-      console.log(
-        `ℹ️ Image width is within limit, copied as is: ${outputPath}`
-      );
     }
 
     // Return the final output path

@@ -22,13 +22,18 @@ async function uploadToGemini(filePath, mimeType) {
   return uploadResult.file;
 }
 
-export async function generate(filePath, type, outputPath, promptData = {}) {
+export async function generate(
+  filePath,
+  mimeType,
+  outputPath,
+  promptData = {}
+) {
   try {
     const optimizedFilePath = await resizeImage(
       filePath,
       optimizedOutputFilePath
     );
-    const file = await uploadToGemini(optimizedFilePath, `image/${type}`);
+    const file = await uploadToGemini(optimizedFilePath, mimeType);
     const chatSession = model.startChat({
       generationConfig,
       safetySettings,

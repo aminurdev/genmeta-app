@@ -34,6 +34,6 @@ router.post(
 
 router.patch("/update", verifyToken, updateImage);
 
-router.get("/download/:batchId", downloadBatchAsZip);
+router.get("/download/:batchId", verifyToken, downloadBatchAsZip);
 
 export default router;
