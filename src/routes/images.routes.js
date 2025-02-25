@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadImages } from "../controllers/images.controller.js";
+import { updateImage, uploadImages } from "../controllers/images.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
@@ -27,5 +27,7 @@ router.post(
   ]),
   uploadImages
 );
+
+router.patch("/update", verifyToken, updateImage);
 
 export default router;
