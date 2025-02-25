@@ -3,27 +3,30 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import config from "../config/index.js";
+import { processImage } from "../services/image/image-processing.service.js";
 
 const s3 = new S3Client({
-  endpoint: "http://localhost:4566",
-  region: "us-east-1",
+  endpoint: config.aws.endpoint,
+  region: config.aws.region,
   credentials: {
-    accessKeyId: "test",
-    secretAccessKey: "test",
+    accessKeyId: config.aws.credentials.accessKeyId,
+    secretAccessKey: config.aws.credentials.secretAccessKey,
   },
   forcePathStyle: true,
 });
 
+const bucketName = config.aws.bucketName;
+const urlEndpoint = `${config.aws.endpoint}/${bucketName}`;
+const requestDir = `public/temp/exiftool`;
+
 const uploadImages = asyncHandler(async (req, res) => {
-  const domain = `${req.protocol}://${req.get("host")}`;
   const images = req.files.images;
   if (!images) return new ApiError(400, "No images uploaded");
 
-  const bucketName = "test-bucket";
-
   const uploadPromises = images.map(async (image) => {
-    const filePath = image.path;
-    const fileContent = fs.readFileSync(filePath);
+    const metaResult = await processImage(image, requestDir);
+    const fileContent = fs.readFileSync(metaResult.imagePath);
     const objectKey = `uploads/${image.filename}`;
 
     const uploadParams = {
@@ -34,19 +37,23 @@ const uploadImages = asyncHandler(async (req, res) => {
     };
 
     try {
-      await s3.send(new PutObjectCommand(uploadParams));
+      const result = await s3.send(new PutObjectCommand(uploadParams));
 
       // ✅ Delete the local file after successful upload
-      fs.unlinkSync(filePath);
+      fs.unlinkSync(metaResult.imagePath);
 
       return {
         filename: image.filename,
         size: image.size,
-        url: `${domain}/${bucketName}/${objectKey}`, // Generate URL dynamically
+        url: `${urlEndpoint}/${objectKey}`,
+        data: metaResult.metadata,
+        result,
       };
     } catch (error) {
-      console.error(`❌ Error uploading ${image.filename}:`, error);
-      throw new ApiError(500, `Failed to upload ${image.filename}`);
+      throw new ApiError(
+        500,
+        `Failed to upload ${image.filename}: ${error.message}`
+      );
     }
   });
 
