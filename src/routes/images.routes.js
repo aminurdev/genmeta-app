@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { updateImage, uploadImages } from "../controllers/images.controller.js";
+import {
+  downloadBatchAsZip,
+  updateImage,
+  uploadImages,
+} from "../controllers/images.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
@@ -29,5 +33,7 @@ router.post(
 );
 
 router.patch("/update", verifyToken, updateImage);
+
+router.get("/download/:batchId", downloadBatchAsZip);
 
 export default router;

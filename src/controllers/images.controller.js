@@ -13,6 +13,8 @@ import config from "../config/index.js";
 import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
 import { updateImageMetadata } from "../services/metadata/injector.service.js";
+import path from "path";
+import archiver from "archiver";
 
 const s3 = new S3Client({
   endpoint: config.aws.endpoint,
@@ -99,8 +101,6 @@ const uploadImages = asyncHandler(async (req, res) => {
 
 const updateImage = asyncHandler(async (req, res) => {
   const { batchId, imageId, imageName, updateData } = req.body;
-
-  console.log(req.body);
   const userId = req.user._id;
 
   if (!batchId || !imageId || !imageName || !updateData) {
@@ -170,4 +170,75 @@ const updateImage = asyncHandler(async (req, res) => {
   }
 });
 
-export { uploadImages, updateImage };
+const tempDir = `public/temp/zips`;
+
+const downloadBatchAsZip = asyncHandler(async (req, res) => {
+  const { batchId } = req.params;
+  const userId = req.user._id;
+
+  if (!batchId) throw new ApiError(400, "Batch ID is required");
+
+  // Step 1: Fetch images from the database
+  const batch = await ImagesModel.findOne({ userId, batchId });
+  if (!batch || !batch.images || batch.images.length === 0) {
+    throw new ApiError(404, "No images found for this batch");
+  }
+
+  const zipFilename = `batch_${batchId}.zip`;
+  const zipFilePath = path.join(tempDir, zipFilename);
+
+  // Ensure the temporary directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+
+  // Step 2: Create a ZIP archive
+  const output = fs.createWriteStream(zipFilePath);
+  const archive = archiver("zip", { zlib: { level: 9 } });
+
+  output.on("close", () => {
+    console.log(
+      `ZIP file created: ${zipFilePath} (${archive.pointer()} bytes)`
+    );
+  });
+
+  archive.on("error", (err) => {
+    throw new ApiError(500, `ZIP creation error: ${err.message}`);
+  });
+
+  archive.pipe(output);
+
+  // Step 3: Download images and add them to the ZIP
+  for (const image of batch.images) {
+    const objectKey = `uploads/${userId}/${batchId}/${image.imageName}`;
+
+    try {
+      const { Body } = await s3.send(
+        new GetObjectCommand({ Bucket: bucketName, Key: objectKey })
+      );
+
+      // Convert Uint8Array to Buffer
+      const imageBuffer = Buffer.from(await Body.transformToByteArray());
+
+      // Add file to ZIP
+      archive.append(imageBuffer, { name: image.imageName });
+    } catch (error) {
+      console.error(`Error downloading ${image.imageName}: ${error.message}`);
+    }
+  }
+
+  // Finalize the ZIP file
+  await archive.finalize();
+
+  // Step 4: Send ZIP file as response
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename=${zipFilename}`);
+
+  const fileStream = fs.createReadStream(zipFilePath);
+  fileStream.pipe(res);
+
+  // Step 5: Delete temporary ZIP file after streaming
+  fileStream.on("close", () => fs.unlinkSync(zipFilePath));
+});
+
+export { uploadImages, updateImage, downloadBatchAsZip };
