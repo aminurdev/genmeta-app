@@ -68,7 +68,11 @@ const uploadImages = asyncHandler(async (req, res) => {
 
       // Store details in MongoDB
       let dbResult = await ImagesModel.findOneAndUpdate(
-        { userId: req.user._id, batchId, "images.imageName": image.filename },
+        {
+          userId: req.user._id,
+          newBatchId,
+          "images.imageName": image.filename,
+        },
         {
           $set: {
             "images.$.imageUrl": `${urlEndpoint}/${objectKey}`,
@@ -80,9 +84,9 @@ const uploadImages = asyncHandler(async (req, res) => {
 
       if (!dbResult) {
         dbResult = await ImagesModel.findOneAndUpdate(
-          { userId: req.user._id, batchId },
+          { userId: req.user._id, newBatchId },
           {
-            $setOnInsert: { userId: req.user._id, batchId },
+            $setOnInsert: { userId: req.user._id, newBatchId },
             $push: { images: imageDetails },
           },
           { upsert: true, new: true }
