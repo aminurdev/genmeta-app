@@ -6,6 +6,7 @@ import {
 } from "../controllers/images.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
+import { uploadSingleImage } from "../controllers/single-image.controller.js";
 
 const router = Router();
 
@@ -23,13 +24,8 @@ router.post(
 router.post(
   "/upload/single",
   verifyToken,
-  upload.fields([
-    {
-      name: "images",
-      maxCount: 1,
-    },
-  ]),
-  uploadImages
+  upload.single("image"),
+  uploadSingleImage
 );
 
 router.patch("/update", verifyToken, updateImage);
