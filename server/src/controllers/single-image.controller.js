@@ -77,10 +77,10 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       true,
       "Image uploaded and stored successfully",
       {
+        _id: dbResult._id,
         userId,
         batchId: newBatchId,
-        imageId,
-        ...imageDetails,
+        image: { imageId, ...imageDetails },
       }
     ).send(res);
   } catch (error) {
