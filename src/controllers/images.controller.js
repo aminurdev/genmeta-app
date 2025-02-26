@@ -70,7 +70,7 @@ const uploadImages = asyncHandler(async (req, res) => {
       let dbResult = await ImagesModel.findOneAndUpdate(
         {
           userId: req.user._id,
-          newBatchId,
+          batchId: newBatchId,
           "images.imageName": image.filename,
         },
         {
@@ -84,9 +84,9 @@ const uploadImages = asyncHandler(async (req, res) => {
 
       if (!dbResult) {
         dbResult = await ImagesModel.findOneAndUpdate(
-          { userId: req.user._id, newBatchId },
+          { userId: req.user._id, batchId: newBatchId },
           {
-            $setOnInsert: { userId: req.user._id, newBatchId },
+            $setOnInsert: { userId: req.user._id, batchId: newBatchId },
             $push: { images: imageDetails },
           },
           { upsert: true, new: true }

@@ -16,10 +16,10 @@ async function resizeImage(inputPath, outputDir) {
     // Read image metadata
     const metadata = await sharp(inputPath).metadata();
 
-    // Check if the width is greater than 1500px
-    if (metadata.width > 1500) {
+    // Check if the width is greater than 1080px
+    if (metadata.width > 1080) {
       await sharp(inputPath)
-        .resize({ width: 1500 }) // Resize width to 1500px, auto height
+        .resize({ width: 1080 }) // Resize width to 1080px, auto height
         .toFile(outputPath);
     } else {
       // No need to resize, just copy the file
