@@ -21,12 +21,7 @@ router.post(
   ]),
   uploadImages
 );
-router.post(
-  "/upload/single",
-  verifyToken,
-  upload.single("image"),
-  uploadSingleImage
-);
+router.post("/upload/single", upload.single("image"), uploadSingleImage);
 
 router.patch("/update", verifyToken, updateImage);
 

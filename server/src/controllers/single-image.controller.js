@@ -28,7 +28,7 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
 
   const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
   const newBatchId = batchId || uuidv4();
-  const userId = req.user._id;
+  const userId = req.user._id || uuidv4();
 
   try {
     const metaResult = await processImage(image, requestDir, {

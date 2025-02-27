@@ -9,6 +9,6 @@ const nextConfig = {
       },
     ];
   },
-};
+} as NextConfig;
 
 export default nextConfig;
