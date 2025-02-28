@@ -29,12 +29,16 @@ import { FormError } from "./form-error";
 import { FormSuccess } from "./form-success";
 import Social from "./social";
 import { loginUser } from "@/services/auth-services";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirectPath");
+  const router = useRouter();
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -52,6 +56,11 @@ const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
         const res = await loginUser(values);
         if (res?.success) {
           setSuccess(res?.message);
+          if (redirect) {
+            router.push(redirect);
+          } else {
+            router.push("/");
+          }
         } else {
           setError(res?.message);
         }

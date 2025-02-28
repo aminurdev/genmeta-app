@@ -30,12 +30,16 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirectPath");
+  const router = useRouter();
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -54,6 +58,11 @@ const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
         const res = await registerUser(values);
         if (res?.success) {
           setSuccess(res?.message);
+          if (redirect) {
+            router.push(redirect);
+          } else {
+            router.push("/");
+          }
         } else {
           setError(res?.message);
         }
@@ -182,7 +191,7 @@ const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
       </CardContent>{" "}
       <CardFooter className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          By creating an account, you agree to {"Shorten's"}{" "}
+          By creating an account, you agree to our{" "}
           <span className="underline">Terms of Service</span>,{" "}
           <span className="underline">Privacy Policy</span> and{" "}
           <span className="underline">Acceptable Use Policy</span> .
