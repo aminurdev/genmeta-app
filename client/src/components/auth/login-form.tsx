@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, Suspense } from "react";
 import * as z from "zod";
 import {
   Card,
@@ -189,4 +189,10 @@ const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
   );
 };
 
-export default LoginForm;
+const LoginFormWrapper = (props: { apiBaseUrl: string }) => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <LoginForm {...props} />
+  </Suspense>
+);
+
+export default LoginFormWrapper;
