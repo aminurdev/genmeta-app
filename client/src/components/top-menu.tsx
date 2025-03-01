@@ -286,7 +286,7 @@ export function TopMenu({
           </div>
 
           <Button
-            variant="outline"
+            variant="destructive"
             onClick={handleClearAll}
             disabled={images.images.length === 0}
           >

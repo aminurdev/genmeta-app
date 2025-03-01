@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type React from "react";
@@ -173,11 +174,11 @@ export function ImageGrid() {
   const filteredImages = images.images.filter((img: ImageItem) => {
     const matchesSearch =
       img.imageName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      img.metadata.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      img.metadata.description
-        .toLowerCase()
+      img.metadata?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      img.metadata?.description
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      img.metadata.keywords.some((k: string) =>
+      img.metadata?.keywords?.some((k: string) =>
         k.toLowerCase().includes(searchQuery.toLowerCase())
       );
 

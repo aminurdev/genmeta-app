@@ -12,12 +12,14 @@ export interface ImageItem {
   status: ImageStatus;
   selected: boolean;
   metadata: {
-    title: string;
-    description: string;
-    keywords: string[];
+    title?: string;
+    description?: string;
+    keywords?: string[];
     resolution?: string;
     format?: string;
     creationDate?: string;
+    size?: string;
+    type?: string;
   };
 }
 export interface Images {
@@ -49,17 +51,23 @@ export function ImageProvider({ children }: { children: React.ReactNode }) {
   const [images, setImages] = useState<Images>({ images: [] });
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
 
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
+
   // Add new images from file upload
   const addImages = (files: File[]) => {
     const timestamp = Date.now();
+    const batchId = images.batchId || `batch-${timestamp}`;
 
     const newImages: ImageItem[] = files.map((file, index) => {
-      const objectUrl = URL.createObjectURL(file);
-
       return {
         imageId: `upload-${timestamp}-${index}`,
         imageName: file.name,
-        imageUrl: objectUrl,
+        imageUrl: URL.createObjectURL(file),
         status: "default",
         selected: false,
         metadata: {
@@ -69,11 +77,17 @@ export function ImageProvider({ children }: { children: React.ReactNode }) {
           resolution: "Unknown",
           format: file.type.split("/")[1]?.toUpperCase() || "Unknown",
           creationDate: new Date().toISOString(),
+          size: formatFileSize(file.size),
+          type: file.type,
         },
       };
     });
 
-    setImages((prev) => ({ ...prev, images: [...prev.images, ...newImages] }));
+    setImages((prev) => ({
+      ...prev,
+      batchId,
+      images: [...prev.images, ...newImages],
+    }));
   };
 
   // Clear all images and revoke object URLs

@@ -33,6 +33,7 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 import { ImageItem, useImageContext } from "./context/image-context";
+import Image from "next/image";
 
 interface MetadataPanelProps {
   image: ImageItem;
@@ -40,9 +41,11 @@ interface MetadataPanelProps {
 
 export function MetadataPanel({ image }: MetadataPanelProps) {
   const { updateImageMetadata } = useImageContext();
-  const [title, setTitle] = useState(image.metadata.title);
-  const [description, setDescription] = useState(image.metadata.description);
-  const [keywords, setKeywords] = useState(image.metadata.keywords);
+  const [title, setTitle] = useState(image.metadata.title || "");
+  const [description, setDescription] = useState(
+    image.metadata.description || ""
+  );
+  const [keywords, setKeywords] = useState(image.metadata.keywords || []);
   const [newKeyword, setNewKeyword] = useState("");
   const [zoom, setZoom] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -205,10 +208,12 @@ Image URL: ${image.imageUrl || "N/A"}
           className="relative bg-muted rounded-lg overflow-hidden"
           style={{ height: "200px" }}
         >
-          <img
+          <Image
             src={image.imageUrl || "/placeholder.svg"}
             alt={image.imageName}
-            className="w-full h-full object-contain transition-transform"
+            layout="fill"
+            objectFit="contain"
+            className="transition-transform"
             style={{ transform: `scale(${zoom})` }}
           />
 
@@ -243,7 +248,7 @@ Image URL: ${image.imageUrl || "N/A"}
         <div className="mt-2 text-sm">
           <p className="font-medium">{image.imageName}</p>
           <p className="text-muted-foreground">
-            {"N/A"} · {"N/A"}
+            {image.metadata.size} · {image.metadata.type}
           </p>
         </div>
       </div>
