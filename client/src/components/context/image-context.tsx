@@ -64,10 +64,11 @@ export function ImageProvider({ children }: { children: React.ReactNode }) {
     const batchId = images.batchId || `batch-${timestamp}`;
 
     const newImages: ImageItem[] = files.map((file, index) => {
+      const objectUrl = URL.createObjectURL(file);
       return {
         imageId: `upload-${timestamp}-${index}`,
         imageName: file.name,
-        imageUrl: URL.createObjectURL(file),
+        imageUrl: objectUrl,
         status: "default",
         selected: false,
         metadata: {
@@ -165,7 +166,8 @@ export function ImageProvider({ children }: { children: React.ReactNode }) {
     return () => {
       images.images.forEach((image) => URL.revokeObjectURL(image.imageUrl));
     };
-  }, [images]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <ImageContext.Provider

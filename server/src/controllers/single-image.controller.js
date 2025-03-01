@@ -30,8 +30,9 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
   const newBatchId = batchId || uuidv4();
   const userId = req.user._id;
 
+  let metaResult;
   try {
-    const metaResult = await processImage(image, requestDir, {
+    metaResult = await processImage(image, requestDir, {
       titleLength,
       descriptionLength,
       keywordCount,
@@ -84,6 +85,9 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       }
     ).send(res);
   } catch (error) {
+    if (fs.existsSync(metaResult.imagePath)) {
+      fs.unlinkSync(metaResult.imagePath);
+    }
     throw new ApiError(500, `Failed to upload image: ${error.message}`);
   }
 });
