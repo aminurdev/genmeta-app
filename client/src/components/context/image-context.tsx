@@ -64,6 +64,7 @@ export function ImageProvider({ children }: { children: React.ReactNode }) {
     const batchId = images.batchId || `batch-${timestamp}`;
 
     const newImages: ImageItem[] = files.map((file, index) => {
+      console.log(file);
       const objectUrl = URL.createObjectURL(file);
       return {
         imageId: `upload-${timestamp}-${index}`,

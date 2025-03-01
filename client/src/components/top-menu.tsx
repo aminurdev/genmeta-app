@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Analysis, { AnalysisProps } from "./analysis";
+import { processImage } from "@/services/image-services";
 type Props = {
   searchQuery: string;
   statusFilter: string;
@@ -53,7 +54,7 @@ export function TopMenu({
   analysisProps,
 }: Props) {
   const { theme, setTheme } = useTheme();
-  const { addImages, clearAllImages, images } = useImageContext();
+  const { addImages, clearAllImages, images, setImages } = useImageContext();
   const [isDragging, setIsDragging] = useState(false);
 
   // Settings state
@@ -105,25 +106,39 @@ export function TopMenu({
   };
 
   // Handle process all
-  const handleProcessAll = () => {
-    console.log(images);
-    const promise = new Promise((resolve, reject) =>
-      setTimeout(() => {
-        if (Math.random() > 0.5) {
-          resolve({ name: "Svelte Sonner" });
-        } else {
-          reject();
-        }
-      }, 1500)
-    );
+  const handleProcessAll = async () => {
+    for (const image of images.images) {
+      try {
+        const formData = new FormData();
 
-    toast.promise(promise, {
-      loading: "Loading...",
-      success: () => {
-        return " toast has been added";
-      },
-      error: "Error... :( Try again!",
-    });
+        // Fetch the image as a blob
+        const imageResponse = await fetch(image.imageUrl);
+        const blob = await imageResponse.blob();
+
+        // Convert blob to a File object
+        const file = new File([blob], image.imageName, {
+          type: image.metadata.type,
+        });
+        formData.append("image", file);
+
+        // Upload the file
+        const uploadResponse = await fetch(
+          "http://localhost:5000/api/v1/images/upload/single",
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQwODE4ODYyLCJleHAiOjE3NDA5MDUyNjJ9.8-4Bx_istIo2w30Lg_q5Ox3i7xu67Y6un6AE6Kepye4`,
+            },
+            body: formData,
+          }
+        );
+
+        const data = await uploadResponse.json();
+        console.log("Upload Success:", data);
+      } catch (err) {
+        console.error("Error processing image:", image.imageName, err);
+      }
+    }
   };
 
   // Handle download ZIP
