@@ -1,6 +1,10 @@
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -91,5 +95,50 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
     throw new ApiError(500, `Failed to upload image: ${error.message}`);
   }
 });
+const deleteImage = asyncHandler(async (req, res) => {
+  const { imageId, batchId } = req.query;
+  if (!imageId || !batchId) {
+    throw new ApiError(400, "ImageId and BatchId are required");
+  }
 
-export { uploadSingleImage };
+  const userId = req.user._id;
+
+  // Find and update the batch to remove the image
+  const dbResult = await ImagesModel.findOneAndUpdate(
+    { userId, batchId },
+    { $pull: { images: { _id: imageId } } },
+    { new: true }
+  );
+
+  if (!dbResult) {
+    throw new ApiError(404, "Batch not found");
+  }
+
+  // Check if the image existed
+  const deletedImage = dbResult.images.find(
+    (img) => img._id.toString() === imageId
+  );
+  if (!deletedImage) {
+    throw new ApiError(404, "Image not found");
+  }
+
+  const objectKey = `uploads/${userId}/${batchId}/${deletedImage.imageName}`;
+
+  try {
+    // Delete from S3
+    await s3.send(
+      new DeleteObjectCommand({ Bucket: bucketName, Key: objectKey })
+    );
+
+    // If no images left in the batch, delete the entire batch
+    if (dbResult.images.length === 0) {
+      await ImagesModel.deleteOne({ _id: dbResult._id });
+    }
+
+    return new ApiResponse(200, true, "Image deleted successfully").send(res);
+  } catch (error) {
+    throw new ApiError(500, `Failed to delete image: ${error.message}`);
+  }
+});
+
+export { uploadSingleImage, deleteImage };

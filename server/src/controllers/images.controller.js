@@ -102,7 +102,7 @@ const uploadImages = asyncHandler(async (req, res) => {
     } catch (error) {
       throw new ApiError(
         500,
-        `Failed to upload ${image.filename}: ${error.message}`
+        `Failed to process ${image.filename}: ${error.message}`
       );
     }
   });
@@ -258,4 +258,24 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
   fileStream.on("close", () => fs.unlinkSync(zipFilePath));
 });
 
-export { uploadImages, updateImage, downloadBatchAsZip };
+const getBatchImages = asyncHandler(async (req, res) => {
+  const { batchId } = req.params;
+
+  // Check if batchId is provided
+  if (!batchId) {
+    return new ApiError(400, "Batch ID is required");
+  }
+
+  // Fetch the batch by batchId
+  const batch = await ImagesModel.findOne({ batchId });
+
+  // Check if the batch exists
+  if (!batch) {
+    return new ApiError(404, "Batch not found");
+  }
+
+  // Send the batch data as response
+  return new ApiResponse(200, true, "Success", batch).send(res);
+});
+
+export { uploadImages, updateImage, downloadBatchAsZip, getBatchImages };
