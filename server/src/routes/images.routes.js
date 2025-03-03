@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   downloadBatchAsZip,
+  getAllBatches,
   getBatchImages,
   updateImage,
   uploadImages,
@@ -35,6 +36,7 @@ router.post(
 router.patch("/update", verifyToken, updateImage);
 router.delete("/delete", verifyToken, deleteImage);
 router.get("/batch/:batchId", verifyToken, getBatchImages);
+router.get("/batches", verifyToken, getAllBatches);
 router.get("/download/:batchId", verifyToken, downloadBatchAsZip);
 
 export default router;

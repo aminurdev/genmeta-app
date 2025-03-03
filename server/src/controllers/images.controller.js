@@ -277,5 +277,26 @@ const getBatchImages = asyncHandler(async (req, res) => {
   // Send the batch data as response
   return new ApiResponse(200, true, "Success", batch).send(res);
 });
+const getAllBatches = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
 
-export { uploadImages, updateImage, downloadBatchAsZip, getBatchImages };
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  const images = await ImagesModel.find({ userId });
+
+  if (!images || images.length === 0) {
+    throw new ApiError(404, "No images found for this user");
+  }
+
+  return new ApiResponse(200, true, "Success", images).send(res);
+});
+
+export {
+  uploadImages,
+  updateImage,
+  downloadBatchAsZip,
+  getBatchImages,
+  getAllBatches,
+};
