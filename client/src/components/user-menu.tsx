@@ -27,7 +27,9 @@ export function UserMenu({ user }: { user: User }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <UserCircle className="cursor-pointer" />
+        <Button variant="outline" size="icon">
+          <UserCircle className="cursor-pointer" />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
         <DropdownMenuLabel className="text-lg">{user.name}</DropdownMenuLabel>

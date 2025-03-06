@@ -1,5 +1,7 @@
-import Link from "next/link"
-import { ModeToggle } from "./mode-toggle"
+import Link from "next/link";
+import { ModeToggle } from "./mode-toggle";
+import { PhotoIcon } from "@heroicons/react/24/outline";
+import { ListIcon } from "lucide-react";
 
 export default function Header() {
   return (
@@ -8,11 +10,24 @@ export default function Header() {
         <Link href="/" className="font-bold text-xl">
           Image SEO Generator
         </Link>
+        <div className="hidden md:flex items-center gap-8">
+          <Link
+            href="/generate"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <PhotoIcon className="h-5 w-5 inline-block mr-1" /> Generate
+          </Link>
+          <Link
+            href="/results"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ListIcon className="h-5 w-5 inline-block mr-1" /> Results
+          </Link>
+        </div>
         <div className="flex items-center gap-4">
           <ModeToggle />
         </div>
       </div>
     </header>
-  )
+  );
 }
-

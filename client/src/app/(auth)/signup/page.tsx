@@ -12,7 +12,7 @@ const SignUp = () => {
           <SignUpForm apiBaseUrl={apiBaseUrl} />
         </div>
       </div>
-      <div className="col-span-2 bg-blue-50 hidden md:flex items-center justify-center gap-3 ">
+      <div className="col-span-2 bg-accent/50 hidden md:flex items-center justify-center gap-3 ">
         <div className="w-4/5">
           <Image
             src="/assets/auth/connections_platform_product.png"

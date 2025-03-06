@@ -180,7 +180,7 @@ const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
             </form>
           </Form>
           <div className="relative flex justify-center items-center">
-            <span className="text-neutral-800 dark:text-neutral-300 text-lg bg-card z-10 bg-white px-2">
+            <span className="text-neutral-800 dark:text-neutral-300 text-lg bg-card z-10 px-2">
               or
             </span>
             <span className="w-full h-px  absolute left-0 top-1/2 translate-y-1/2 bg-slate-200" />
