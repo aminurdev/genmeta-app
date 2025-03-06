@@ -55,7 +55,7 @@ export async function generate(
 
     const forbiddenKeywordsStr = FORBIDDEN_KEYWORDS.join(", ");
     const dataResult = await chatSession.sendMessage(
-      `${prompt(promptData?.titleLength || 90, promptData?.descriptionLength || 120, promptData?.keywordCount || 20)}: ${forbiddenKeywordsStr}`
+      `${prompt(promptData?.titleLength || 90, promptData?.descriptionLength || 120, promptData?.keywordCount || 25)}: ${forbiddenKeywordsStr}`
     );
     const jsonResponse = dataResult.response.text();
     const cleanedResponse = jsonResponse
