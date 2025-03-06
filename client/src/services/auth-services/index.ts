@@ -5,7 +5,7 @@ import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 
-const baseApi = process.env.NEXT_PUBLIC_BASE_API_URL as string;
+const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 export const registerUser = async (userData: FieldValues) => {
   try {
