@@ -32,7 +32,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { Skeleton } from "./ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getAccessToken, getBaseApi } from "@/services/image-services";
 
 // Mock data for demonstration - batches
 type ImageMetadata = {
@@ -73,19 +74,18 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     keywords: [] as string[],
   });
 
+  console.log(editData, editingItem);
   async function getBatchImages(batchId: string) {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/v1/images/batch/${batchId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQxMDc3Mzk5LCJleHAiOjE3NDExNjM3OTl9.zAel9vQL8Aixrh2FFLPS6NR3V7CtHK1J36ZrYOhgNcQ",
-          },
-        }
-      );
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/images/batch/${batchId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch batch images");
@@ -118,21 +118,48 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingItem) return;
 
-    if ("images" in results) {
-      setResults({
-        ...results,
-        images: results.images.map((item) =>
-          item._id === editingItem
-            ? { ...item, metadata: { ...item.metadata, ...editData } }
-            : item
-        ),
+    try {
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/images/update`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          batchId: results.batchId,
+          imageId: editingItem,
+          imageName: results.images.find((item) => item._id === editingItem)
+            ?.imageName,
+          updateData: editData,
+        }),
       });
-    }
 
-    setEditingItem(null);
+      if (!response.ok) {
+        throw new Error("Failed to update image metadata");
+      }
+
+      const updatedImage = await response.json();
+
+      if ("images" in results) {
+        setResults({
+          ...results,
+          images: results.images.map((item) =>
+            item._id === editingItem
+              ? { ...item, metadata: { ...item.metadata, ...editData } }
+              : item
+          ),
+        });
+      }
+
+      setEditingItem(null);
+    } catch (error) {
+      console.error("Error updating image metadata:", error);
+    }
   };
 
   const handleCancel = () => {
@@ -153,16 +180,14 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     if (!batchId) return;
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/v1/images/download/${batchId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQxMDc3Mzk5LCJleHAiOjE3NDExNjM3OTl9.zAel9vQL8Aixrh2FFLPS6NR3V7CtHK1J36ZrYOhgNcQ", // Replace with actual token
-          },
-        }
-      );
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
+        method: "GET",
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Download failed: ${response.statusText}`);
@@ -225,12 +250,43 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       });
   };
 
-  const handleDeleteItem = (id: string) => {
-    if ("images" in results) {
-      setResults({
-        ...results,
-        images: results.images.filter((item) => item._id !== id),
-      });
+  const deleteImage = async (imageId: string, batchId: string) => {
+    try {
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
+        {
+          method: "DELETE",
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to delete image");
+      }
+
+      if ("images" in results) {
+        setResults({
+          ...results,
+          images: results.images.filter((item) => item._id !== imageId),
+        });
+      }
+
+      alert("Image deleted successfully");
+      // Optionally refresh the UI by removing the image from state
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert("An unknown error occurred");
+      }
     }
   };
 
@@ -357,7 +413,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteItem(item._id)}
+                          onClick={() => deleteImage(item._id, batchId)}
                         >
                           <Trash className="h-4 w-4" />
                           <span className="sr-only">Delete</span>

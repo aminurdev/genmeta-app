@@ -102,24 +102,28 @@ const deleteImage = asyncHandler(async (req, res) => {
 
   const userId = req.user._id;
 
-  // Find and update the batch to remove the image
-  const dbResult = await ImagesModel.findOneAndUpdate(
+  // Find the batch before updating to retrieve the image details
+  const batchBeforeUpdate = await ImagesModel.findOne({ userId, batchId });
+
+  if (!batchBeforeUpdate) {
+    throw new ApiError(404, "Batch not found");
+  }
+
+  // Find the image before deleting it
+  const deletedImage = batchBeforeUpdate.images.find(
+    (img) => img._id.toString() === imageId
+  );
+
+  if (!deletedImage) {
+    throw new ApiError(404, "Image not found");
+  }
+
+  // Remove the image from the batch
+  const updatedBatch = await ImagesModel.findOneAndUpdate(
     { userId, batchId },
     { $pull: { images: { _id: imageId } } },
     { new: true }
   );
-
-  if (!dbResult) {
-    throw new ApiError(404, "Batch not found");
-  }
-
-  // Check if the image existed
-  const deletedImage = dbResult.images.find(
-    (img) => img._id.toString() === imageId
-  );
-  if (!deletedImage) {
-    throw new ApiError(404, "Image not found");
-  }
 
   const objectKey = `uploads/${userId}/${batchId}/${deletedImage.imageName}`;
 
@@ -130,8 +134,8 @@ const deleteImage = asyncHandler(async (req, res) => {
     );
 
     // If no images left in the batch, delete the entire batch
-    if (dbResult.images.length === 0) {
-      await ImagesModel.deleteOne({ _id: dbResult._id });
+    if (!updatedBatch.images.length) {
+      await ImagesModel.deleteOne({ _id: updatedBatch._id });
     }
 
     return new ApiResponse(200, true, "Image deleted successfully").send(res);

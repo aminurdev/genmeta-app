@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Calendar, Image, File, Clock } from "lucide-react";
+import { FileText, Eye, Calendar, File, Clock, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,8 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Batch } from "@/app/results/page";
-
+import { Batch } from "@/app/(main)/results/page";
+import { getAccessToken, getBaseApi } from "@/services/image-services";
 // Define types for batch and image
 
 export default function BatchesPage({ batches }: { batches: Batch[] }) {
@@ -49,18 +49,15 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
 
   const handleDownloadZIP = async (batchId: string) => {
     if (!batchId) return;
-
+    const baseAPi = await getBaseApi();
+    const accessToken = await getAccessToken();
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/v1/images/download/${batchId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQwOTg1OTE4LCJleHAiOjE3NDEwNzIzMTh9.gneEo1sZwybd5UF-Q4nMPixJKXfz0urM0UqFg9Obboc", // Replace with actual token
-          },
-        }
-      );
+      const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`, // Replace with actual token
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Download failed: ${response.statusText}`);
@@ -128,7 +125,7 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
                   {formatDate(batch.createdAt)}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Images:</span>{" "}
                   {batch.images?.length || 0}
                 </div>

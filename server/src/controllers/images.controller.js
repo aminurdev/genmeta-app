@@ -128,43 +128,41 @@ const updateImage = asyncHandler(async (req, res) => {
   const localFilePath = `${requestDir}/${imageName}`;
 
   try {
-    // Step 1: Determine the correct MIME type dynamically
+    // Determine correct MIME type
     const contentType = mime.getType(imageName) || "application/octet-stream";
 
-    // Step 2: Fetch Image from S3
+    // Fetch Image from S3
     const { Body } = await s3.send(
       new GetObjectCommand({ Bucket: bucketName, Key: objectKey })
     );
-
     const imageBuffer = await Body.transformToByteArray();
 
-    // Step 3: Save Image Temporarily
-    fs.writeFileSync(localFilePath, imageBuffer);
+    // Save Image Temporarily
+    await fs.promises.writeFile(localFilePath, imageBuffer);
 
-    // Step 4: Process Image Metadata
+    // Process Image Metadata
     await updateImageMetadata(localFilePath, updateData);
 
-    // Step 5: Upload the modified image back to S3 with dynamic Content-Type
-    const updatedImageBuffer = fs.readFileSync(localFilePath);
+    // Upload updated image back to S3
+    const updatedImageBuffer = await fs.promises.readFile(localFilePath);
     await s3.send(
       new PutObjectCommand({
         Bucket: bucketName,
         Key: objectKey,
         Body: updatedImageBuffer,
-        ContentType: contentType, // Dynamically determined
+        ContentType: contentType,
       })
     );
 
-    // Step 6: Update Image Metadata in Database
+    // Update metadata in the database
+    const updateQuery = Object.entries(updateData).reduce(
+      (acc, [key, value]) => ({ ...acc, [`images.$.metadata.${key}`]: value }),
+      {}
+    );
+
     const updatedImage = await ImagesModel.findOneAndUpdate(
       { userId, batchId, "images._id": imageId },
-      Object.keys(updateData).reduce(
-        (acc, key) => ({
-          ...acc,
-          [`images.$.metadata.${key}`]: updateData[key],
-        }),
-        {}
-      ),
+      { $set: updateQuery },
       { new: true }
     );
 
@@ -172,10 +170,10 @@ const updateImage = asyncHandler(async (req, res) => {
       throw new ApiError(404, "Image not found");
     }
 
-    // Step 7: Clean up local file
-    fs.unlinkSync(localFilePath);
+    // Cleanup local file
+    await fs.promises.unlink(localFilePath);
 
-    // Step 8: Send Success Response
+    // Send success response
     return new ApiResponse(200, true, "Image updated successfully", {
       userId,
       batchId,
@@ -183,6 +181,9 @@ const updateImage = asyncHandler(async (req, res) => {
       updatedFields: updateData,
     }).send(res);
   } catch (error) {
+    // Ensure local file cleanup even if an error occurs
+    await fs.promises.unlink(localFilePath).catch(() => {});
+
     throw new ApiError(500, `Error updating image: ${error.message}`);
   }
 });

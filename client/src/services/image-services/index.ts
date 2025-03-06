@@ -17,3 +17,6 @@ export const processImage = async (data: FormData) => {
 export const getAccessToken = async () => {
   return (await cookies()).get("accessToken")!.value;
 };
+export const getBaseApi = async () => {
+  return baseApi;
+};

@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Link from "next/link";
+import { getBaseApi, getAccessToken } from "@/services/image-services";
 
 export default function UploadForm() {
   const [loading, setLoading] = useState(false);
@@ -113,17 +114,17 @@ export default function UploadForm() {
       formData.append("descriptionLength", settings.descriptionLength);
       formData.append("keywordCount", settings.keywordCount);
 
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/v1/images/upload/single",
-          {
-            method: "POST",
-            headers: {
-              authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQxMDc2ODk2LCJleHAiOjE3NDExNjMyOTZ9.MbPgx2WlaX0K1N0oIDiJ4AY3tyczhD1t4wo2MhGvWRc`,
-            },
-            body: formData,
-          }
-        );
+        const response = await fetch(`${baseAPi}/images/upload/single`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+          },
+          body: formData,
+        });
         if (!response.ok) {
           throw new Error(`Upload failed for ${files[i].name}`);
         }

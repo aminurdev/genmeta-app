@@ -1,5 +1,5 @@
+import ResultsPage from "@/components/main/results-page";
 import type { Metadata } from "next";
-import ResultsPage from "@/components/results-page";
 
 export const metadata: Metadata = {
   title: "Image SEO Results",

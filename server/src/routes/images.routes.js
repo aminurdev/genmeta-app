@@ -33,7 +33,7 @@ router.post(
   uploadSingleImage
 );
 
-router.patch("/update", verifyToken, updateImage);
+router.put("/update", verifyToken, updateImage);
 router.delete("/delete", verifyToken, deleteImage);
 router.get("/batch/:batchId", verifyToken, getBatchImages);
 router.get("/batches", verifyToken, getAllBatches);

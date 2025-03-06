@@ -1,5 +1,6 @@
 import BatchesPage from "@/components/main/batches-page";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getAccessToken, getBaseApi } from "@/services/image-services";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -31,16 +32,14 @@ export type Batch = {
 export default async function Results() {
   const fetchBatches = async (): Promise<Batch[] | null> => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/v1/images/batches",
-        {
-          headers: {
-            authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2JjNTVkMmJhMDRiMDc2MjU2MGQ1Y2QiLCJuYW1lIjoiQW1pbnVyIiwiZW1haWwiOiJhbWludXJhYWFAZ2FtYWlsLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzQxMDc2ODk2LCJleHAiOjE3NDExNjMyOTZ9.MbPgx2WlaX0K1N0oIDiJ4AY3tyczhD1t4wo2MhGvWRc",
-          },
-          cache: "no-store",
-        }
-      );
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/images/batches`, {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch batches");
