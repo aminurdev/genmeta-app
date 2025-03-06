@@ -70,7 +70,8 @@ const emptyBatch: ImageBatch = {
 
 export default function ResultsPage({ batchId }: { batchId: string }) {
   const [results, setResults] = useState<ImageBatch>(emptyBatch);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isPending, setIsPending] = useState(true);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editData, setEditData] = useState<ImageMetadata>({
     title: "",
@@ -79,37 +80,34 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
   });
 
   // API Call functions with useCallback to prevent unnecessary recreations
-  const fetchBatchImages = useCallback(
-    async (batchId: string) => {
-      try {
-        setLoading(true);
-        const baseAPi = await getBaseApi();
-        const accessToken = await getAccessToken();
-        const response = await fetch(`${baseAPi}/images/batch/${batchId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+  const fetchBatchImages = useCallback(async (batchId: string) => {
+    try {
+      setIsPending(true);
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/images/batch/${batchId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch batch images");
-        }
-
-        const data = await response.json();
-        setResults(data.data);
-        return data.data;
-      } catch (error) {
-        console.error("Error fetching batch images:", error);
-        toast("Failed to fetch images. Please try again.");
-        return emptyBatch;
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch batch images");
       }
-    },
-    [toast]
-  );
+
+      const data = await response.json();
+      setResults(data.data);
+      return data.data;
+    } catch (error) {
+      console.error("Error fetching batch images:", error);
+      toast("Failed to fetch images. Please try again.");
+      return emptyBatch;
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
 
   // Fetch images when batchId changes
   useEffect(() => {
@@ -135,10 +133,18 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
   const handleKeywordChange = useCallback((value: string) => {
     setEditData((prev) => ({
       ...prev,
-      keywords: value
+      keywords: [value], // Store the raw string temporarily
+    }));
+  }, []);
+
+  const handleKeywordBlur = useCallback(() => {
+    setEditData((prev) => ({
+      ...prev,
+      keywords: prev.keywords
+        .join(",")
         .split(",")
         .map((k) => k.trim())
-        .filter(Boolean),
+        .filter(Boolean), // Convert to array only when leaving the input field
     }));
   }, []);
 
@@ -147,6 +153,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     if (!editingItem) return;
 
     try {
+      setLoading(true);
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
       const currentImage = results.images.find(
@@ -157,43 +164,53 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
         throw new Error("Image not found");
       }
 
-      const response = await fetch(`${baseAPi}/images/update`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          batchId: results.batchId,
-          imageId: editingItem,
-          imageName: currentImage.imageName,
-          updateData: editData,
+      await toast.promise(
+        fetch(`${baseAPi}/images/update`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            batchId: results.batchId,
+            imageId: editingItem,
+            imageName: currentImage.imageName,
+            updateData: editData,
+          }),
+        }).then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              errorData.message || "Failed to update image metadata"
+            );
+          }
+
+          setResults((prev) => ({
+            ...prev,
+            images: prev.images.map((item) =>
+              item._id === editingItem
+                ? { ...item, metadata: { ...editData } }
+                : item
+            ),
+          }));
+
+          setEditingItem(null);
         }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update image metadata");
-      }
-
-      setResults((prev) => ({
-        ...prev,
-        images: prev.images.map((item) =>
-          item._id === editingItem
-            ? { ...item, metadata: { ...editData } }
-            : item
-        ),
-      }));
-
-      setEditingItem(null);
-      toast("Image metadata updated successfully");
+        {
+          loading: "Updating image metadata...",
+          success: "Image metadata updated successfully!",
+          error: (error) =>
+            error instanceof Error
+              ? error.message
+              : "Failed to update metadata",
+        }
+      );
     } catch (error) {
       console.error("Error updating image metadata:", error);
-      toast(
-        error instanceof Error ? error.message : "Failed to update metadata"
-      );
+    } finally {
+      setLoading(false);
     }
-  }, [editingItem, editData, results, toast]);
+  }, [editingItem, editData, results]);
 
   const handleDownloadZip = useCallback(async () => {
     if (!batchId) return;
@@ -236,7 +253,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
         error instanceof Error ? error.message : "Failed to download images"
       );
     }
-  }, [batchId, toast]);
+  }, [batchId]);
 
   const handleDownloadCSV = useCallback(() => {
     if (results.images.length === 0) {
@@ -264,7 +281,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "image_metadata.csv");
+      link.setAttribute("download", `image_metadata_${batchId}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -274,60 +291,55 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       console.error("Error generating CSV:", error);
       toast("Failed to generate CSV file");
     }
-  }, [results.images, toast]);
+  }, [results.images, batchId]);
 
-  const handleCopyMetadata = useCallback(
-    (text: string) => {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          toast("Metadata copied to clipboard");
-        })
-        .catch((err) => {
-          console.error("Failed to copy: ", err);
-          toast("Could not copy to clipboard");
-        });
-    },
-    [toast]
-  );
+  const handleCopyMetadata = useCallback((text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        toast("Metadata copied to clipboard");
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err);
+        toast("Could not copy to clipboard");
+      });
+  }, []);
 
-  const deleteImage = useCallback(
-    async (imageId: string, batchId: string) => {
-      try {
-        const baseAPi = await getBaseApi();
-        const accessToken = await getAccessToken();
-        const response = await fetch(
-          `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
-          {
-            method: "DELETE",
-            headers: {
-              authorization: `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || "Failed to delete image");
+  const deleteImage = useCallback(async (imageId: string, batchId: string) => {
+    try {
+      setLoading(true);
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
+        {
+          method: "DELETE",
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
 
-        setResults((prev) => ({
-          ...prev,
-          images: prev.images.filter((item) => item._id !== imageId),
-        }));
+      const result = await response.json();
 
-        toast("Image deleted successfully");
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        toast(
-          error instanceof Error ? error.message : "Failed to delete image"
-        );
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to delete image");
       }
-    },
-    [toast]
-  );
+
+      setResults((prev) => ({
+        ...prev,
+        images: prev.images.filter((item) => item._id !== imageId),
+      }));
+
+      toast("Image deleted successfully");
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      toast(error instanceof Error ? error.message : "Failed to delete image");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Memoized metadata for export dialog
   const exportMetadata = useMemo(() => {
@@ -380,7 +392,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       </div>
 
       {/* Show Skeletons if Loading */}
-      {loading ? (
+      {isPending ? (
         <div className="grid gap-6">
           {[1, 2, 3].map((index) => (
             <Card key={index} className="overflow-hidden">
@@ -474,19 +486,32 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            if (
-                              confirm(
-                                "Are you sure you want to delete this image?"
-                              )
-                            ) {
-                              deleteImage(item._id, batchId);
-                            }
+                            toast.promise(
+                              new Promise((resolve, reject) => {
+                                if (
+                                  confirm(
+                                    "Are you sure you want to delete this image?"
+                                  )
+                                ) {
+                                  deleteImage(item._id, batchId)
+                                    .then(resolve)
+                                    .catch(reject);
+                                } else {
+                                  reject();
+                                }
+                              }),
+                              {
+                                loading: "Deleting image...",
+                                success: "Image deleted successfully",
+                                error: "Failed to delete image",
+                              }
+                            );
                           }}
+                          disabled={loading}
                         >
                           <Trash className="h-4 w-4" />
                           <span className="sr-only">Delete</span>
@@ -535,6 +560,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Textarea
                           value={editData.keywords.join(", ")}
                           onChange={(e) => handleKeywordChange(e.target.value)}
+                          onBlur={handleKeywordBlur}
                           className="mt-1 resize-none"
                           rows={3}
                         />
@@ -544,7 +570,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Button variant="outline" onClick={handleCancel}>
                           Cancel
                         </Button>
-                        <Button onClick={handleSave}>
+                        <Button onClick={handleSave} disabled={loading}>
                           <Save className="mr-2 h-4 w-4" />
                           Save Changes
                         </Button>
