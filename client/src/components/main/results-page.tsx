@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Download,
   Edit,
@@ -32,10 +32,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 
-// Mock data for demonstration - batches
+// Type definitions
 type ImageMetadata = {
   title: string;
   description: string;
@@ -58,72 +59,104 @@ type ImageBatch = {
   createdAt: string;
 };
 
+// Empty batch state
+const emptyBatch: ImageBatch = {
+  _id: "",
+  batchId: "",
+  userId: "",
+  images: [],
+  createdAt: "",
+};
+
 export default function ResultsPage({ batchId }: { batchId: string }) {
-  const [results, setResults] = useState<ImageBatch>({
-    _id: "",
-    batchId: "",
-    userId: "",
-    images: [],
-    createdAt: "",
-  });
+  const [results, setResults] = useState<ImageBatch>(emptyBatch);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [editData, setEditData] = useState({
+  const [editData, setEditData] = useState<ImageMetadata>({
     title: "",
     description: "",
-    keywords: [] as string[],
+    keywords: [],
   });
 
-  console.log(editData, editingItem);
-  async function getBatchImages(batchId: string) {
-    try {
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
-      const response = await fetch(`${baseAPi}/images/batch/${batchId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+  // API Call functions with useCallback to prevent unnecessary recreations
+  const fetchBatchImages = useCallback(
+    async (batchId: string) => {
+      try {
+        setLoading(true);
+        const baseAPi = await getBaseApi();
+        const accessToken = await getAccessToken();
+        const response = await fetch(`${baseAPi}/images/batch/${batchId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch batch images");
+        if (!response.ok) {
+          throw new Error("Failed to fetch batch images");
+        }
+
+        const data = await response.json();
+        setResults(data.data);
+        return data.data;
+      } catch (error) {
+        console.error("Error fetching batch images:", error);
+        toast("Failed to fetch images. Please try again.");
+        return emptyBatch;
+      } finally {
+        setLoading(false);
       }
+    },
+    [toast]
+  );
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error fetching batch images:", error);
-      return [];
-    }
-  }
-
+  // Fetch images when batchId changes
   useEffect(() => {
     if (batchId) {
-      setLoading(true);
-      getBatchImages(batchId).then((images) => {
-        setResults(images.data);
-        setLoading(false);
-      });
+      fetchBatchImages(batchId);
     }
-  }, [batchId]);
+  }, [batchId, fetchBatchImages]);
 
-  const handleEdit = (item: Image) => {
+  // Edit handlers
+  const handleEdit = useCallback((item: Image) => {
     setEditingItem(item._id);
     setEditData({
       title: item.metadata.title,
       description: item.metadata.description,
       keywords: [...item.metadata.keywords],
     });
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleCancel = useCallback(() => {
+    setEditingItem(null);
+  }, []);
+
+  const handleKeywordChange = useCallback((value: string) => {
+    setEditData((prev) => ({
+      ...prev,
+      keywords: value
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
+    }));
+  }, []);
+
+  // API operations with useCallback
+  const handleSave = useCallback(async () => {
     if (!editingItem) return;
 
     try {
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
+      const currentImage = results.images.find(
+        (item) => item._id === editingItem
+      );
+
+      if (!currentImage) {
+        throw new Error("Image not found");
+      }
+
       const response = await fetch(`${baseAPi}/images/update`, {
         method: "PUT",
         headers: {
@@ -133,53 +166,41 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
         body: JSON.stringify({
           batchId: results.batchId,
           imageId: editingItem,
-          imageName: results.images.find((item) => item._id === editingItem)
-            ?.imageName,
+          imageName: currentImage.imageName,
           updateData: editData,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update image metadata");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update image metadata");
       }
 
-      const updatedImage = await response.json();
-
-      if ("images" in results) {
-        setResults({
-          ...results,
-          images: results.images.map((item) =>
-            item._id === editingItem
-              ? { ...item, metadata: { ...item.metadata, ...editData } }
-              : item
-          ),
-        });
-      }
+      setResults((prev) => ({
+        ...prev,
+        images: prev.images.map((item) =>
+          item._id === editingItem
+            ? { ...item, metadata: { ...editData } }
+            : item
+        ),
+      }));
 
       setEditingItem(null);
+      toast("Image metadata updated successfully");
     } catch (error) {
       console.error("Error updating image metadata:", error);
+      toast(
+        error instanceof Error ? error.message : "Failed to update metadata"
+      );
     }
-  };
+  }, [editingItem, editData, results, toast]);
 
-  const handleCancel = () => {
-    setEditingItem(null);
-  };
-
-  const handleKeywordChange = (value: string) => {
-    setEditData({
-      ...editData,
-      keywords: value
-        .split(",")
-        .map((k) => k.trim())
-        .filter((k) => k),
-    });
-  };
-
-  const handleDownloadZip = async () => {
+  const handleDownloadZip = useCallback(async () => {
     if (!batchId) return;
 
     try {
+      toast("Preparing your ZIP file...");
+
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
       const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
@@ -207,88 +228,120 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+
+      toast("ZIP file downloaded successfully");
     } catch (error) {
       console.error("Error downloading ZIP:", error);
+      toast(
+        error instanceof Error ? error.message : "Failed to download images"
+      );
     }
-  };
+  }, [batchId, toast]);
 
-  const handleDownloadCSV = () => {
-    if (!("images" in results) || results.images.length === 0) {
-      alert("No metadata available to download.");
+  const handleDownloadCSV = useCallback(() => {
+    if (results.images.length === 0) {
+      toast("No metadata available to download");
       return;
     }
 
-    // Define CSV headers
-    let csvContent = "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
-
-    // Append image metadata
-    results.images.forEach((item) => {
-      const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
-      const description = `"${item.metadata.description.replace(/"/g, '""')}"`;
-      const keywords = `"${item.metadata.keywords.join(", ")}"`;
-      csvContent += `${title},${description},${keywords}\n`;
-    });
-
-    // Create a Blob and generate a download link
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "image_metadata.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleCopyMetadata = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        alert("Copied to clipboard!");
-      })
-      .catch((err) => {
-        console.error("Failed to copy: ", err);
-      });
-  };
-
-  const deleteImage = async (imageId: string, batchId: string) => {
     try {
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
-      const response = await fetch(
-        `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
-        {
-          method: "DELETE",
-          headers: {
-            authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Define CSV headers
+      let csvContent =
+        "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
 
-      const result = await response.json();
+      // Append image metadata
+      results.images.forEach((item) => {
+        const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
+        const description = `"${item.metadata.description.replace(
+          /"/g,
+          '""'
+        )}"`;
+        const keywords = `"${item.metadata.keywords.join(", ")}"`;
+        csvContent += `${title},${description},${keywords}\n`;
+      });
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to delete image");
-      }
+      // Create a download link
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "image_metadata.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      if ("images" in results) {
-        setResults({
-          ...results,
-          images: results.images.filter((item) => item._id !== imageId),
-        });
-      }
-
-      alert("Image deleted successfully");
-      // Optionally refresh the UI by removing the image from state
+      toast("CSV file downloaded successfully");
     } catch (error) {
-      console.error("Error deleting image:", error);
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("An unknown error occurred");
-      }
+      console.error("Error generating CSV:", error);
+      toast("Failed to generate CSV file");
     }
-  };
+  }, [results.images, toast]);
+
+  const handleCopyMetadata = useCallback(
+    (text: string) => {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          toast("Metadata copied to clipboard");
+        })
+        .catch((err) => {
+          console.error("Failed to copy: ", err);
+          toast("Could not copy to clipboard");
+        });
+    },
+    [toast]
+  );
+
+  const deleteImage = useCallback(
+    async (imageId: string, batchId: string) => {
+      try {
+        const baseAPi = await getBaseApi();
+        const accessToken = await getAccessToken();
+        const response = await fetch(
+          `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
+          {
+            method: "DELETE",
+            headers: {
+              authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to delete image");
+        }
+
+        setResults((prev) => ({
+          ...prev,
+          images: prev.images.filter((item) => item._id !== imageId),
+        }));
+
+        toast("Image deleted successfully");
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        toast(
+          error instanceof Error ? error.message : "Failed to delete image"
+        );
+      }
+    },
+    [toast]
+  );
+
+  // Memoized metadata for export dialog
+  const exportMetadata = useMemo(() => {
+    return JSON.stringify(
+      results.images.map((item) => ({
+        filename: item.imageName,
+        title: item.metadata.title,
+        description: item.metadata.description,
+        keywords: item.metadata.keywords,
+      })),
+      null,
+      2
+    );
+  }, [results.images]);
 
   return (
     <div className="space-y-8">
@@ -302,18 +355,24 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
           <div>
             <h2 className="text-2xl font-bold">Generated Metadata</h2>
             <p className="text-muted-foreground">
-              {"images" in results ? results.images.length : 0} images processed
-              successfully
+              {results.images.length} images processed successfully
             </p>
           </div>
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={handleDownloadCSV}>
+          <Button
+            variant="outline"
+            onClick={handleDownloadCSV}
+            disabled={results.images.length === 0}
+          >
             <FileText className="mr-2 h-4 w-4" />
             Download CSV
           </Button>
-          <Button onClick={handleDownloadZip}>
+          <Button
+            onClick={handleDownloadZip}
+            disabled={results.images.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
             Download All
           </Button>
@@ -340,6 +399,10 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
             </Card>
           ))}
         </div>
+      ) : results.images.length === 0 ? (
+        <Card className="p-6 text-center">
+          <p>No images found in this batch.</p>
+        </Card>
       ) : (
         <div className="grid gap-6">
           {results.images.map((item) => (
@@ -350,6 +413,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                     src={item.imageUrl || "/placeholder.svg"}
                     alt={item.metadata.title}
                     className="w-full h-full object-cover rounded-md"
+                    loading="lazy"
                   />
                 </div>
 
@@ -384,9 +448,10 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() =>
-                                alert(`Download ${item.imageName}`)
-                              }
+                              onClick={() => {
+                                window.open(item.imageUrl, "_blank");
+                                toast(`Downloading ${item.imageName}`);
+                              }}
                             >
                               Download Image
                             </DropdownMenuItem>
@@ -413,7 +478,15 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteImage(item._id, batchId)}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this image?"
+                              )
+                            ) {
+                              deleteImage(item._id, batchId);
+                            }
+                          }}
                         >
                           <Trash className="h-4 w-4" />
                           <span className="sr-only">Delete</span>
@@ -429,10 +502,10 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Input
                           value={editData.title}
                           onChange={(e) =>
-                            setEditData({
-                              ...editData,
+                            setEditData((prev) => ({
+                              ...prev,
                               title: e.target.value,
-                            })
+                            }))
                           }
                           className="mt-1"
                         />
@@ -445,10 +518,10 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Textarea
                           value={editData.description}
                           onChange={(e) =>
-                            setEditData({
-                              ...editData,
+                            setEditData((prev) => ({
+                              ...prev,
                               description: e.target.value,
-                            })
+                            }))
                           }
                           className="mt-1 resize-none"
                           rows={3}
@@ -510,7 +583,11 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
 
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="w-full">
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={results.images.length === 0}
+          >
             <Copy className="mr-2 h-4 w-4" />
             Export All Metadata
           </Button>
@@ -524,40 +601,14 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
           </DialogHeader>
           <div className="overflow-auto max-h-96">
             <pre className="bg-muted p-4 rounded-md text-sm">
-              {JSON.stringify(
-                "images" in results
-                  ? results.images.map((item) => ({
-                      filename: item.imageName,
-                      title: item.metadata.title,
-                      description: item.metadata.description,
-                      keywords: item.metadata.keywords,
-                    }))
-                  : [],
-                null,
-                2
-              )}
+              {exportMetadata}
             </pre>
           </div>
           <DialogFooter className="sm:justify-start">
             <Button
               type="button"
               variant="secondary"
-              onClick={() =>
-                handleCopyMetadata(
-                  JSON.stringify(
-                    "images" in results
-                      ? results.images.map((item) => ({
-                          filename: item.imageName,
-                          title: item.metadata.title,
-                          description: item.metadata.description,
-                          keywords: item.metadata.keywords,
-                        }))
-                      : [],
-                    null,
-                    2
-                  )
-                )
-              }
+              onClick={() => handleCopyMetadata(exportMetadata)}
             >
               <Copy className="mr-2 h-4 w-4" />
               Copy to Clipboard

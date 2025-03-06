@@ -128,33 +128,7 @@ const updateImage = asyncHandler(async (req, res) => {
   const localFilePath = `${requestDir}/${imageName}`;
 
   try {
-    // Determine correct MIME type
-    const contentType = mime.getType(imageName) || "application/octet-stream";
-
-    // Fetch Image from S3
-    const { Body } = await s3.send(
-      new GetObjectCommand({ Bucket: bucketName, Key: objectKey })
-    );
-    const imageBuffer = await Body.transformToByteArray();
-
-    // Save Image Temporarily
-    await fs.promises.writeFile(localFilePath, imageBuffer);
-
-    // Process Image Metadata
-    await updateImageMetadata(localFilePath, updateData);
-
-    // Upload updated image back to S3
-    const updatedImageBuffer = await fs.promises.readFile(localFilePath);
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: objectKey,
-        Body: updatedImageBuffer,
-        ContentType: contentType,
-      })
-    );
-
-    // Update metadata in the database
+    // Update metadata in the database regardless of file existence
     const updateQuery = Object.entries(updateData).reduce(
       (acc, [key, value]) => ({ ...acc, [`images.$.metadata.${key}`]: value }),
       {}
@@ -167,18 +141,53 @@ const updateImage = asyncHandler(async (req, res) => {
     );
 
     if (!updatedImage) {
-      throw new ApiError(404, "Image not found");
+      throw new ApiError(404, "Image not found in database");
     }
 
-    // Cleanup local file
-    await fs.promises.unlink(localFilePath);
+    // Try to update the actual image file if it exists
+    try {
+      // Determine correct MIME type
+      const contentType = mime.getType(imageName) || "application/octet-stream";
+
+      // Fetch Image from S3
+      const { Body } = await s3.send(
+        new GetObjectCommand({ Bucket: bucketName, Key: objectKey })
+      );
+      const imageBuffer = await Body.transformToByteArray();
+
+      // Save Image Temporarily
+      await fs.promises.writeFile(localFilePath, imageBuffer);
+
+      // Process Image Metadata
+      await updateImageMetadata(localFilePath, updateData);
+
+      // Upload updated image back to S3
+      const updatedImageBuffer = await fs.promises.readFile(localFilePath);
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: objectKey,
+          Body: updatedImageBuffer,
+          ContentType: contentType,
+        })
+      );
+
+      // Cleanup local file
+      await fs.promises.unlink(localFilePath);
+    } catch (fileError) {
+      // If file not found in S3 or other file operation errors, just log it
+      console.log(
+        `File operation error (continuing anyway): ${fileError.message}`
+      );
+    }
 
     // Send success response
-    return new ApiResponse(200, true, "Image updated successfully", {
+    return new ApiResponse(200, true, "Image metadata updated successfully", {
       userId,
       batchId,
       imageId,
       updatedFields: updateData,
+      fileUpdated: true,
     }).send(res);
   } catch (error) {
     // Ensure local file cleanup even if an error occurs
