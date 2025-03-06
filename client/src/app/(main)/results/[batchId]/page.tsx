@@ -6,12 +6,8 @@ export const metadata: Metadata = {
   description: "View and edit your generated SEO metadata for images",
 };
 
-export default async function Results({
-  params,
-}: {
-  params: { batchId: string };
-}) {
-  const { batchId } = await params;
+export default function Results({ params }: { params: { batchId: string } }) {
+  const { batchId } = params;
 
   return (
     <div className="container mx-auto px-4 py-8">
