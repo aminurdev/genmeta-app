@@ -1,13 +1,11 @@
 import ResultsPage from "@/components/main/results-page";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Image SEO Results",
-  description: "View and edit your generated SEO metadata for images",
-};
-
-export default function Results({ params }: { params: { batchId: string } }) {
-  const { batchId } = params;
+export default async function Results({
+  params,
+}: {
+  params: Promise<{ batchId: string }>;
+}) {
+  const batchId = (await params).batchId;
 
   return (
     <div className="container mx-auto px-4 py-8">
