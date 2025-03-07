@@ -111,7 +111,7 @@ const registerUser = asyncHandler(async (req, res) => {
     user.name = name || user.name;
     user.password = password;
   } else {
-    user = new User.create({
+    user = await User.create({
       name,
       email,
       password,
