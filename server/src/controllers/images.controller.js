@@ -31,7 +31,7 @@ const requestDir = `public/temp/exiftool`;
 
 const uploadImages = asyncHandler(async (req, res) => {
   const images = req.files.images;
-  if (!images) return new ApiError(400, "No images uploaded");
+  if (!images) throw new ApiError(400, "No images uploaded");
 
   const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
   const newBatchId = batchId || uuidv4();
@@ -243,7 +243,7 @@ const getBatchImages = asyncHandler(async (req, res) => {
 
   // Check if batchId is provided
   if (!batchId) {
-    return new ApiError(400, "Batch ID is required");
+    throw new ApiError(400, "Batch ID is required");
   }
 
   // Fetch the batch by batchId
@@ -251,7 +251,7 @@ const getBatchImages = asyncHandler(async (req, res) => {
 
   // Check if the batch exists
   if (!batch) {
-    return new ApiError(404, "Batch not found");
+    throw new ApiError(404, "Batch not found");
   }
 
   // Send the batch data as response

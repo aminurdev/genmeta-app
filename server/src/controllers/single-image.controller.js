@@ -28,7 +28,7 @@ const requestDir = `public/temp/exiftool`;
 
 const uploadSingleImage = asyncHandler(async (req, res) => {
   const image = req.file;
-  if (!image) return new ApiError(400, "No image uploaded");
+  if (!image) throw new ApiError(400, "No image uploaded");
 
   const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
   const newBatchId = batchId || uuidv4();

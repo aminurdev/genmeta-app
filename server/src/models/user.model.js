@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
     minlength: [6, "Password must be at least 6 characters"],
   },
   isVerified: { type: Boolean, default: false },
+  verificationToken: { type: String },
   loginProvider: {
     type: String,
     enum: {
@@ -81,6 +82,16 @@ userSchema.methods.generateRefreshToken = function () {
     },
     config.refresh_token_secret,
     { expiresIn: config.refresh_token_expiry }
+  );
+};
+
+userSchema.methods.generateEmailVerifyToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    config.email_verify_token_secret,
+    { expiresIn: config.email_verify_token_expiry }
   );
 };
 

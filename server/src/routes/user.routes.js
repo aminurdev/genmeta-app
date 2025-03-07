@@ -7,12 +7,14 @@ import {
   logoutUser,
   refreshAccessToken,
   registerUser,
+  verifyEmail,
 } from "../controllers/user.controller.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
 router.post("/google-login", googleLogin);
+router.get("/verify-email", verifyEmail);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 

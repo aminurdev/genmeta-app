@@ -1,4 +1,6 @@
+import config from "../config/index.js";
 import { User } from "../models/user.model.js";
+import { sendVerificationEmail } from "../services/email/email.service.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -63,7 +65,8 @@ const googleLogin = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const registerUser = asyncHandler(async (req, res) => {
+// eslint-disable-next-line no-unused-vars
+const registerUserOld = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
   const existedUser = await User.findOne({ email });
@@ -95,6 +98,60 @@ const registerUser = asyncHandler(async (req, res) => {
     refreshToken,
   }).send(res);
 });
+const registerUser = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+
+  let user = await User.findOne({ email });
+
+  if (user && user.isVerified) {
+    throw new ApiError(409, "Email already exists");
+  }
+
+  if (user) {
+    user.name = name || user.name;
+    user.password = password;
+  } else {
+    user = new User.create({
+      name,
+      email,
+      password,
+      loginProvider: "email",
+    });
+  }
+
+  const verificationToken = user.generateEmailVerifyToken();
+  user.verificationToken = verificationToken;
+  await user.save();
+  await sendVerificationEmail("dev.aminur@gmail.com", verificationToken);
+
+  return new ApiResponse(
+    201,
+    true,
+    "Registration successful! Check your email to verify."
+  ).send(res);
+});
+
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  const decoded = jwt.verify(token, config.email_verify_token_secret);
+  const user = await User.findById(decoded._id);
+
+  if (!user) {
+    throw new ApiError(400, "Invalid token");
+  }
+
+  if (user.isVerified) {
+    throw new ApiError(400, "Email already verified");
+  }
+  if (!(token === user.verificationToken)) {
+    throw new ApiError(400, "Invalid token");
+  }
+  user.isVerified = true;
+  user.verificationToken = null;
+  await user.save();
+
+  return new ApiResponse(200, "Email verified successfully").send(res);
+});
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -111,6 +168,18 @@ const loginUser = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid credentials");
+  }
+
+  if (!user.isVerified) {
+    const verificationToken = user.generateEmailVerifyToken();
+    user.verificationToken = verificationToken;
+    await user.save();
+    await sendVerificationEmail("dev.aminur@gmail.com", verificationToken);
+
+    throw new ApiError(
+      403,
+      "Email is not verified. A new verification email has been sent."
+    );
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
@@ -207,4 +276,5 @@ export {
   changeCurrentPassword,
   getCurrentUser,
   googleLogin,
+  verifyEmail,
 };
