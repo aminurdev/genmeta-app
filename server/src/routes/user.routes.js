@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   changeCurrentPassword,
   getCurrentUser,
+  googleLogin,
   loginUser,
   logoutUser,
   refreshAccessToken,
@@ -11,6 +12,7 @@ import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+router.post("/google-login", googleLogin);
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 

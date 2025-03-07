@@ -32,7 +32,7 @@ import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
+const SignUpForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
@@ -186,7 +186,7 @@ const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
             <span className="w-full h-px  absolute left-0 top-1/2 translate-y-1/2 bg-slate-200" />
           </div>
 
-          <Social apiBaseUrl={apiBaseUrl} />
+          <Social />
         </div>
       </CardContent>{" "}
       <CardFooter className="flex flex-col gap-2">
@@ -201,9 +201,9 @@ const SignUpForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
   );
 };
 
-const SignUpFormWrapper = (props: { apiBaseUrl: string }) => (
+const SignUpFormWrapper = () => (
   <Suspense fallback={<div>Loading...</div>}>
-    <SignUpForm {...props} />
+    <SignUpForm />
   </Suspense>
 );
 

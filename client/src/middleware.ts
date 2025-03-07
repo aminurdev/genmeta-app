@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "./services/auth-services";
+export { auth as authMiddleware } from "@/auth";
 
 const authRoutes = ["/login", "/signup"];
 const protectedRoutes = [
@@ -8,13 +9,14 @@ const protectedRoutes = [
   /^\/admin(\/.*)?$/,
 ];
 
-export const middleware = async (request: NextRequest) => {
+export const middleware = async function handleRequest(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const userInfo = await getCurrentUser();
+  const userInfo = await getCurrentUser(); // Always fetch user info per request
 
+  // If the user is not authenticated
   if (!userInfo) {
     if (authRoutes.includes(pathname)) {
-      return NextResponse.next();
+      return NextResponse.next(); // Allow access to auth pages
     } else {
       return NextResponse.redirect(
         new URL(`/login?redirectPath=${pathname}`, request.url)
@@ -22,23 +24,25 @@ export const middleware = async (request: NextRequest) => {
     }
   }
 
-  // Allow logged-in users to access all protected routes
-  if (protectedRoutes.some((route) => pathname.match(route))) {
-    return NextResponse.next();
+  // If authenticated and accessing an auth page, redirect to home
+  if (authRoutes.includes(pathname)) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  return NextResponse.redirect(new URL("/", request.url));
+  // Restrict access to protected routes for unauthenticated users
+  if (protectedRoutes.some((route) => pathname.match(route))) {
+    return NextResponse.next(); // Allow access
+  }
+
+  return NextResponse.next(); // Default: Allow access to all other pages
 };
 
 export const config = {
   matcher: [
     "/login",
     "/signup",
-    "/generate",
-    "/generate/:page",
-    "/user",
-    "/user/:page",
-    "/admin",
-    "/admin/:page",
+    "/generate/:path*",
+    "/user/:path*",
+    "/admin/:path*",
   ],
 };

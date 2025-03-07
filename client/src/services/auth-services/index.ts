@@ -1,11 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
+import { signIn } from "@/auth";
 import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 
 const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
+
+export const handleGoogleSignIn = async () => {
+  await signIn("google");
+};
 
 export const registerUser = async (userData: FieldValues) => {
   try {

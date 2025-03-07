@@ -31,7 +31,7 @@ import Social from "./social";
 import { loginUser } from "@/services/auth-services";
 import { useRouter, useSearchParams } from "next/navigation";
 
-const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
+const LoginForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
@@ -175,7 +175,7 @@ const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
             <span className="w-full h-px  absolute left-0 top-1/2 translate-y-1/2 bg-slate-200" />
           </div>
 
-          <Social apiBaseUrl={apiBaseUrl} />
+          <Social />
         </div>
       </CardContent>{" "}
       <CardFooter className="flex flex-col gap-2">
@@ -190,9 +190,9 @@ const LoginForm = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
   );
 };
 
-const LoginFormWrapper = (props: { apiBaseUrl: string }) => (
+const LoginFormWrapper = () => (
   <Suspense fallback={<div>Loading...</div>}>
-    <LoginForm {...props} />
+    <LoginForm />
   </Suspense>
 );
 

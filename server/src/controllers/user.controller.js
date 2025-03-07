@@ -21,6 +21,48 @@ const generateAccessAndRefreshTokens = async (userId) => {
   }
 };
 
+const googleLogin = asyncHandler(async (req, res) => {
+  const { name, email, googleId } = req.body;
+
+  if (!email || !googleId) {
+    throw new ApiError(400, "Google authentication failed");
+  }
+
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // Create new user if not found
+    user = new User({
+      name,
+      email,
+      googleId,
+      loginProvider: "google",
+      isVerified: true,
+    });
+
+    await user.save();
+  } else if (user.loginProvider !== "google") {
+    throw new ApiError(
+      400,
+      "This email is already registered with another provider"
+    );
+  }
+
+  // Generate JWT tokens
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  // Store refreshToken in the database
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  return new ApiResponse(200, true, "Google Login Successful", {
+    user,
+    accessToken,
+    refreshToken,
+  }).send(res);
+});
+
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -164,4 +206,5 @@ export {
   refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
+  googleLogin,
 };

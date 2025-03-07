@@ -1,23 +1,28 @@
-"use client";
-
 import React from "react";
 import { Button } from "../ui/button";
 import Image from "next/image";
+import { signIn } from "next-auth/react";
 
-const Social = ({ apiBaseUrl }: { apiBaseUrl: string }) => {
+const Social = () => {
   return (
     <div className="flex gap-4 mb-2">
-      <Button variant="outline" type="submit" className="w-full" asChild>
-        <a href={`${apiBaseUrl}/auth/google`}>
+      <Button
+        onClick={() => signIn("google")}
+        variant="outline"
+        type="submit"
+        className="w-full cursor-pointer"
+        asChild
+      >
+        <span>
           <Image
-            src="/assets/auth/google.svg"
+            src="/auth/google.svg"
             className="h-4 w-4 text-neutral-800 dark:text-neutral-300 mr-2"
             width={20}
             height={20}
             alt="google"
           />
           Continue with Google
-        </a>
+        </span>
       </Button>
     </div>
   );
