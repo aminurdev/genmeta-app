@@ -13,7 +13,6 @@ import config from "../config/index.js";
 import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
 import { updateImageMetadata } from "../services/metadata/injector.service.js";
-import path from "path";
 import archiver from "archiver";
 
 const s3 = new S3Client({
@@ -197,8 +196,6 @@ const updateImage = asyncHandler(async (req, res) => {
   }
 });
 
-const tempDir = `public/temp/zips`;
-
 const downloadBatchAsZip = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
   const userId = req.user._id;
@@ -212,30 +209,16 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
   }
 
   const zipFilename = `batch_${batchId}.zip`;
-  const zipFilePath = path.join(tempDir, zipFilename);
 
-  // Ensure the temporary directory exists
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
+  // Step 2: Set headers for instant download
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename=${zipFilename}`);
 
-  // Step 2: Create a ZIP archive
-  const output = fs.createWriteStream(zipFilePath);
+  // Step 3: Create a ZIP stream
   const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.pipe(res); // **Stream ZIP directly to response**
 
-  output.on("close", () => {
-    console.log(
-      `ZIP file created: ${zipFilePath} (${archive.pointer()} bytes)`
-    );
-  });
-
-  archive.on("error", (err) => {
-    throw new ApiError(500, `ZIP creation error: ${err.message}`);
-  });
-
-  archive.pipe(output);
-
-  // Step 3: Download images and add them to the ZIP
+  // Step 4: Fetch images one by one & add to ZIP (instant download)
   for (const image of batch.images) {
     const objectKey = `uploads/${userId}/${batchId}/${image.imageName}`;
 
@@ -244,28 +227,15 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
         new GetObjectCommand({ Bucket: bucketName, Key: objectKey })
       );
 
-      // Convert Uint8Array to Buffer
-      const imageBuffer = Buffer.from(await Body.transformToByteArray());
-
-      // Add file to ZIP
-      archive.append(imageBuffer, { name: image.imageName });
+      if (Body) {
+        archive.append(Body, { name: image.imageName }); // **Stream file directly into ZIP**
+      }
     } catch (error) {
       console.error(`Error downloading ${image.imageName}: ${error.message}`);
     }
   }
 
-  // Finalize the ZIP file
-  await archive.finalize();
-
-  // Step 4: Send ZIP file as response
-  res.setHeader("Content-Type", "application/zip");
-  res.setHeader("Content-Disposition", `attachment; filename=${zipFilename}`);
-
-  const fileStream = fs.createReadStream(zipFilePath);
-  fileStream.pipe(res);
-
-  // Step 5: Delete temporary ZIP file after streaming
-  fileStream.on("close", () => fs.unlinkSync(zipFilePath));
+  archive.finalize(); // Finalize ZIP once all files are added
 });
 
 const getBatchImages = asyncHandler(async (req, res) => {

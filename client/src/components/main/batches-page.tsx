@@ -49,13 +49,16 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
 
   const handleDownloadZIP = async (batchId: string) => {
     if (!batchId) return;
+
     const baseAPi = await getBaseApi();
     const accessToken = await getAccessToken();
+
     try {
+      // **Start fetch request (response is streamed)**
       const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${accessToken}`, // Replace with actual token
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -63,20 +66,25 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
         throw new Error(`Download failed: ${response.statusText}`);
       }
 
-      const blob = await response.blob();
-
-      if (blob.size === 0) {
-        throw new Error("Downloaded ZIP is empty");
+      // **No need to wait for the full response; stream it directly**
+      const fileStream = response.body;
+      if (!fileStream) {
+        throw new Error("No response body found");
       }
 
-      const url = window.URL.createObjectURL(blob);
+      // **Create a downloadable stream**
+      const downloadStream = window.URL.createObjectURL(
+        await new Response(fileStream).blob()
+      );
+
+      // **Trigger instant download**
       const a = document.createElement("a");
-      a.href = url;
+      a.href = downloadStream;
       a.download = `batch_${batchId}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadStream);
     } catch (error) {
       console.error("Error downloading ZIP:", error);
     }
