@@ -9,6 +9,7 @@ import { Typography } from "@/components/ui/typography";
 import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
+import Image from "next/image";
 
 export async function Navigation() {
   const user = await getCurrentUser();
@@ -20,9 +21,17 @@ export async function Navigation() {
           href="/"
           className="flex items-center gap-2 text-foreground hover:text-muted-foreground"
         >
-          <PhotoIcon className="h-8 w-8 text-primary" />
+          <span>
+            <Image
+              src={"/logo/GenMeta-Logo.png"}
+              className=" h-16 w-auto"
+              alt="logo"
+              width={128}
+              height={128}
+            />
+          </span>
           <Typography variant="h4" as="span">
-            Image Processor
+            GenMeta
           </Typography>
         </Link>
         {/* Navigation */}
