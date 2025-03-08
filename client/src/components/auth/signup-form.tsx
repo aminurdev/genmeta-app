@@ -30,16 +30,12 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
-import { useRouter, useSearchParams } from "next/navigation";
 
 const SignUpForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirectPath");
-  const router = useRouter();
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -58,11 +54,6 @@ const SignUpForm = () => {
         const res = await registerUser(values);
         if (res?.success) {
           setSuccess(res?.message);
-          if (redirect) {
-            router.push(redirect);
-          } else {
-            router.push("/");
-          }
         } else {
           setError(res?.message);
         }

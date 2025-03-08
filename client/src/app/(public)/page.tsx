@@ -11,9 +11,9 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="pt-20 pb-32 px-4">
+      <section className="pt-20 pb-32 px-4 bg-muted/20">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
             Transform Your Images with{" "}
@@ -67,7 +67,7 @@ export default function HomePage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 bg-muted">
+      <section className="py-20  bg-muted/20">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
             Why Choose Our Platform
@@ -129,7 +129,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
+      <section className="py-20 bg-muted/20">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-3xl font-bold mb-6 text-foreground">
             Ready to Transform Your Images?
@@ -148,7 +148,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-card text-card-foreground py-12">
+      <footer className="bg-[#020817] text-card-foreground py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>

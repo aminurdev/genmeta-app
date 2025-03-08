@@ -1,27 +1,16 @@
 import config from "../config/index.js";
 import { User } from "../models/user.model.js";
-import { sendVerificationEmail } from "../services/email/email.service.js";
+import {
+  sendOTPEmail,
+  sendVerificationEmail,
+} from "../services/email/email.service.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
+import { generateAccessAndRefreshTokens } from "../utils/generate-token.utils.js";
 
-const generateAccessAndRefreshTokens = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    return { accessToken, refreshToken };
-  } catch (err) {
-    console.log(err);
-    throw new ApiError(500, "Something went wrong while generating tokens");
-  }
-};
+const token_secret = config.email_verify_token_secret;
 
 const googleLogin = asyncHandler(async (req, res) => {
   const { name, email, googleId } = req.body;
@@ -171,14 +160,9 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   if (!user.isVerified) {
-    const verificationToken = user.generateEmailVerifyToken();
-    user.verificationToken = verificationToken;
-    await user.save();
-    await sendVerificationEmail("dev.aminur@gmail.com", verificationToken);
-
     throw new ApiError(
       403,
-      "Email is not verified. A new verification email has been sent."
+      "Email is not verified. Check your email and verify."
     );
   }
 
@@ -264,6 +248,93 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "Password changed successfully").send(res);
 });
 
+const requestPasswordReset = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw new ApiError(400, "Email is required");
+
+  const user = await User.findOne({
+    email,
+    isVerified: true,
+    loginProvider: "email",
+  });
+  if (!user) throw new ApiError(404, "User not found");
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpToken = jwt.sign({ otp, userId: user._id }, token_secret, {
+    expiresIn: "10m",
+  });
+
+  await sendOTPEmail("dev.aminur@gmail.com", otp);
+
+  return new ApiResponse(200, true, "OTP sent successfully", { otpToken }).send(
+    res
+  );
+});
+
+// Verify OTP
+const verifyOTP = asyncHandler(async (req, res) => {
+  const { otp, otpToken } = req.body;
+  if (!otp || !otpToken) throw new ApiError(400, "OTP and token are required");
+
+  let decoded;
+  try {
+    decoded = jwt.verify(otpToken, token_secret);
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      throw new ApiError(400, "OTP token has expired. ");
+    } else if (err.name === "JsonWebTokenError") {
+      throw new ApiError(400, "Invalid OTP token.");
+    } else {
+      console.error("Unexpected error verifying OTP token:", err.message);
+      throw new ApiError(400, "Failed to verify OTP token.");
+    }
+  }
+
+  if (decoded.otp !== otp) {
+    throw new ApiError(400, "Invalid OTP");
+  }
+
+  const tempToken = jwt.sign({ userId: decoded.userId }, token_secret, {
+    expiresIn: "15m",
+  });
+
+  return new ApiResponse(200, true, "OTP verified successfully", {
+    tempToken,
+  }).send(res);
+});
+
+// Reset Password using Temporary Token
+const resetPassword = asyncHandler(async (req, res) => {
+  const { tempToken, newPassword, confirmNewPassword } = req.body;
+  if (!tempToken || !newPassword || !confirmNewPassword) {
+    throw new ApiError(400, "Temporary token and new password are required");
+  }
+
+  if (newPassword !== confirmNewPassword) {
+    throw new ApiError(400, "New password and confirm password do not match");
+  }
+
+  // Ideally, store the tempToken securely in a database/session system
+  let decoded;
+  try {
+    decoded = jwt.verify(tempToken, token_secret);
+  } catch (err) {
+    console.error("Error verifying OTP token:", err.message);
+
+    throw new ApiError(400, "Invalid or expired temporary token");
+  }
+
+  const user = await User.findById(decoded.userId);
+  if (!user) throw new ApiError(404, "User not found");
+  if (newPassword.length < 6) {
+    throw new ApiError(400, "Password must be at least 6 characters");
+  }
+
+  user.password = newPassword;
+  await user.save();
+  return new ApiResponse(200, true, "Password reset successful").send(res);
+});
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   return new ApiResponse(200, req.user, "User fetched successfully").send(res);
 });
@@ -277,4 +348,7 @@ export {
   getCurrentUser,
   googleLogin,
   verifyEmail,
+  requestPasswordReset,
+  verifyOTP,
+  resetPassword,
 };
