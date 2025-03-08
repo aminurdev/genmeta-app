@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useTransition, Suspense } from "react";
-import * as z from "zod";
+import { useState, useTransition, Suspense } from "react";
+import type * as z from "zod";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -26,7 +25,7 @@ import {
 import { FormError } from "@/components/auth/form-error";
 import { FormSuccess } from "@/components/auth/form-success";
 
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
@@ -35,13 +34,16 @@ const SignUpForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
+  const [isShowConfirm, setIsShowConfirm] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
       name: "",
+      terms: false,
     },
   });
 
@@ -87,12 +89,16 @@ const SignUpForm = () => {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        disabled={isPending}
-                        type="text"
-                        placeholder="John Doe"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          disabled={isPending}
+                          type="text"
+                          placeholder="John Doe"
+                          className="pl-10"
+                        />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -105,12 +111,16 @@ const SignUpForm = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        disabled={isPending}
-                        type="email"
-                        placeholder="john.doe@example.com"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          disabled={isPending}
+                          type="email"
+                          placeholder="john.doe@example.com"
+                          className="pl-10"
+                        />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -121,32 +131,105 @@ const SignUpForm = () => {
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      <p className="flex justify-between items-center">
-                        Password{" "}
-                        <span
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          disabled={isPending}
+                          type={isShow ? "text" : "password"}
+                          placeholder="******"
+                          className="pl-10 pr-10"
+                        />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 py-2"
                           onClick={() => setIsShow((prev) => !prev)}
-                          className="flex gap-1 items-center text-xs text-blue-500 font-bold cursor-pointer"
                         >
                           {isShow ? (
-                            <>
-                              <EyeOff className="h-4 w-4" /> hide
-                            </>
+                            <EyeOff className="h-4 w-4" />
                           ) : (
-                            <>
-                              <Eye className="h-4 w-4" /> show
-                            </>
+                            <Eye className="h-4 w-4" />
                           )}
-                        </span>
-                      </p>
-                    </FormLabel>
+                          <span className="sr-only">
+                            {isShow ? "Hide password" : "Show password"}
+                          </span>
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="confirmPassword"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        disabled={isPending}
-                        type={isShow ? "text" : "password"}
-                        placeholder="******"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          disabled={isPending}
+                          type={isShowConfirm ? "text" : "password"}
+                          placeholder="******"
+                          className="pl-10 pr-10"
+                        />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3 py-2"
+                          onClick={() => setIsShowConfirm((prev) => !prev)}
+                        >
+                          {isShowConfirm ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                          <span className="sr-only">
+                            {isShowConfirm ? "Hide password" : "Show password"}
+                          </span>
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="terms"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md p-2">
+                    <FormControl>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          disabled={isPending}
+                          id="terms"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <label
+                          htmlFor="terms"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          I accept the{" "}
+                          <Link
+                            href="/terms"
+                            className="text-primary underline"
+                          >
+                            Terms and Conditions
+                          </Link>
+                        </label>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -179,15 +262,7 @@ const SignUpForm = () => {
 
           <Social />
         </div>
-      </CardContent>{" "}
-      <CardFooter className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
-          By creating an account, you agree to our{" "}
-          <span className="underline">Terms of Service</span>,{" "}
-          <span className="underline">Privacy Policy</span> and{" "}
-          <span className="underline">Acceptable Use Policy</span> .
-        </p>
-      </CardFooter>
+      </CardContent>
     </Card>
   );
 };

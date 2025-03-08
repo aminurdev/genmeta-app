@@ -52,6 +52,14 @@ export default function EmailVerification() {
     router.replace(`/reset-password?${params.toString()}`);
   }, [step, otpToken, tempToken, router]);
 
+  const handleRequestAgain = () => {
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setOtp("");
+    setOtpToken("");
+    setStep(1);
+  };
+
   // Request OTP
   const handleRequestOTP = async () => {
     if (!email) {
@@ -154,9 +162,6 @@ export default function EmailVerification() {
 
       if (data.success) {
         setSuccess("Password reset successful");
-        setTimeout(() => {
-          router.push("/login");
-        }, 2000);
       } else {
         setError(data.message || "Failed to reset password. Please try again.");
       }
@@ -243,7 +248,7 @@ export default function EmailVerification() {
                 <Button
                   variant="link"
                   className="p-0 h-auto ml-1"
-                  onClick={() => setStep(1)}
+                  onClick={handleRequestAgain}
                 >
                   Request again
                 </Button>
