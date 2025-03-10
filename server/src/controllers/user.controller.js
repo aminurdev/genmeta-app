@@ -9,6 +9,8 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { generateAccessAndRefreshTokens } from "../utils/generate-token.utils.js";
+import { PricingPlan } from "../models/pricing-plan.model.js";
+import { UserActivity } from "../models/activity.model.js";
 
 const token_secret = config.email_verify_token_secret;
 
@@ -106,11 +108,34 @@ const registerUser = asyncHandler(async (req, res) => {
       password,
       loginProvider: "email",
     });
+
+    // Assign Free Plan during user creation
+    const freePlan = await PricingPlan.findOne({ title: "Free" });
+
+    if (freePlan) {
+      await UserActivity.create({
+        userId: user._id,
+        plan: {
+          planId: freePlan._id,
+          status: "Active",
+          expiresDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+        availableTokens: freePlan.tokens,
+        tokenHistory: [
+          {
+            actionType: "assigned",
+            description: `Assigned Free Plan with ${freePlan.tokens} tokens`,
+            tokenDetails: { count: freePlan.tokens, type: "added" },
+          },
+        ],
+      });
+    }
   }
 
   const verificationToken = user.generateEmailVerifyToken();
   user.verificationToken = verificationToken;
   await user.save();
+
   await sendVerificationEmail("dev.aminur@gmail.com", verificationToken);
 
   return new ApiResponse(

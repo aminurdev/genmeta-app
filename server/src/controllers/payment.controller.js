@@ -1,7 +1,7 @@
 import config from "../config/index.js";
 import { Payment } from "../models/payment.model.js";
 import { PricingPlan } from "../models/pricing-plan.model.js";
-import { UserActivity } from "../models/token.model.js";
+import { UserActivity } from "../models/activity.model.js";
 import {
   createPayment,
   executePayment,
@@ -60,12 +60,10 @@ const handleBkashCallback = asyncHandler(async (req, res) => {
     );
   }
 
-  // Execute payment to confirm details
   const paymentDetails = await executePayment(paymentID);
 
-  if (!paymentDetails || paymentDetails.statusCode !== "0000") {
+  if (!paymentDetails) {
     await Payment.findOneAndUpdate({ paymentID }, { status: "Failed" });
-
     return res.redirect(
       `${config.cors_origin}/payment-status?status=failed&message=Payment verification failed`
     );
@@ -80,7 +78,6 @@ const handleBkashCallback = asyncHandler(async (req, res) => {
     customerMsisdn,
     payerAccount,
   } = paymentDetails;
-
   const payment = await Payment.findOne({ paymentID });
 
   if (!payment) {
@@ -89,8 +86,9 @@ const handleBkashCallback = asyncHandler(async (req, res) => {
     );
   }
 
+  const userActivity = await UserActivity.findOne({ userId: payment.userId });
+
   if (transactionStatus === "Completed") {
-    // Update payment status and user tokens
     await Payment.findByIdAndUpdate(payment._id, {
       status: "Completed",
       trxID,
@@ -100,46 +98,57 @@ const handleBkashCallback = asyncHandler(async (req, res) => {
       payerAccount,
     });
 
-    await UserActivity.findOneAndUpdate(
-      { userId: payment.userId },
-      { planId: payment.planId },
-      {
-        $inc: {
-          availableTokens: payment.tokensAdded,
-          totalTokensPurchased: payment.tokensAdded,
+    if (!userActivity) {
+      await UserActivity.create({
+        userId: payment.userId,
+        plan: {
+          planId: payment.planId,
+          status: "Active",
+          expiresDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
-        $push: {
-          tokenHistory: {
+        availableTokens: payment.tokensAdded,
+        totalTokensPurchased: payment.tokensAdded,
+        tokenHistory: [
+          {
             actionType: "purchase",
             description: `Purchased ${payment.tokensAdded} tokens`,
-            tokenDetails: {
-              count: payment.tokensAdded,
-              type: "added",
-            },
+            tokenDetails: { count: payment.tokensAdded, type: "added" },
           },
-        },
-      },
-      { upsert: true }
-    );
+        ],
+      });
+    } else {
+      if (!userActivity.plan) {
+        userActivity.plan = {
+          planId: payment.planId,
+          status: "Active",
+          expiresDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        };
+      }
+
+      userActivity.addTokens(
+        payment.tokensAdded,
+        `Purchased ${payment.tokensAdded} tokens`
+      );
+      await userActivity.save();
+    }
 
     return res.redirect(
       `${config.cors_origin}/payment-status?status=success&amount=${amount}&tokens=${payment.tokensAdded}`
     );
   }
 
-  if (transactionStatus === "Failed") {
-    await Payment.findByIdAndUpdate(payment._id, { status: "Failed" });
-
-    return res.redirect(
-      `${config.cors_origin}/payment-status?status=failed&message=Payment failed`
-    );
-  }
-
-  if (transactionStatus === "Cancelled") {
+  if (status === "cancel") {
     await Payment.findByIdAndUpdate(payment._id, { status: "Cancelled" });
 
     return res.redirect(
       `${config.cors_origin}/payment-status?status=cancelled&message=Payment cancelled`
+    );
+  }
+
+  if (status === "failure") {
+    await Payment.findByIdAndUpdate(payment._id, { status: "Failed" });
+    return res.redirect(
+      `${config.cors_origin}/payment-status?status=failed&message=Payment failed`
     );
   }
 

@@ -3,7 +3,7 @@ import { verifyToken } from "../middlewares/auth.middleware.js";
 import {
   createBkashPayment,
   handleBkashCallback,
-} from "../controllers/bkash.controller.js";
+} from "../controllers/payment.controller.js";
 
 const router = express.Router();
 

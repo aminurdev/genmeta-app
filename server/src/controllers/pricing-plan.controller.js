@@ -4,8 +4,9 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getAllPricingPlans = asyncHandler(async (req, res) => {
-  const pricingPlans = await PricingPlan.find();
-
+  const pricingPlans = await PricingPlan.find({ title: { $ne: "Free" } }).sort({
+    tokens: 1,
+  });
   if (!pricingPlans || pricingPlans.length === 0) {
     throw new ApiError(404, "No pricing plans found");
   }
