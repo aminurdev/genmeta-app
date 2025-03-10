@@ -31,5 +31,13 @@ const config = {
       secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
     },
   },
+  bkash: {
+    base_url: process.env.BKASH_BASE_URL,
+    app_key: process.env.BKASH_APP_KEY,
+    app_secret: process.env.BKASH_APP_SECRET,
+    username: process.env.BKASH_USERNAME,
+    password: process.env.BKASH_PASSWORD,
+    callback_url: process.env.BKASH_CALLBACK_URL,
+  },
 };
 export default config;

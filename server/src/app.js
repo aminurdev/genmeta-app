@@ -20,9 +20,14 @@ app.use("/public", express.static("public"));
 // Routes import
 import userRoutes from "./routes/user.routes.js";
 import imagesRoutes from "./routes/images.routes.js";
+import bkashPaymentRoutes from "./routes/bkash.routes.js";
+import pricingPlanRoutes from "./routes/pricing-plan.routes.js";
 
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/images", imagesRoutes);
+app.use("/api/v1/pricing-plan", pricingPlanRoutes);
+
+app.use("/api/v1/payment", bkashPaymentRoutes);
 
 // 404 route handler
 app.use("*", (req) => {

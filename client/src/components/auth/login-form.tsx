@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { FormError } from "./form-error";
 import { FormSuccess } from "./form-success";
 import Social from "./social";
@@ -96,16 +96,12 @@ const LoginForm = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          type="email"
-                          placeholder="john.doe@example.com"
-                          className="pl-10"
-                        />
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      </div>
+                      <Input
+                        {...field}
+                        disabled={isPending}
+                        type="email"
+                        placeholder="john.doe@example.com"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -116,47 +112,43 @@ const LoginForm = () => {
                 control={form.control}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel htmlFor="password">Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          type={isShow ? "text" : "password"}
-                          placeholder="******"
-                          className="pl-10 pr-10"
-                        />
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-full px-3 py-2"
+                    <FormLabel htmlFor="password">
+                      <p className="flex justify-between items-center">
+                        Password{" "}
+                        <span
                           onClick={() => setIsShow((prev) => !prev)}
+                          className="flex gap-1 items-center text-xs text-blue-500 font-bold cursor-pointer"
                         >
                           {isShow ? (
-                            <EyeOff className="h-4 w-4" />
+                            <>
+                              <EyeOff className="h-4 w-4" /> hide
+                            </>
                           ) : (
-                            <Eye className="h-4 w-4" />
+                            <>
+                              <Eye className="h-4 w-4" /> show
+                            </>
                           )}
-                          <span className="sr-only">
-                            {isShow ? "Hide password" : "Show password"}
-                          </span>
-                        </Button>
-                      </div>
+                        </span>
+                      </p>
+                    </FormLabel>
+
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={isPending}
+                        type={isShow ? "text" : "password"}
+                        placeholder="******"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="flex items-center justify-end">
-                <Link
-                  href="/reset-password"
-                  className="ml-auto inline-block text-sm underline"
-                >
+              {/* <div className="flex items-center justify-end">
+                <Link href="/reset" className="ml-auto inline-block text-sm underline">
                   Forgot your password?
                 </Link>
-              </div>
+              </div> */}
 
               <FormError message={error} />
               <FormSuccess message={success} />

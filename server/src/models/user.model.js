@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
   },
   googleId: { type: String, unique: true, sparse: true },
   refreshToken: { type: String },
-  tokens: { type: Number, default: 10 },
+  imagesProcessed: { type: Number },
   role: {
     type: String,
     enum: {
