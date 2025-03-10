@@ -123,8 +123,15 @@ const handleBkashCallback = asyncHandler(async (req, res) => {
           status: "Active",
           expiresDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         };
+      } else {
+        userActivity.plan.planId = payment.planId;
+        userActivity.plan.status = "Active";
+        userActivity.plan.expiresDate = new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        );
       }
 
+      // Update the tokens
       userActivity.addTokens(
         payment.tokensAdded,
         `Purchased ${payment.tokensAdded} tokens`

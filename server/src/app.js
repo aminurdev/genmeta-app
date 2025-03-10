@@ -22,12 +22,15 @@ import userRoutes from "./routes/user.routes.js";
 import imagesRoutes from "./routes/images.routes.js";
 import bkashPaymentRoutes from "./routes/payment.routes.js";
 import pricingPlanRoutes from "./routes/pricing-plan.routes.js";
+import dashboardRoutes from "./routes/getData.routes.js";
 
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/images", imagesRoutes);
 app.use("/api/v1/pricing-plan", pricingPlanRoutes);
 
 app.use("/api/v1/payment", bkashPaymentRoutes);
+
+app.use("/api/v1/user-dashboard", dashboardRoutes);
 
 // 404 route handler
 app.use("*", (req) => {

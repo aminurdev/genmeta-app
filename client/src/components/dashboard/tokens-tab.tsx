@@ -19,115 +19,51 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getAccessToken, getBaseApi } from "@/services/image-services";
-import { toast } from "sonner";
-import { useCallback, useEffect, useState } from "react";
 import { Loader2, PackageOpen, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface TokenPackage {
-  _id: string;
-  title: string;
-  tokens: number;
-  price: number;
-  popular?: boolean;
+import { ApiResponse } from "@/app/(main)/dashboard/page";
+interface DataProps {
+  userActivity: ApiResponse["data"]["userActivity"];
+  packages: ApiResponse["data"]["packages"];
+  handlePurchase: (packageId: string) => Promise<void>;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
-interface TokenBalance {
-  available: number;
-  used: number;
-  total: number;
-}
+// Format date for token history
+const formatDate = (dateString: string): string => {
+  if (!dateString) return "-";
 
-export default function TokensTab() {
-  const [isPending, setIsPending] = useState<boolean>(true);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [tokenPackages, setTokenPackages] = useState<TokenPackage[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [tokenBalance, setTokenBalance] = useState<TokenBalance>({
-    available: 2500,
-    used: 1750,
-    total: 5000,
-  });
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return dateString;
+  }
+};
 
-  const fetchTokenPackages = useCallback(async () => {
-    try {
-      setIsPending(true);
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
-      const response = await fetch(`${baseAPi}/pricing-plan/get`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch token packages");
-      }
-
-      const data = await response.json();
-      setTokenPackages(data.data || []);
-    } catch (error) {
-      console.error("Error fetching token packages:", error);
-      toast.error("Failed to fetch token packages. Please try again.");
-    } finally {
-      setIsPending(false);
-    }
-  }, []);
-
-  // Fetch token packages on component mount
-  useEffect(() => {
-    fetchTokenPackages();
-  }, [fetchTokenPackages]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchTokenPackages();
-    setIsRefreshing(false);
+export default function TokensTab({
+  userActivity,
+  packages,
+  handlePurchase,
+  isLoading = false,
+  onRefresh,
+}: DataProps) {
+  // Safely calculate usage percentage
+  const calculateUsagePercentage = () => {
+    const used = userActivity?.totalTokensUsed || 0;
+    const purchased = userActivity?.totalTokensPurchased || 1; // Prevent division by zero
+    const percentage = (used * 100) / purchased;
+    return Math.min(Math.round(percentage), 100); // Cap at 100% and round
   };
 
-  const handlePurchase = async (packageId: string) => {
-    try {
-      setIsLoading(true);
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseAPi}/payment/create-payment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          packageId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create bKash payment");
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.data.bkashURL) {
-        window.location.href = data.data.bkashURL; // Redirect to bKash URL
-      } else {
-        throw new Error(data.message || "Failed to initiate payment");
-      }
-    } catch (error) {
-      console.error("Error creating bKash payment:", error);
-      toast.error("Payment initiation failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const usagePercentage = Math.round(
-    (tokenBalance.used / tokenBalance.total) * 100
-  );
+  // Get token history with fallback
+  const tokenHistory = userActivity?.tokenHistory || [];
 
   return (
     <div className="space-y-6">
@@ -143,31 +79,34 @@ export default function TokensTab() {
             <div>
               <p className="text-sm font-medium">Available Tokens</p>
               <p className="text-3xl font-bold">
-                {tokenBalance.available.toLocaleString()}
+                {userActivity?.availableTokens || 0}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium">Used This Month</p>
               <p className="text-3xl font-bold">
-                {tokenBalance.used.toLocaleString()}
+                {userActivity?.tokensUsedThisMonth || 0}
               </p>
             </div>
             <div>
               <p className="text-sm font-medium">Total Purchased</p>
               <p className="text-3xl font-bold">
-                {tokenBalance.total.toLocaleString()}
+                {userActivity?.totalTokensPurchased || 0}
               </p>
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <p>Monthly Usage</p>
+              <p>Total Usage</p>
               <p>
-                {tokenBalance.used.toLocaleString()} /{" "}
-                {tokenBalance.total.toLocaleString()}
+                {userActivity?.totalTokensUsed || 0} /{" "}
+                {userActivity?.totalTokensPurchased || 0}
               </p>
             </div>
-            <Progress value={usagePercentage} />
+            <Progress value={calculateUsagePercentage()} />
+            <p className="text-xs text-right text-muted-foreground">
+              {calculateUsagePercentage()}% of tokens used
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -178,20 +117,23 @@ export default function TokensTab() {
             <CardTitle>Purchase Tokens</CardTitle>
             <CardDescription>Buy more tokens for your account</CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Refresh token packages"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-          </Button>
+          {onRefresh && (
+            <Button
+              variant="outline"
+              size="icon"
+              title="Refresh token packages"
+              onClick={onRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+              <span className="sr-only">Refresh</span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {isPending ? (
+          {isLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="overflow-hidden">
@@ -210,7 +152,7 @@ export default function TokensTab() {
                 </Card>
               ))}
             </div>
-          ) : tokenPackages.length === 0 ? (
+          ) : !packages || packages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <PackageOpen className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">
@@ -220,21 +162,27 @@ export default function TokensTab() {
                 We couldn&apos;t find any token packages at the moment. Please
                 try again later or contact support.
               </p>
-              <Button onClick={handleRefresh} variant="outline">
-                Refresh
-              </Button>
+              {onRefresh && (
+                <Button variant="outline" onClick={onRefresh}>
+                  Retry
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {tokenPackages.map(({ title, tokens, price, popular, _id }) => (
+              {packages.map(({ title, tokens, price, popular, _id }) => (
                 <Card
-                  key={title}
-                  className={`${popular ? "border-primary" : ""} relative`}
+                  key={_id}
+                  className={`${
+                    popular ? "border-primary" : ""
+                  } relative overflow-hidden transition-all hover:shadow-md`}
                 >
+                  {popular && (
+                    <div className="absolute -right-10 top-4 rotate-45 bg-primary px-10 py-1 text-xs font-semibold text-primary-foreground">
+                      Popular
+                    </div>
+                  )}
                   <CardHeader className="pb-2">
-                    {popular && (
-                      <Badge className="absolute right-2 top-2">Popular</Badge>
-                    )}
                     <CardTitle className="text-lg">{title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -280,88 +228,71 @@ export default function TokensTab() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Mar 8, 2025</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
-                    >
-                      Purchase
-                    </Badge>
-                  </TableCell>
-                  <TableCell>Token Package: Pro</TableCell>
-                  <TableCell className="text-right text-green-600">
-                    +1000
-                  </TableCell>
-                  <TableCell className="text-right">2500</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mar 7, 2025</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
-                    >
-                      Usage
-                    </Badge>
-                  </TableCell>
-                  <TableCell>Batch Processing: 10 images</TableCell>
-                  <TableCell className="text-right text-red-600">
-                    -250
-                  </TableCell>
-                  <TableCell className="text-right">1500</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mar 5, 2025</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
-                    >
-                      Usage
-                    </Badge>
-                  </TableCell>
-                  <TableCell>Image Enhancement: product-photo.jpg</TableCell>
-                  <TableCell className="text-right text-red-600">-75</TableCell>
-                  <TableCell className="text-right">1750</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Mar 1, 2025</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
-                    >
-                      Purchase
-                    </Badge>
-                  </TableCell>
-                  <TableCell>Token Package: Basic</TableCell>
-                  <TableCell className="text-right text-green-600">
-                    +500
-                  </TableCell>
-                  <TableCell className="text-right">1825</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            {tokenHistory.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tokenHistory.map((transaction) => {
+                    const isAddition =
+                      transaction.actionType === "purchase" ||
+                      transaction.actionType === "credit" ||
+                      transaction.actionType === "refund";
+
+                    return (
+                      <TableRow key={transaction._id}>
+                        <TableCell>
+                          {formatDate(transaction.createdAt || "")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              isAddition
+                                ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
+                                : "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
+                            }
+                          >
+                            {transaction.actionType?.charAt(0).toUpperCase() +
+                              transaction.actionType?.slice(1) || "Unknown"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {transaction.description || "No description"}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right ${
+                            isAddition ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {isAddition ? "+" : "-"}
+                          {transaction.tokenDetails?.count || 0}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>No token history available</p>
+              </div>
+            )}
           </div>
         </CardContent>
-        <CardFooter>
-          <Button variant="outline" size="sm" className="ml-auto">
-            View All Transactions
-          </Button>
-        </CardFooter>
+        {tokenHistory.length > 5 && (
+          <CardFooter>
+            <Button variant="outline" size="sm" className="ml-auto">
+              View All Transactions
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

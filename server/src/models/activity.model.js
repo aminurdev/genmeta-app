@@ -72,6 +72,10 @@ const userActivitySchema = new mongoose.Schema(
             enum: ["added", "used", "refund"],
           },
         },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
   },
