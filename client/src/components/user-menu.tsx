@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User } from "@/types/user";
 import { logout } from "@/services/auth-services";
+import Link from "next/link";
 
 export function UserMenu({ user }: { user: User }) {
   return (
@@ -26,10 +27,12 @@ export function UserMenu({ user }: { user: User }) {
         <DropdownMenuLabel className="text-lg">{user.name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <UserCircle />
-            <span>Profile</span>
-          </DropdownMenuItem>
+          <Link href="/dashboard">
+            <DropdownMenuItem className="cursor-pointer">
+              <UserCircle />
+              <span>Dashboard</span>
+            </DropdownMenuItem>
+          </Link>
         </DropdownMenuGroup>
         <DropdownMenuItem>
           <LifeBuoy />

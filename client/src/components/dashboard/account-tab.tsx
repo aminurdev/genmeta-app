@@ -2,8 +2,15 @@
 
 import type React from "react";
 
-import { useState } from "react";
-import { CreditCard, Loader2, Save, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  CreditCard,
+  Eye,
+  EyeOff,
+  Loader2,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +25,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ApiResponse } from "@/app/(main)/dashboard/page";
+import type { ApiResponse } from "@/app/(main)/dashboard/page";
+import { getAccessToken, getBaseApi } from "@/services/image-services";
+import { getCurrentUser } from "@/services/auth-services";
 
 interface DataProps {
   userActivity: ApiResponse["data"]["userActivity"];
@@ -50,15 +59,14 @@ const calculateRenewalDate = (expiresDate: string): string => {
 
 export default function AccountTab({
   userActivity,
-
   isLoading = false,
 }: DataProps) {
   const [savingAccount, setSavingAccount] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [accountForm, setAccountForm] = useState({
-    name: userActivity?.name || "John Doe",
-    email: userActivity?.email || "john@example.com",
-    company: userActivity?.company || "Acme Inc.",
+    id: "",
+    name: "",
+    email: "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -72,6 +80,32 @@ export default function AccountTab({
     newPassword: "",
     confirmPassword: "",
   });
+
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  interface User {
+    id: string;
+    name: string;
+    email: string;
+  }
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user: User = await getCurrentUser();
+      if (user) {
+        setAccountForm({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        });
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   const handleAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -149,18 +183,40 @@ export default function AccountTab({
     setUpdatingPassword(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
 
-      // Success
-      toast.success("Password updated successfully");
-
-      // Reset form
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+      const response = await fetch(`${baseApi}/users/change-password`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(passwordForm),
       });
+
+      const result = await response.json();
+
+      if (result.success || result.status === "success") {
+        toast.success(result.message || "Password updated successfully");
+
+        // Reset form on success
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } else {
+        toast.error(result.message || "Failed to update password");
+
+        // If the error is about invalid old password, set the error
+        if (result.message?.toLowerCase().includes("invalid old password")) {
+          setPasswordErrors((prev) => ({
+            ...prev,
+            currentPassword: "Invalid current password",
+          }));
+        }
+      }
     } catch (error) {
       console.error("Error updating password:", error);
       toast.error("Failed to update password");
@@ -168,24 +224,6 @@ export default function AccountTab({
       setUpdatingPassword(false);
     }
   };
-
-  // Cancel subscription
-  // const handleCancelSubscription = async () => {
-  //   setCancelingSubscription(true);
-
-  //   try {
-  //     // Simulate API call
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  //     // Success
-  //     toast.success("Subscription canceled successfully");
-  //   } catch (error) {
-  //     console.error("Error canceling subscription:", error);
-  //     toast.error("Failed to cancel subscription");
-  //   } finally {
-  //     setCancelingSubscription(false);
-  //   }
-  // };
 
   // Enable 2FA
   const handleEnable2FA = () => {
@@ -224,10 +262,6 @@ export default function AccountTab({
                   <Label>Email</Label>
                   <Skeleton className="h-10 w-full" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Company</Label>
-                  <Skeleton className="h-10 w-full" />
-                </div>
               </>
             ) : (
               <>
@@ -235,6 +269,8 @@ export default function AccountTab({
                   <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
+                    type="text"
+                    disabled
                     value={accountForm.name}
                     onChange={handleAccountChange}
                   />
@@ -244,22 +280,15 @@ export default function AccountTab({
                   <Input
                     id="email"
                     type="email"
+                    disabled
                     value={accountForm.email}
-                    onChange={handleAccountChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={accountForm.company}
                     onChange={handleAccountChange}
                   />
                 </div>
               </>
             )}
           </CardContent>
-          <CardFooter>
+          <CardFooter className="hidden">
             <Button
               onClick={handleSaveAccount}
               disabled={isLoading || savingAccount}
@@ -338,76 +367,12 @@ export default function AccountTab({
                     <CreditCard className="h-5 w-5" />
                     <div>
                       <p className="font-medium">{"BKash"}</p>
-                      {/* <p className="font-medium">
-                        {userActivity?.paymentMethod?.type || "Visa"} ending in{" "}
-                        {userActivity?.paymentMethod?.last4 || "4242"}
-                      </p> */}
-                      {/* <p className="text-xs text-muted-foreground">
-                        Expires {userActivity?.paymentMethod?.expMonth || "12"}/
-                        {userActivity?.paymentMethod?.expYear || "2026"}
-                      </p> */}
                     </div>
                   </div>
                 </div>
               </>
             )}
           </CardContent>
-          {/* <CardFooter className="flex flex-col items-start space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                disabled={isLoading || !isSubscriptionActive}
-              >
-                Change Plan
-              </Button>
-              <Button variant="outline" disabled={isLoading}>
-                Update Payment
-              </Button>
-            </div>
-            {isSubscriptionActive && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 text-red-500"
-                    disabled={isLoading || cancelingSubscription}
-                  >
-                    {cancelingSubscription ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Cancel Subscription"
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Canceling your subscription will immediately stop your
-                      access to premium features. You will still have access
-                      until the end of your current billing period on{" "}
-                      {calculateRenewalDate(
-                        userActivity?.plan?.expiresDate || ""
-                      )}
-                      .
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-500 hover:bg-red-600"
-                      onClick={handleCancelSubscription}
-                    >
-                      Yes, Cancel Subscription
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </CardFooter> */}
         </Card>
       </div>
       <Card>
@@ -436,15 +401,37 @@ export default function AccountTab({
             </>
           ) : (
             <>
-              <div>
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">Current Password</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={passwordForm.currentPassword}
-                    onChange={handlePasswordChange}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={passwordForm.currentPassword}
+                      onChange={handlePasswordChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
+                    >
+                      {showCurrentPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {showCurrentPassword
+                          ? "Hide password"
+                          : "Show password"}
+                      </span>
+                    </Button>
+                  </div>
                   {passwordErrors.currentPassword && (
                     <p className="text-sm text-red-500">
                       {passwordErrors.currentPassword}
@@ -454,12 +441,30 @@ export default function AccountTab({
 
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={handlePasswordChange}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? "text" : "password"}
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {showNewPassword ? "Hide password" : "Show password"}
+                      </span>
+                    </Button>
+                  </div>
                   {passwordErrors.newPassword && (
                     <p className="text-sm text-red-500">
                       {passwordErrors.newPassword}
@@ -469,12 +474,34 @@ export default function AccountTab({
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={handlePasswordChange}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {showConfirmPassword
+                          ? "Hide password"
+                          : "Show password"}
+                      </span>
+                    </Button>
+                  </div>
                   {passwordErrors.confirmPassword && (
                     <p className="text-sm text-red-500">
                       {passwordErrors.confirmPassword}
@@ -500,13 +527,7 @@ export default function AccountTab({
         <CardFooter>
           <Button
             onClick={handleUpdatePassword}
-            disabled={
-              isLoading ||
-              updatingPassword ||
-              !passwordForm.currentPassword ||
-              !passwordForm.newPassword ||
-              !passwordForm.confirmPassword
-            }
+            disabled={isLoading || updatingPassword}
           >
             {updatingPassword ? (
               <>

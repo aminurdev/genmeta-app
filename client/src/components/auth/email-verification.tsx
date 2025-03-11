@@ -162,6 +162,7 @@ export default function EmailVerification() {
 
       if (data.success) {
         setSuccess("Password reset successful");
+        setStep(4); // Move to success screen
       } else {
         setError(data.message || "Failed to reset password. Please try again.");
       }
@@ -174,7 +175,7 @@ export default function EmailVerification() {
   };
 
   const goBack = () => {
-    if (step > 1) {
+    if (step > 1 && step < 4) {
       setStep(step - 1);
     } else {
       router.push("/login");
@@ -201,6 +202,7 @@ export default function EmailVerification() {
             {step === 1 && "Enter your email to receive a verification code"}
             {step === 2 && "Enter the verification code sent to your email"}
             {step === 3 && "Create a new password for your account"}
+            {step === 4 && "Password reset successful!"}
           </CardDescription>
         </CardHeader>
 
@@ -324,54 +326,92 @@ export default function EmailVerification() {
               </p>
             </div>
           )}
+          {step === 4 && (
+            <div className="space-y-6 py-4">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-medium text-green-600 mb-2">
+                  Password Reset Successful!
+                </h3>
+                <p className="text-muted-foreground">
+                  Your password has been reset successfully. You can now log in
+                  with your new password.
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
 
         <CardFooter className="block">
           <FormError message={error} />
           <FormSuccess message={success} />
-          <Button
-            className="w-full mt-4"
-            onClick={
-              step === 1
-                ? handleRequestOTP
-                : step === 2
-                ? handleVerifyOTP
-                : handleResetPassword
-            }
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <span className="flex items-center">
-                <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              <>
-                {step === 1 && "Send Verification Code"}
-                {step === 2 && "Verify Code"}
-                {step === 3 && "Reset Password"}
-              </>
-            )}
-          </Button>
+          {step < 4 ? (
+            <Button
+              className="w-full mt-4"
+              onClick={
+                step === 1
+                  ? handleRequestOTP
+                  : step === 2
+                  ? handleVerifyOTP
+                  : handleResetPassword
+              }
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                <>
+                  {step === 1 && "Send Verification Code"}
+                  {step === 2 && "Verify Code"}
+                  {step === 3 && "Reset Password"}
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              className="w-full mt-4"
+              onClick={() => router.push("/login")}
+            >
+              Go to Login
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>

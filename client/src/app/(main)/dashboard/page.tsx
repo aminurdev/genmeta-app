@@ -41,9 +41,6 @@ type TokenHistory = {
 };
 
 type UserActivity = {
-  company: string;
-  email: string;
-  name: string;
   plan: {
     planId?: Package;
     status?: string;
