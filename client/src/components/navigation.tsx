@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
 import Image from "next/image";
+import { ListIcon } from "lucide-react";
 
 export async function Navigation() {
   const user = await getCurrentUser();
@@ -47,6 +48,12 @@ export async function Navigation() {
             className="text-muted-foreground hover:text-foreground"
           >
             <PhotoIcon className="h-5 w-5 inline-block mr-1" /> Generate
+          </Link>
+          <Link
+            href="/results"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ListIcon className="h-5 w-5 inline-block mr-1" /> Results
           </Link>
           <Link
             href="/help"

@@ -106,7 +106,7 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
   return (
     <div className="space-y-6 pb-8">
       <h1 className="text-2xl font-bold mb-6">Your Image Batches</h1>
-      <div className="flex flex-col-reverse gap-4">
+      <div className="flex flex-col gap-4">
         {batches.map((batch) => (
           <Card key={batch._id} className="overflow-hidden">
             <CardHeader className="pb-2">

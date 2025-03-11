@@ -1,5 +1,5 @@
 import Footer from "@/components/main/footer";
-import Header from "@/components/main/header";
+import { Navigation } from "@/components/navigation";
 import type React from "react";
 export default function RootLayout({
   children,
@@ -8,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <>
-      <Header />
+      <Navigation />
       <main className="flex-1">{children}</main>
       <Footer />
     </>

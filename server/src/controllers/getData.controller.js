@@ -31,7 +31,17 @@ export const getData = asyncHandler(async (req, res) => {
           },
         },
       ]),
-      UserActivity.findOne({ userId }).populate("plan.planId").lean(),
+      UserActivity.findOne({ userId })
+        .populate("plan.planId")
+        .lean()
+        .then((activity) => {
+          if (activity) {
+            activity.tokenHistory = activity.tokenHistory.sort(
+              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+            );
+          }
+          return activity;
+        }),
     ]);
 
     return new ApiResponse(200, true, "Successfully get", {

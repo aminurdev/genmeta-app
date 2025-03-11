@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { Upload, X, ImageIcon, Settings, Loader2 } from "lucide-react";
+import { Upload, X, ImageIcon, Settings, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,11 @@ export default function UploadForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
+  // Add a new state for tracking failed uploads
+  const [failedUploads, setFailedUploads] = useState<
+    { name: string; reason: string }[]
+  >([]);
 
   const [settings, setSettings] = useState(() => {
     if (typeof window !== "undefined") {
@@ -89,11 +94,16 @@ export default function UploadForm() {
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  const clearAllFiles = () => {
+    setFiles([]);
+  };
+
   const handleGenerateMore = () => {
     setFiles([]);
     setShowModal(false);
   };
 
+  // Update the handleSubmit function to track failed uploads
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) {
@@ -105,17 +115,22 @@ export default function UploadForm() {
     setLoading(true);
     setShowModal(true);
     setCompletedCount(0);
+    setProgress(0);
+    setFailedUploads([]);
+
+    const baseAPi = await getBaseApi();
+    const accessToken = await getAccessToken();
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append("image", files[i]);
       formData.append("batchId", batchId);
-      formData.append("titleLength", settings.titleLength);
-      formData.append("descriptionLength", settings.descriptionLength);
-      formData.append("keywordCount", settings.keywordCount);
-
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
+      formData.append("titleLength", settings.titleLength.toString());
+      formData.append(
+        "descriptionLength",
+        settings.descriptionLength.toString()
+      );
+      formData.append("keywordCount", settings.keywordCount.toString());
 
       try {
         const response = await fetch(`${baseAPi}/images/upload/single`, {
@@ -125,19 +140,51 @@ export default function UploadForm() {
           },
           body: formData,
         });
+
         if (!response.ok) {
-          throw new Error(`Upload failed for ${files[i].name}`);
+          throw new Error(`Upload failed with status: ${response.status}`);
         }
+
         setCompletedCount((prev) => prev + 1);
+        // Calculate and update progress percentage
+        const newProgress = ((i + 1) / files.length) * 100;
+        setProgress(newProgress);
       } catch (error) {
         console.error(`Error uploading ${files[i].name}:`, error);
+        setFailedUploads((prev) => [
+          ...prev,
+          {
+            name: files[i].name,
+            reason: error instanceof Error ? error.message : "Unknown error",
+          },
+        ]);
+        // Still update progress even for failed uploads
+        const newProgress = ((i + 1) / files.length) * 100;
+        setProgress(newProgress);
       }
     }
+
     setLoading(false);
   };
 
   console.log({ loading, completeCount });
   console.log(settings);
+
+  useEffect(() => {
+    // Handle page unload during processing
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (loading) {
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [loading]);
 
   return (
     <form onSubmit={handleSubmit}>
@@ -191,9 +238,21 @@ export default function UploadForm() {
 
               {files.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="font-medium mb-3">
-                    Selected Images ({files.length})
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium">
+                      Selected Images ({files.length})
+                    </h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={clearAllFiles}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Clear All
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                     {files.map((file, index) => (
                       <div key={index} className="relative group">
@@ -204,6 +263,7 @@ export default function UploadForm() {
                                 <img
                                   src={
                                     URL.createObjectURL(file) ||
+                                    "/placeholder.svg" ||
                                     "/placeholder.svg"
                                   }
                                   alt={file.name}
@@ -224,7 +284,9 @@ export default function UploadForm() {
                         >
                           <X className="h-4 w-4" />
                         </button>
-                        <p className="text-xs mt-1 truncate">{file.name}</p>
+                        <p className="text-xs mt-1 ellipsis-clamp">
+                          {file.name}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -370,32 +432,133 @@ export default function UploadForm() {
         </Button>
       </div>
 
-      <Dialog open={showModal}>
-        <DialogContent>
+      {/* Update the Dialog component to prevent closing when clicking outside during processing */}
+      <Dialog
+        open={showModal}
+        onOpenChange={(open) => {
+          // If trying to close and still loading, show confirmation
+          if (!open && loading) {
+            // Show confirmation before closing during processing
+            const confirmClose = window.confirm(
+              "Processing is still in progress. Are you sure you want to cancel?"
+            );
+            if (confirmClose) {
+              setShowModal(false);
+            } else {
+              setShowModal(true);
+            }
+          } else if (!loading) {
+            // Only allow closing if not loading
+            setShowModal(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {loading ? "Uploading Images..." : "Upload Complete"}
+              {loading ? "Processing Images" : "Upload Complete"}
             </DialogTitle>
           </DialogHeader>
-          <div className="text-center py-4">
+          {/* Update the dialog content to show failed uploads */}
+          <div className="py-6">
             {loading ? (
-              <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
+              <div className="space-y-6">
+                <div className="flex items-center justify-center">
+                  <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Overall Progress</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300 ease-in-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span>
+                      Processed: {completeCount} of {files.length}
+                    </span>
+                    {failedUploads.length > 0 && (
+                      <span className="text-destructive">
+                        Failed: {failedUploads.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">
+                    Analyzing image and Generating SEO metadata
+                  </h4>
+                </div>
+              </div>
             ) : (
-              <p className="text-lg font-semibold text-green-600">
-                All uploads completed!
-              </p>
+              <div className="space-y-4 text-center">
+                <div className="rounded-full bg-green-100 p-3 w-16 h-16 mx-auto flex items-center justify-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-green-600">
+                    Processing complete!
+                  </p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {completeCount} of {files.length} images processed
+                    successfully
+                  </p>
+                  {failedUploads.length > 0 && (
+                    <p className="mt-1 text-sm text-destructive">
+                      {failedUploads.length} uploads failed
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
-            <p className="mt-2 text-sm text-muted-foreground">
-              {completeCount} of {files.length} images processed
-            </p>
           </div>
+          {/* Add a section to show failed uploads if there are any */}
+          {!loading && failedUploads.length > 0 && (
+            <div className="border-t pt-4 mt-2">
+              <h4 className="text-sm font-medium mb-2">Failed Uploads:</h4>
+              <div className="max-h-32 overflow-y-auto text-sm">
+                {failedUploads.map((fail, index) => (
+                  <div
+                    key={index}
+                    className="py-1 border-b border-gray-100 last:border-0"
+                  >
+                    <p className="font-medium ellipsis-clamp">{fail.name}</p>
+                    <p className="text-xs text-destructive">{fail.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {!loading && (
-            <DialogFooter>
-              <Button variant="outline" onClick={handleGenerateMore}>
-                Generate more
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={handleGenerateMore}
+                className="sm:flex-1"
+              >
+                Process More Images
               </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link href={`/results`}>View</Link>
+              <Button type="button" asChild className="sm:flex-1">
+                <Link href={`/results`}>View Results</Link>
               </Button>
             </DialogFooter>
           )}

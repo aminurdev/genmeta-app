@@ -72,6 +72,10 @@ const userActivitySchema = new mongoose.Schema(
             enum: ["added", "used", "refund"],
           },
         },
+        batchId: {
+          type: String, // 🔗 Reference to the uploaded batch
+          required: false,
+        },
         createdAt: {
           type: Date,
           default: Date.now,
@@ -99,17 +103,30 @@ userActivitySchema.methods.addTokens = function (count, description) {
   });
 };
 
-userActivitySchema.methods.useTokens = function (count, description) {
+userActivitySchema.methods.useTokens = function (count, description, batchId) {
   if (this.availableTokens < count) throw new Error("Insufficient tokens");
 
+  const existingEntry = this.tokenHistory.find(
+    (entry) => entry.batchId === batchId && entry.actionType === "usage"
+  );
+
+  if (existingEntry) {
+    // Update existing entry
+    existingEntry.tokenDetails.count += count;
+  } else {
+    // Create new entry
+    this.tokenHistory.push({
+      actionType: "usage",
+      description,
+      tokenDetails: { count, type: "used" },
+      batchId,
+    });
+  }
+
+  // Update token counts
   this.availableTokens -= count;
   this.totalTokensUsed += count;
   this.tokensUsedThisMonth += count;
-  this.tokenHistory.push({
-    actionType: "usage",
-    description,
-    tokenDetails: { count, type: "used" },
-  });
 };
 
 userActivitySchema.methods.refundTokens = function (count, description) {

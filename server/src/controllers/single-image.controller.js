@@ -11,6 +11,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import config from "../config/index.js";
 import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
+import { UserActivity } from "../models/activity.model.js";
 
 const s3 = new S3Client({
   endpoint: config.aws.endpoint,
@@ -33,6 +34,14 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
   const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
   const newBatchId = batchId || uuidv4();
   const userId = req.user._id;
+
+  const userActivity = await UserActivity.findOne({ userId });
+  if (!userActivity) throw new ApiError(404, "User activity record not found");
+
+  if (userActivity.availableTokens < 1) {
+    throw new ApiError(400, "Insufficient tokens to upload an image");
+  }
+
   let metaResult;
   try {
     metaResult = await processImage(image, requestDir, {
@@ -40,6 +49,7 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       descriptionLength,
       keywordCount,
     });
+
     const fileContent = fs.readFileSync(metaResult.imagePath);
     const objectKey = `uploads/${userId}/${newBatchId}/${image.filename}`;
 
@@ -61,39 +71,44 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       metadata: metaResult.metadata,
     };
 
-    // Store details in MongoDB
     const dbResult = await ImagesModel.findOneAndUpdate(
-      { userId: req.user._id, batchId: newBatchId },
+      { userId, batchId: newBatchId },
       {
-        $setOnInsert: { userId: req.user._id, batchId: newBatchId },
+        $setOnInsert: { userId, batchId: newBatchId },
         $push: { images: imageDetails },
       },
       { upsert: true, new: true }
     );
 
-    const addedImage = dbResult.images.find(
-      (img) => img.imageUrl === imageDetails.imageUrl
+    // ✅ Deduct 1 token with batch ID tracking
+    userActivity.useTokens(
+      1,
+      `Processed images in batch: ${newBatchId}`,
+      newBatchId
     );
-    const imageId = addedImage ? addedImage._id : null;
+    userActivity.totalImageProcessed += 1;
+    await userActivity.save();
 
     return new ApiResponse(
       200,
       true,
-      "Image uploaded and stored successfully",
+      "Image processed, stored successfully, and token deducted",
       {
         _id: dbResult._id,
         userId,
         batchId: newBatchId,
-        image: { imageId, ...imageDetails },
+        image: imageDetails,
+        remainingTokens: userActivity.availableTokens,
       }
     ).send(res);
   } catch (error) {
-    if (fs.existsSync(metaResult.imagePath)) {
+    if (fs.existsSync(metaResult?.imagePath)) {
       fs.unlinkSync(metaResult.imagePath);
     }
     throw new ApiError(500, `Failed to upload image: ${error.message}`);
   }
 });
+
 const deleteImage = asyncHandler(async (req, res) => {
   const { imageId, batchId } = req.query;
   if (!imageId || !batchId) {

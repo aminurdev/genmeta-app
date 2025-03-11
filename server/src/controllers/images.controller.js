@@ -264,7 +264,7 @@ const getAllBatches = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User ID is required");
   }
 
-  const images = await ImagesModel.find({ userId });
+  const images = await ImagesModel.find({ userId }).sort({ createdAt: -1 });
 
   if (!images || images.length === 0) {
     throw new ApiError(404, "No images found for this user");
