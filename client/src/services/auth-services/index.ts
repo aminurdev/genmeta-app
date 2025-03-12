@@ -4,7 +4,6 @@
 import { signIn } from "@/auth";
 import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { FieldValues } from "react-hook-form";
 
 const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
@@ -100,7 +99,7 @@ export const getCurrentUser = async () => {
       (await cookies()).delete("accessToken");
       (await cookies()).delete("refreshToken");
 
-      redirect("/login");
+      return null;
     }
   }
 
