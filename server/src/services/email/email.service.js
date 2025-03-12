@@ -57,7 +57,7 @@ export const sendVerificationEmail = async (email, token) => {
 
   try {
     await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "verify@genmeta.app",
       to: email,
       subject: "Please Verify Your Email Address",
       html: emailHtml,
@@ -107,7 +107,7 @@ export const sendOTPEmail = async (email, otp) => {
 
   try {
     await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "verify@genmeta.app",
       to: email,
       subject: "Your Password Reset Verification Code",
       html: emailHtml,

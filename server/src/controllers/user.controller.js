@@ -136,7 +136,7 @@ const registerUser = asyncHandler(async (req, res) => {
   user.verificationToken = verificationToken;
   await user.save();
 
-  await sendVerificationEmail("dev.aminur@gmail.com", verificationToken);
+  await sendVerificationEmail(email, verificationToken);
 
   return new ApiResponse(
     201,
@@ -289,7 +289,7 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
     expiresIn: "10m",
   });
 
-  await sendOTPEmail("dev.aminur@gmail.com", otp);
+  await sendOTPEmail(email, otp);
 
   return new ApiResponse(200, true, "OTP sent successfully", { otpToken }).send(
     res
