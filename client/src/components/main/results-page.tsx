@@ -78,6 +78,8 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     description: "",
     keywords: [],
   });
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // API Call functions with useCallback to prevent unnecessary recreations
   const fetchBatchImages = useCallback(async (batchId: string) => {
@@ -219,11 +221,17 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      // ✅ Add token directly to URL for instant download
+      // Create a direct download link with token
       const downloadURL = `${baseAPi}/images/download/${batchId}?token=${accessToken}`;
 
-      // ✅ Open in new tab for immediate download bar appearance
-      window.open(downloadURL, "_blank");
+      // Create a temporary link element and trigger download
+      const link = document.createElement("a");
+      link.href = downloadURL;
+      link.setAttribute("download", `images_${batchId}.zip`);
+      link.setAttribute("target", "_blank");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       toast("ZIP file download started");
     } catch (error) {
@@ -233,6 +241,27 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       );
     }
   }, [batchId]);
+
+  const handleDownloadSingleImage = useCallback(
+    async (imageUrl: string, imageName: string) => {
+      try {
+        // Create a temporary link element for direct download
+        const link = document.createElement("a");
+        link.href = imageUrl;
+        link.setAttribute("download", imageName);
+        link.setAttribute("target", "_blank");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast(`Downloading ${imageName}`);
+      } catch (error) {
+        console.error("Error downloading image:", error);
+        toast("Failed to download image");
+      }
+    },
+    []
+  );
 
   const handleDownloadCSV = useCallback(() => {
     if (results.images.length === 0) {
@@ -284,13 +313,20 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       });
   }, []);
 
-  const deleteImage = useCallback(async (imageId: string, batchId: string) => {
+  const handleDeleteDialogOpen = useCallback((imageId: string) => {
+    setImageToDelete(imageId);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const deleteImage = useCallback(async () => {
+    if (!imageToDelete || !batchId) return;
+
     try {
       setLoading(true);
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
       const response = await fetch(
-        `${baseAPi}/images/delete?imageId=${imageId}&batchId=${batchId}`,
+        `${baseAPi}/images/delete?imageId=${imageToDelete}&batchId=${batchId}`,
         {
           method: "DELETE",
           headers: {
@@ -308,17 +344,19 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
 
       setResults((prev) => ({
         ...prev,
-        images: prev.images.filter((item) => item._id !== imageId),
+        images: prev.images.filter((item) => item._id !== imageToDelete),
       }));
 
       toast("Image deleted successfully");
+      setDeleteDialogOpen(false);
+      setImageToDelete(null);
     } catch (error) {
       console.error("Error deleting image:", error);
       toast(error instanceof Error ? error.message : "Failed to delete image");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [imageToDelete, batchId]);
 
   // Memoized metadata for export dialog
   const exportMetadata = useMemo(() => {
@@ -333,6 +371,11 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
       2
     );
   }, [results.images]);
+
+  // Get the image to be deleted for the dialog
+  const imageToDeleteData = useMemo(() => {
+    return results.images.find((img) => img._id === imageToDelete);
+  }, [imageToDelete, results.images]);
 
   return (
     <div className="space-y-8">
@@ -431,7 +474,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         </Button>
 
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger className="hidden" asChild>
                             <Button variant="ghost" size="icon">
                               <FileDown className="h-4 w-4" />
                               <span className="sr-only">Download options</span>
@@ -439,10 +482,12 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => {
-                                window.open(item.imageUrl, "_blank");
-                                toast(`Downloading ${item.imageName}`);
-                              }}
+                              onClick={() =>
+                                handleDownloadSingleImage(
+                                  item.imageUrl,
+                                  item.imageName
+                                )
+                              }
                             >
                               Download Image
                             </DropdownMenuItem>
@@ -468,28 +513,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            toast.promise(
-                              new Promise((resolve, reject) => {
-                                if (
-                                  confirm(
-                                    "Are you sure you want to delete this image?"
-                                  )
-                                ) {
-                                  deleteImage(item._id, batchId)
-                                    .then(resolve)
-                                    .catch(reject);
-                                } else {
-                                  reject();
-                                }
-                              }),
-                              {
-                                loading: "Deleting image...",
-                                success: "Image deleted successfully",
-                                error: "Failed to delete image",
-                              }
-                            );
-                          }}
+                          onClick={() => handleDeleteDialogOpen(item._id)}
                           disabled={loading}
                         >
                           <Trash className="h-4 w-4" />
@@ -586,6 +610,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
         </div>
       )}
 
+      {/* Export Metadata Dialog */}
       <Dialog>
         <DialogTrigger asChild>
           <Button
@@ -617,6 +642,55 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
             >
               <Copy className="mr-2 h-4 w-4" />
               Copy to Clipboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Image</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this image? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {imageToDeleteData && (
+            <div className="flex items-center gap-4 py-2">
+              <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                <img
+                  src={imageToDeleteData.imageUrl || "/placeholder.svg"}
+                  alt={imageToDeleteData.imageName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <p className="font-medium ellipsis-clamp">
+                  {imageToDeleteData.imageName}
+                </p>
+                <p className="text-sm text-muted-foreground ellipsis-clamp">
+                  {imageToDeleteData.metadata.title}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={deleteImage}
+              disabled={loading}
+            >
+              {loading ? "Deleting..." : "Delete Image"}
             </Button>
           </DialogFooter>
         </DialogContent>
