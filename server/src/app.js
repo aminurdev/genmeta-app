@@ -10,6 +10,8 @@ app.use(
   cors({
     origin: config.cors_origin,
     credentials: true,
+    allowedHeaders: ["Authorization", "Content-Type", "Content-Disposition"],
+    exposedHeaders: ["Content-Disposition"],
   })
 );
 

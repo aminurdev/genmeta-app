@@ -198,29 +198,27 @@ const updateImage = asyncHandler(async (req, res) => {
 
 const downloadBatchAsZip = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
-  const userId = req.user._id;
 
   if (!batchId) throw new ApiError(400, "Batch ID is required");
 
-  // Step 1: Fetch images from the database
-  const batch = await ImagesModel.findOne({ userId, batchId });
+  const batch = await ImagesModel.findOne({ batchId });
   if (!batch || !batch.images || batch.images.length === 0) {
     throw new ApiError(404, "No images found for this batch");
   }
 
   const zipFilename = `batch_${batchId}.zip`;
 
-  // Step 2: Set headers for instant download
+  // ✅ Add headers BEFORE starting ZIP stream
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", `attachment; filename=${zipFilename}`);
+  res.setHeader("Transfer-Encoding", "chunked"); // Ensures streaming behavior
 
-  // Step 3: Create a ZIP stream
+  // ✅ Stream ZIP immediately
   const archive = archiver("zip", { zlib: { level: 9 } });
-  archive.pipe(res); // **Stream ZIP directly to response**
+  archive.pipe(res);
 
-  // Step 4: Fetch images one by one & add to ZIP (instant download)
   for (const image of batch.images) {
-    const objectKey = `uploads/${userId}/${batchId}/${image.imageName}`;
+    const objectKey = `uploads/${batch.userId}/${batchId}/${image.imageName}`;
 
     try {
       const { Body } = await s3.send(
@@ -228,14 +226,15 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
       );
 
       if (Body) {
-        archive.append(Body, { name: image.imageName }); // **Stream file directly into ZIP**
+        archive.append(Body, { name: image.imageName }); // Streams directly
+        await new Promise((resolve) => setTimeout(resolve, 100)); // ✅ Artificial delay to ensure progressive download
       }
     } catch (error) {
       console.error(`Error downloading ${image.imageName}: ${error.message}`);
     }
   }
 
-  archive.finalize(); // Finalize ZIP once all files are added
+  archive.finalize(); // Finalize ZIP stream once all files are added
 });
 
 const getBatchImages = asyncHandler(async (req, res) => {

@@ -37,6 +37,6 @@ router.put("/update", verifyToken, updateImage);
 router.delete("/delete", verifyToken, deleteImage);
 router.get("/batch/:batchId", verifyToken, getBatchImages);
 router.get("/batches", verifyToken, getAllBatches);
-router.get("/download/:batchId", verifyToken, downloadBatchAsZip);
+router.get("/download/:batchId", downloadBatchAsZip);
 
 export default router;

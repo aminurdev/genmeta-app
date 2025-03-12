@@ -216,37 +216,16 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     if (!batchId) return;
 
     try {
-      toast("Preparing your ZIP file...");
-
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
-      const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
-        method: "GET",
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
-      }
+      // ✅ Add token directly to URL for instant download
+      const downloadURL = `${baseAPi}/images/download/${batchId}?token=${accessToken}`;
 
-      const blob = await response.blob();
+      // ✅ Open in new tab for immediate download bar appearance
+      window.open(downloadURL, "_blank");
 
-      if (blob.size === 0) {
-        throw new Error("Downloaded ZIP is empty");
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `batch_${batchId}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast("ZIP file downloaded successfully");
+      toast("ZIP file download started");
     } catch (error) {
       console.error("Error downloading ZIP:", error);
       toast(
