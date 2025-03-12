@@ -42,6 +42,7 @@ export const loginUser = async (userData: FieldValues) => {
 
     if (result.success) {
       (await cookies()).set("accessToken", result.data.accessToken);
+      (await cookies()).set("refreshToken", result.data.refreshToken);
     }
 
     return result;
@@ -50,14 +51,57 @@ export const loginUser = async (userData: FieldValues) => {
   }
 };
 
+export const refreshAccessToken = async () => {
+  try {
+    const refreshToken = (await cookies()).get("refreshToken");
+
+    if (!refreshToken) {
+      throw new Error("No refresh token found");
+    }
+
+    const res = await fetch(`${baseApi}/users/refresh-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      (await cookies()).set("accessToken", result.data.accessToken);
+      (await cookies()).set("refreshToken", result.data.refreshToken);
+    }
+
+    return result;
+  } catch (error: any) {
+    return Error(error.message || "Failed to refresh access token");
+  }
+};
+
 export const getCurrentUser = async () => {
-  const accessToken = (await cookies()).get("accessToken")?.value;
+  let accessToken = (await cookies()).get("accessToken")?.value;
   let decodedData = null;
 
-  if (accessToken) {
-    decodedData = await jwtDecode(accessToken);
+  if (!accessToken) {
+    // Try refreshing the token
+    const refreshResult = await refreshAccessToken();
+
+    if (refreshResult.success) {
+      accessToken = refreshResult.data.accessToken;
+    } else {
+      return null; // Refresh failed, redirect to login if needed
+    }
+  }
+
+  try {
+    if (accessToken) {
+      decodedData = await jwtDecode(accessToken);
+    }
     return decodedData;
-  } else {
+  } catch (error: any) {
+    console.log(error.message);
     return null;
   }
 };
