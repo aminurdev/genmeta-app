@@ -3,6 +3,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 import type { Metadata } from "next";
 
+// Add this export to make the route dynamic
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "SEO Metadata Batches",
   description: "View all your SEO metadata generation batches",
