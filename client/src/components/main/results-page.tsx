@@ -35,6 +35,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
+import { handleDownloadZip } from "@/actions";
 
 // Type definitions
 type ImageMetadata = {
@@ -214,34 +215,6 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     }
   }, [editingItem, editData, results]);
 
-  const handleDownloadZip = useCallback(async () => {
-    if (!batchId) return;
-
-    try {
-      const baseAPi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      // Create a direct download link with token
-      const downloadURL = `${baseAPi}/images/download/${batchId}?token=${accessToken}`;
-
-      // Create a temporary link element and trigger download
-      const link = document.createElement("a");
-      link.href = downloadURL;
-      link.setAttribute("download", `images_${batchId}.zip`);
-      link.setAttribute("target", "_blank");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast("ZIP file download started");
-    } catch (error) {
-      console.error("Error downloading ZIP:", error);
-      toast(
-        error instanceof Error ? error.message : "Failed to download images"
-      );
-    }
-  }, [batchId]);
-
   const handleDownloadSingleImage = useCallback(
     async (imageUrl: string, imageName: string) => {
       try {
@@ -404,7 +377,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
             Download CSV
           </Button>
           <Button
-            onClick={handleDownloadZip}
+            onClick={() => handleDownloadZip(batchId)}
             disabled={results.images.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />

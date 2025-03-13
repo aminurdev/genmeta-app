@@ -68,6 +68,7 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
     const imageDetails = {
       imageName: image.filename,
       imageUrl: `${urlEndpoint}/${objectKey}`,
+      size: image.size,
       metadata: metaResult.metadata,
     };
 

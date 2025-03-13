@@ -390,7 +390,7 @@ export default function UploadForm() {
                 </div>
               </div>
 
-              <Accordion type="single" collapsible className="w-full">
+              <Accordion type="single" collapsible className="w-full invisible">
                 <AccordionItem value="advanced">
                   <AccordionTrigger>Advanced Settings</AccordionTrigger>
                   <AccordionContent>
@@ -558,8 +558,17 @@ export default function UploadForm() {
                     key={index}
                     className="py-1 border-b border-gray-100 last:border-0"
                   >
-                    <p className="font-medium ellipsis-clamp">{fail.name}</p>
-                    <p className="text-xs text-destructive">{fail.reason}</p>
+                    <p className="font-medium ellipsis-clamp mb-1">
+                      {fail.name}
+                    </p>
+                    <p
+                      style={{
+                        wordBreak: "break-word",
+                      }}
+                      className="text-xs text-destructive"
+                    >
+                      {fail.reason}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   description: "View all your SEO metadata generation batches",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Image = {
   _id: string;
   imageName: string;
@@ -27,7 +28,8 @@ export type Batch = {
   _id: string;
   batchId: string;
   userId: string;
-  images: Image[];
+  imagesCount: number;
+  totalSize: number;
   createdAt: string;
   status: string;
 };
@@ -57,6 +59,7 @@ export default async function Results() {
   };
 
   const batches = await fetchBatches();
+  console.log(batches);
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">

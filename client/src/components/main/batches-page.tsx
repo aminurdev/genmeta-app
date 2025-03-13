@@ -10,8 +10,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Batch } from "@/app/(main)/results/page";
-import { getAccessToken, getBaseApi } from "@/services/image-services";
+import { Badge } from "../ui/badge";
+import { toast } from "sonner";
+import { handleDownloadZip } from "@/actions";
 // Define types for batch and image
+
+const formatFileSize = (sizeInBytes: number): string => {
+  if (sizeInBytes === 0) return "0B";
+
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(sizeInBytes) / Math.log(1024));
+
+  return `${(sizeInBytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+};
 
 export default function BatchesPage({ batches }: { batches: Batch[] }) {
   const router = useRouter();
@@ -21,73 +32,30 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
   };
 
   const handleDownloadCSV = (batch: Batch) => {
-    if (!("images" in batch) || batch.images.length === 0) {
-      alert("No metadata available to download.");
+    if (!("images" in batch) || batch.imagesCount === 0) {
+      toast.error("No metadata available to download.");
       return;
     }
 
     // Define CSV headers
-    let csvContent = "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
+    // let csvContent = "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
 
     // Append image metadata
-    batch.images.forEach((item) => {
-      const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
-      const description = `"${item.metadata.description.replace(/"/g, '""')}"`;
-      const keywords = `"${item.metadata.keywords.join(", ")}"`;
-      csvContent += `${title},${description},${keywords}\n`;
-    });
+    // batch.images.forEach((item) => {
+    //   const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
+    //   const description = `"${item.metadata.description.replace(/"/g, '""')}"`;
+    //   const keywords = `"${item.metadata.keywords.join(", ")}"`;
+    //   csvContent += `${title},${description},${keywords}\n`;
+    // });
 
     // Create a Blob and generate a download link
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "image_metadata.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleDownloadZIP = async (batchId: string) => {
-    if (!batchId) return;
-
-    const baseAPi = await getBaseApi();
-    const accessToken = await getAccessToken();
-
-    try {
-      // **Start fetch request (response is streamed)**
-      const response = await fetch(`${baseAPi}/images/download/${batchId}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.statusText}`);
-      }
-
-      // **No need to wait for the full response; stream it directly**
-      const fileStream = response.body;
-      if (!fileStream) {
-        throw new Error("No response body found");
-      }
-
-      // **Create a downloadable stream**
-      const downloadStream = window.URL.createObjectURL(
-        await new Response(fileStream).blob()
-      );
-
-      // **Trigger instant download**
-      const a = document.createElement("a");
-      a.href = downloadStream;
-      a.download = `batch_${batchId}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(downloadStream);
-    } catch (error) {
-      console.error("Error downloading ZIP:", error);
-    }
+    // const encodedUri = encodeURI(csvContent);
+    // const link = document.createElement("a");
+    // link.setAttribute("href", encodedUri);
+    // link.setAttribute("download", "image_metadata.csv");
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
   };
 
   const formatDate = (dateString: string) => {
@@ -110,19 +78,11 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
         {batches.map((batch) => (
           <Card key={batch._id} className="overflow-hidden">
             <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start mb-1">
                 <CardTitle>Batch {batch.batchId.substring(0, 8)}</CardTitle>
-                {/* <Badge
-                variant={
-                  batch.status === "completed"
-                    ? "default"
-                    : batch.status === "processing"
-                    ? "secondary"
-                    : "default"
-                }
-              >
-                {batch.status}
-              </Badge> */}
+                <Badge variant={"outline"} className="text-base">
+                  Total size: {formatFileSize(batch.totalSize)}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
@@ -135,7 +95,7 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Images:</span>{" "}
-                  {batch.images?.length || 0}
+                  {batch.imagesCount || 0}
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -158,7 +118,7 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
               <Button
                 variant="outline"
                 size={"sm"}
-                onClick={() => handleDownloadZIP(batch.batchId)}
+                onClick={() => handleDownloadZip(batch.batchId)}
               >
                 <File className="mr-2 h-4 w-4" />
                 Export ZIP
@@ -166,10 +126,10 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
               <Button
                 size={"sm"}
                 onClick={() => handleViewBatch(batch.batchId)}
-                disabled={batch.images?.length === 0}
+                disabled={batch.imagesCount === 0}
               >
                 <Eye className="mr-2 h-4 w-4" />
-                View Images ({batch.images?.length || 0})
+                View Images ({batch.imagesCount || 0})
               </Button>
             </CardFooter>
           </Card>

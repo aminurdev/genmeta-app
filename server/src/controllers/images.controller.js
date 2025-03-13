@@ -14,6 +14,7 @@ import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
 import { updateImageMetadata } from "../services/metadata/injector.service.js";
 import archiver from "archiver";
+import mongoose from "mongoose";
 
 const s3 = new S3Client({
   endpoint: config.aws.endpoint,
@@ -263,7 +264,22 @@ const getAllBatches = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User ID is required");
   }
 
-  const images = await ImagesModel.find({ userId }).sort({ createdAt: -1 });
+  const images = await ImagesModel.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+    { $sort: { createdAt: -1 } },
+    { $limit: 4 },
+    {
+      $addFields: {
+        imagesCount: { $size: "$images" },
+        totalSize: { $sum: "$images.size" },
+      },
+    },
+    {
+      $project: {
+        images: 0,
+      },
+    },
+  ]);
 
   if (!images || images.length === 0) {
     throw new ApiError(404, "No images found for this user");
