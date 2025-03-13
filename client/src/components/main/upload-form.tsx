@@ -16,15 +16,17 @@ import {
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from "uuid";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import Link from "next/link";
 import { getBaseApi, getAccessToken } from "@/services/image-services";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function UploadForm() {
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,7 @@ export default function UploadForm() {
   const [failedUploads, setFailedUploads] = useState<
     { name: string; reason: string }[]
   >([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const [settings, setSettings] = useState(() => {
     if (typeof window !== "undefined") {
@@ -140,9 +143,10 @@ export default function UploadForm() {
           },
           body: formData,
         });
+        const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(`Upload failed with status: ${response.status}`);
+        if (!result.success) {
+          throw new Error(`Generate failed: ${result.message}`);
         }
 
         setCompletedCount((prev) => prev + 1);
@@ -150,7 +154,10 @@ export default function UploadForm() {
         const newProgress = ((i + 1) / files.length) * 100;
         setProgress(newProgress);
       } catch (error) {
-        console.error(`Error uploading ${files[i].name}:`, error);
+        console.error(
+          `Error uploading ${files[i].name}:`,
+          error instanceof Error ? error.message : "Unknown error"
+        );
         setFailedUploads((prev) => [
           ...prev,
           {
@@ -263,6 +270,8 @@ export default function UploadForm() {
                                 <img
                                   src={
                                     URL.createObjectURL(file) ||
+                                    "/placeholder.svg" ||
+                                    "/placeholder.svg" ||
                                     "/placeholder.svg" ||
                                     "/placeholder.svg"
                                   }
@@ -432,34 +441,42 @@ export default function UploadForm() {
         </Button>
       </div>
 
-      {/* Update the Dialog component to prevent closing when clicking outside during processing */}
-      <Dialog
+      {/* Main Processing AlertDialog */}
+      <AlertDialog
         open={showModal}
         onOpenChange={(open) => {
-          // If trying to close and still loading, show confirmation
+          // If trying to close and still loading, show confirmation dialog
           if (!open && loading) {
-            // Show confirmation before closing during processing
-            const confirmClose = window.confirm(
-              "Processing is still in progress. Are you sure you want to cancel?"
-            );
-            if (confirmClose) {
-              setShowModal(false);
-            } else {
-              setShowModal(true);
-            }
+            setShowConfirmDialog(true);
           } else if (!loading) {
             // Only allow closing if not loading
             setShowModal(open);
           }
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {loading ? "Processing Images" : "Upload Complete"}
-            </DialogTitle>
-          </DialogHeader>
-          {/* Update the dialog content to show failed uploads */}
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center justify-between">
+              <AlertDialogTitle>
+                {loading ? "Processing Images" : "Upload Complete"}
+              </AlertDialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => {
+                  if (!loading) {
+                    setShowModal(false);
+                  } else {
+                    setShowConfirmDialog(true);
+                  }
+                }}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </div>
+          </AlertDialogHeader>
           <div className="py-6">
             {loading ? (
               <div className="space-y-6">
@@ -531,7 +548,7 @@ export default function UploadForm() {
               </div>
             )}
           </div>
-          {/* Add a section to show failed uploads if there are any */}
+          {/* Failed uploads section */}
           {!loading && failedUploads.length > 0 && (
             <div className="border-t pt-4 mt-2">
               <h4 className="text-sm font-medium mb-2">Failed Uploads:</h4>
@@ -549,7 +566,7 @@ export default function UploadForm() {
             </div>
           )}
           {!loading && (
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
                 onClick={handleGenerateMore}
@@ -560,10 +577,43 @@ export default function UploadForm() {
               <Button type="button" asChild className="sm:flex-1">
                 <Link href={`/results`}>View Results</Link>
               </Button>
-            </DialogFooter>
+            </AlertDialogFooter>
           )}
-        </DialogContent>
-      </Dialog>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation AlertDialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center justify-between">
+              <AlertDialogTitle>Cancel Processing?</AlertDialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setShowConfirmDialog(false)}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>
+              No, continue processing
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowConfirmDialog(false);
+                setShowModal(false);
+              }}
+            >
+              Yes, cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

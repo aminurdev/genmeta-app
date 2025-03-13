@@ -108,8 +108,8 @@ export default function OverviewTab({
 
   // Calculate usage percentage safely
   const calculateUsagePercentage = () => {
-    const used = data.userActivity.totalTokensUsed || 0;
-    const purchased = data.userActivity.totalTokensPurchased || 1; // Prevent division by zero
+    const used = data.userActivity?.totalTokensUsed || 0;
+    const purchased = data.userActivity?.totalTokensPurchased || 1; // Prevent division by zero
     const percentage = (used * 100) / purchased;
     return Math.min(percentage, 100); // Cap at 100%
   };
@@ -136,10 +136,10 @@ export default function OverviewTab({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.userActivity.availableTokens || 0}
+              {data.userActivity?.availableTokens || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {data.userActivity.tokensUsedThisMonth
+              {data.userActivity?.tokensUsedThisMonth
                 ? `${data.userActivity.tokensUsedThisMonth} used this month`
                 : "No tokens used this month"}
             </p>
@@ -153,7 +153,7 @@ export default function OverviewTab({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.userActivity.totalImageProcessed || 0}
+              {data.userActivity?.totalImageProcessed || 0}
             </div>
           </CardContent>
         </Card>
@@ -174,10 +174,10 @@ export default function OverviewTab({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.userActivity.plan.planId?.title || "No Plan"}
+              {data.userActivity?.plan?.planId?.title || "No Plan"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {calculateRenewalDate(data.userActivity.plan?.expiresDate || "")}
+              {calculateRenewalDate(data.userActivity?.plan?.expiresDate || "")}
             </p>
           </CardContent>
         </Card>

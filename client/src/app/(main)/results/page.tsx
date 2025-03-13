@@ -52,7 +52,7 @@ export default async function Results() {
       return data.data;
     } catch (error) {
       console.error(error);
-      return null;
+      return [];
     }
   };
 
@@ -69,8 +69,17 @@ export default async function Results() {
           </p>
         </div>
 
-        {batches && batches?.length ? (
-          <BatchesPage batches={batches} />
+        {batches ? (
+          batches.length > 0 ? (
+            <BatchesPage batches={batches} />
+          ) : (
+            <div className="text-center py-12">
+              <h2 className="text-xl font-medium mb-2">No batches found</h2>
+              <p className="text-muted-foreground">
+                You haven&apos;t created any SEO metadata batches yet.
+              </p>
+            </div>
+          )
         ) : (
           <>
             <Skeleton style={{ height: 80 }} className="mb-4" />

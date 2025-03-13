@@ -32,6 +32,27 @@ const googleLogin = asyncHandler(async (req, res) => {
       loginProvider: "google",
       isVerified: true,
     });
+    // Assign Free Plan during user creation
+    const freePlan = await PricingPlan.findOne({ title: "Free" });
+
+    if (freePlan) {
+      await UserActivity.create({
+        userId: user._id,
+        plan: {
+          planId: freePlan._id,
+          status: "Active",
+          expiresDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+        availableTokens: freePlan.tokens,
+        tokenHistory: [
+          {
+            actionType: "assigned",
+            description: `Assigned Free Plan with ${freePlan.tokens} tokens`,
+            tokenDetails: { count: freePlan.tokens, type: "added" },
+          },
+        ],
+      });
+    }
 
     await user.save();
   } else if (user.loginProvider !== "google") {
@@ -56,39 +77,6 @@ const googleLogin = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-// eslint-disable-next-line no-unused-vars
-const registerUserOld = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
-
-  const existedUser = await User.findOne({ email });
-
-  if (existedUser) {
-    throw new ApiError(409, "User already exists");
-  }
-  const user = await User.create({
-    name,
-    email,
-    password,
-    loginProvider: "email",
-  });
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    user._id
-  );
-
-  return new ApiResponse(201, true, "User registered Successfully", {
-    user: createdUser,
-    accessToken,
-    refreshToken,
-  }).send(res);
-});
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 

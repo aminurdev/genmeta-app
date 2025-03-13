@@ -148,7 +148,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#020817] text-card-foreground py-12">
+      <footer className="bg-background text-card-foreground py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>

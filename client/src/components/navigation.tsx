@@ -5,7 +5,6 @@ import {
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
-import { Typography } from "@/components/ui/typography";
 import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
@@ -16,24 +15,16 @@ export async function Navigation() {
   const user = await getCurrentUser();
   return (
     <nav className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="h-16 max-w-screen-xl mx-auto flex items-center justify-between">
+      <div className="h-20 max-w-screen-xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-foreground hover:text-muted-foreground"
-        >
-          <span>
-            <Image
-              src={"/logo/GenMeta-Logo.png"}
-              className=" h-16 w-auto"
-              alt="logo"
-              width={128}
-              height={128}
-            />
-          </span>
-          <Typography variant="h4" as="span">
-            GenMeta
-          </Typography>
+        <Link href="/" className="flex items-center justify-center">
+          <Image
+            src={"/Assets/SVG/Asset 5.svg"}
+            className=" h-16 py-2 w-auto"
+            alt="logo"
+            width={128}
+            height={128}
+          />
         </Link>
         {/* Navigation */}
         <div className="hidden md:flex items-center gap-8">
