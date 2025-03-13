@@ -242,7 +242,7 @@ export default function TokensTab({
                   {tokenHistory.map((transaction) => {
                     const isAddition =
                       transaction.actionType === "purchase" ||
-                      transaction.actionType === "credit" ||
+                      transaction.actionType === "assigned" ||
                       transaction.actionType === "refund";
 
                     return (

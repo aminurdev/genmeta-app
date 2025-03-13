@@ -7,6 +7,7 @@ import {
   ArrowPathIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -152,7 +153,18 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Image Processor</h3>
+              <div className="mb-4 w-48">
+                {" "}
+                <Link href="/">
+                  <Image
+                    src={"/Assets/SVG/Asset 5.svg"}
+                    className=" h-16 py-2 w-auto"
+                    alt="logo"
+                    width={128}
+                    height={128}
+                  />
+                </Link>
+              </div>
               <p className="text-muted-foreground text-sm">
                 Transform your images with advanced AI technology and
                 professional-grade tools.
@@ -212,8 +224,7 @@ export default function HomePage() {
           </div>
           <div className="mt-12 pt-8 border-t border-border text-center text-muted-foreground">
             <p>
-              &copy; {new Date().getFullYear()} Image Processor. All rights
-              reserved.
+              &copy; {new Date().getFullYear()} GenMeta. All rights reserved.
             </p>
           </div>
         </div>

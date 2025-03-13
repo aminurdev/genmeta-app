@@ -31,39 +31,7 @@ import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiResponse } from "@/app/(main)/dashboard/page";
 import { toast } from "sonner";
-
-const formatDate = (date: string): string => {
-  if (!date) return "-";
-
-  const today = new Date();
-  const givenDate = new Date(date);
-
-  // Check if the given date is today
-  const isToday = today.toDateString() === givenDate.toDateString();
-
-  // Check if the given date is yesterday
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const isYesterday = yesterday.toDateString() === givenDate.toDateString();
-
-  if (isToday) {
-    return `Today, ${givenDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
-  } else if (isYesterday) {
-    return `Yesterday, ${givenDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
-  } else {
-    return givenDate.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
-};
+import { formatDate } from "@/lib/utils";
 
 const calculateRenewalDate = (futureDate: string): string => {
   if (!futureDate) return "No active plan";
@@ -140,7 +108,7 @@ export default function OverviewTab({
             </div>
             <p className="text-xs text-muted-foreground">
               {data.userActivity?.tokensUsedThisMonth
-                ? `${data.userActivity.tokensUsedThisMonth} used this month`
+                ? `+ ${data.userActivity.tokensUsedThisMonth} used this month`
                 : "No tokens used this month"}
             </p>
           </CardContent>
@@ -250,7 +218,7 @@ export default function OverviewTab({
                         {formatDate(item.createdAt)}
                       </TableCell>
                       <TableCell className="text-center">
-                        {item.tokensUsed ?? "-"}
+                        {item.imagesCount ?? "-"}
                       </TableCell>
                       <TableCell className="text-center">
                         {item.imagesCount ?? "-"}

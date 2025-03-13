@@ -259,15 +259,19 @@ const getBatchImages = asyncHandler(async (req, res) => {
 });
 const getAllBatches = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+  const { page = 1, limit = 10 } = req.query; // Default pagination values
 
   if (!userId) {
     throw new ApiError(400, "User ID is required");
   }
 
+  const totalBatches = await ImagesModel.countDocuments({ userId });
+
   const images = await ImagesModel.aggregate([
     { $match: { userId: new mongoose.Types.ObjectId(userId) } },
     { $sort: { createdAt: -1 } },
-    { $limit: 4 },
+    { $skip: (parseInt(page) - 1) * parseInt(limit) },
+    { $limit: parseInt(limit) },
     {
       $addFields: {
         imagesCount: { $size: "$images" },
@@ -285,7 +289,12 @@ const getAllBatches = asyncHandler(async (req, res) => {
     throw new ApiError(404, "No images found for this user");
   }
 
-  return new ApiResponse(200, true, "Success", images).send(res);
+  return new ApiResponse(200, true, "Success", {
+    totalBatches,
+    totalPages: Math.ceil(totalBatches / parseInt(limit)),
+    currentPage: parseInt(page),
+    images,
+  }).send(res);
 });
 
 const getMetadata = asyncHandler(async (req, res) => {

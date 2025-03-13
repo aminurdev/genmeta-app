@@ -15,8 +15,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Image Processor",
-  description: "Process and enhance your images with AI",
+  title: "GenMeta - APP",
+  description: "Generate Metadata and Make image seo",
 };
 
 export default function RootLayout({

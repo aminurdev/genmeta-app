@@ -509,7 +509,7 @@ export default function AccountTab({
                   )}
                 </div>
               </div>
-              <div className="flex items-center space-x-2 pt-4">
+              <div className=" items-center space-x-2 pt-4 hidden">
                 <div className="flex-1 space-y-1">
                   <p className="font-medium">Two-Factor Authentication</p>
                   <p className="text-sm text-muted-foreground">

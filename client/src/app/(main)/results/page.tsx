@@ -40,7 +40,7 @@ export default async function Results() {
     try {
       const baseAPi = await getBaseApi();
       const accessToken = await getAccessToken();
-      const response = await fetch(`${baseAPi}/images/batches`, {
+      const response = await fetch(`${baseAPi}/images/batches?limit=20`, {
         headers: {
           authorization: `Bearer ${accessToken}`,
         },
@@ -52,7 +52,7 @@ export default async function Results() {
       }
 
       const data = await response.json();
-      return data.data;
+      return data.data.images;
     } catch (error) {
       console.error(error);
       return [];

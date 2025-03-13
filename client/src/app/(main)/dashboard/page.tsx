@@ -77,11 +77,19 @@ const emptyData = {
 };
 
 export default function Dashboard() {
+  // Initialize activeTab from localStorage if available, otherwise use 'overview'
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // Only run this code in the browser, not during SSR
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("dashboardActiveTab") || "overview";
+    }
+    return "overview";
+  });
+
   const [data, setData] = useState<ApiResponse["data"]>(emptyData);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>("overview");
 
   const fetchDashboardData = useCallback(async (retryCount = 0) => {
     try {
@@ -172,6 +180,11 @@ export default function Dashboard() {
     };
   }, [fetchDashboardData, error]);
 
+  // Save tab selection to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("dashboardActiveTab", activeTab);
+  }, [activeTab]);
+
   console.log(data);
   const handlePurchase = async (packageId: string) => {
     if (isPurchasing) return; // Prevent multiple clicks
@@ -214,8 +227,8 @@ export default function Dashboard() {
       }
 
       if (responseData.data?.bkashURL) {
-        // Save current state to session storage before redirecting
-        sessionStorage.setItem("dashboardTab", activeTab);
+        // We no longer need to save to sessionStorage since we're using localStorage
+        // The tab selection will persist in localStorage
         window.location.href = responseData.data.bkashURL;
       } else {
         throw new Error("Payment URL not received");
@@ -237,12 +250,6 @@ export default function Dashboard() {
 
   // Check for returning from payment
   useEffect(() => {
-    const savedTab = sessionStorage.getItem("dashboardTab");
-    if (savedTab) {
-      setActiveTab(savedTab);
-      sessionStorage.removeItem("dashboardTab");
-    }
-
     // Check URL parameters for payment status
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment_status");
@@ -305,6 +312,7 @@ export default function Dashboard() {
             value={activeTab}
             onValueChange={handleTabChange}
             className="space-y-6"
+            defaultValue={activeTab}
           >
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>

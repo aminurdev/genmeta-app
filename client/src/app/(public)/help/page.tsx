@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Help | Image Processor",
+  title: "Help | GenMeta",
   description: "Learn how to use our image processing platform",
 };
 

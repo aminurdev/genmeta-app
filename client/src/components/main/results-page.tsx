@@ -6,6 +6,7 @@ import {
   Edit,
   Save,
   Copy,
+  Check,
   Trash,
   FileDown,
   FileText,
@@ -81,6 +82,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
   });
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // API Call functions with useCallback to prevent unnecessary recreations
   const fetchBatchImages = useCallback(async (batchId: string) => {
@@ -278,7 +280,32 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     navigator.clipboard
       .writeText(text)
       .then(() => {
+        setCopiedField("metadata");
         toast("Metadata copied to clipboard");
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          setCopiedField(null);
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err);
+        toast("Could not copy to clipboard");
+      });
+  }, []);
+
+  // New copy handlers for individual fields
+  const handleCopyField = useCallback((text: string, fieldName: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopiedField(fieldName);
+        toast(`${fieldName} copied to clipboard`);
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          setCopiedField(null);
+        }, 2000);
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
@@ -555,17 +582,74 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
                   ) : (
                     <div className="space-y-4 flex-1">
                       <div>
-                        <h3 className="text-sm font-medium">Title</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium">Title</h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleCopyField(item.metadata.title, "Title")
+                            }
+                            title="Copy title"
+                          >
+                            {copiedField === "Title" ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Copy title</span>
+                          </Button>
+                        </div>
                         <p>{item.metadata.title}</p>
                       </div>
 
                       <div>
-                        <h3 className="text-sm font-medium">Description</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium">Description</h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleCopyField(
+                                item.metadata.description,
+                                "Description"
+                              )
+                            }
+                            title="Copy description"
+                          >
+                            {copiedField === "Description" ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Copy description</span>
+                          </Button>
+                        </div>
                         <p className="text-sm">{item.metadata.description}</p>
                       </div>
 
                       <div>
-                        <h3 className="text-sm font-medium">Keywords</h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium">Keywords</h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleCopyField(
+                                item.metadata.keywords.join(", "),
+                                "Keywords"
+                              )
+                            }
+                            title="Copy keywords"
+                          >
+                            {copiedField === "Keywords" ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                            <span className="sr-only">Copy keywords</span>
+                          </Button>
+                        </div>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {item.metadata.keywords.map((keyword, i) => (
                             <Badge key={i} variant="secondary">
@@ -588,7 +672,7 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
         <DialogTrigger asChild>
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full hidden"
             disabled={results.images.length === 0}
           >
             <Copy className="mr-2 h-4 w-4" />
@@ -613,7 +697,11 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
               variant="secondary"
               onClick={() => handleCopyMetadata(exportMetadata)}
             >
-              <Copy className="mr-2 h-4 w-4" />
+              {copiedField === "metadata" ? (
+                <Check className="mr-2 h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
               Copy to Clipboard
             </Button>
           </DialogFooter>
