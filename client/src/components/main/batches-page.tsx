@@ -1,6 +1,16 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { FileText, Eye, Calendar, File, Clock, ImageIcon } from "lucide-react";
+import {
+  FileText,
+  Eye,
+  Calendar,
+  File,
+  Clock,
+  ImageIcon,
+  Pencil,
+  Check,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,51 +21,168 @@ import {
 } from "@/components/ui/card";
 import { Batch } from "@/app/(main)/results/page";
 import { Badge } from "../ui/badge";
-import { toast } from "sonner";
-import { handleDownloadZip } from "@/actions";
+import { fetchImageMetadata, handleDownloadZip } from "@/actions";
+import { formatFileSize } from "@/lib/utils";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { getAccessToken, getBaseApi } from "@/services/image-services";
+
 // Define types for batch and image
-
-const formatFileSize = (sizeInBytes: number): string => {
-  if (sizeInBytes === 0) return "0B";
-
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(sizeInBytes) / Math.log(1024));
-
-  return `${(sizeInBytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+type Metadata = {
+  imageName: string;
+  metadata: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
 };
 
-export default function BatchesPage({ batches }: { batches: Batch[] }) {
+// Editable Card Title component
+function EditableCardTitle({
+  batch,
+  onRename,
+}: {
+  batch: Batch;
+  onRename: (batchId: string, newName: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [batchName, setBatchName] = useState(batch.name);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setBatchName(batch.name);
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (!batchName.trim()) {
+      handleCancel();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(
+        `${baseApi}/images/batch/update/${batch.batchId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ name: batchName }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update batch name");
+      }
+      const result = await response.json();
+      batch.name = result.data.name;
+      onRename(batch.batchId, batchName);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Error updating batch name:", error);
+      handleCancel();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {isEditing ? (
+        <>
+          <Input
+            value={batchName}
+            onChange={(e) => setBatchName(e.target.value)}
+            className="max-w-sm  h-8"
+            autoFocus
+            disabled={isLoading}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleSave}
+            disabled={isLoading}
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <CardTitle>{batchName}</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleEdit}
+            className="h-8 w-8"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function BatchesPage({
+  batches: initialBatches,
+}: {
+  batches: Batch[];
+}) {
   const router = useRouter();
+  const [batches, setBatches] = useState(initialBatches);
 
   const handleViewBatch = (batchId: string) => {
     router.push(`/results/${batchId}`);
   };
 
-  const handleDownloadCSV = (batch: Batch) => {
-    if (!("images" in batch) || batch.imagesCount === 0) {
-      toast.error("No metadata available to download.");
-      return;
-    }
+  const handleRenameBatch = (batchId: string, newName: string) => {
+    setBatches((prev) =>
+      prev.map((batch) =>
+        batch.batchId === batchId ? { ...batch, displayName: newName } : batch
+      )
+    );
+  };
 
-    // Define CSV headers
-    // let csvContent = "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
+  const handleDownloadCSV = async (batch: Batch) => {
+    const metadata = await fetchImageMetadata(batch.batchId);
+    const csvRows = [
+      "imageName,title,description,keywords",
+      ...metadata.map(
+        (item: Metadata) =>
+          `"${item.imageName}","${item.metadata.title.replace(
+            /"/g,
+            '""'
+          )}","${item.metadata.description.replace(
+            /"/g,
+            '""'
+          )}","${item.metadata.keywords.join(", ")}"`
+      ),
+    ].join("\n");
 
-    // Append image metadata
-    // batch.images.forEach((item) => {
-    //   const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
-    //   const description = `"${item.metadata.description.replace(/"/g, '""')}"`;
-    //   const keywords = `"${item.metadata.keywords.join(", ")}"`;
-    //   csvContent += `${title},${description},${keywords}\n`;
-    // });
-
-    // Create a Blob and generate a download link
-    // const encodedUri = encodeURI(csvContent);
-    // const link = document.createElement("a");
-    // link.setAttribute("href", encodedUri);
-    // link.setAttribute("download", "image_metadata.csv");
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
+    const blob = new Blob([csvRows], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `image_metadata_${batch.batchId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const formatDate = (dateString: string) => {
@@ -79,7 +206,7 @@ export default function BatchesPage({ batches }: { batches: Batch[] }) {
           <Card key={batch._id} className="overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start mb-1">
-                <CardTitle>Batch {batch.batchId.substring(0, 8)}</CardTitle>
+                <EditableCardTitle batch={batch} onRename={handleRenameBatch} />
                 <Badge variant={"outline"} className="text-base">
                   Total size: {formatFileSize(batch.totalSize)}
                 </Badge>

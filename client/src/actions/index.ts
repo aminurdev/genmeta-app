@@ -26,3 +26,61 @@ export const handleDownloadZip = async (batchId: string) => {
     toast(error instanceof Error ? error.message : "Failed to download images");
   }
 };
+
+export const fetchImageMetadata = async (batchId: string) => {
+  if (!batchId) {
+    toast.error("Batch ID is required");
+    return;
+  }
+
+  try {
+    const accessToken = await getAccessToken();
+    const baseApi = await getBaseApi();
+
+    const response = await fetch(`${baseApi}/images/metadata/${batchId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch metadata");
+    }
+
+    const data = await response.json();
+    return data.data.metadata;
+  } catch (error) {
+    console.error("Error fetching metadata:", error);
+    toast.error(
+      error instanceof Error ? error.message : "Failed to fetch metadata"
+    );
+  }
+};
+
+export async function updateBatchName(batchId: string, newName: string) {
+  try {
+    const accessToken = await getAccessToken();
+    const baseApi = await getBaseApi();
+    const response = await fetch(
+      `${baseApi}/images/batches/rename/${batchId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ name: newName }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update batch name");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error updating batch name:", error);
+    throw error;
+  }
+}

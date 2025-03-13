@@ -8,6 +8,7 @@ const imageSchema = new mongoose.Schema(
       required: true,
     },
     batchId: { type: String, required: [true, "Batch ID is required"] },
+    name: { type: String, required: [true, "Batch ID is required"] },
     status: {
       type: String,
       enum: ["Pending", "Completed", "Failed"],

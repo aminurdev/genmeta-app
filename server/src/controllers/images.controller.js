@@ -288,10 +288,53 @@ const getAllBatches = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "Success", images).send(res);
 });
 
+const getMetadata = asyncHandler(async (req, res) => {
+  const { batchId } = req.params;
+
+  if (!batchId) {
+    throw new ApiError(400, "Batch ID is required");
+  }
+
+  const batch = await ImagesModel.findOne({ batchId });
+  if (!batch || !batch.images || batch.images.length === 0) {
+    throw new ApiError(404, "No images found for this batch");
+  }
+
+  const metadata = batch.images.map(({ imageName, metadata }) => ({
+    imageName,
+    metadata,
+  }));
+  return new ApiResponse(200, true, "Success", { metadata }).send(res);
+});
+
+const updateBatchName = asyncHandler(async (req, res) => {
+  const { batchId } = req.params;
+  const { name } = req.body;
+
+  if (!batchId || !name) {
+    throw new ApiError(400, "Batch ID and name are required");
+  }
+
+  const batch = await ImagesModel.findOneAndUpdate(
+    { batchId },
+    { name },
+    { new: true }
+  );
+
+  if (!batch) {
+    throw new ApiError(404, "Batch not found");
+  }
+  return new ApiResponse(200, true, "Batch name updated successfully", {
+    name: batch.name,
+  }).send(res);
+});
+
 export {
   uploadImages,
   updateImage,
   downloadBatchAsZip,
   getBatchImages,
   getAllBatches,
+  getMetadata,
+  updateBatchName,
 };

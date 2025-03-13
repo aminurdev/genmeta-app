@@ -27,6 +27,7 @@ type Image = {
 export type Batch = {
   _id: string;
   batchId: string;
+  name: string;
   userId: string;
   imagesCount: number;
   totalSize: number;
