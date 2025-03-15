@@ -1,5 +1,4 @@
 import fs from "fs";
-import { v4 as uuidv4 } from "uuid";
 import mime from "mime";
 import {
   S3Client,
@@ -10,14 +9,12 @@ import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import config from "../config/index.js";
-import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
 import { updateImageMetadata } from "../services/metadata/injector.service.js";
 import archiver from "archiver";
 import mongoose from "mongoose";
 
 const s3 = new S3Client({
-  endpoint: config.aws.endpoint,
   region: config.aws.region,
   credentials: {
     accessKeyId: config.aws.credentials.accessKeyId,
@@ -27,94 +24,7 @@ const s3 = new S3Client({
 });
 
 const bucketName = config.aws.bucketName;
-const urlEndpoint = `${config.aws.endpoint}/${bucketName}`;
 const requestDir = `public/temp/exiftool`;
-
-const uploadImages = asyncHandler(async (req, res) => {
-  const images = req.files.images;
-  if (!images) throw new ApiError(400, "No images uploaded");
-
-  const { titleLength, descriptionLength, keywordCount, batchId } = req.body;
-  const newBatchId = batchId || uuidv4();
-  const userId = req.user._id;
-
-  const uploadPromises = images.map(async (image) => {
-    const metaResult = await processImage(image, requestDir, {
-      titleLength,
-      descriptionLength,
-      keywordCount,
-    });
-    const fileContent = fs.readFileSync(metaResult.imagePath);
-    const objectKey = `uploads/${userId}/${newBatchId}/${image.filename}`;
-
-    const uploadParams = {
-      Bucket: bucketName,
-      Key: objectKey,
-      Body: fileContent,
-      ContentType: image.mimetype,
-    };
-
-    try {
-      const result = await s3.send(new PutObjectCommand(uploadParams));
-
-      // ✅ Delete the local file after successful upload
-      fs.unlinkSync(metaResult.imagePath);
-
-      const imageDetails = {
-        imageName: image.filename,
-        imageUrl: `${urlEndpoint}/${objectKey}`,
-        metadata: metaResult.metadata,
-      };
-
-      // Store details in MongoDB
-      let dbResult = await ImagesModel.findOneAndUpdate(
-        {
-          userId: req.user._id,
-          batchId: newBatchId,
-          "images.imageName": image.filename,
-        },
-        {
-          $set: {
-            "images.$.imageUrl": `${urlEndpoint}/${objectKey}`,
-            "images.$.metadata": metaResult.metadata,
-          },
-        },
-        { new: true }
-      );
-
-      if (!dbResult) {
-        dbResult = await ImagesModel.findOneAndUpdate(
-          { userId: req.user._id, batchId: newBatchId },
-          {
-            $setOnInsert: { userId: req.user._id, batchId: newBatchId },
-            $push: { images: imageDetails },
-          },
-          { upsert: true, new: true }
-        );
-      }
-
-      const addedImage = dbResult.images.find(
-        (img) => img.imageUrl === imageDetails.imageUrl
-      );
-      const imageId = addedImage ? addedImage._id : null;
-
-      return { imageId, ...imageDetails, result };
-    } catch (error) {
-      throw new ApiError(
-        500,
-        `Failed to process ${image.filename}: ${error.message}`
-      );
-    }
-  });
-
-  const uploadedImages = await Promise.all(uploadPromises);
-
-  return new ApiResponse(200, true, "Images uploaded and stored successfully", {
-    userId,
-    batchId: newBatchId,
-    images: uploadedImages,
-  }).send(res);
-});
 
 const updateImage = asyncHandler(async (req, res) => {
   const { batchId, imageId, imageName, updateData } = req.body;
@@ -207,7 +117,7 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
     throw new ApiError(404, "No images found for this batch");
   }
 
-  const zipFilename = `batch_${batchId}.zip`;
+  const zipFilename = `${batch.name}.zip`;
 
   // ✅ Add headers BEFORE starting ZIP stream
   res.setHeader("Content-Type", "application/zip");
@@ -220,6 +130,7 @@ const downloadBatchAsZip = asyncHandler(async (req, res) => {
 
   for (const image of batch.images) {
     const objectKey = `uploads/${batch.userId}/${batchId}/${image.imageName}`;
+    console.log(objectKey);
 
     try {
       const { Body } = await s3.send(
@@ -339,7 +250,6 @@ const updateBatchName = asyncHandler(async (req, res) => {
 });
 
 export {
-  uploadImages,
   updateImage,
   downloadBatchAsZip,
   getBatchImages,

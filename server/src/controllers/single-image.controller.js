@@ -4,7 +4,9 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import ApiError from "../utils/api.error.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -13,8 +15,9 @@ import { processImage } from "../services/image/image-processing.service.js";
 import { ImagesModel } from "../models/images.model.js";
 import { UserActivity } from "../models/activity.model.js";
 
+const bucketName = config.aws.bucketName;
+
 const s3 = new S3Client({
-  endpoint: config.aws.endpoint,
   region: config.aws.region,
   credentials: {
     accessKeyId: config.aws.credentials.accessKeyId,
@@ -23,9 +26,16 @@ const s3 = new S3Client({
   forcePathStyle: true,
 });
 
-const bucketName = config.aws.bucketName;
-const urlEndpoint = `${config.aws.endpoint}/${bucketName}`;
 const requestDir = `public/temp/exiftool`;
+
+const getPresignedUrl = async (bucketName, objectKey) => {
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: objectKey,
+  });
+
+  return await getSignedUrl(s3, command, { expiresIn: 3600 }); // URL valid for 1 hour
+};
 
 const uploadSingleImage = asyncHandler(async (req, res) => {
   const image = req.file;
@@ -59,15 +69,18 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       Body: fileContent,
       ContentType: image.mimetype,
     };
+    const command = new PutObjectCommand(uploadParams);
 
-    await s3.send(new PutObjectCommand(uploadParams));
+    await s3.send(command);
+
+    const presignedUrl = await getPresignedUrl(bucketName, objectKey);
 
     // ✅ Delete the local file after successful upload
     fs.unlinkSync(metaResult.imagePath);
 
     const imageDetails = {
       imageName: image.filename,
-      imageUrl: `${urlEndpoint}/${objectKey}`,
+      imageUrl: presignedUrl,
       size: image.size,
       metadata: metaResult.metadata,
     };
