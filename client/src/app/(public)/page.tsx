@@ -153,7 +153,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="mb-4 w-48">
+              <div className="mb-4 w-52">
                 {" "}
                 <Link href="/">
                   <Image
