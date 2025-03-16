@@ -45,7 +45,9 @@ export function UserMenu({ user }: { user: User }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">
-        <DropdownMenuLabel className="text-lg">{user.name}</DropdownMenuLabel>
+        {user && (
+          <DropdownMenuLabel className="text-lg">{user.name}</DropdownMenuLabel>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <Link href="/dashboard">
