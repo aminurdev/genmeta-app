@@ -129,7 +129,7 @@ const registerUser = asyncHandler(async (req, res) => {
   return new ApiResponse(
     201,
     true,
-    "Registration successful! Check your email to verify."
+    "Registration successful! Check your email to verify and login."
   ).send(res);
 });
 
@@ -316,7 +316,6 @@ const verifyOTP = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-// Reset Password using Temporary Token
 const resetPassword = asyncHandler(async (req, res) => {
   const { tempToken, newPassword, confirmNewPassword } = req.body;
   if (!tempToken || !newPassword || !confirmNewPassword) {

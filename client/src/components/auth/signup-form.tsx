@@ -29,8 +29,10 @@ import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
+import { useRouter } from "next/navigation";
 
 const SignUpForm = () => {
+  const router = useRouter();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
@@ -55,7 +57,8 @@ const SignUpForm = () => {
       try {
         const res = await registerUser(values);
         if (res?.success) {
-          setSuccess(res?.message);
+          router.push(`/login?message=${res.message}`);
+          // setSuccess(res?.message);
         } else {
           setError(res?.message);
         }

@@ -6,6 +6,15 @@ import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 
+interface DecodedToken {
+  userId: string;
+  name: string;
+  email: string;
+  role: "user" | "admin";
+  iat: number;
+  exp: number;
+}
+
 const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 export const handleGoogleSignIn = async () => {
@@ -79,13 +88,45 @@ export const refreshAccessToken = async () => {
     return Error(error.message || "Failed to refresh access token");
   }
 };
+export const getAccessToken = async () => {
+  let accessToken = (await cookies()).get("accessToken")?.value;
+
+  const isTokenExpired = (token: string): boolean => {
+    try {
+      const decoded = jwtDecode<DecodedToken>(token);
+      return decoded.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  };
+
+  if (!accessToken || isTokenExpired(accessToken)) {
+    const refreshResult = await refreshAccessToken();
+
+    if (refreshResult.success) {
+      accessToken = refreshResult.data.accessToken;
+    } else {
+      return null;
+    }
+  }
+
+  return accessToken;
+};
 
 export const getCurrentUser = async () => {
   let accessToken = (await cookies()).get("accessToken")?.value;
-  let decodedData = null;
+  let decodedData: DecodedToken | null = null;
 
-  if (!accessToken) {
-    // Try refreshing the token
+  const isTokenExpired = (token: string): boolean => {
+    try {
+      const decoded = jwtDecode<DecodedToken>(token);
+      return decoded.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  };
+
+  if (!accessToken || isTokenExpired(accessToken)) {
     const refreshResult = await refreshAccessToken();
 
     if (refreshResult.success) {
@@ -97,7 +138,7 @@ export const getCurrentUser = async () => {
 
   try {
     if (accessToken) {
-      decodedData = await jwtDecode(accessToken);
+      decodedData = jwtDecode<DecodedToken>(accessToken);
     }
     return decodedData;
   } catch (error: any) {
@@ -107,6 +148,36 @@ export const getCurrentUser = async () => {
 };
 
 export const logout = async () => {
-  (await cookies()).delete("accessToken");
-  (await cookies()).delete("refreshToken");
+  try {
+    const accessToken = await getAccessToken();
+
+    const response = await fetch(`${baseApi}/users/logout`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Logout failed: ${response.status} - ${response.statusText}`
+      );
+      return { success: false, message: "Logout failed. Please try again." };
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      const userCookies = await cookies();
+      userCookies.delete("accessToken");
+      userCookies.delete("refreshToken");
+
+      return { success: true, message: "Logged out successfully." };
+    } else {
+      return { success: false, message: result.message || "Logout failed." };
+    }
+  } catch (error) {
+    console.error("Error during logout:", error);
+    return { success: false, message: "An unexpected error occurred." };
+  }
 };

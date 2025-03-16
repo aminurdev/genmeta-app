@@ -34,10 +34,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           if (result.success) {
-            console.log("Setting cookies...");
             (await cookies()).set("accessToken", result.data.accessToken);
             (await cookies()).set("refreshToken", result.data.refreshToken);
-            console.log("Cookies set successfully");
+
           }
         } catch (error) {
           console.error("Error during API call:", error);

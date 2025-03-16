@@ -24,6 +24,7 @@ const config = {
 
   aws: {
     bucketName: process.env.AWS_S3_BUCKET_NAME,
+    endpoint: process.env.AWS_S3_ENDPOINT,
     region: process.env.AWS_S3_REGION,
     credentials: {
       accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,

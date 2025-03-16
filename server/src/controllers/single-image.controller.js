@@ -19,6 +19,7 @@ const bucketName = config.aws.bucketName;
 
 const s3 = new S3Client({
   region: config.aws.region,
+  endpoint: config.aws.endpoint,
   credentials: {
     accessKeyId: config.aws.credentials.accessKeyId,
     secretAccessKey: config.aws.credentials.secretAccessKey,

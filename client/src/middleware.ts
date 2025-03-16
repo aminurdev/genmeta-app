@@ -5,8 +5,10 @@ export { auth as authMiddleware } from "@/auth";
 const authRoutes = ["/login", "/signup"];
 const protectedRoutes = [
   /^\/generate(\/.*)?$/,
-  /^\/user(\/.*)?$/,
-  /^\/admin(\/.*)?$/,
+  /^\/dashboard(\/.*)?$/,
+  /^\/payment-status(\/.*)?$/,
+  /^\/results(\/.*)?$/,
+  /^\/settings(\/.*)?$/,
 ];
 
 export const middleware = async function handleRequest(request: NextRequest) {
@@ -42,7 +44,9 @@ export const config = {
     "/login",
     "/signup",
     "/generate/:path*",
-    "/user/:path*",
-    "/admin/:path*",
+    "/dashboard/:path*",
+    "/results/:path*",
+    "/payment-status/:path*",
+    "/settings/:path*",
   ],
 };
