@@ -1,4 +1,4 @@
-export interface User {
+export interface UserT {
   userId: string;
   name: string;
   email: string;
@@ -6,3 +6,5 @@ export interface User {
   iat?: number;
   exp?: number;
 }
+
+export type User = UserT | null;
