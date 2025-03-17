@@ -86,18 +86,12 @@ export default function AccountTab({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  interface User {
-    id: string;
-    name: string;
-    email: string;
-  }
-
   useEffect(() => {
     const fetchUser = async () => {
-      const user: User = await getCurrentUser();
-      if (user) {
+      const user = await getCurrentUser();
+      if (user !== null) {
         setAccountForm({
-          id: user.id,
+          id: user.userId,
           name: user.name,
           email: user.email,
         });
