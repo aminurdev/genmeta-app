@@ -22,7 +22,7 @@ export default function HomePage() {
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Generate accurate metadata, enhance quality, and optimize your
-            images using advanced AI technology. Start with 50 free tokens!
+            images using advanced AI technology. Start with 20 free tokens!
           </p>
           <div className="flex gap-4 justify-center">
             <Link
@@ -31,12 +31,12 @@ export default function HomePage() {
             >
               Get Started Free
             </Link>
-            <Link
+            {/* <Link
               href="/generate"
               className="px-8 py-3 bg-background text-primary rounded-lg border-2 border-primary hover:bg-accent transition-colors font-medium"
             >
               Try Demo
-            </Link>
+            </Link> */}
           </div>
         </div>
       </section>
