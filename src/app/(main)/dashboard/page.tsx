@@ -2,7 +2,6 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OverviewTab from "@/components/dashboard/overview-tab";
-import TokensTab from "@/components/dashboard/tokens-tab";
 import HistoryTab from "@/components/dashboard/history-tab";
 import AccountTab from "@/components/dashboard/account-tab";
 import { useCallback, useEffect, useState } from "react";
@@ -282,7 +281,6 @@ export default function Dashboard() {
           >
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="tokens">Tokens</TabsTrigger>
               <TabsTrigger value="history">History</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
             </TabsList>
@@ -305,21 +303,17 @@ export default function Dashboard() {
               />
             </TabsContent>
 
-            <TabsContent value="tokens">
-              <TokensTab
-                userActivity={data.userActivity}
-                packages={data.packages}
-                handlePurchase={handlePurchase}
-                isLoading={isPurchasing}
-              />
-            </TabsContent>
-
             <TabsContent value="history">
               <HistoryTab />
             </TabsContent>
 
             <TabsContent value="account">
-              <AccountTab userActivity={data.userActivity} />
+              <AccountTab
+                userActivity={data.userActivity}
+                packages={data.packages}
+                handlePurchase={handlePurchase}
+                isLoading={isPurchasing}
+              />
             </TabsContent>
           </Tabs>
         </main>

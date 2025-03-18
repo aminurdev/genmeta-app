@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ApiResponse } from "@/app/(main)/dashboard/page";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 const calculateRenewalDate = (futureDate: string): string => {
   if (!futureDate) return "No active plan";
@@ -60,6 +61,7 @@ const calculateRenewalDate = (futureDate: string): string => {
 
 interface DataProps {
   data: ApiResponse["data"];
+
   handlePurchase: (packageId: string) => Promise<void>;
   isLoading?: boolean;
   onRefresh?: () => void;
@@ -94,6 +96,7 @@ export default function OverviewTab({
       handlePurchase(selectedPackageId);
     }
   };
+  const tokenHistory = data.userActivity?.tokenHistory || [];
 
   return (
     <div className="space-y-6">
@@ -307,6 +310,83 @@ export default function OverviewTab({
               )}
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Token History</CardTitle>
+            <CardDescription>
+              Your token purchase and usage history
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              {tokenHistory.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tokenHistory.map((transaction) => {
+                      const isAddition =
+                        transaction.actionType === "purchase" ||
+                        transaction.actionType === "assigned" ||
+                        transaction.actionType === "refund";
+
+                      return (
+                        <TableRow key={transaction._id}>
+                          <TableCell>
+                            {formatDate(transaction.createdAt || "")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                isAddition
+                                  ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
+                                  : "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
+                              }
+                            >
+                              {transaction.actionType?.charAt(0).toUpperCase() +
+                                transaction.actionType?.slice(1) || "Unknown"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {transaction.description || "No description"}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right ${
+                              isAddition ? "text-green-600" : "text-red-600"
+                            }`}
+                          >
+                            {isAddition ? "+" : "-"}
+                            {transaction.tokenDetails?.count || 0}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p>No token history available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+          {tokenHistory.length > 5 && (
+            <CardFooter>
+              <Button variant="outline" size="sm" className="ml-auto">
+                View All Transactions
+              </Button>
+            </CardFooter>
+          )}
         </Card>
       </div>
     </div>
