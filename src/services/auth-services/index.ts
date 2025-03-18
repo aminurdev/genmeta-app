@@ -178,6 +178,9 @@ export const logout = async () => {
     }
   } catch (error) {
     console.error("Error during logout:", error);
+    const userCookies = await cookies();
+    userCookies.delete("accessToken");
+    userCookies.delete("refreshToken");
     return { success: false, message: "An unexpected error occurred." };
   }
 };

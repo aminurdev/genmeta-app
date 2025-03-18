@@ -1,3 +1,4 @@
+import { getCurrentUser } from "@/services/auth-services";
 import {
   SparklesIcon,
   CloudArrowUpIcon,
@@ -25,12 +26,7 @@ export default function HomePage() {
             images using advanced AI technology. Start with 20 free tokens!
           </p>
           <div className="flex gap-4 justify-center">
-            <Link
-              href="/signup"
-              className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-            >
-              Get Started Free
-            </Link>
+            <RedirectUrl />
             {/* <Link
               href="/generate"
               className="px-8 py-3 bg-background text-primary rounded-lg border-2 border-primary hover:bg-accent transition-colors font-medium"
@@ -147,88 +143,6 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-background text-card-foreground py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="mb-4 w-52">
-                {" "}
-                <Link href="/">
-                  <Image
-                    src={"/Assets/SVG/Asset 5.svg"}
-                    className=" h-16 py-2 w-auto"
-                    alt="logo"
-                    width={128}
-                    height={128}
-                  />
-                </Link>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Transform your images with advanced AI technology and
-                professional-grade tools.
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>
-                  <Link href="/generate" className="hover:text-card-foreground">
-                    Generate
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/help" className="hover:text-card-foreground">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/dashboard"
-                    className="hover:text-card-foreground"
-                  >
-                    Dashboard
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>
-                  <Link href="/docs" className="hover:text-card-foreground">
-                    Documentation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/api" className="hover:text-card-foreground">
-                    API
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/blog" className="hover:text-card-foreground">
-                    Blog
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact</h4>
-              <ul className="space-y-2 text-muted-foreground">
-                <li>support@imageprocessor.com</li>
-                <li>1-800-IMAGE-PRO</li>
-                <li>Mon-Fri: 9AM-6PM EST</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t border-border text-center text-muted-foreground">
-            <p>
-              &copy; {new Date().getFullYear()} GenMeta. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
@@ -292,3 +206,105 @@ function StepCard({
     </div>
   );
 }
+
+const RedirectUrl = async () => {
+  const user = await getCurrentUser();
+
+  return (
+    <Link
+      href={user ? "generate" : "/signup"}
+      className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+    >
+      Get Started Free
+    </Link>
+  );
+};
+
+import React from "react";
+
+export const Footer = () => {
+  return (
+    <footer className="bg-background text-card-foreground py-12">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="mb-4 w-52">
+              {" "}
+              <Link href="/">
+                <Image
+                  src={"/Assets/SVG/Asset 5.svg"}
+                  className=" h-16 py-2 w-auto"
+                  alt="logo"
+                  width={128}
+                  height={128}
+                />
+              </Link>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Transform your images with advanced AI technology and
+              professional-grade tools.
+            </p>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>
+                <Link href="/generate" className="hover:text-card-foreground">
+                  Generate
+                </Link>
+              </li>
+              <li>
+                <Link href="/help" className="hover:text-card-foreground">
+                  Help Center
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard" className="hover:text-card-foreground">
+                  Dashboard
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Resources</h4>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>
+                <Link href="/terms" className="hover:text-card-foreground">
+                  Terms & Condition
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="hover:text-card-foreground">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="hover:text-card-foreground">
+                  Blog
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Contact</h4>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>
+                {" "}
+                <a
+                  href="mailto:helpgenmeta@gmail.com"
+                  className="text-blue-600 hover:underline"
+                >
+                  helpgenmeta@gmail.com
+                </a>
+              </li>
+              <li>Nilphamari, Rangpur, Bangladesh</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-12 pt-8 border-t border-border text-center text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} GenMeta. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+  );
+};

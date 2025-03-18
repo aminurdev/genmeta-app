@@ -163,7 +163,7 @@ export default function BatchesPage({
   const handleDownloadCSV = async (batch: Batch) => {
     const metadata = await fetchImageMetadata(batch.batchId);
     const csvRows = [
-      "imageName,title,description,keywords",
+      "Filename,Title,Description,Keywords",
       ...metadata.map(
         (item: Metadata) =>
           `"${item.imageName}","${item.metadata.title.replace(

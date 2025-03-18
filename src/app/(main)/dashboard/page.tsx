@@ -68,7 +68,6 @@ export type ApiResponse = {
   };
 };
 
-// Default empty data structure
 const emptyData = {
   packages: [],
   recentActivity: [],
@@ -77,9 +76,7 @@ const emptyData = {
 };
 
 export default function Dashboard() {
-  // Initialize activeTab from localStorage if available, otherwise use 'overview'
   const [activeTab, setActiveTab] = useState<string>(() => {
-    // Only run this code in the browser, not during SSR
     if (typeof window !== "undefined") {
       return localStorage.getItem("dashboardActiveTab") || "overview";
     }
@@ -90,12 +87,11 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
 
-  const fetchDashboardData = useCallback(async (retryCount = 0) => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null);
-
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
@@ -112,7 +108,6 @@ export default function Dashboard() {
       });
 
       if (!response.ok) {
-        // Handle different HTTP status codes
         if (response.status === 401) {
           throw new Error("Your session has expired. Please log in again.");
         } else if (response.status === 403) {
@@ -137,6 +132,8 @@ export default function Dashboard() {
       }
 
       setData(responseData.data || emptyData);
+      setError(null);
+      setRetryCount(0);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
 
@@ -145,27 +142,28 @@ export default function Dashboard() {
       setError(errorMessage);
       toast.error(errorMessage);
 
-      // Implement retry logic for network errors (max 3 retries)
       if (
         retryCount < 3 &&
         (error instanceof TypeError || errorMessage.includes("network"))
       ) {
-        const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+        const nextRetryCount = retryCount + 1;
+        setRetryCount(nextRetryCount);
+
+        const retryDelay = Math.pow(2, retryCount) * 1000;
         toast.info(`Retrying in ${retryDelay / 1000} seconds...`);
 
         setTimeout(() => {
-          fetchDashboardData(retryCount + 1);
+          fetchDashboardData();
         }, retryDelay);
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [retryCount]);
 
   useEffect(() => {
     fetchDashboardData();
 
-    // Add event listener for online status to retry when connection is restored
     const handleOnline = () => {
       if (error) {
         toast.info("Connection restored. Refreshing data...");
@@ -180,14 +178,12 @@ export default function Dashboard() {
     };
   }, [fetchDashboardData, error]);
 
-  // Save tab selection to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("dashboardActiveTab", activeTab);
   }, [activeTab]);
 
-  console.log(data);
   const handlePurchase = async (packageId: string) => {
-    if (isPurchasing) return; // Prevent multiple clicks
+    if (isPurchasing) return;
 
     try {
       setIsPurchasing(true);
@@ -227,8 +223,6 @@ export default function Dashboard() {
       }
 
       if (responseData.data?.bkashURL) {
-        // We no longer need to save to sessionStorage since we're using localStorage
-        // The tab selection will persist in localStorage
         window.location.href = responseData.data.bkashURL;
       } else {
         throw new Error("Payment URL not received");
@@ -270,8 +264,8 @@ export default function Dashboard() {
     }
   }, [fetchDashboardData]);
 
-  // Render loading state
-  if (isLoading && !data.packages.length) {
+  // Render loading state ONLY on initial load
+  if (isLoading && !data.packages.length && !error) {
     return (
       <div className="max-w-7xl mx-auto bg-background min-h-[50vh] flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
@@ -284,7 +278,7 @@ export default function Dashboard() {
     );
   }
 
-  // Render error state
+  // Render error state but only if we have no data
   if (error && !data.packages.length) {
     return (
       <div className="max-w-7xl mx-auto bg-background p-6">
@@ -294,7 +288,10 @@ export default function Dashboard() {
           </h2>
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <button
-            onClick={() => fetchDashboardData()}
+            onClick={() => {
+              setRetryCount(0);
+              fetchDashboardData();
+            }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
           >
             Try Again
