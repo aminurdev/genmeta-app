@@ -87,7 +87,6 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState<boolean>(false);
-  const [retryCount, setRetryCount] = useState<number>(0);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -133,7 +132,6 @@ export default function Dashboard() {
 
       setData(responseData.data || emptyData);
       setError(null);
-      setRetryCount(0);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
 
@@ -141,25 +139,10 @@ export default function Dashboard() {
         error instanceof Error ? error.message : "An unknown error occurred";
       setError(errorMessage);
       toast.error(errorMessage);
-
-      if (
-        retryCount < 3 &&
-        (error instanceof TypeError || errorMessage.includes("network"))
-      ) {
-        const nextRetryCount = retryCount + 1;
-        setRetryCount(nextRetryCount);
-
-        const retryDelay = Math.pow(2, retryCount) * 1000;
-        toast.info(`Retrying in ${retryDelay / 1000} seconds...`);
-
-        setTimeout(() => {
-          fetchDashboardData();
-        }, retryDelay);
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [retryCount]);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -277,10 +260,7 @@ export default function Dashboard() {
           </h2>
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <button
-            onClick={() => {
-              setRetryCount(0);
-              fetchDashboardData();
-            }}
+            onClick={fetchDashboardData}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
           >
             Try Again
