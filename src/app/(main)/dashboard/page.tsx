@@ -205,17 +205,6 @@ export default function Dashboard() {
         }),
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Your session has expired. Please log in again.");
-        } else if (response.status === 400) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Invalid payment request");
-        } else {
-          throw new Error(`Payment initiation failed (${response.status})`);
-        }
-      }
-
       const responseData = await response.json();
 
       if (!responseData.success) {
