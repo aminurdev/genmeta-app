@@ -30,7 +30,6 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiResponse } from "@/app/(main)/dashboard/page";
-import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 
@@ -65,16 +64,18 @@ interface DataProps {
   handlePurchase: (packageId: string) => Promise<void>;
   isLoading?: boolean;
   onRefresh?: () => void;
+  setActiveTab: (tab: string) => void;
 }
 
 export default function OverviewTab({
   data,
   handlePurchase,
   isLoading = false,
-  onRefresh,
+  setActiveTab,
 }: DataProps) {
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("bkash");
+  const [isViewAll, setIsViewAll] = useState(false);
 
   // Calculate usage percentage safely
   const calculateUsagePercentage = () => {
@@ -163,37 +164,6 @@ export default function OverviewTab({
                 Your recent image processing jobs
               </CardDescription>
             </div>
-            {onRefresh && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onRefresh}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                    <path d="M21 3v5h-5" />
-                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                    <path d="M3 21v-5h5" />
-                  </svg>
-                )}
-                <span className="sr-only">Refresh</span>
-              </Button>
-            )}
           </CardHeader>
           <CardContent>
             {data.recentActivity.length > 0 ? (
@@ -237,16 +207,16 @@ export default function OverviewTab({
             )}
           </CardContent>
           <CardFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onClick={() => {
-                toast("Coming soon...");
-              }}
-            >
-              View All
-            </Button>
+            {data.recentActivity.length > 3 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                onClick={() => setActiveTab("history")}
+              >
+                View All
+              </Button>
+            )}
           </CardFooter>
         </Card>
         <Card className="lg:col-span-3">
@@ -333,44 +303,48 @@ export default function OverviewTab({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tokenHistory.map((transaction) => {
-                      const isAddition =
-                        transaction.actionType === "purchase" ||
-                        transaction.actionType === "assigned" ||
-                        transaction.actionType === "refund";
+                    {tokenHistory
+                      .slice(0, !isViewAll ? 5 : tokenHistory.length)
+                      .map((transaction) => {
+                        const isAddition =
+                          transaction.actionType === "purchase" ||
+                          transaction.actionType === "assigned" ||
+                          transaction.actionType === "refund";
 
-                      return (
-                        <TableRow key={transaction._id}>
-                          <TableCell>
-                            {formatDate(transaction.createdAt || "")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                isAddition
-                                  ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
-                                  : "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
-                              }
+                        return (
+                          <TableRow key={transaction._id}>
+                            <TableCell>
+                              {formatDate(transaction.createdAt || "")}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  isAddition
+                                    ? "bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700"
+                                    : "bg-red-50 text-red-700 hover:bg-red-50 hover:text-red-700"
+                                }
+                              >
+                                {transaction.actionType
+                                  ?.charAt(0)
+                                  .toUpperCase() +
+                                  transaction.actionType?.slice(1) || "Unknown"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {transaction.description || "No description"}
+                            </TableCell>
+                            <TableCell
+                              className={`text-right ${
+                                isAddition ? "text-green-600" : "text-red-600"
+                              }`}
                             >
-                              {transaction.actionType?.charAt(0).toUpperCase() +
-                                transaction.actionType?.slice(1) || "Unknown"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {transaction.description || "No description"}
-                          </TableCell>
-                          <TableCell
-                            className={`text-right ${
-                              isAddition ? "text-green-600" : "text-red-600"
-                            }`}
-                          >
-                            {isAddition ? "+" : "-"}
-                            {transaction.tokenDetails?.count || 0}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                              {isAddition ? "+" : "-"}
+                              {transaction.tokenDetails?.count || 0}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                   </TableBody>
                 </Table>
               ) : (
@@ -382,8 +356,13 @@ export default function OverviewTab({
           </CardContent>
           {tokenHistory.length > 5 && (
             <CardFooter>
-              <Button variant="outline" size="sm" className="ml-auto">
-                View All Transactions
+              <Button
+                onClick={() => setIsViewAll((prev) => !prev)}
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+              >
+                {isViewAll ? "View less" : "View All"}
               </Button>
             </CardFooter>
           )}

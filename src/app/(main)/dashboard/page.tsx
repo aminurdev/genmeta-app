@@ -300,6 +300,7 @@ export default function Dashboard() {
                 handlePurchase={handlePurchase}
                 isLoading={isPurchasing}
                 onRefresh={fetchDashboardData}
+                setActiveTab={setActiveTab}
               />
             </TabsContent>
 

@@ -1,15 +1,10 @@
 import Link from "next/link";
-import {
-  HomeIcon,
-  PhotoIcon,
-  QuestionMarkCircleIcon,
-} from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
 import Image from "next/image";
-import { ListIcon } from "lucide-react";
+import { Home, ImageIcon, OctagonAlert, Sparkles } from "lucide-react";
 
 export async function Navigation() {
   const user = await getCurrentUser();
@@ -29,30 +24,30 @@ export async function Navigation() {
           </Link>
         </div>
         {/* Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-12">
           <Link
             href="/"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground flex items-center"
           >
-            <HomeIcon className="h-5 w-5 inline-block mr-1" /> Home
+            <Home className="h-5 w-5 inline-block mr-2" /> Home
           </Link>
           <Link
             href="/generate"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground flex items-center"
           >
-            <PhotoIcon className="h-5 w-5 inline-block mr-1" /> Generate
+            <Sparkles className="h-5 w-5 inline-block mr-2" /> Generate
           </Link>
           <Link
             href="/results"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground flex items-center"
           >
-            <ListIcon className="h-5 w-5 inline-block mr-1" /> Results
+            <ImageIcon className="h-5 w-5 inline-block mr-2" /> Results
           </Link>
           <Link
             href="/help"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground flex items-center"
           >
-            <QuestionMarkCircleIcon className="h-5 w-5 inline-block mr-1" />{" "}
+            <OctagonAlert className="h-5 w-5 inline-block mr-2" />
             Help
           </Link>
         </div>
