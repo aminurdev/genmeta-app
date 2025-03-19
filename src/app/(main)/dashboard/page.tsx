@@ -78,7 +78,7 @@ const emptyData = {
 const VALID_TABS = ["overview", "history", "account"];
 const DEFAULT_TAB = "overview";
 
-export default function Dashboard() {
+function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -293,57 +293,63 @@ export default function Dashboard() {
   }
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <div className="max-w-7xl mx-auto bg-background">
-        <div className="flex flex-1 flex-col">
-          <main className="p-4 md:p-6">
-            <Tabs
-              value={activeTab}
-              onValueChange={handleTabChange}
-              className="space-y-6"
-              defaultValue={activeTab}
-            >
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-                <TabsTrigger value="account">Account</TabsTrigger>
-              </TabsList>
+    <div className="max-w-7xl mx-auto bg-background">
+      <div className="flex flex-1 flex-col">
+        <main className="p-4 md:p-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="space-y-6"
+            defaultValue={activeTab}
+          >
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+              <TabsTrigger value="account">Account</TabsTrigger>
+            </TabsList>
 
-              {isLoading && (
-                <div className="h-8 flex items-center justify-end">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Refreshing...</span>
-                  </div>
+            {isLoading && (
+              <div className="h-8 flex items-center justify-end">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Refreshing...</span>
                 </div>
-              )}
+              </div>
+            )}
 
-              <TabsContent value="overview">
-                <OverviewTab
-                  data={data}
-                  handlePurchase={handlePurchase}
-                  isLoading={isPurchasing}
-                  onRefresh={fetchDashboardData}
-                  setActiveTab={handleTabChange}
-                />
-              </TabsContent>
+            <TabsContent value="overview">
+              <OverviewTab
+                data={data}
+                handlePurchase={handlePurchase}
+                isLoading={isPurchasing}
+                onRefresh={fetchDashboardData}
+                setActiveTab={handleTabChange}
+              />
+            </TabsContent>
 
-              <TabsContent value="history">
-                <HistoryTab />
-              </TabsContent>
+            <TabsContent value="history">
+              <HistoryTab />
+            </TabsContent>
 
-              <TabsContent value="account">
-                <AccountTab
-                  userActivity={data.userActivity}
-                  packages={data.packages}
-                  handlePurchase={handlePurchase}
-                  isLoading={isPurchasing}
-                />
-              </TabsContent>
-            </Tabs>
-          </main>
-        </div>
+            <TabsContent value="account">
+              <AccountTab
+                userActivity={data.userActivity}
+                packages={data.packages}
+                handlePurchase={handlePurchase}
+                isLoading={isPurchasing}
+              />
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
-    </Suspense>
+    </div>
   );
 }
+
+const DashboardWrapper = () => (
+  <Suspense fallback={<div>Loading...</div>}>
+    <Dashboard />
+  </Suspense>
+);
+
+export default DashboardWrapper;
