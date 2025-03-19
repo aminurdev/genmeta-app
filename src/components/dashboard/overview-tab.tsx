@@ -33,31 +33,6 @@ import { ApiResponse } from "@/app/(main)/dashboard/page";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 
-const calculateRenewalDate = (futureDate: string): string => {
-  if (!futureDate) return "No active plan";
-
-  try {
-    const today = new Date();
-    const targetDate = new Date(futureDate);
-
-    // Check if the date is valid
-    if (isNaN(targetDate.getTime())) {
-      return "Invalid date";
-    }
-
-    const diffInMilliseconds = targetDate.getTime() - today.getTime();
-    const diffInDays = Math.ceil(diffInMilliseconds / (1000 * 60 * 60 * 24));
-
-    if (diffInDays < 0) return "Plan expired";
-    if (diffInDays === 0) return "Renews today";
-    if (diffInDays === 1) return "Renews tomorrow";
-    return `Renews in ${diffInDays} days`;
-  } catch (error) {
-    console.error("Error calculating renewal date:", error);
-    return "Date calculation error";
-  }
-};
-
 interface DataProps {
   data: ApiResponse["data"];
 
@@ -148,9 +123,6 @@ export default function OverviewTab({
             <div className="text-2xl font-bold">
               {data.userActivity?.plan?.planId?.title || "No Plan"}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {calculateRenewalDate(data.userActivity?.plan?.expiresDate || "")}
-            </p>
           </CardContent>
         </Card>
       </div>

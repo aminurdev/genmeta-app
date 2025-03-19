@@ -4,7 +4,6 @@ import type React from "react";
 
 import { useEffect, useState } from "react";
 import {
-  CreditCard,
   Eye,
   EyeOff,
   Loader2,
@@ -35,12 +34,14 @@ import { Progress } from "../ui/progress";
 interface DataProps {
   userActivity: ApiResponse["data"]["userActivity"];
   isLoading?: boolean;
+  isPurchasing?: boolean;
   packages: ApiResponse["data"]["packages"];
   handlePurchase: (packageId: string) => Promise<void>;
   onRefresh?: () => void;
 }
 
 // Calculate renewal date from expiration date
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const calculateRenewalDate = (expiresDate: string): string => {
   if (!expiresDate) return "No active subscription";
 
@@ -68,6 +69,7 @@ export default function AccountTab({
   isLoading = false,
   packages,
   handlePurchase,
+  isPurchasing,
   onRefresh,
 }: DataProps) {
   const [savingAccount, setSavingAccount] = useState(false);
@@ -238,6 +240,7 @@ export default function AccountTab({
   const isSubscriptionActive = subscriptionStatus.toLowerCase() === "active";
 
   // Format plan price
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatPrice = (price: number) => {
     if (!price && price !== 0) return "N/A";
     return `৳${price.toLocaleString(undefined, {
@@ -380,13 +383,7 @@ export default function AccountTab({
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">
-                        {userActivity.plan.planId?.title || "No Plan"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {userActivity.plan.planId?.price
-                          ? formatPrice(userActivity.plan.planId.price) +
-                            "/month"
-                          : "Free"}
+                        {`${userActivity.plan.planId?.title} Plan` || "No Plan"}
                       </p>
                     </div>
                     <Badge
@@ -396,31 +393,22 @@ export default function AccountTab({
                     </Badge>
                   </div>
                   <div className="mt-4 text-sm">
-                    {isSubscriptionActive && (
+                    {/* {isSubscriptionActive && (
                       <p>
-                        Renews on{" "}
-                        {calculateRenewalDate(
-                          userActivity?.plan?.expiresDate || ""
-                        )}
+                        Activate on{" "}
+                        {calculateRenewalDate(userActivity?.updatedAt || "")}
                       </p>
-                    )}
-                    {userActivity.plan.planId?.tokens && (
-                      <p className="mt-2">
-                        Includes{" "}
-                        {userActivity.plan.planId.tokens.toLocaleString()}{" "}
-                        tokens per month
-                      </p>
-                    )}
+                    )} */}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Payment Method</Label>
+                  {/* <Label>Payment Method</Label>
                   <div className="flex items-center gap-2 rounded-lg border p-3">
                     <CreditCard className="h-5 w-5" />
                     <div>
                       <p className="font-medium">{"BKash"}</p>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </>
             )}
@@ -515,17 +503,10 @@ export default function AccountTab({
                     <Button
                       variant={popular ? "default" : "outline"}
                       className="w-full"
-                      disabled={isLoading}
+                      disabled={isPurchasing}
                       onClick={() => handlePurchase(_id)}
                     >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Purchase"
-                      )}
+                      Purchase
                     </Button>
                   </CardFooter>
                 </Card>

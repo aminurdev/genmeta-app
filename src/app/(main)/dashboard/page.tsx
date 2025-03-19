@@ -336,7 +336,8 @@ function Dashboard() {
                 userActivity={data.userActivity}
                 packages={data.packages}
                 handlePurchase={handlePurchase}
-                isLoading={isPurchasing}
+                isLoading={isLoading}
+                isPurchasing={isPurchasing}
               />
             </TabsContent>
           </Tabs>
