@@ -56,11 +56,16 @@ export function UserMenu({ user }: { user: User }) {
               <span>Dashboard</span>
             </DropdownMenuItem>
           </Link>
+        </DropdownMenuGroup>{" "}
+        <DropdownMenuGroup>
+          {" "}
+          <Link href="mailto:helpgenmeta@gmail.com">
+            <DropdownMenuItem className="cursor-pointer">
+              <LifeBuoy />
+              <span>Support</span>
+            </DropdownMenuItem>
+          </Link>
         </DropdownMenuGroup>
-        <DropdownMenuItem>
-          <LifeBuoy />
-          <span>Support</span>
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
           <Button

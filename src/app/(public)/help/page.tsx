@@ -22,7 +22,7 @@ export default function HelpPage() {
               <div>
                 <h3 className="font-semibold mb-1">Create an Account</h3>
                 <p className="text-muted-foreground">
-                  Sign up for a free account and get 50 tokens to start
+                  Sign up for a free account and get 20 tokens to start
                   processing your images.
                 </p>
               </div>

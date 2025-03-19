@@ -508,7 +508,7 @@ export default function AccountTab({
                     <p className="text-sm text-muted-foreground">Tokens</p>
                     <p className="font-medium">৳ {price.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">
-                      ৳ {(price / tokens).toFixed(3)} per token
+                      ৳ {(price / tokens).toFixed(2)} per token
                     </p>
                   </CardContent>
                   <CardFooter>
