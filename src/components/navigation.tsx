@@ -4,7 +4,13 @@ import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
 import Image from "next/image";
-import { Home, ImageIcon, OctagonAlert, Sparkles } from "lucide-react";
+import {
+  DollarSign,
+  Home,
+  ImageIcon,
+  OctagonAlert,
+  Sparkles,
+} from "lucide-react";
 
 export async function Navigation() {
   const user = await getCurrentUser();
@@ -42,6 +48,13 @@ export async function Navigation() {
             className="text-muted-foreground hover:text-foreground flex items-center"
           >
             <ImageIcon className="h-5 w-5 inline-block mr-2" /> Results
+          </Link>
+          <Link
+            href="/help"
+            className="text-muted-foreground hover:text-foreground flex items-center"
+          >
+            <DollarSign className="h-5 w-5 inline-block mr-1" />
+            Pricing
           </Link>
           <Link
             href="/help"

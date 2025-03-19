@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Types
 type Package = {
@@ -74,14 +75,20 @@ const emptyData = {
   plan: {} as Package,
 };
 
-export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("dashboardActiveTab") || "overview";
-    }
-    return "overview";
-  });
+const VALID_TABS = ["overview", "history", "account"];
+const DEFAULT_TAB = "overview";
 
+export default function Dashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get active tab from URL search params, defaulting to "overview" if not present or invalid
+  const getActiveTabFromParams = () => {
+    const tab = searchParams.get("tab");
+    return tab && VALID_TABS.includes(tab) ? tab : DEFAULT_TAB;
+  };
+
+  const [activeTab, setActiveTab] = useState<string>(getActiveTabFromParams());
   const [data, setData] = useState<ApiResponse["data"]>(emptyData);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,9 +167,14 @@ export default function Dashboard() {
     };
   }, [fetchDashboardData, error]);
 
+  // Update URL when tab changes
   useEffect(() => {
-    localStorage.setItem("dashboardActiveTab", activeTab);
-  }, [activeTab]);
+    // Sync active tab with URL search params
+    const currentTab = getActiveTabFromParams();
+    if (currentTab !== activeTab) {
+      setActiveTab(currentTab);
+    }
+  }, [searchParams]);
 
   const handlePurchase = async (packageId: string) => {
     if (isPurchasing) return;
@@ -208,32 +220,43 @@ export default function Dashboard() {
     }
   };
 
-  // Handle tab change
+  // Handle tab change - update URL search params
   const handleTabChange = (value: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", value);
+    router.push(url.pathname + url.search);
     setActiveTab(value);
   };
 
   // Check for returning from payment
   useEffect(() => {
     // Check URL parameters for payment status
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get("payment_status");
+    const paymentStatus = searchParams.get("payment_status");
 
     if (paymentStatus === "success") {
       toast.success("Payment successful! Your tokens have been added.");
       fetchDashboardData(); // Refresh data after successful payment
+
+      // Remove payment_status parameter but keep the tab parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment_status");
+      router.replace(url.pathname + url.search);
     } else if (paymentStatus === "failed") {
       toast.error("Payment failed. Please try again.");
+
+      // Remove payment_status parameter but keep the tab parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment_status");
+      router.replace(url.pathname + url.search);
     } else if (paymentStatus === "canceled") {
       toast.info("Payment was canceled.");
-    }
 
-    // Clean up URL parameters
-    if (paymentStatus) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      // Remove payment_status parameter but keep the tab parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment_status");
+      router.replace(url.pathname + url.search);
     }
-  }, [fetchDashboardData]);
+  }, [searchParams, fetchDashboardData, router]);
 
   // Render loading state ONLY on initial load
   if (isLoading && !data.packages.length && !error) {
@@ -300,7 +323,7 @@ export default function Dashboard() {
                 handlePurchase={handlePurchase}
                 isLoading={isPurchasing}
                 onRefresh={fetchDashboardData}
-                setActiveTab={setActiveTab}
+                setActiveTab={handleTabChange}
               />
             </TabsContent>
 
