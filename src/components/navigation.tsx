@@ -38,7 +38,7 @@ export async function Navigation() {
             <Home className="h-5 w-5 inline-block mr-2" /> Home
           </Link>
           <Link
-            href="/generate"
+            href="/generate/v2"
             className="text-muted-foreground hover:text-foreground flex items-center"
           >
             <Sparkles className="h-5 w-5 inline-block mr-2" /> Generate

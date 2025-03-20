@@ -12,7 +12,7 @@ export default function Header() {
         </Link>
         <div className="hidden md:flex items-center gap-8">
           <Link
-            href="/generate"
+            href="/generate/v2"
             className="text-muted-foreground hover:text-foreground"
           >
             <PhotoIcon className="h-5 w-5 inline-block mr-1" /> Generate
