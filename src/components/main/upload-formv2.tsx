@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 import { getBaseApi, getAccessToken } from "@/services/image-services";
 import {
@@ -196,8 +195,7 @@ export default function UploadForm() {
     setFailedFiles([]);
 
     // Create a new batch ID for this regeneration attempt
-    const batchId = uploadResponse?.data.batchId || uuidv4();
-    console.log({ batchId });
+    const batchId = uploadResponse?.data.batchId ?? "";
 
     try {
       const baseApi = await getBaseApi();
@@ -230,7 +228,7 @@ export default function UploadForm() {
       // Track upload progress
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const uploadProgress = Math.round((event.loaded / event.total) * 50); // Upload is first 50%
+          const uploadProgress = Math.round((event.loaded / event.total) * 100);
           setProgress(uploadProgress);
         }
       };
@@ -240,8 +238,6 @@ export default function UploadForm() {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response: UploadResponse = JSON.parse(xhr.responseText);
-
-            console.log("Regeneration response:", response);
 
             // Merge existing successful uploads with new successful uploads
             const previousSuccessfulImages =
@@ -379,7 +375,6 @@ export default function UploadForm() {
       return;
     }
 
-    const batchId = uuidv4();
     setLoading(true);
     setUploadingStarted(true);
     setShowModal(true);
@@ -401,8 +396,6 @@ export default function UploadForm() {
         formData.append("images", file);
       });
 
-      // Add batch ID and settings to the form data
-      formData.append("batchId", batchId);
       formData.append("titleLength", settings.titleLength.toString());
       formData.append(
         "descriptionLength",
@@ -419,7 +412,7 @@ export default function UploadForm() {
       // Track upload progress
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const uploadProgress = Math.round((event.loaded / event.total) * 50); // Upload is first 50%
+          const uploadProgress = Math.round((event.loaded / event.total) * 100);
           setProgress(uploadProgress);
         }
       };
@@ -430,7 +423,6 @@ export default function UploadForm() {
           try {
             const response: UploadResponse = JSON.parse(xhr.responseText);
 
-            console.log("Upload response:", response);
             setUploadResponse(response);
 
             // Make sure we're correctly counting successful uploads
@@ -775,7 +767,7 @@ export default function UploadForm() {
           }
         }}
       >
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="">
           <AlertDialogHeader>
             <div className="flex items-center justify-between">
               <AlertDialogTitle>
@@ -811,27 +803,50 @@ export default function UploadForm() {
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
-                  <div className="flex justify-between text-sm mt-2">
-                    {uploadingStarted ? (
-                      <span>
-                        {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
-                        {Math.min(progress, 50)}% complete
+
+                  {progress === 100 && uploadInProgress ? (
+                    <div className="flex items-center justify-center mt-2 text-primary">
+                      <div className="flex space-x-1">
+                        <div
+                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        ></div>
+                        <div
+                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        ></div>
+                        <div
+                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        ></div>
+                      </div>
+                      <span className="ml-2 text-sm">
+                        Generating metadata...
                       </span>
-                    ) : (
-                      <span>
-                        Processed: {processedCount} of{" "}
-                        {isRegenerating
-                          ? (uploadResponse?.data.successfulImages.length ||
-                              0) + failedFiles.length
-                          : files.length}
-                      </span>
-                    )}
-                    {failedUploads.length > 0 && (
-                      <span className="text-destructive">
-                        Failed: {failedUploads.length}
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm mt-2">
+                      {uploadingStarted ? (
+                        <span>
+                          {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
+                          {Math.min(progress, 100)}% complete
+                        </span>
+                      ) : (
+                        <span>
+                          Processed: {processedCount} of{" "}
+                          {isRegenerating
+                            ? (uploadResponse?.data.successfulImages.length ||
+                                0) + failedFiles.length
+                            : files.length}
+                        </span>
+                      )}
+                      {failedUploads.length > 0 && (
+                        <span className="text-destructive">
+                          Failed: {failedUploads.length}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -839,6 +854,8 @@ export default function UploadForm() {
                     {uploadingStarted
                       ? isRegenerating
                         ? "Regenerating failed files..."
+                        : progress === 100
+                        ? "Upload complete, generating SEO metadata..."
                         : "Uploading files to server..."
                       : "Analyzing images and generating SEO metadata"}
                   </h4>

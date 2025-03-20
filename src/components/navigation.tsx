@@ -50,7 +50,7 @@ export async function Navigation() {
             <ImageIcon className="h-5 w-5 inline-block mr-2" /> Results
           </Link>
           <Link
-            href="/help"
+            href="/pricing"
             className="text-muted-foreground hover:text-foreground flex items-center"
           >
             <DollarSign className="h-5 w-5 inline-block mr-1" />
