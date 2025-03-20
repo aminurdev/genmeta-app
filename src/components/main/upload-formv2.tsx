@@ -11,6 +11,7 @@ import {
   Loader2,
   Trash2,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +77,8 @@ export default function UploadForm() {
   );
   const [showDetails, setShowDetails] = useState(false);
   const [uploadInProgress, setUploadInProgress] = useState(false);
+  const [failedFiles, setFailedFiles] = useState<File[]>([]);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Settings with local storage persistence
   const [settings, setSettings] = useState(() => {
@@ -163,6 +166,7 @@ export default function UploadForm() {
     setProcessedCount(0);
     setProgress(0);
     setFailedUploads([]);
+    setFailedFiles([]);
   };
 
   const cancelUpload = useCallback(async () => {
@@ -179,6 +183,195 @@ export default function UploadForm() {
     alert("Upload process canceled");
   }, []);
 
+  const regenerateFailedFiles = async () => {
+    if (failedFiles.length === 0) return;
+
+    setIsRegenerating(true);
+    setLoading(true);
+    setUploadingStarted(true);
+    setUploadInProgress(true);
+    setProgress(0);
+
+    const regenerateFiles = [...failedFiles];
+    setFailedFiles([]);
+
+    // Create a new batch ID for this regeneration attempt
+    const batchId = uploadResponse?.data.batchId || uuidv4();
+    console.log({ batchId });
+
+    try {
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
+      // Create FormData with failed files
+      const formData = new FormData();
+
+      // Append all failed files to the FormData
+      regenerateFiles.forEach((file) => {
+        formData.append("images", file);
+      });
+
+      // Add batch ID and settings to the form data
+      formData.append("batchId", batchId);
+      formData.append("titleLength", settings.titleLength.toString());
+      formData.append(
+        "descriptionLength",
+        settings.descriptionLength.toString()
+      );
+      formData.append("keywordCount", settings.keywordCount.toString());
+      formData.append("totalExpectedFiles", regenerateFiles.length.toString());
+      formData.append("isRegeneration", "true");
+
+      // Start upload with progress tracking
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
+      xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
+
+      // Track upload progress
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const uploadProgress = Math.round((event.loaded / event.total) * 50); // Upload is first 50%
+          setProgress(uploadProgress);
+        }
+      };
+
+      // Handle completion
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response: UploadResponse = JSON.parse(xhr.responseText);
+
+            console.log("Regeneration response:", response);
+
+            // Merge existing successful uploads with new successful uploads
+            const previousSuccessfulImages =
+              uploadResponse?.data.successfulImages || [];
+            const newSuccessfulImages = response.data.successfulImages;
+
+            // Update response with merged data
+            const mergedResponse = {
+              ...response,
+              data: {
+                ...response.data,
+                successfulImages: [
+                  ...previousSuccessfulImages,
+                  ...newSuccessfulImages,
+                ],
+              },
+            };
+
+            setUploadResponse(mergedResponse);
+
+            // Update successful uploads count (add to existing count)
+            const previousSuccessCount =
+              uploadResponse?.data.successfulImages.length || 0;
+            const newSuccessCount = response.data.successfulImages.length;
+            setProcessedCount(previousSuccessCount + newSuccessCount);
+
+            // Update failed uploads
+            if (response.data && response.data.failedImages) {
+              setFailedUploads(response.data.failedImages);
+
+              // Store failed files for potential future regeneration
+              const newFailedFiles = regenerateFiles.filter((file) =>
+                response.data.failedImages.some(
+                  (failed) => failed.filename === file.name
+                )
+              );
+              setFailedFiles(newFailedFiles);
+            } else {
+              setFailedUploads([]);
+              setFailedFiles([]);
+            }
+
+            setProgress(100);
+          } catch (error) {
+            console.error("Error parsing response:", error);
+            setFailedUploads([
+              {
+                filename: "Response parsing error",
+                error: "Failed to parse server response. Please try again.",
+              },
+            ]);
+            // Keep the failed files for potential retry
+            setFailedFiles(regenerateFiles);
+          }
+        } else {
+          // Handle error
+          console.error("Regeneration failed:", xhr.status, xhr.statusText);
+          console.error("Response text:", xhr.responseText);
+
+          try {
+            // Try to parse error response if it's JSON
+            const errorResponse = JSON.parse(xhr.responseText);
+            setFailedUploads([
+              {
+                filename: "Batch regeneration",
+                error:
+                  errorResponse.message ||
+                  `Server error: ${xhr.status} ${xhr.statusText}`,
+              },
+            ]);
+          } catch {
+            setFailedUploads([
+              {
+                filename: "Batch regeneration",
+                error: `Server error: ${xhr.status} ${xhr.statusText}`,
+              },
+            ]);
+          }
+
+          // Keep the failed files for potential retry
+          setFailedFiles(regenerateFiles);
+        }
+
+        setLoading(false);
+        setUploadingStarted(false);
+        setUploadInProgress(false);
+        setIsRegenerating(false);
+      };
+
+      // Handle errors
+      xhr.onerror = () => {
+        console.error("Network error during regeneration");
+        setFailedUploads([
+          {
+            filename: "Network error",
+            error:
+              "Connection failed. Please check your internet connection and try again.",
+          },
+        ]);
+        setLoading(false);
+        setUploadingStarted(false);
+        setUploadInProgress(false);
+        setProgress(0);
+        setIsRegenerating(false);
+
+        // Keep the failed files for potential retry
+        setFailedFiles(regenerateFiles);
+      };
+
+      // Start the upload
+      xhr.send(formData);
+    } catch (error) {
+      console.error("Error initiating regeneration:", error);
+      setFailedUploads([
+        {
+          filename: "Request failed",
+          error:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        },
+      ]);
+      setLoading(false);
+      setUploadingStarted(false);
+      setUploadInProgress(false);
+      setIsRegenerating(false);
+
+      // Keep the failed files for potential retry
+      setFailedFiles(regenerateFiles);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) {
@@ -193,6 +386,7 @@ export default function UploadForm() {
     setProcessedCount(0);
     setProgress(0);
     setFailedUploads([]);
+    setFailedFiles([]);
     setUploadInProgress(true);
 
     try {
@@ -219,7 +413,7 @@ export default function UploadForm() {
 
       // Start upload with progress tracking
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${baseApi}/test/upload/multiple`, true);
+      xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
       xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
       // Track upload progress
@@ -249,8 +443,17 @@ export default function UploadForm() {
             // Make sure we're correctly tracking failed uploads
             if (response.data && response.data.failedImages) {
               setFailedUploads(response.data.failedImages);
+
+              // Store failed files for potential regeneration
+              const newFailedFiles = files.filter((file) =>
+                response.data.failedImages.some(
+                  (failed) => failed.filename === file.name
+                )
+              );
+              setFailedFiles(newFailedFiles);
             } else {
               setFailedUploads([]);
+              setFailedFiles([]);
             }
 
             setProgress(100);
@@ -420,6 +623,7 @@ export default function UploadForm() {
                                 <img
                                   src={
                                     URL.createObjectURL(file) ||
+                                    "/placeholder.svg" ||
                                     "/placeholder.svg"
                                   }
                                   alt={file.name}
@@ -610,11 +814,16 @@ export default function UploadForm() {
                   <div className="flex justify-between text-sm mt-2">
                     {uploadingStarted ? (
                       <span>
-                        Uploading files {Math.min(progress, 50)}% complete
+                        {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
+                        {Math.min(progress, 50)}% complete
                       </span>
                     ) : (
                       <span>
-                        Processed: {processedCount} of {files.length}
+                        Processed: {processedCount} of{" "}
+                        {isRegenerating
+                          ? (uploadResponse?.data.successfulImages.length ||
+                              0) + failedFiles.length
+                          : files.length}
                       </span>
                     )}
                     {failedUploads.length > 0 && (
@@ -628,7 +837,9 @@ export default function UploadForm() {
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">
                     {uploadingStarted
-                      ? "Uploading files to server..."
+                      ? isRegenerating
+                        ? "Regenerating failed files..."
+                        : "Uploading files to server..."
                       : "Analyzing images and generating SEO metadata"}
                   </h4>
                   <p className="text-xs text-muted-foreground">
@@ -756,6 +967,17 @@ export default function UploadForm() {
           )}
           {!uploadInProgress && (
             <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+              {failedUploads.length > 0 && (
+                <Button
+                  variant="secondary"
+                  onClick={regenerateFailedFiles}
+                  className="sm:flex-1"
+                  disabled={isRegenerating}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry Failed Files
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={handleGenerateMore}
