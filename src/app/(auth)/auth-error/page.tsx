@@ -44,11 +44,11 @@ const AuthErrorCard = async ({
               Back to Login
             </Button>
           </Link>
-          <Link href="/support" className="w-full sm:w-auto">
+          <a href="mailto:helpgenmeta@gmail.com" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full">
               Contact Support
             </Button>
-          </Link>
+          </a>
         </CardFooter>
       </Card>
     </div>

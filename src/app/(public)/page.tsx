@@ -104,7 +104,7 @@ export default function HomePage() {
             <StepCard
               number="1"
               title="Sign Up"
-              description="Create your account and get 50 free tokens"
+              description="Create your account and get 20 free tokens"
             />
             <StepCard
               number="2"

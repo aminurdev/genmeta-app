@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useState, useCallback } from "react";
 import {
   Upload,
@@ -231,22 +233,60 @@ export default function UploadForm() {
       // Handle completion
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          const response: UploadResponse = JSON.parse(xhr.responseText);
+          try {
+            const response: UploadResponse = JSON.parse(xhr.responseText);
 
-          // Update state with response data
-          setUploadResponse(response);
-          setProcessedCount(response.data.successfulImages.length);
-          setFailedUploads(response.data.failedImages);
-          setProgress(100);
+            console.log("Upload response:", response);
+            setUploadResponse(response);
+
+            // Make sure we're correctly counting successful uploads
+            if (response.data && response.data.successfulImages) {
+              setProcessedCount(response.data.successfulImages.length);
+            } else {
+              setProcessedCount(0);
+            }
+
+            // Make sure we're correctly tracking failed uploads
+            if (response.data && response.data.failedImages) {
+              setFailedUploads(response.data.failedImages);
+            } else {
+              setFailedUploads([]);
+            }
+
+            setProgress(100);
+          } catch (error) {
+            console.error("Error parsing response:", error);
+            setFailedUploads([
+              {
+                filename: "Response parsing error",
+                error: "Failed to parse server response. Please try again.",
+              },
+            ]);
+          }
         } else {
           // Handle error
-          console.error("Upload failed:", xhr.statusText);
-          setFailedUploads([
-            {
-              filename: "Batch upload",
-              error: `Server error: ${xhr.status} ${xhr.statusText}`,
-            },
-          ]);
+          console.error("Upload failed:", xhr.status, xhr.statusText);
+          console.error("Response text:", xhr.responseText);
+
+          try {
+            // Try to parse error response if it's JSON
+            const errorResponse = JSON.parse(xhr.responseText);
+            setFailedUploads([
+              {
+                filename: "Batch upload",
+                error:
+                  errorResponse.message ||
+                  `Server error: ${xhr.status} ${xhr.statusText}`,
+              },
+            ]);
+          } catch {
+            setFailedUploads([
+              {
+                filename: "Batch upload",
+                error: `Server error: ${xhr.status} ${xhr.statusText}`,
+              },
+            ]);
+          }
         }
 
         setLoading(false);
@@ -378,7 +418,10 @@ export default function UploadForm() {
                             {file.type.startsWith("image/") ? (
                               <div className="w-full h-full flex items-center justify-center">
                                 <img
-                                  src={URL.createObjectURL(file)}
+                                  src={
+                                    URL.createObjectURL(file) ||
+                                    "/placeholder.svg"
+                                  }
                                   alt={file.name}
                                   className="max-h-full max-w-full object-contain"
                                 />

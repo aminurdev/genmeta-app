@@ -76,7 +76,7 @@ export default function HelpPage() {
               <h3 className="font-semibold mb-2">What are tokens?</h3>
               <p className="text-muted-foreground">
                 Tokens are our processing credits. Each image you process costs
-                1 token. New users get 50 free tokens to start.
+                1 token. New users get 20 free tokens to start.
               </p>
             </div>
             <div>
@@ -85,7 +85,7 @@ export default function HelpPage() {
               </h3>
               <p className="text-muted-foreground">
                 We currently support JPEG, PNG, and WebP image formats. Maximum
-                file size is 10MB per image.
+                file size is 25MB per image.
               </p>
             </div>
             <div>
@@ -117,7 +117,7 @@ export default function HelpPage() {
             support team is here to help.
           </p>
           <a
-            href="mailto:support@imageprocessor.com"
+            href="mailto:helpgenmeta@gmail.com"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Contact Support

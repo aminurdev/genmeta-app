@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { LifeBuoy, LogOut, UserCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User } from "@/types/user";
+import type { User } from "@/types/user";
 import { logout } from "@/services/auth-services";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 
 export function UserMenu({ user }: { user: User }) {
   const router = useRouter();
@@ -50,21 +50,26 @@ export function UserMenu({ user }: { user: User }) {
         )}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <Link href="/dashboard">
-            <DropdownMenuItem className="cursor-pointer">
-              <UserCircle />
+          <DropdownMenuItem asChild>
+            <Link
+              href="/dashboard"
+              className="cursor-pointer flex items-center gap-2 w-full"
+            >
+              <UserCircle className="h-4 w-4" />
               <span>Dashboard</span>
-            </DropdownMenuItem>
-          </Link>
-        </DropdownMenuGroup>{" "}
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuGroup>
-          {" "}
-          <Link href="mailto:helpgenmeta@gmail.com">
-            <DropdownMenuItem className="cursor-pointer">
-              <LifeBuoy />
+          <DropdownMenuItem asChild>
+            <a
+              href="mailto:helpgenmeta@gmail.com"
+              className="cursor-pointer flex items-center gap-2 w-full"
+            >
+              <LifeBuoy className="h-4 w-4" />
               <span>Support</span>
-            </DropdownMenuItem>
-          </Link>
+            </a>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
