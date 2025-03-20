@@ -10,9 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getCurrentUser } from "@/services/auth-services";
 import { getBaseApi } from "@/services/image-services";
 import { PackageOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -25,6 +26,7 @@ type Package = {
 };
 
 const PricingPage = () => {
+  const router = useRouter();
   const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +36,8 @@ const PricingPage = () => {
     try {
       setIsLoading(true);
       const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
-      if (!baseApi || !accessToken) {
+      if (!baseApi) {
         throw new Error("Authentication failed. Please log in again.");
       }
 
@@ -91,6 +92,11 @@ const PricingPage = () => {
       setIsPurchasing(true);
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
+      const user = await getCurrentUser();
+
+      if (!user) {
+        router.push("/login?redirectPath=pricing");
+      }
 
       if (!baseApi || !accessToken) {
         throw new Error("Authentication failed. Please log in.");
