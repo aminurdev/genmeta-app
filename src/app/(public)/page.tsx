@@ -15,8 +15,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="pt-20 pb-32 px-4 bg-muted/20">
-        <div className="max-w-7xl mx-auto text-center">
+      <section className="pt-20 pb-32 bg-muted/20">
+        <div className="max-w-7xl mx-auto text-center px-4">
           <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
             Transform Your Images with{" "}
             <span className="text-primary">AI Power</span>
@@ -34,6 +34,14 @@ export default function HomePage() {
               Try Demo
             </Link> */}
           </div>
+        </div>
+        <div className=" py-10">
+          <Image
+            src="/Assets/banner.png"
+            alt="Banner"
+            width={2000}
+            height={2000}
+          />
         </div>
       </section>
 
