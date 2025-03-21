@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type React from "react";
@@ -325,12 +326,23 @@ export default function UploadForm() {
             } else {
               try {
                 const errorResponse = JSON.parse(xhr.responseText);
-                reject(
-                  new Error(
-                    errorResponse.message ||
-                      `Server error: ${xhr.status} ${xhr.statusText}`
-                  )
-                );
+                if (
+                  errorResponse.status === "error" &&
+                  errorResponse.message === "invalid token"
+                ) {
+                  reject(
+                    new Error(
+                      "Authentication failed: Your session has expired. Please log in again."
+                    )
+                  );
+                } else {
+                  reject(
+                    new Error(
+                      errorResponse.message ||
+                        `Server error: ${xhr.status} ${xhr.statusText}`
+                    )
+                  );
+                }
               } catch {
                 reject(
                   new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
@@ -342,7 +354,7 @@ export default function UploadForm() {
           xhr.onerror = () => {
             reject(
               new Error(
-                "Connection failed. Please check your internet connection and try again."
+                "Server unavailable. Please check your internet connection and try again later."
               )
             );
           };
@@ -532,19 +544,6 @@ export default function UploadForm() {
         formData.append("totalExpectedFiles", files.length.toString());
 
         await handleFileUpload(formData);
-
-        // Toast notifications based on result
-        if (failedUploads.length === 0) {
-          toast.success("All images processed successfully!");
-        } else if (failedUploads.length === files.length) {
-          toast.error("All uploads failed. Please try again.");
-        } else {
-          toast.warning(
-            `${files.length - failedUploads.length} images processed. ${
-              failedUploads.length
-            } failed.`
-          );
-        }
       } catch (error) {
         console.error("Error initiating upload:", error);
         if (
@@ -655,7 +654,44 @@ export default function UploadForm() {
     );
   }, [tokens, files.length, hasInsufficientTokens]);
 
-  // Modal content
+  const renderErrorContent = useCallback(() => {
+    let errorMessage = "An unknown error occurred";
+    let errorIcon = <AlertCircle className="h-8 w-8 text-destructive" />;
+
+    // Extract error message from failed uploads
+    if (failedUploads.length > 0) {
+      errorMessage = failedUploads[0].error;
+
+      // Check for specific error types
+      if (
+        errorMessage.includes("invalid token") ||
+        errorMessage.includes("Authentication failed")
+      ) {
+        errorMessage = "Your session has expired. Please log in again.";
+        errorIcon = <XCircle className="h-8 w-8 text-destructive" />;
+      } else if (
+        errorMessage.includes("Server unavailable") ||
+        errorMessage.includes("internet connection")
+      ) {
+        errorIcon = <AlertTriangle className="h-8 w-8 text-amber-500" />;
+      }
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-full bg-red-100 p-3 w-16 h-16 mx-auto flex items-center justify-center">
+          {errorIcon}
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-destructive">
+            Processing Failed
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
+        </div>
+      </div>
+    );
+  }, [failedUploads]);
+
   const renderProcessingContent = useCallback(() => {
     return (
       <div className="space-y-6">
@@ -1090,12 +1126,19 @@ export default function UploadForm() {
                   ? "Upload Complete"
                   : uploadStatus === "partialSuccess"
                   ? "Partially Completed"
+                  : failedUploads.length > 0 &&
+                    failedUploads[0].error.includes("Server unavailable")
+                  ? "Server Unavailable"
+                  : failedUploads.length > 0 &&
+                    (failedUploads[0].error.includes("invalid token") ||
+                      failedUploads[0].error.includes("Authentication"))
+                  ? "Authentication Error"
                   : "Upload Failed"}
               </AlertDialogTitle>
               {!uploadInProgress && (
                 <button
                   onClick={() => setShowModal(false)}
-                  className="rounded-full p-1  transition-colors  bg-destructive/10"
+                  className="rounded-full p-1 transition-colors bg-destructive/10"
                   aria-label="Close modal"
                 >
                   <X className="h-4 w-4 text-destructive" />
@@ -1106,10 +1149,23 @@ export default function UploadForm() {
           <div className="py-4">
             {uploadInProgress
               ? renderProcessingContent()
-              : renderCompletionContent()}
+              : uploadStatus === "allSuccess" ||
+                uploadStatus === "partialSuccess"
+              ? renderCompletionContent()
+              : renderErrorContent()}
           </div>
-          {/* Failed uploads section */}
-          {!uploadInProgress && renderFailedUploads()}
+
+          {/* Failed uploads section - only show detailed failures if not a token/server error */}
+          {!uploadInProgress &&
+            uploadStatus !== "allSuccess" &&
+            !failedUploads.some(
+              (f) =>
+                f.error.includes("invalid token") ||
+                f.error.includes("Authentication") ||
+                f.error.includes("Server unavailable")
+            ) &&
+            renderFailedUploads()}
+
           {uploadInProgress ? (
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setShowConfirmDialog(true)}>
@@ -1118,17 +1174,51 @@ export default function UploadForm() {
             </AlertDialogFooter>
           ) : (
             <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-              {failedUploads.length > 0 && (
-                <Button
-                  variant="secondary"
-                  onClick={regenerateFailedFiles}
-                  className="sm:flex-1"
-                  disabled={isRegenerating}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Retry Failed Files
+              {failedUploads.length > 0 &&
+                !failedUploads.some(
+                  (f) =>
+                    f.error.includes("invalid token") ||
+                    f.error.includes("Authentication") ||
+                    f.error.includes("Server unavailable")
+                ) && (
+                  <Button
+                    variant="secondary"
+                    onClick={regenerateFailedFiles}
+                    className="sm:flex-1"
+                    disabled={isRegenerating}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry Failed Files
+                  </Button>
+                )}
+
+              {/* For authentication errors, provide a login button */}
+              {failedUploads.some(
+                (f) =>
+                  f.error.includes("invalid token") ||
+                  f.error.includes("Authentication")
+              ) && (
+                <Button type="button" asChild className="sm:flex-1">
+                  <Link href="/login">Log In Again</Link>
                 </Button>
               )}
+
+              {/* For server unavailable errors, provide a retry button */}
+              {failedUploads.some((f) =>
+                f.error.includes("Server unavailable")
+              ) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowModal(false);
+                    setFailedUploads([]);
+                  }}
+                  className="sm:flex-1"
+                >
+                  Try Again Later
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 onClick={handleGenerateMore}
@@ -1136,9 +1226,12 @@ export default function UploadForm() {
               >
                 Process More Images
               </Button>
-              <Button type="button" asChild className="sm:flex-1">
-                <Link href="/results">View Results</Link>
-              </Button>
+
+              {uploadStatus !== "allFailed" && (
+                <Button type="button" asChild className="sm:flex-1">
+                  <Link href="/results">View Results</Link>
+                </Button>
+              )}
             </AlertDialogFooter>
           )}
         </AlertDialogContent>
