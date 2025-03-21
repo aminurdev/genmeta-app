@@ -149,38 +149,11 @@ export const getCurrentUser = async () => {
 
 export const logout = async () => {
   try {
-    const accessToken = await getAccessToken();
-
-    const response = await fetch(`${baseApi}/users/logout`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      console.error(
-        `Logout failed: ${response.status} - ${response.statusText}`
-      );
-      return { success: false, message: "Logout failed. Please try again." };
-    }
-
-    const result = await response.json();
-
-    if (result.success) {
-      const userCookies = await cookies();
-      userCookies.delete("accessToken");
-      userCookies.delete("refreshToken");
-
-      return { success: true, message: "Logged out successfully." };
-    } else {
-      return { success: false, message: result.message || "Logout failed." };
-    }
-  } catch (error) {
-    console.error("Error during logout:", error);
     const userCookies = await cookies();
     userCookies.delete("accessToken");
     userCookies.delete("refreshToken");
+  } catch (error) {
+    console.error("Error during logout:", error);
     return { success: false, message: "An unexpected error occurred." };
   }
 };
