@@ -542,8 +542,18 @@ export default function UploadForm() {
     <form onSubmit={handleSubmit}>
       <Tabs defaultValue="upload" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upload">Upload Images</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger
+            value="upload"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white"
+          >
+            Upload Images
+          </TabsTrigger>
+          <TabsTrigger
+            value="settings"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white"
+          >
+            Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="mt-4">
@@ -650,7 +660,7 @@ export default function UploadForm() {
 
         <TabsContent value="settings" className="mt-4">
           <Card>
-            <CardContent className="pt-6 space-y-6">
+            <CardContent className="pt-6 space-y-10">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <h3 className="font-medium">Metadata Settings</h3>
@@ -661,7 +671,7 @@ export default function UploadForm() {
                 <Settings className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label htmlFor="title-length">Title Length</Label>
@@ -719,8 +729,8 @@ export default function UploadForm() {
                   </div>
                   <Slider
                     id="keyword-count"
-                    min={5}
-                    max={60}
+                    min={10}
+                    max={50}
                     step={1}
                     value={[settings.keywordCount]}
                     onValueChange={(value) =>
