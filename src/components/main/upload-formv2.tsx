@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   Upload,
   X,
@@ -12,6 +12,10 @@ import {
   Trash2,
   ChevronRight,
   RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,65 +23,69 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from "next/link";
-import { getBaseApi, getAccessToken } from "@/services/image-services";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-
-// Response type definition
-interface UploadResponse {
-  success: boolean;
-  message: string;
-  data: {
-    _id: string;
-    userId: string;
-    batchId: string;
-    successfulImages: {
-      imageName: string;
-      imageUrl: string;
-      size: number;
-      metadata: {
-        title: string;
-        description: string;
-        keywords: string[];
-      };
-    }[];
-    failedImages: {
-      filename: string;
-      error: string;
-    }[];
-    remainingTokens: number;
-  };
-}
+import Link from "next/link";
+import { getBaseApi, getAccessToken } from "@/services/image-services";
+import { toast } from "sonner";
+import type { UploadResponse, UserPlanData } from "@/types/metadata";
 
 export default function UploadForm() {
+  // Core states
+  const [files, setFiles] = useState<File[]>([]);
+  const [tokens, setTokens] = useState<UserPlanData | null>(null);
+
+  // UI states
+  const [isDragging, setIsDragging] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [tabValue, setTabValue] = useState("upload");
+
+  // Processing states
   const [loading, setLoading] = useState(false);
   const [uploadingStarted, setUploadingStarted] = useState(false);
-  const [processedCount, setProcessedCount] = useState<number>(0);
-  const [files, setFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [uploadInProgress, setUploadInProgress] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isPending, setIsPending] = useState(true);
   const [progress, setProgress] = useState<number>(0);
-  const [failedUploads, setFailedUploads] = useState<
-    { filename: string; error: string }[]
-  >([]);
+  const [processedCount, setProcessedCount] = useState<number>(0);
+
+  // Dialog states
+  const [showModal, setShowModal] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [inSufficientTokenModal, setInSufficientTokenModal] = useState(false);
+
+  // Result states
   const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(
     null
   );
-  const [showDetails, setShowDetails] = useState(false);
-  const [uploadInProgress, setUploadInProgress] = useState(false);
+  const [failedUploads, setFailedUploads] = useState<
+    { filename: string; error: string }[]
+  >([]);
   const [failedFiles, setFailedFiles] = useState<File[]>([]);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // XHR reference for cancellation
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Settings with local storage persistence
   const [settings, setSettings] = useState(() => {
@@ -98,432 +106,47 @@ export default function UploadForm() {
     };
   });
 
+  // Fetch user tokens
+  const fetchUserTokens = useCallback(async () => {
+    try {
+      setIsPending(true);
+      const baseAPi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      const response = await fetch(`${baseAPi}/users/tokens`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user tokens");
+      }
+
+      const data = await response.json();
+      setTokens(data.data);
+      return data.data;
+    } catch (error) {
+      console.error("Error fetching user tokens:", error);
+      toast.error("Could not load available tokens");
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
+
+  // Fetch tokens on mount
+  useEffect(() => {
+    fetchUserTokens();
+  }, [fetchUserTokens]);
+
+  // Save settings to local storage
   useEffect(() => {
     localStorage.setItem("imageSeoSettings", JSON.stringify(settings));
   }, [settings]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).filter((file) =>
-        file.type.startsWith("image/")
-      );
-
-      // Check if adding new files would exceed the 100 file limit
-      if (files.length + newFiles.length > 100) {
-        alert(
-          "Maximum 100 images allowed. Please remove some files before adding more."
-        );
-        return;
-      }
-
-      setFiles((prev) => [...prev, ...newFiles]);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files) {
-      const newFiles = Array.from(e.dataTransfer.files).filter((file) =>
-        file.type.startsWith("image/")
-      );
-
-      // Check if adding new files would exceed the 100 file limit
-      if (files.length + newFiles.length > 100) {
-        alert(
-          "Maximum 100 images allowed. Please remove some files before adding more."
-        );
-        return;
-      }
-
-      setFiles((prev) => [...prev, ...newFiles]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-  };
-
-  const clearAllFiles = () => {
-    setFiles([]);
-  };
-
-  const handleGenerateMore = () => {
-    setFiles([]);
-    setShowModal(false);
-    setUploadResponse(null);
-    setProcessedCount(0);
-    setProgress(0);
-    setFailedUploads([]);
-    setFailedFiles([]);
-  };
-
-  const cancelUpload = useCallback(async () => {
-    // In a real implementation, you would abort the fetch requests
-    setShowConfirmDialog(false);
-    setShowModal(false);
-    setLoading(false);
-    setUploadingStarted(false);
-    setUploadInProgress(false);
-
-    // If you have an abort controller setup, you would trigger it here
-
-    // Notify the user
-    alert("Upload process canceled");
-  }, []);
-
-  const regenerateFailedFiles = async () => {
-    if (failedFiles.length === 0) return;
-
-    setIsRegenerating(true);
-    setLoading(true);
-    setUploadingStarted(true);
-    setUploadInProgress(true);
-    setProgress(0);
-
-    const regenerateFiles = [...failedFiles];
-    setFailedFiles([]);
-
-    // Create a new batch ID for this regeneration attempt
-    const batchId = uploadResponse?.data.batchId ?? "";
-
-    try {
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      // Create FormData with failed files
-      const formData = new FormData();
-
-      // Append all failed files to the FormData
-      regenerateFiles.forEach((file) => {
-        formData.append("images", file);
-      });
-
-      // Add batch ID and settings to the form data
-      formData.append("batchId", batchId);
-      formData.append("titleLength", settings.titleLength.toString());
-      formData.append(
-        "descriptionLength",
-        settings.descriptionLength.toString()
-      );
-      formData.append("keywordCount", settings.keywordCount.toString());
-      formData.append("totalExpectedFiles", regenerateFiles.length.toString());
-      formData.append("isRegeneration", "true");
-
-      // Start upload with progress tracking
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
-      xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
-
-      // Track upload progress
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const uploadProgress = Math.round((event.loaded / event.total) * 100);
-          setProgress(uploadProgress);
-        }
-      };
-
-      // Handle completion
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response: UploadResponse = JSON.parse(xhr.responseText);
-
-            // Merge existing successful uploads with new successful uploads
-            const previousSuccessfulImages =
-              uploadResponse?.data.successfulImages || [];
-            const newSuccessfulImages = response.data.successfulImages;
-
-            // Update response with merged data
-            const mergedResponse = {
-              ...response,
-              data: {
-                ...response.data,
-                successfulImages: [
-                  ...previousSuccessfulImages,
-                  ...newSuccessfulImages,
-                ],
-              },
-            };
-
-            setUploadResponse(mergedResponse);
-
-            // Update successful uploads count (add to existing count)
-            const previousSuccessCount =
-              uploadResponse?.data.successfulImages.length || 0;
-            const newSuccessCount = response.data.successfulImages.length;
-            setProcessedCount(previousSuccessCount + newSuccessCount);
-
-            // Update failed uploads
-            if (response.data && response.data.failedImages) {
-              setFailedUploads(response.data.failedImages);
-
-              // Store failed files for potential future regeneration
-              const newFailedFiles = regenerateFiles.filter((file) =>
-                response.data.failedImages.some(
-                  (failed) => failed.filename === file.name
-                )
-              );
-              setFailedFiles(newFailedFiles);
-            } else {
-              setFailedUploads([]);
-              setFailedFiles([]);
-            }
-
-            setProgress(100);
-          } catch (error) {
-            console.error("Error parsing response:", error);
-            setFailedUploads([
-              {
-                filename: "Response parsing error",
-                error: "Failed to parse server response. Please try again.",
-              },
-            ]);
-            // Keep the failed files for potential retry
-            setFailedFiles(regenerateFiles);
-          }
-        } else {
-          // Handle error
-          console.error("Regeneration failed:", xhr.status, xhr.statusText);
-          console.error("Response text:", xhr.responseText);
-
-          try {
-            // Try to parse error response if it's JSON
-            const errorResponse = JSON.parse(xhr.responseText);
-            setFailedUploads([
-              {
-                filename: "Batch regeneration",
-                error:
-                  errorResponse.message ||
-                  `Server error: ${xhr.status} ${xhr.statusText}`,
-              },
-            ]);
-          } catch {
-            setFailedUploads([
-              {
-                filename: "Batch regeneration",
-                error: `Server error: ${xhr.status} ${xhr.statusText}`,
-              },
-            ]);
-          }
-
-          // Keep the failed files for potential retry
-          setFailedFiles(regenerateFiles);
-        }
-
-        setLoading(false);
-        setUploadingStarted(false);
-        setUploadInProgress(false);
-        setIsRegenerating(false);
-      };
-
-      // Handle errors
-      xhr.onerror = () => {
-        console.error("Network error during regeneration");
-        setFailedUploads([
-          {
-            filename: "Network error",
-            error:
-              "Connection failed. Please check your internet connection and try again.",
-          },
-        ]);
-        setLoading(false);
-        setUploadingStarted(false);
-        setUploadInProgress(false);
-        setProgress(0);
-        setIsRegenerating(false);
-
-        // Keep the failed files for potential retry
-        setFailedFiles(regenerateFiles);
-      };
-
-      // Start the upload
-      xhr.send(formData);
-    } catch (error) {
-      console.error("Error initiating regeneration:", error);
-      setFailedUploads([
-        {
-          filename: "Request failed",
-          error:
-            error instanceof Error ? error.message : "Unknown error occurred",
-        },
-      ]);
-      setLoading(false);
-      setUploadingStarted(false);
-      setUploadInProgress(false);
-      setIsRegenerating(false);
-
-      // Keep the failed files for potential retry
-      setFailedFiles(regenerateFiles);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (files.length === 0) {
-      alert("Please upload at least one image");
-      return;
-    }
-
-    setLoading(true);
-    setUploadingStarted(true);
-    setShowModal(true);
-    setProcessedCount(0);
-    setProgress(0);
-    setFailedUploads([]);
-    setFailedFiles([]);
-    setUploadInProgress(true);
-
-    try {
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      // Create FormData with all files and metadata
-      const formData = new FormData();
-
-      // Append all files to the FormData object
-      files.forEach((file) => {
-        formData.append("images", file);
-      });
-
-      formData.append("titleLength", settings.titleLength.toString());
-      formData.append(
-        "descriptionLength",
-        settings.descriptionLength.toString()
-      );
-      formData.append("keywordCount", settings.keywordCount.toString());
-      formData.append("totalExpectedFiles", files.length.toString());
-
-      // Start upload with progress tracking
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
-      xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
-
-      // Track upload progress
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const uploadProgress = Math.round((event.loaded / event.total) * 100);
-          setProgress(uploadProgress);
-        }
-      };
-
-      // Handle completion
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response: UploadResponse = JSON.parse(xhr.responseText);
-
-            setUploadResponse(response);
-
-            // Make sure we're correctly counting successful uploads
-            if (response.data && response.data.successfulImages) {
-              setProcessedCount(response.data.successfulImages.length);
-            } else {
-              setProcessedCount(0);
-            }
-
-            // Make sure we're correctly tracking failed uploads
-            if (response.data && response.data.failedImages) {
-              setFailedUploads(response.data.failedImages);
-
-              // Store failed files for potential regeneration
-              const newFailedFiles = files.filter((file) =>
-                response.data.failedImages.some(
-                  (failed) => failed.filename === file.name
-                )
-              );
-              setFailedFiles(newFailedFiles);
-            } else {
-              setFailedUploads([]);
-              setFailedFiles([]);
-            }
-
-            setProgress(100);
-          } catch (error) {
-            console.error("Error parsing response:", error);
-            setFailedUploads([
-              {
-                filename: "Response parsing error",
-                error: "Failed to parse server response. Please try again.",
-              },
-            ]);
-          }
-        } else {
-          // Handle error
-          console.error("Upload failed:", xhr.status, xhr.statusText);
-          console.error("Response text:", xhr.responseText);
-
-          try {
-            // Try to parse error response if it's JSON
-            const errorResponse = JSON.parse(xhr.responseText);
-            setFailedUploads([
-              {
-                filename: "Batch upload",
-                error:
-                  errorResponse.message ||
-                  `Server error: ${xhr.status} ${xhr.statusText}`,
-              },
-            ]);
-          } catch {
-            setFailedUploads([
-              {
-                filename: "Batch upload",
-                error: `Server error: ${xhr.status} ${xhr.statusText}`,
-              },
-            ]);
-          }
-        }
-
-        setLoading(false);
-        setUploadingStarted(false);
-        setUploadInProgress(false);
-      };
-
-      // Handle errors
-      xhr.onerror = () => {
-        console.error("Network error during upload");
-        setFailedUploads([
-          {
-            filename: "Network error",
-            error:
-              "Connection failed. Please check your internet connection and try again.",
-          },
-        ]);
-        setLoading(false);
-        setUploadingStarted(false);
-        setUploadInProgress(false);
-        setProgress(0);
-      };
-
-      // Start the upload
-      xhr.send(formData);
-    } catch (error) {
-      console.error("Error initiating upload:", error);
-      setFailedUploads([
-        {
-          filename: "Request failed",
-          error:
-            error instanceof Error ? error.message : "Unknown error occurred",
-        },
-      ]);
-      setLoading(false);
-      setUploadingStarted(false);
-      setUploadInProgress(false);
-    }
-  };
-
+  // Handle page unload during processing
   useEffect(() => {
-    // Handle page unload during processing
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (uploadInProgress) {
         e.preventDefault();
@@ -538,34 +161,753 @@ export default function UploadForm() {
     };
   }, [uploadInProgress]);
 
+  // Derived state
+  const hasInsufficientTokens = useMemo(() => {
+    if (!tokens || files.length === 0) return false;
+    return tokens.availableTokens < files.length;
+  }, [tokens, files.length]);
+
+  // Determine upload status for UI
+  const uploadStatus = useMemo(() => {
+    if (!uploadResponse) return "none";
+
+    const totalFiles = files.length;
+    const failedCount = failedUploads.length;
+
+    if (failedCount === totalFiles) return "allFailed";
+    if (failedCount > 0) return "partialSuccess";
+    return "allSuccess";
+  }, [uploadResponse, files.length, failedUploads.length]);
+
+  // File management handlers
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const newFiles = Array.from(e.target.files).filter((file) =>
+          file.type.startsWith("image/")
+        );
+
+        // Check if adding new files would exceed the 100 file limit
+        if (files.length + newFiles.length > 100) {
+          toast.error(
+            "Maximum 100 images allowed. Please remove some files before adding more."
+          );
+          return;
+        }
+
+        setFiles((prev) => [...prev, ...newFiles]);
+      }
+    },
+    [files.length]
+  );
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((files) => files.filter((_, i) => i !== index));
+  }, []);
+
+  const clearAllFiles = useCallback(() => {
+    setFiles([]);
+  }, []);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+
+      if (e.dataTransfer.files) {
+        const newFiles = Array.from(e.dataTransfer.files).filter((file) =>
+          file.type.startsWith("image/")
+        );
+
+        // Check if adding new files would exceed the 100 file limit
+        if (files.length + newFiles.length > 100) {
+          toast.error(
+            "Maximum 100 images allowed. Please remove some files before adding more."
+          );
+          return;
+        }
+
+        setFiles((prev) => [...prev, ...newFiles]);
+      }
+    },
+    [files.length]
+  );
+
+  // Click to open file dialog
+  const triggerFileInput = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Only trigger if the click is directly on the container, not on its children
+      if (e.target === e.currentTarget && fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    },
+    []
+  );
+
+  // Upload handlers
+  const handleGenerateMore = useCallback(() => {
+    setFiles([]);
+    setShowModal(false);
+    setUploadResponse(null);
+    setProcessedCount(0);
+    setProgress(0);
+    setFailedUploads([]);
+    setFailedFiles([]);
+  }, []);
+
+  const cancelUpload = useCallback(() => {
+    // Abort the XHR request if it exists
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      xhrRef.current = null;
+    }
+
+    setShowConfirmDialog(false);
+    setShowModal(false);
+    setLoading(false);
+    setUploadingStarted(false);
+    setUploadInProgress(false);
+    toast.info("Upload process cancelled");
+  }, []);
+
+  const handleFileUpload = useCallback(
+    async (formData: FormData, isRegeneration = false) => {
+      try {
+        const baseApi = await getBaseApi();
+        const accessToken = await getAccessToken();
+
+        // Create XHR for progress tracking
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr; // Store reference for cancellation
+
+        xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
+        xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
+
+        xhr.timeout = 3600000;
+        xhr.ontimeout = () => {
+          toast.error(
+            "The request timed out. Please try with fewer or smaller images."
+          );
+          setUploadInProgress(false);
+          setLoading(false);
+        };
+
+        // Track upload progress
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const uploadProgress = Math.round(
+              (event.loaded / event.total) * 100
+            );
+            setProgress(uploadProgress);
+          }
+        };
+
+        // Set up promise for completion
+        const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const response: UploadResponse = JSON.parse(xhr.responseText);
+                resolve(response);
+              } catch {
+                reject(new Error("Failed to parse server response"));
+              }
+            } else {
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                reject(
+                  new Error(
+                    errorResponse.message ||
+                      `Server error: ${xhr.status} ${xhr.statusText}`
+                  )
+                );
+              } catch {
+                reject(
+                  new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
+                );
+              }
+            }
+          };
+
+          xhr.onerror = () => {
+            reject(
+              new Error(
+                "Connection failed. Please check your internet connection and try again."
+              )
+            );
+          };
+
+          xhr.onabort = () => {
+            reject(new Error("Upload cancelled by user"));
+          };
+        });
+
+        // Start the upload
+        xhr.send(formData);
+
+        // Wait for completion
+        const response = await uploadPromise;
+
+        // Process upload response
+        if (isRegeneration) {
+          // For regeneration, merge with existing data
+          const previousSuccessfulImages =
+            uploadResponse?.data.successfulImages || [];
+          const newSuccessfulImages = response.data.successfulImages;
+
+          const mergedResponse = {
+            ...response,
+            data: {
+              ...response.data,
+              successfulImages: [
+                ...previousSuccessfulImages,
+                ...newSuccessfulImages,
+              ],
+            },
+          };
+
+          setUploadResponse(mergedResponse);
+
+          // Update successful uploads count (add to existing count)
+          const previousSuccessCount =
+            uploadResponse?.data.successfulImages.length || 0;
+          const newSuccessCount = response.data.successfulImages.length;
+          setProcessedCount(previousSuccessCount + newSuccessCount);
+        } else {
+          setUploadResponse(response);
+          setProcessedCount(response.data.successfulImages.length);
+        }
+
+        // Process failed uploads
+        if (
+          response.data.failedImages &&
+          response.data.failedImages.length > 0
+        ) {
+          setFailedUploads(response.data.failedImages);
+
+          // Store failed files for potential regeneration
+          const filesToRegenerate = isRegeneration ? failedFiles : files;
+          const newFailedFiles = filesToRegenerate.filter((file) =>
+            response.data.failedImages.some(
+              (failed) => failed.filename === file.name
+            )
+          );
+          setFailedFiles(newFailedFiles);
+        } else {
+          setFailedUploads([]);
+          setFailedFiles([]);
+        }
+
+        setProgress(100);
+        xhrRef.current = null;
+        return response;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+
+        // Don't set failed uploads if it was a user cancellation
+        if (errorMessage !== "Upload cancelled by user") {
+          setFailedUploads([
+            {
+              filename: isRegeneration ? "Batch regeneration" : "Batch upload",
+              error: errorMessage,
+            },
+          ]);
+        }
+
+        xhrRef.current = null;
+        throw error;
+      }
+    },
+    [failedFiles, files, uploadResponse]
+  );
+
+  const regenerateFailedFiles = useCallback(async () => {
+    if (failedFiles.length === 0) return;
+
+    setIsRegenerating(true);
+    setLoading(true);
+    setUploadingStarted(true);
+    setUploadInProgress(true);
+    setProgress(0);
+
+    // Use the failed files for regeneration
+    const regenerateFiles = [...failedFiles];
+
+    try {
+      // Create FormData with failed files
+      const formData = new FormData();
+
+      // Append all failed files
+      regenerateFiles.forEach((file) => {
+        formData.append("images", file);
+      });
+
+      // Add batch ID and settings
+      formData.append("batchId", uploadResponse?.data.batchId ?? "");
+      formData.append("titleLength", settings.titleLength.toString());
+      formData.append(
+        "descriptionLength",
+        settings.descriptionLength.toString()
+      );
+      formData.append("keywordCount", settings.keywordCount.toString());
+      formData.append("totalExpectedFiles", regenerateFiles.length.toString());
+      formData.append("isRegeneration", "true");
+
+      await handleFileUpload(formData, true);
+      toast.success(
+        `Successfully regenerated ${
+          regenerateFiles.length - failedFiles.length
+        } files`
+      );
+    } catch (error) {
+      console.error("Error during regeneration:", error);
+      if (
+        error instanceof Error &&
+        error.message !== "Upload cancelled by user"
+      ) {
+        toast.error("Failed to regenerate files");
+        // Keep the failed files for potential retry
+        setFailedFiles(regenerateFiles);
+      }
+    } finally {
+      setLoading(false);
+      setUploadingStarted(false);
+      setUploadInProgress(false);
+      setIsRegenerating(false);
+    }
+  }, [failedFiles, handleFileUpload, settings, uploadResponse?.data.batchId]);
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (files.length === 0) {
+        toast.error("Please upload at least one image");
+        return;
+      }
+
+      // Check if user has enough tokens
+      if (hasInsufficientTokens) {
+        setInSufficientTokenModal(true);
+        return;
+      }
+
+      // Setup UI state
+      setLoading(true);
+      setUploadingStarted(true);
+      setShowModal(true);
+      setProcessedCount(0);
+      setProgress(0);
+      setFailedUploads([]);
+      setFailedFiles([]);
+      setUploadInProgress(true);
+
+      try {
+        // Create FormData with all files and metadata
+        const formData = new FormData();
+
+        // Append all files
+        files.forEach((file) => {
+          formData.append("images", file);
+        });
+
+        // Append settings
+        formData.append("titleLength", settings.titleLength.toString());
+        formData.append(
+          "descriptionLength",
+          settings.descriptionLength.toString()
+        );
+        formData.append("keywordCount", settings.keywordCount.toString());
+        formData.append("totalExpectedFiles", files.length.toString());
+
+        await handleFileUpload(formData);
+
+        // Toast notifications based on result
+        if (failedUploads.length === 0) {
+          toast.success("All images processed successfully!");
+        } else if (failedUploads.length === files.length) {
+          toast.error("All uploads failed. Please try again.");
+        } else {
+          toast.warning(
+            `${files.length - failedUploads.length} images processed. ${
+              failedUploads.length
+            } failed.`
+          );
+        }
+      } catch (error) {
+        console.error("Error initiating upload:", error);
+        if (
+          error instanceof Error &&
+          error.message !== "Upload cancelled by user"
+        ) {
+          toast.error("Upload failed. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+        setUploadingStarted(false);
+        setUploadInProgress(false);
+      }
+    },
+    [files, handleFileUpload, hasInsufficientTokens, settings]
+  );
+
+  // Renderers for different UI sections
+  const renderFileGrid = useCallback(() => {
+    if (files.length === 0) return null;
+
+    return (
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium flex items-center">
+            Selected Images
+            <Badge variant="secondary" className="ml-2">
+              {files.length}
+            </Badge>
+          </h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearAllFiles}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear All
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {files.map((file, index) => (
+            <div key={index} className="relative group">
+              <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden transition-all hover:shadow-md">
+                <div className="relative w-full h-full">
+                  {file.type.startsWith("image/") ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={URL.createObjectURL(file) || "/placeholder.svg"}
+                        alt={file.name}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFile(index)}
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                aria-label={`Remove ${file.name}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <p className="text-xs mt-1 ellipsis-clamp" title={file.name}>
+                {file.name}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }, [files, clearAllFiles, removeFile]);
+
+  const renderTokenInfo = useCallback(() => {
+    if (!tokens) return null;
+
+    return (
+      <div className="mt-4 flex justify-between items-center p-3 bg-muted rounded-md">
+        <div>
+          <span className="text-sm font-medium">Available Tokens: </span>
+          <span
+            className={`text-sm ${
+              hasInsufficientTokens ? "text-destructive" : ""
+            }`}
+          >
+            {tokens.availableTokens}
+          </span>
+        </div>
+        {files.length > 0 && (
+          <div>
+            <span className="text-sm font-medium">Added: </span>
+            <span
+              className={`text-sm ${
+                hasInsufficientTokens ? "text-destructive" : "text-green-600"
+              }`}
+            >
+              {files.length}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }, [tokens, files.length, hasInsufficientTokens]);
+
+  // Modal content
+  const renderProcessingContent = useCallback(() => {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Overall Progress</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+
+          {progress === 100 && uploadInProgress ? (
+            <div className="flex items-center justify-center mt-2 text-primary">
+              <div className="flex space-x-1">
+                <div
+                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                  style={{ animationDelay: "0ms" }}
+                ></div>
+                <div
+                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                ></div>
+                <div
+                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                ></div>
+              </div>
+              <span className="ml-2 text-sm">Generating metadata...</span>
+            </div>
+          ) : (
+            <div className="flex justify-between text-sm mt-2">
+              {uploadingStarted ? (
+                <span>
+                  {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
+                  {Math.min(progress, 100)}% complete
+                </span>
+              ) : (
+                <span>
+                  Processed: {processedCount} of{" "}
+                  {isRegenerating
+                    ? (uploadResponse?.data.successfulImages.length || 0) +
+                      failedFiles.length
+                    : files.length}
+                </span>
+              )}
+              {failedUploads.length > 0 && (
+                <span className="text-destructive">
+                  Failed: {failedUploads.length}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">
+            {uploadingStarted
+              ? isRegenerating
+                ? "Regenerating failed files..."
+                : progress === 100
+                ? "Upload complete, generating SEO metadata..."
+                : "Uploading files to server..."
+              : "Analyzing images and generating SEO metadata"}
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            This process may take several minutes for large batches
+          </p>
+        </div>
+      </div>
+    );
+  }, [
+    progress,
+    uploadInProgress,
+    uploadingStarted,
+    processedCount,
+    isRegenerating,
+    uploadResponse?.data?.successfulImages?.length,
+    failedFiles.length,
+    failedUploads.length,
+    files.length,
+  ]);
+
+  const renderCompletionContent = useCallback(() => {
+    // Determine icon and message based on upload status
+    let icon = <CheckCircle2 className="h-8 w-8 text-green-600" />;
+    let statusColor = "bg-green-100";
+    let statusText = "Processing complete!";
+    let statusTextColor = "text-green-600";
+
+    if (uploadStatus === "allFailed") {
+      icon = <XCircle className="h-8 w-8 text-destructive" />;
+      statusColor = "bg-red-100";
+      statusText = "Processing failed";
+      statusTextColor = "text-destructive";
+    } else if (uploadStatus === "partialSuccess") {
+      icon = <AlertTriangle className="h-8 w-8 text-amber-500" />;
+      statusColor = "bg-amber-100";
+      statusText = "Partially completed";
+      statusTextColor = "text-amber-600";
+    }
+
+    return (
+      <div className="space-y-4">
+        <div
+          className={`rounded-full ${statusColor} p-3 w-16 h-16 mx-auto flex items-center justify-center`}
+        >
+          {icon}
+        </div>
+        <div className="text-center">
+          <p className={`text-lg font-semibold ${statusTextColor}`}>
+            {statusText}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {uploadResponse ? (
+              <>
+                {uploadResponse.data.successfulImages.length} of {files.length}{" "}
+                images processed successfully
+              </>
+            ) : (
+              <>
+                {processedCount} of {files.length} images processed successfully
+              </>
+            )}
+          </p>
+          {failedUploads.length > 0 && (
+            <p className="mt-1 text-sm text-destructive">
+              {failedUploads.length} uploads failed
+            </p>
+          )}
+          {uploadResponse && (
+            <div className="mt-4 p-2 bg-primary/5 rounded-md">
+              <div className="flex justify-between items-center">
+                <p className="text-sm">
+                  <span className="font-medium">Remaining tokens:</span>{" "}
+                  {uploadResponse.data.remainingTokens}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="flex items-center"
+                >
+                  {showDetails ? "Hide" : "Show"} details
+                  <ChevronRight
+                    className={`ml-1 h-4 w-4 transition-transform ${
+                      showDetails ? "rotate-90" : ""
+                    }`}
+                  />
+                </Button>
+              </div>
+
+              {showDetails && (
+                <div className="mt-2 space-y-2 text-left">
+                  <p className="text-xs">
+                    <span className="font-medium">Batch ID:</span>{" "}
+                    {uploadResponse.data.batchId}
+                  </p>
+                  <p className="text-xs">
+                    <span className="font-medium">Status:</span>{" "}
+                    <Badge
+                      variant={
+                        uploadStatus === "allSuccess" ? "default" : "outline"
+                      }
+                      className={`ml-1 ${
+                        uploadStatus === "allFailed"
+                          ? "border-destructive text-destructive"
+                          : uploadStatus === "partialSuccess"
+                          ? "border-amber-500 text-amber-500"
+                          : ""
+                      }`}
+                    >
+                      {uploadStatus === "allSuccess"
+                        ? "Complete"
+                        : uploadStatus === "partialSuccess"
+                        ? "Partial Success"
+                        : "Failed"}
+                    </Badge>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [
+    uploadResponse,
+    files.length,
+    processedCount,
+    failedUploads.length,
+    showDetails,
+    uploadStatus,
+  ]);
+
+  const renderFailedUploads = useCallback(() => {
+    if (failedUploads.length === 0) return null;
+
+    return (
+      <div className="border-t pt-4 mt-2">
+        <h4 className="text-sm font-medium mb-2">Failed Uploads:</h4>
+        <div className="max-h-32 overflow-y-auto text-sm">
+          {failedUploads.map((fail, index) => (
+            <div
+              key={index}
+              className="py-1 border-b border-gray-100 last:border-0"
+            >
+              <p
+                className="font-medium ellipsis-clamp mb-1"
+                title={fail.filename}
+              >
+                {fail.filename}
+              </p>
+              <p className="text-xs text-destructive break-words">
+                {fail.error}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }, [failedUploads]);
+
   return (
     <form onSubmit={handleSubmit}>
-      <Tabs defaultValue="upload" className="w-full">
+      <Tabs
+        defaultValue="upload"
+        className="w-full"
+        value={tabValue}
+        onValueChange={setTabValue}
+      >
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger
-            value="upload"
-            className="data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
-            Upload Images
-          </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-primary data-[state=active]:text-white"
-          >
-            Settings
-          </TabsTrigger>
+          <TabsTrigger value="upload">Upload Images</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upload" className="mt-4">
-          <Card>
+        <TabsContent value="upload" className="mt-4 space-y-4">
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
+              {/* Drag and drop area */}
               <div
-                className={`border-2 border-dashed rounded-lg text-center ${
-                  isDragging ? "border-primary bg-primary/5" : "border-border"
+                className={`border-2 border-dashed rounded-lg text-center transition-colors ${
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
+                onClick={(e) => triggerFileInput(e)}
               >
                 <div className="flex relative flex-col items-center justify-center gap-4 p-8">
                   <div className="rounded-full bg-primary/10 p-4">
@@ -583,14 +925,17 @@ export default function UploadForm() {
                     type="file"
                     accept="image/*"
                     multiple
-                    className="opacity-0 absolute w-full h-full inset-0 cursor-pointer"
+                    className="sr-only"
                     id="file-upload"
                     onChange={handleFileChange}
+                    ref={fileInputRef}
                   />
-                  <Label htmlFor="file-upload" className="cursor-pointer">
-                    <Button type="button" variant="outline">
-                      Select Images
-                    </Button>
+                  <Label
+                    htmlFor="file-upload"
+                    className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={(e) => e.stopPropagation()} // Stop propagation to prevent double triggering
+                  >
+                    Select Images
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     Supported formats: JPG, PNG, GIF, WebP
@@ -598,64 +943,21 @@ export default function UploadForm() {
                 </div>
               </div>
 
-              {files.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium">
-                      Selected Images ({files.length})
-                    </h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={clearAllFiles}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                    {files.map((file, index) => (
-                      <div key={index} className="relative group">
-                        <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden">
-                          <div className="relative w-full h-full">
-                            {file.type.startsWith("image/") ? (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <img
-                                  src={
-                                    URL.createObjectURL(file) ||
-                                    "/placeholder.svg" ||
-                                    "/placeholder.svg"
-                                  }
-                                  alt={file.name}
-                                  className="max-h-full max-w-full object-contain"
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                        <p className="text-xs mt-1 truncate" title={file.name}>
-                          {file.name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* File grid */}
+              {renderFileGrid()}
             </CardContent>
           </Card>
+
+          {/* Token info */}
+          {renderTokenInfo()}
+
+          {/* Loading state */}
+          {isPending && (
+            <div className="flex justify-center items-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+              <span>Loading account information...</span>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="settings" className="mt-4">
@@ -671,7 +973,7 @@ export default function UploadForm() {
                 <Settings className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <Label htmlFor="title-length">Title Length</Label>
@@ -689,7 +991,7 @@ export default function UploadForm() {
                       setSettings({ ...settings, titleLength: value[0] })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Recommended: 50-60 characters for optimal display in search
                     results
                   </p>
@@ -714,7 +1016,7 @@ export default function UploadForm() {
                       setSettings({ ...settings, descriptionLength: value[0] })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Recommended: 150-160 characters for optimal display in
                     search results
                   </p>
@@ -737,7 +1039,7 @@ export default function UploadForm() {
                       setSettings({ ...settings, keywordCount: value[0] })
                     }
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Recommended: 20-30 keywords for a balanced approach
                   </p>
                 </div>
@@ -747,11 +1049,12 @@ export default function UploadForm() {
         </TabsContent>
       </Tabs>
 
+      {/* Submit Button */}
       <div className="mt-6 flex justify-center">
         <Button
           type="submit"
-          disabled={files.length === 0 || loading}
-          className="px-20"
+          disabled={files.length === 0 || loading || isPending}
+          className="px-12 h-11"
         >
           {loading ? (
             <>
@@ -764,7 +1067,7 @@ export default function UploadForm() {
         </Button>
       </div>
 
-      {/* Main Processing AlertDialog */}
+      {/* Processing AlertDialog */}
       <AlertDialog
         open={showModal}
         onOpenChange={(open) => {
@@ -777,222 +1080,43 @@ export default function UploadForm() {
           }
         }}
       >
-        <AlertDialogContent className="">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex justify-between items-center">
               <AlertDialogTitle>
-                {uploadInProgress ? "Processing Images" : "Upload Complete"}
+                {uploadInProgress
+                  ? "Processing Images"
+                  : uploadStatus === "allSuccess"
+                  ? "Upload Complete"
+                  : uploadStatus === "partialSuccess"
+                  ? "Partially Completed"
+                  : "Upload Failed"}
               </AlertDialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-full"
-                onClick={() => {
-                  if (!uploadInProgress) {
-                    setShowModal(false);
-                  } else {
-                    setShowConfirmDialog(true);
-                  }
-                }}
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </Button>
+              {!uploadInProgress && (
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-full p-1  transition-colors  bg-destructive/10"
+                  aria-label="Close modal"
+                >
+                  <X className="h-4 w-4 text-destructive" />
+                </button>
+              )}
             </div>
           </AlertDialogHeader>
-          <div className="py-6">
-            {uploadInProgress ? (
-              <div className="space-y-6">
-                <div className="flex items-center justify-center">
-                  <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Overall Progress</span>
-                    <span>{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-
-                  {progress === 100 && uploadInProgress ? (
-                    <div className="flex items-center justify-center mt-2 text-primary">
-                      <div className="flex space-x-1">
-                        <div
-                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                          style={{ animationDelay: "150ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
-                        ></div>
-                      </div>
-                      <span className="ml-2 text-sm">
-                        Generating metadata...
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between text-sm mt-2">
-                      {uploadingStarted ? (
-                        <span>
-                          {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
-                          {Math.min(progress, 100)}% complete
-                        </span>
-                      ) : (
-                        <span>
-                          Processed: {processedCount} of{" "}
-                          {isRegenerating
-                            ? (uploadResponse?.data.successfulImages.length ||
-                                0) + failedFiles.length
-                            : files.length}
-                        </span>
-                      )}
-                      {failedUploads.length > 0 && (
-                        <span className="text-destructive">
-                          Failed: {failedUploads.length}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">
-                    {uploadingStarted
-                      ? isRegenerating
-                        ? "Regenerating failed files..."
-                        : progress === 100
-                        ? "Upload complete, generating SEO metadata..."
-                        : "Uploading files to server..."
-                      : "Analyzing images and generating SEO metadata"}
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    This process may take several minutes for large batches
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4 text-center">
-                <div className="rounded-full bg-green-100 p-3 w-16 h-16 mx-auto flex items-center justify-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-lg font-semibold text-green-600">
-                    Processing complete!
-                  </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {uploadResponse ? (
-                      <>
-                        {uploadResponse.data.successfulImages.length} of{" "}
-                        {files.length} images processed successfully
-                      </>
-                    ) : (
-                      <>
-                        {processedCount} of {files.length} images processed
-                        successfully
-                      </>
-                    )}
-                  </p>
-                  {failedUploads.length > 0 && (
-                    <p className="mt-1 text-sm text-destructive">
-                      {failedUploads.length} uploads failed
-                    </p>
-                  )}
-                  {uploadResponse && (
-                    <div className="mt-4 p-2 bg-primary/5 rounded-md">
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm">
-                          <span className="font-medium">Remaining tokens:</span>{" "}
-                          {uploadResponse.data.remainingTokens}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowDetails(!showDetails)}
-                          className="flex items-center"
-                        >
-                          {showDetails ? "Hide" : "Show"} details
-                          <ChevronRight
-                            className={`ml-1 h-4 w-4 transition-transform ${
-                              showDetails ? "rotate-90" : ""
-                            }`}
-                          />
-                        </Button>
-                      </div>
-
-                      {showDetails && (
-                        <div className="mt-2 space-y-2 text-left">
-                          <p className="text-xs">
-                            <span className="font-medium">Batch ID:</span>{" "}
-                            {uploadResponse.data.batchId}
-                          </p>
-                          <p className="text-xs">
-                            <span className="font-medium">Status:</span>{" "}
-                            <Badge
-                              variant={
-                                failedUploads.length > 0 ? "outline" : "default"
-                              }
-                              className="ml-1"
-                            >
-                              {failedUploads.length > 0
-                                ? "Partial Success"
-                                : "Complete"}
-                            </Badge>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          <div className="py-4">
+            {uploadInProgress
+              ? renderProcessingContent()
+              : renderCompletionContent()}
           </div>
           {/* Failed uploads section */}
-          {!uploadInProgress && failedUploads.length > 0 && (
-            <div className="border-t pt-4 mt-2">
-              <h4 className="text-sm font-medium mb-2">Failed Uploads:</h4>
-              <div className="max-h-32 overflow-y-auto text-sm">
-                {failedUploads.map((fail, index) => (
-                  <div
-                    key={index}
-                    className="py-1 border-b border-gray-100 last:border-0"
-                  >
-                    <p
-                      className="font-medium ellipsis-clamp mb-1"
-                      title={fail.filename}
-                    >
-                      {fail.filename}
-                    </p>
-                    <p
-                      style={{
-                        wordBreak: "break-word",
-                      }}
-                      className="text-xs text-destructive"
-                    >
-                      {fail.error}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {!uploadInProgress && (
+          {!uploadInProgress && renderFailedUploads()}
+          {uploadInProgress ? (
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowConfirmDialog(true)}>
+                Cancel Upload
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          ) : (
             <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
               {failedUploads.length > 0 && (
                 <Button
@@ -1013,27 +1137,25 @@ export default function UploadForm() {
                 Process More Images
               </Button>
               <Button type="button" asChild className="sm:flex-1">
-                <Link href={`/results`}>View Results</Link>
+                <Link href="/results">View Results</Link>
               </Button>
             </AlertDialogFooter>
           )}
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmation AlertDialog */}
+      {/* Cancel Confirmation AlertDialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Processing?</AlertDialogTitle>
           </AlertDialogHeader>
-          <p>
+          <AlertDialogDescription>
             Are you sure you want to cancel the current upload? This will stop
             processing your images.
-          </p>
+          </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>
-              No, continue processing
-            </AlertDialogCancel>
+            <AlertDialogCancel>No, continue processing</AlertDialogCancel>
             <AlertDialogAction
               onClick={cancelUpload}
               className="bg-destructive hover:bg-destructive/90"
@@ -1043,6 +1165,46 @@ export default function UploadForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Insufficient Tokens Dialog */}
+      <Dialog
+        open={inSufficientTokenModal}
+        onOpenChange={setInSufficientTokenModal}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Not Enough Tokens</DialogTitle>
+            <DialogDescription>
+              You don&apos;t have enough tokens to process all your images.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center mb-4 text-amber-600">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              <p className="font-medium">Token Shortage</p>
+            </div>
+            <p>
+              You need {files.length} tokens to process these images, but you
+              only have {tokens?.availableTokens || 0} tokens available.
+            </p>
+            <p className="mt-4">
+              Please upgrade your plan to get more tokens and continue
+              processing your images.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setInSufficientTokenModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button asChild>
+              <Link href="/pricing">Upgrade Plan</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
