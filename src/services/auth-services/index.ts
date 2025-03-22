@@ -152,6 +152,7 @@ export const logout = async () => {
     const userCookies = await cookies();
     userCookies.delete("accessToken");
     userCookies.delete("refreshToken");
+    return { success: true, message: "SuccessFully logout." };
   } catch (error) {
     console.error("Error during logout:", error);
     return { success: false, message: "An unexpected error occurred." };
