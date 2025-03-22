@@ -585,7 +585,7 @@ export default function UploadForm() {
             Clear All
           </Button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 max-h-96 overflow-y-auto overflow-x-hidden">
           {files.map((file, index) => (
             <div key={index} className="relative group">
               <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden transition-all hover:shadow-md">
@@ -596,6 +596,7 @@ export default function UploadForm() {
                         src={URL.createObjectURL(file) || "/placeholder.svg"}
                         alt={file.name}
                         className="max-h-full max-w-full object-contain"
+                        loading="lazy"
                       />
                     </div>
                   ) : (
@@ -959,7 +960,7 @@ export default function UploadForm() {
                   </div>
                   <Input
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png"
                     multiple
                     className="sr-only"
                     id="file-upload"
@@ -974,7 +975,7 @@ export default function UploadForm() {
                     Select Images
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Supported formats: JPG, PNG, GIF, WebP
+                    Supported formats: JPG, JPEG, PNG
                   </p>
                 </div>
               </div>
