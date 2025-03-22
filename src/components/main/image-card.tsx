@@ -80,7 +80,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
           <img
             src={item.imageUrl || "/placeholder.svg"}
             alt={item.imageName}
-            className="w-28 h-28 object-cover rounded-lg bg-card "
+            className="w-24 h-24 object-cover rounded-lg bg-card "
           />
           <div>
             <h3 className="font-medium text-foreground">{item.imageName}</h3>
