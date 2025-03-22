@@ -1,5 +1,7 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
-import React from "react";
+import type React from "react";
 import { PencilIcon, Trash, Check, Save, Clipboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,9 +41,7 @@ interface ImageCardProps {
   metadataLimits: {
     titleLength: number;
     descriptionLength: number;
-    keywordsCount: number;
-    keywordLength: number;
-    minKeywords: number;
+    keywordCount: number;
   };
   copiedField: string | null;
   loading: boolean;
@@ -74,17 +74,17 @@ const ImageCard: React.FC<ImageCardProps> = ({
   handleDeleteDialogOpen,
 }) => {
   return (
-    <div key={item._id} className="p-4 bg-gray-50 rounded-lg">
+    <div key={item._id} className="p-4 bg-accent/40 rounded-lg">
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-start space-x-4">
           <img
             src={item.imageUrl || "/placeholder.svg"}
             alt={item.imageName}
-            className="w-24 h-24 object-cover rounded-lg"
+            className="w-28 h-28 object-cover rounded-lg bg-card "
           />
           <div>
-            <h3 className="font-medium text-gray-800">{item.imageName}</h3>
-            <span className="inline-block px-2 py-1 rounded-full text-sm mt-2 bg-gray-100 text-gray-700">
+            <h3 className="font-medium text-foreground">{item.imageName}</h3>
+            <span className="inline-block px-2 py-1 rounded-full text-sm mt-2 bg-muted text-foreground">
               Image metadata
             </span>
           </div>
@@ -94,7 +94,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
             variant="ghost"
             size="icon"
             onClick={() => handleEdit(item)}
-            className="text-gray-400 hover:text-gray-600 mx-1"
+            className="text-muted-foreground hover:text-foreground mx-1"
             title="Edit"
           >
             <PencilIcon className="h-5 w-5" />
@@ -104,7 +104,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
             size="icon"
             onClick={() => handleDeleteDialogOpen(item._id)}
             disabled={loading}
-            className={`text-gray-400 hover:text-red-500 transition-colors mx-1 ${
+            className={`text-muted-foreground hover:text-destructive transition-colors mx-1 ${
               loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
             title="Delete"
@@ -115,7 +115,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
       </div>
 
       {item.error && (
-        <div className="mb-4 text-red-600 text-sm">Error: {item.error}</div>
+        <div className="mb-4 text-destructive text-sm">Error: {item.error}</div>
       )}
 
       {editingItem === item._id ? (
@@ -128,8 +128,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 <span
                   className={`text-sm ${
                     editData.title.length > metadataLimits.titleLength
-                      ? "text-red-500 font-medium"
-                      : "text-gray-500"
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {editData.title.length}/{metadataLimits.titleLength} chars |{" "}
@@ -151,7 +151,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                     }
                     className={`w-full ${
                       editData.title.length > metadataLimits.titleLength
-                        ? "border-red-300"
+                        ? "border-destructive"
                         : ""
                     }`}
                   />
@@ -169,8 +169,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
                   className={`text-sm ${
                     editData.description.length >
                     metadataLimits.descriptionLength
-                      ? "text-red-500 font-medium"
-                      : "text-gray-500"
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {editData.description.length}/
@@ -193,7 +193,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
                     className={`w-full ${
                       editData.description.length >
                       metadataLimits.descriptionLength
-                        ? "border-red-300"
+                        ? "border-destructive"
                         : ""
                     }`}
                     rows={3}
@@ -208,8 +208,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
             <div className="flex justify-between items-center">
               <span className="font-medium">Keywords:</span>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">
-                  {editData.keywords.length}/{metadataLimits.keywordsCount}{" "}
+                <span className="text-sm text-muted-foreground">
+                  {editData.keywords.length}/{metadataLimits.keywordCount}{" "}
                   keywords
                 </span>
               </div>
@@ -224,8 +224,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
                   rows={3}
                   placeholder="Enter keywords separated by commas"
                 />
-                <div className="text-sm text-gray-500 mt-1">
-                  {editData.keywords.length}/{metadataLimits.keywordsCount}{" "}
+                <div className="text-sm text-muted-foreground mt-1">
+                  {editData.keywords.length}/{metadataLimits.keywordCount}{" "}
                   keywords
                 </div>
               </div>
@@ -239,7 +239,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
             <Button
               onClick={handleSave}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               <Save className="mr-2 h-4 w-4" />
               Save Changes
@@ -256,8 +256,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 <span
                   className={`text-sm ${
                     item.metadata.title.length > metadataLimits.titleLength
-                      ? "text-red-500 font-medium"
-                      : "text-gray-500"
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {item.metadata.title.length}/{metadataLimits.titleLength}{" "}
@@ -269,10 +269,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={() => handleCopyField(item.metadata.title, "Title")}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   {copiedField === "Title" ? (
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-success" />
                   ) : (
                     <Clipboard className="h-5 w-5" />
                   )}
@@ -293,8 +293,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
                   className={`text-sm ${
                     item.metadata.description.length >
                     metadataLimits.descriptionLength
-                      ? "text-red-500 font-medium"
-                      : "text-gray-500"
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {item.metadata.description.length}/
@@ -309,10 +309,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
                   onClick={() =>
                     handleCopyField(item.metadata.description, "Description")
                   }
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   {copiedField === "Description" ? (
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-success" />
                   ) : (
                     <Clipboard className="h-5 w-5" />
                   )}
@@ -329,8 +329,8 @@ const ImageCard: React.FC<ImageCardProps> = ({
             <div className="flex justify-between items-center">
               <span className="font-medium">Keywords:</span>
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-500">
-                  {item.metadata.keywords.length}/{metadataLimits.keywordsCount}{" "}
+                <span className="text-sm text-muted-foreground">
+                  {item.metadata.keywords.length}/{metadataLimits.keywordCount}{" "}
                   keywords
                 </span>
                 <Button
@@ -342,10 +342,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
                       "Keywords"
                     )
                   }
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   {copiedField === "Keywords" ? (
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-success" />
                   ) : (
                     <Clipboard className="h-5 w-5" />
                   )}
@@ -356,7 +356,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
               {item.metadata.keywords?.map((keyword, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                  className="px-2 py-1 bg-primary/10 text-primary rounded-full text-sm"
                 >
                   {keyword}
                 </span>

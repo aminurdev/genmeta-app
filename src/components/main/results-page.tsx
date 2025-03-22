@@ -59,14 +59,25 @@ const countWords = (str: string) => {
     .filter((word) => word.length > 0).length;
 };
 
-// Example metadata limits configuration
-const metadataLimits = {
-  titleLength: 90,
-  descriptionLength: 150,
-  keywordsCount: 30,
-  keywordLength: 40,
-  minKeywords: 20,
+const getMetadataLimits = () => {
+  if (typeof window !== "undefined") {
+    const savedSettings = localStorage.getItem("imageSeoSettings");
+    return savedSettings
+      ? JSON.parse(savedSettings)
+      : {
+          titleLength: 80,
+          descriptionLength: 120,
+          keywordCount: 45,
+        };
+  }
+  return {
+    titleLength: 80,
+    descriptionLength: 120,
+    keywordCount: 45,
+  };
 };
+
+const metadataLimits = getMetadataLimits();
 
 export default function ResultsPage({ batchId }: { batchId: string }) {
   const [results, setResults] = useState<ImageBatch>(emptyBatch);
@@ -297,26 +308,25 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
             <p className="text-gray-500 mt-1">
               {results.images.length} images processed successfully
             </p>
+          </div>{" "}
+          <div className="flex gap-2 mb-6">
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadCSV(batchId)}
+              disabled={results.images.length === 0}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Download CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleDownloadZip(batchId)}
+              disabled={results.images.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download All
+            </Button>
           </div>
-        </div>
-
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant="outline"
-            onClick={() => handleDownloadCSV(batchId)}
-            disabled={results.images.length === 0}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Download CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => handleDownloadZip(batchId)}
-            disabled={results.images.length === 0}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download All
-          </Button>
         </div>
       </div>
 
