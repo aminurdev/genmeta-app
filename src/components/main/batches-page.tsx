@@ -21,21 +21,11 @@ import {
 } from "@/components/ui/card";
 import { Batch } from "@/app/(main)/results/page";
 import { Badge } from "../ui/badge";
-import { fetchImageMetadata, handleDownloadZip } from "@/actions";
+import { handleDownloadCSV, handleDownloadZip } from "@/actions";
 import { formatFileSize } from "@/lib/utils";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
-
-// Define types for batch and image
-type Metadata = {
-  imageName: string;
-  metadata: {
-    title: string;
-    description: string;
-    keywords: string[];
-  };
-};
 
 // Editable Card Title component
 function EditableCardTitle({
@@ -160,31 +150,6 @@ export default function BatchesPage({
     );
   };
 
-  const handleDownloadCSV = async (batch: Batch) => {
-    const metadata = await fetchImageMetadata(batch.batchId);
-    const csvRows = [
-      "Filename,Title,Description,Keywords",
-      ...metadata.map(
-        (item: Metadata) =>
-          `"${item.imageName}","${item.metadata.title.replace(
-            /"/g,
-            '""'
-          )}","${item.metadata.description.replace(
-            /"/g,
-            '""'
-          )}","${item.metadata.keywords.join(", ")}"`
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvRows], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `image_metadata_${batch.batchId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -237,7 +202,7 @@ export default function BatchesPage({
               <Button
                 variant="outline"
                 size={"sm"}
-                onClick={() => handleDownloadCSV(batch)}
+                onClick={() => handleDownloadCSV(batch.batchId)}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Export CSV

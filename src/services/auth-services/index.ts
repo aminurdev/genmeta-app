@@ -6,7 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 
-interface DecodedToken {
+export interface DecodedToken {
   userId: string;
   name: string;
   email: string;

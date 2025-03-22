@@ -52,3 +52,13 @@ export type UserPlanData = {
   createdAt: string;
   updatedAt: string;
 };
+
+// Define types for batch and image
+export type Metadata = {
+  imageName: string;
+  metadata: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
+};

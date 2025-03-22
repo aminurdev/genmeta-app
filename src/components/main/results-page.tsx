@@ -1,28 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import {
-  Download,
-  Edit,
-  Save,
-  Copy,
-  Check,
-  Trash,
-  FileDown,
-  FileText,
-  ArrowLeft,
-} from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,13 +12,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import Link from "next/link";
-import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
-import { handleDownloadZip } from "@/actions";
+import { handleDownloadCSV, handleDownloadZip } from "@/actions";
+import ImageCard from "./image-card"; // Import the new component
 
 // Type definitions
 type ImageMetadata = {
@@ -51,6 +32,7 @@ type Image = {
   imageUrl: string;
   metadata: ImageMetadata;
   generatedAt: string;
+  error?: string;
 };
 
 type ImageBatch = {
@@ -70,12 +52,32 @@ const emptyBatch: ImageBatch = {
   createdAt: "",
 };
 
+const countWords = (str: string) => {
+  return str
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0).length;
+};
+
+// Example metadata limits configuration
+const metadataLimits = {
+  titleLength: 90,
+  descriptionLength: 150,
+  keywordsCount: 30,
+  keywordLength: 40,
+  minKeywords: 20,
+};
+
 export default function ResultsPage({ batchId }: { batchId: string }) {
   const [results, setResults] = useState<ImageBatch>(emptyBatch);
   const [loading, setLoading] = useState(false);
   const [isPending, setIsPending] = useState(true);
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [editData, setEditData] = useState<ImageMetadata>({
+  const [editData, setEditData] = useState<{
+    title: string;
+    description: string;
+    keywords: string[];
+  }>({
     title: "",
     description: "",
     keywords: [],
@@ -217,83 +219,6 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     }
   }, [editingItem, editData, results]);
 
-  const handleDownloadSingleImage = useCallback(
-    async (imageUrl: string, imageName: string) => {
-      try {
-        // Create a temporary link element for direct download
-        const link = document.createElement("a");
-        link.href = imageUrl;
-        link.setAttribute("download", imageName);
-        link.setAttribute("target", "_blank");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        toast(`Downloading ${imageName}`);
-      } catch (error) {
-        console.error("Error downloading image:", error);
-        toast("Failed to download image");
-      }
-    },
-    []
-  );
-
-  const handleDownloadCSV = useCallback(() => {
-    if (results.images.length === 0) {
-      toast("No metadata available to download");
-      return;
-    }
-
-    try {
-      // Define CSV headers
-      let csvContent =
-        "data:text/csv;charset=utf-8,Title,Description,Keywords\n";
-
-      // Append image metadata
-      results.images.forEach((item) => {
-        const title = `"${item.metadata.title.replace(/"/g, '""')}"`; // Escape quotes
-        const description = `"${item.metadata.description.replace(
-          /"/g,
-          '""'
-        )}"`;
-        const keywords = `"${item.metadata.keywords.join(", ")}"`;
-        csvContent += `${title},${description},${keywords}\n`;
-      });
-
-      // Create a download link
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `image_metadata_${batchId}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast("CSV file downloaded successfully");
-    } catch (error) {
-      console.error("Error generating CSV:", error);
-      toast("Failed to generate CSV file");
-    }
-  }, [results.images, batchId]);
-
-  const handleCopyMetadata = useCallback((text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopiedField("metadata");
-        toast("Metadata copied to clipboard");
-
-        // Reset after 2 seconds
-        setTimeout(() => {
-          setCopiedField(null);
-        }, 2000);
-      })
-      .catch((err) => {
-        console.error("Failed to copy: ", err);
-        toast("Could not copy to clipboard");
-      });
-  }, []);
-
   // New copy handlers for individual fields
   const handleCopyField = useCallback((text: string, fieldName: string) => {
     navigator.clipboard
@@ -358,52 +283,34 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     }
   }, [imageToDelete, batchId]);
 
-  // Memoized metadata for export dialog
-  const exportMetadata = useMemo(() => {
-    return JSON.stringify(
-      results.images.map((item) => ({
-        filename: item.imageName,
-        title: item.metadata.title,
-        description: item.metadata.description,
-        keywords: item.metadata.keywords,
-      })),
-      null,
-      2
-    );
-  }, [results.images]);
-
   // Get the image to be deleted for the dialog
   const imageToDeleteData = useMemo(() => {
     return results.images.find((img) => img._id === imageToDelete);
   }, [imageToDelete, results.images]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/results">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-bold">Generated Metadata</h2>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl font-bold">Generated Metadata</h1>
+            <p className="text-gray-500 mt-1">
               {results.images.length} images processed successfully
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2 mb-6">
           <Button
             variant="outline"
-            onClick={handleDownloadCSV}
+            onClick={() => handleDownloadCSV(batchId)}
             disabled={results.images.length === 0}
           >
             <FileText className="mr-2 h-4 w-4" />
             Download CSV
           </Button>
           <Button
+            variant="outline"
             onClick={() => handleDownloadZip(batchId)}
             disabled={results.images.length === 0}
           >
@@ -415,298 +322,48 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
 
       {/* Show Skeletons if Loading */}
       {isPending ? (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 gap-4">
           {[1, 2, 3].map((index) => (
-            <Card key={index} className="overflow-hidden">
-              <div className="grid md:grid-cols-[300px_1fr] gap-6">
-                <Skeleton className="w-full h-48 md:h-full bg-muted" />
-                <div className="p-6 pt-0 md:pt-6 md:pl-0 flex flex-col">
-                  <CardHeader className="p-0 pb-4">
-                    <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </CardHeader>
-                  <Skeleton className="h-4 w-full my-2" />
-                  <Skeleton className="h-4 w-5/6 my-2" />
-                  <Skeleton className="h-4 w-2/3 my-2" />
+            <Card key={index} className="p-4">
+              <div className="flex items-start space-x-4">
+                <Skeleton className="h-24 w-24 rounded-md" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-24" />
                 </div>
               </div>
             </Card>
           ))}
         </div>
       ) : results.images.length === 0 ? (
-        <Card className="p-6 text-center">
-          <p>No images found in this batch.</p>
-        </Card>
+        <div className="text-center py-12 text-gray-500">
+          No images found in this batch.
+        </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 gap-4">
           {results.images.map((item) => (
-            <Card key={item._id} className="overflow-hidden">
-              <div className="grid md:grid-cols-[300px_1fr] gap-6">
-                <div className="aspect-video md:aspect-auto md:h-full bg-muted flex items-center justify-center p-2">
-                  <img
-                    src={item.imageUrl || "/placeholder.svg"}
-                    alt={item.metadata.title}
-                    className="w-full h-full object-cover rounded-md"
-                    loading="lazy"
-                  />
-                </div>
-
-                <div className="p-6 pt-0 md:pt-6 md:pl-0 flex flex-col">
-                  <CardHeader className="p-0 pb-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl ellipsis-clamp">
-                          {item.imageName}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Image metadata
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger className="hidden" asChild>
-                            <Button variant="ghost" size="icon">
-                              <FileDown className="h-4 w-4" />
-                              <span className="sr-only">Download options</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleDownloadSingleImage(
-                                  item.imageUrl,
-                                  item.imageName
-                                )
-                              }
-                            >
-                              Download Image
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleCopyMetadata(
-                                  JSON.stringify(
-                                    {
-                                      title: item.metadata.title,
-                                      description: item.metadata.description,
-                                      keywords: item.metadata.keywords,
-                                    },
-                                    null,
-                                    2
-                                  )
-                                )
-                              }
-                            >
-                              Copy Metadata
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteDialogOpen(item._id)}
-                          disabled={loading}
-                        >
-                          <Trash className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  {editingItem === item._id ? (
-                    <div className="space-y-4 flex-1">
-                      <div>
-                        <label className="text-sm font-medium">Title</label>
-                        <Input
-                          value={editData.title}
-                          onChange={(e) =>
-                            setEditData((prev) => ({
-                              ...prev,
-                              title: e.target.value,
-                            }))
-                          }
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium">
-                          Description
-                        </label>
-                        <Textarea
-                          value={editData.description}
-                          onChange={(e) =>
-                            setEditData((prev) => ({
-                              ...prev,
-                              description: e.target.value,
-                            }))
-                          }
-                          className="mt-1 resize-none"
-                          rows={3}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium">
-                          Keywords (comma separated)
-                        </label>
-                        <Textarea
-                          value={editData.keywords.join(", ")}
-                          onChange={(e) => handleKeywordChange(e.target.value)}
-                          onBlur={handleKeywordBlur}
-                          className="mt-1 resize-none"
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" onClick={handleCancel}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleSave} disabled={loading}>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Changes
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 flex-1">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium">Title</h3>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleCopyField(item.metadata.title, "Title")
-                            }
-                            title="Copy title"
-                          >
-                            {copiedField === "Title" ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Copy title</span>
-                          </Button>
-                        </div>
-                        <p>{item.metadata.title}</p>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium">Description</h3>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleCopyField(
-                                item.metadata.description,
-                                "Description"
-                              )
-                            }
-                            title="Copy description"
-                          >
-                            {copiedField === "Description" ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Copy description</span>
-                          </Button>
-                        </div>
-                        <p className="text-sm">{item.metadata.description}</p>
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium">Keywords</h3>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleCopyField(
-                                item.metadata.keywords.join(", "),
-                                "Keywords"
-                              )
-                            }
-                            title="Copy keywords"
-                          >
-                            {copiedField === "Keywords" ? (
-                              <Check className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Copy keywords</span>
-                          </Button>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {item.metadata.keywords.map((keyword, i) => (
-                            <Badge key={i} variant="secondary">
-                              {keyword}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <Card key={item._id}>
+              <ImageCard
+                item={item}
+                editingItem={editingItem}
+                editData={editData}
+                setEditData={setEditData}
+                metadataLimits={metadataLimits}
+                copiedField={copiedField}
+                loading={loading}
+                countWords={countWords}
+                handleEdit={handleEdit}
+                handleCancel={handleCancel}
+                handleSave={handleSave}
+                handleCopyField={handleCopyField}
+                handleKeywordChange={handleKeywordChange}
+                handleKeywordBlur={handleKeywordBlur}
+                handleDeleteDialogOpen={handleDeleteDialogOpen}
+              />
             </Card>
           ))}
         </div>
       )}
-
-      {/* Export Metadata Dialog */}
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full hidden"
-            disabled={results.images.length === 0}
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Export All Metadata
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Export Metadata</DialogTitle>
-            <DialogDescription>
-              Copy all metadata in JSON format or download as a file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="overflow-auto max-h-96">
-            <pre className="bg-muted p-4 rounded-md text-sm">
-              {exportMetadata}
-            </pre>
-          </div>
-          <DialogFooter className="sm:justify-start">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => handleCopyMetadata(exportMetadata)}
-            >
-              {copiedField === "metadata" ? (
-                <Check className="mr-2 h-4 w-4 text-green-500" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" />
-              )}
-              Copy to Clipboard
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
