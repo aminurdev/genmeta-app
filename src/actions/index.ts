@@ -1,4 +1,5 @@
 import { getAccessToken, getBaseApi } from "@/services/image-services";
+import { Metadata } from "@/types/metadata";
 import { toast } from "sonner";
 
 export const handleDownloadZip = async (batchId: string) => {
@@ -84,3 +85,28 @@ export async function updateBatchName(batchId: string, newName: string) {
     throw error;
   }
 }
+
+export const handleDownloadCSV = async (batchId: string) => {
+  const metadata = await fetchImageMetadata(batchId);
+  const csvRows = [
+    "Filename,Title,Description,Keywords",
+    ...metadata.map(
+      (item: Metadata) =>
+        `"${item.imageName}","${item.metadata.title.replace(
+          /"/g,
+          '""'
+        )}","${item.metadata.description.replace(
+          /"/g,
+          '""'
+        )}","${item.metadata.keywords.join(", ")}"`
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvRows], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", `image_metadata_${batchId}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

@@ -220,7 +220,7 @@ const RedirectUrl = async () => {
 
   return (
     <Link
-      href={user ? "generate" : "/signup"}
+      href={user ? "/generate/v2" : "/signup"}
       className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
     >
       Get Started Free
