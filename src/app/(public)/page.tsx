@@ -26,7 +26,7 @@ export default function HomePage() {
             images using advanced AI technology. Start with 20 free tokens!
           </p>
           <div className="flex gap-4 justify-center">
-            <RedirectUrl />
+            <RedirectUrl text="Get Started Free" />
             {/* <Link
               href="/generate"
               className="px-8 py-3 bg-background text-primary rounded-lg border-2 border-primary hover:bg-accent transition-colors font-medium"
@@ -143,12 +143,7 @@ export default function HomePage() {
             Join thousands of users who are already enhancing their images with
             our AI-powered platform.
           </p>
-          <Link
-            href="/signup"
-            className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium inline-block"
-          >
-            Start Free Trial
-          </Link>
+          <RedirectUrl text="Start Free Trial" />
         </div>
       </section>
     </div>
@@ -215,7 +210,7 @@ function StepCard({
   );
 }
 
-const RedirectUrl = async () => {
+const RedirectUrl = async ({ text }: { text: string }) => {
   const user = await getCurrentUser();
 
   return (
@@ -223,7 +218,7 @@ const RedirectUrl = async () => {
       href={user ? "/generate/v2" : "/signup"}
       className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
     >
-      Get Started Free
+      {text}
     </Link>
   );
 };

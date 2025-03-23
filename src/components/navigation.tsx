@@ -42,31 +42,6 @@ export function Navigation() {
               height={128}
             />
           </Link>
-
-          {/* Mobile Menu Button */}
-          <Sheet>
-            <SheetTrigger className="md:hidden" aria-label="Toggle menu">
-              <Menu className="h-6 w-6" />
-            </SheetTrigger>
-            <SheetContent side="left">
-              <div className="flex flex-col items-start gap-6 py-4">
-                <NavLinks />
-                <div className="w-full border-t border-border my-4"></div>
-                {user ? (
-                  <UserMenu user={user} />
-                ) : (
-                  <div className="flex flex-col w-full gap-2">
-                    <Button variant="outline" asChild>
-                      <Link href="/login">Login</Link>
-                    </Button>
-                    <Button asChild>
-                      <Link href="/signup">Sign Up</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
 
         {/* Desktop Navigation */}
@@ -89,6 +64,32 @@ export function Navigation() {
             </>
           )}
           <ModeToggle />
+          {/* Mobile Menu Button */}
+          <Sheet>
+            <SheetTrigger className="md:hidden" aria-label="Toggle menu">
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <div className="flex flex-col items-start gap-6 py-4">
+                <NavLinks />
+                <div className="w-full border-t border-border my-4"></div>
+                {user ? (
+                  <UserMenu user={user} />
+                ) : (
+                  <div className="flex flex-col w-full gap-2">
+                    <Button variant="outline" asChild>
+                      <Link href="/login">Login</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link href="/signup">Sign Up</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>

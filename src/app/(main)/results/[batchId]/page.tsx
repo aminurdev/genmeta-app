@@ -12,7 +12,7 @@ export default async function Results({
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
-            Your SEO Metadata Results
+            Metadata Results
           </h1>
           <p className="mt-2 text-muted-foreground">Batch ID: {batchId}</p>
         </div>

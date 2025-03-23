@@ -11,13 +11,14 @@ const Login = () => {
           <LoginForm />
         </div>
       </div>
-      <div className="col-span-2 bg-accent/50 hidden md:flex items-center justify-center gap-3 ">
-        <div className="w-4/5">
+      <div className="col-span-2 bg-white hidden md:flex items-center justify-center">
+        <div className="w-full h-full flex items-center justify-center">
           <Image
-            src="/assets/auth/connections_platform_product.png"
+            src="/Assets/Genmeta-Signup-Cover.jpg"
             alt="product"
-            height={800}
-            width={800}
+            width={1000}
+            height={1000}
+            className="w-full"
           />
         </div>
       </div>

@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 import { handleDownloadCSV, handleDownloadZip } from "@/actions";
 import ImageCard from "./image-card"; // Import the new component
+import Link from "next/link";
 
 // Type definitions
 type ImageMetadata = {
@@ -303,28 +304,34 @@ export default function ResultsPage({ batchId }: { batchId: string }) {
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Generated Metadata</h1>
-            <p className="text-gray-500 mt-1">
-              {results.images.length} images processed successfully
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="">
+              <Link href="/results">
+                <ArrowLeft className="h-5 w-10 inline-block text-primary" />
+              </Link>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Generated Metadata</h1>
+              <p className="text-gray-500 mt-1">
+                Total: {results.images.length} images.
+              </p>
+            </div>
           </div>{" "}
           <div className="flex gap-2 mb-6">
             <Button
-              variant="outline"
               onClick={() => handleDownloadCSV(batchId)}
               disabled={results.images.length === 0}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <FileText className="mr-2 h-4 w-4" />
               Download CSV
             </Button>
             <Button
-              variant="outline"
               onClick={() => handleDownloadZip(batchId)}
               disabled={results.images.length === 0}
             >
               <Download className="mr-2 h-4 w-4" />
-              Download All
+              Download ZIP
             </Button>
           </div>
         </div>

@@ -628,9 +628,17 @@ export default function UploadForm() {
     if (!tokens) return null;
 
     return (
-      <div className="mt-4 flex justify-between items-center p-3 bg-muted rounded-md">
+      <div className="mb-4 flex justify-center items-center -mt-4 text-muted-foreground">
         <div>
-          <span className="text-sm font-medium">Available Tokens: </span>
+          <span className="text-sm font-medium">Tokens: </span>
+          <span
+            className={`text-sm ${
+              hasInsufficientTokens ? "text-destructive" : "text-green-600"
+            }`}
+          >
+            {files.length}
+          </span>
+          <span>/</span>
           <span
             className={`text-sm ${
               hasInsufficientTokens ? "text-destructive" : ""
@@ -639,18 +647,6 @@ export default function UploadForm() {
             {tokens.availableTokens}
           </span>
         </div>
-        {files.length > 0 && (
-          <div>
-            <span className="text-sm font-medium">Added: </span>
-            <span
-              className={`text-sm ${
-                hasInsufficientTokens ? "text-destructive" : "text-green-600"
-              }`}
-            >
-              {files.length}
-            </span>
-          </div>
-        )}
       </div>
     );
   }, [tokens, files.length, hasInsufficientTokens]);
@@ -919,386 +915,394 @@ export default function UploadForm() {
   }, [failedUploads]);
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Tabs
-        defaultValue="upload"
-        className="w-full"
-        value={tabValue}
-        onValueChange={setTabValue}
-      >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upload">Upload Images</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+    <div className="">
+      {/* Token info */}
+      {renderTokenInfo()}
+      {/* Loading state */}
+      {isPending && (
+        <div className="flex justify-center items-center mb-4 -mt-4">
+          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+        </div>
+      )}
+      <form onSubmit={handleSubmit}>
+        <Tabs
+          defaultValue="upload"
+          className="w-full"
+          value={tabValue}
+          onValueChange={setTabValue}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">Upload Images</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="upload" className="mt-4 space-y-4">
-          <Card className="overflow-hidden">
-            <CardContent className="pt-6">
-              {/* Drag and drop area */}
-              <div
-                className={`border-2 border-dashed rounded-lg text-center transition-colors ${
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={(e) => triggerFileInput(e)}
-              >
-                <div className="flex relative flex-col items-center justify-center gap-4 p-8">
-                  <div className="rounded-full bg-primary/10 p-4">
-                    <Upload className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold">
-                      Drag and drop your images here
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      or click to browse from your device
+          <TabsContent value="upload" className="mt-4 space-y-4">
+            <Card className="overflow-hidden">
+              <CardContent className="pt-6">
+                {/* Drag and drop area */}
+                <div
+                  className={`border-2 border-dashed rounded-lg text-center transition-colors ${
+                    isDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={(e) => triggerFileInput(e)}
+                >
+                  <div className="flex relative flex-col items-center justify-center gap-4 p-8">
+                    <div className="rounded-full bg-primary/10 p-4">
+                      <Upload className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">
+                        Drag and drop your images here
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        or click to browse from your device
+                      </p>
+                    </div>
+                    <Input
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      multiple
+                      className="sr-only"
+                      id="file-upload"
+                      onChange={handleFileChange}
+                      ref={fileInputRef}
+                    />
+                    <Label
+                      htmlFor="file-upload"
+                      className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                      onClick={(e) => e.stopPropagation()} // Stop propagation to prevent double triggering
+                    >
+                      Select Images
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Supported formats: JPG, JPEG, PNG
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Max image size 45MB. Max 100 images per batch.
                     </p>
                   </div>
-                  <Input
-                    type="file"
-                    accept=".jpg,.jpeg,.png"
-                    multiple
-                    className="sr-only"
-                    id="file-upload"
-                    onChange={handleFileChange}
-                    ref={fileInputRef}
-                  />
-                  <Label
-                    htmlFor="file-upload"
-                    className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                    onClick={(e) => e.stopPropagation()} // Stop propagation to prevent double triggering
-                  >
-                    Select Images
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Supported formats: JPG, JPEG, PNG
-                  </p>
                 </div>
-              </div>
 
-              {/* File grid */}
-              {renderFileGrid()}
-            </CardContent>
-          </Card>
+                {/* File grid */}
+                {renderFileGrid()}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Token info */}
-          {renderTokenInfo()}
-
-          {/* Loading state */}
-          {isPending && (
-            <div className="flex justify-center items-center py-4">
-              <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-              <span>Loading account information...</span>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-4">
-          <Card>
-            <CardContent className="pt-6 space-y-10">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h3 className="font-medium">Metadata Settings</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Configure how your SEO metadata will be generated
-                  </p>
-                </div>
-                <Settings className="h-5 w-5 text-muted-foreground" />
-              </div>
-
-              <div className="space-y-8">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="title-length">Title Length</Label>
-                    <span className="text-sm text-muted-foreground">
-                      {settings.titleLength} characters
-                    </span>
+          <TabsContent value="settings" className="mt-4">
+            <Card>
+              <CardContent className="pt-6 space-y-10">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h3 className="font-medium">Metadata Settings</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Configure how your SEO metadata will be generated
+                    </p>
                   </div>
-                  <Slider
-                    id="title-length"
-                    min={30}
-                    max={150}
-                    step={1}
-                    value={[settings.titleLength]}
-                    onValueChange={(value) =>
-                      setSettings({ ...settings, titleLength: value[0] })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 50-60 characters for optimal display in search
-                    results
-                  </p>
+                  <Settings className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="description-length">
-                      Description Length
-                    </Label>
-                    <span className="text-sm text-muted-foreground">
-                      {settings.descriptionLength} characters
-                    </span>
+                <div className="space-y-8">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="title-length">Title Length</Label>
+                      <span className="text-sm text-muted-foreground">
+                        {settings.titleLength} characters
+                      </span>
+                    </div>
+                    <Slider
+                      id="title-length"
+                      min={30}
+                      max={150}
+                      step={1}
+                      value={[settings.titleLength]}
+                      onValueChange={(value) =>
+                        setSettings({ ...settings, titleLength: value[0] })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Recommended: 50-60 characters for optimal display in
+                      search results
+                    </p>
                   </div>
-                  <Slider
-                    id="description-length"
-                    min={50}
-                    max={250}
-                    step={1}
-                    value={[settings.descriptionLength]}
-                    onValueChange={(value) =>
-                      setSettings({ ...settings, descriptionLength: value[0] })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 150-160 characters for optimal display in
-                    search results
-                  </p>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="keyword-count">Keyword Count</Label>
-                    <span className="text-sm text-muted-foreground">
-                      {settings.keywordCount} keywords
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="description-length">
+                        Description Length
+                      </Label>
+                      <span className="text-sm text-muted-foreground">
+                        {settings.descriptionLength} characters
+                      </span>
+                    </div>
+                    <Slider
+                      id="description-length"
+                      min={50}
+                      max={250}
+                      step={1}
+                      value={[settings.descriptionLength]}
+                      onValueChange={(value) =>
+                        setSettings({
+                          ...settings,
+                          descriptionLength: value[0],
+                        })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Recommended: 150-160 characters for optimal display in
+                      search results
+                    </p>
                   </div>
-                  <Slider
-                    id="keyword-count"
-                    min={10}
-                    max={50}
-                    step={1}
-                    value={[settings.keywordCount]}
-                    onValueChange={(value) =>
-                      setSettings({ ...settings, keywordCount: value[0] })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Recommended: 20-30 keywords for a balanced approach
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
 
-      {/* Submit Button */}
-      <div className="mt-6 flex justify-center">
-        <Button
-          type="submit"
-          disabled={files.length === 0 || loading || isPending}
-          className="px-12 h-11"
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="keyword-count">Keyword Count</Label>
+                      <span className="text-sm text-muted-foreground">
+                        {settings.keywordCount} keywords
+                      </span>
+                    </div>
+                    <Slider
+                      id="keyword-count"
+                      min={10}
+                      max={50}
+                      step={1}
+                      value={[settings.keywordCount]}
+                      onValueChange={(value) =>
+                        setSettings({ ...settings, keywordCount: value[0] })
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Recommended: 20-30 keywords for a balanced approach
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Submit Button */}
+        <div className="mt-6 flex justify-center">
+          <Button
+            type="submit"
+            disabled={files.length === 0 || loading || isPending}
+            className="px-12 h-11"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating SEO Metadata
+              </>
+            ) : (
+              "Generate SEO Metadata"
+            )}
+          </Button>
+        </div>
+
+        {/* Processing AlertDialog */}
+        <AlertDialog
+          open={showModal}
+          onOpenChange={(open) => {
+            // If trying to close and still loading, show confirmation dialog
+            if (!open && uploadInProgress) {
+              setShowConfirmDialog(true);
+            } else if (!uploadInProgress) {
+              // Only allow closing if not loading
+              setShowModal(open);
+            }
+          }}
         >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating SEO Metadata
-            </>
-          ) : (
-            "Generate SEO Metadata"
-          )}
-        </Button>
-      </div>
-
-      {/* Processing AlertDialog */}
-      <AlertDialog
-        open={showModal}
-        onOpenChange={(open) => {
-          // If trying to close and still loading, show confirmation dialog
-          if (!open && uploadInProgress) {
-            setShowConfirmDialog(true);
-          } else if (!uploadInProgress) {
-            // Only allow closing if not loading
-            setShowModal(open);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex justify-between items-center">
-              <AlertDialogTitle>
-                {uploadInProgress
-                  ? "Processing Images"
-                  : uploadStatus === "allSuccess"
-                  ? "Upload Complete"
-                  : uploadStatus === "partialSuccess"
-                  ? "Partially Completed"
-                  : failedUploads.length > 0 &&
-                    failedUploads[0].error.includes("Server unavailable")
-                  ? "Server Unavailable"
-                  : failedUploads.length > 0 &&
-                    (failedUploads[0].error.includes("invalid token") ||
-                      failedUploads[0].error.includes("Authentication"))
-                  ? "Authentication Error"
-                  : "Upload Failed"}
-              </AlertDialogTitle>
-              {!uploadInProgress && (
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="rounded-full p-1 transition-colors bg-destructive/10"
-                  aria-label="Close modal"
-                >
-                  <X className="h-4 w-4 text-destructive" />
-                </button>
-              )}
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex justify-between items-center">
+                <AlertDialogTitle>
+                  {uploadInProgress
+                    ? "Processing Images"
+                    : uploadStatus === "allSuccess"
+                    ? "Upload Complete"
+                    : uploadStatus === "partialSuccess"
+                    ? "Partially Completed"
+                    : failedUploads.length > 0 &&
+                      failedUploads[0].error.includes("Server unavailable")
+                    ? "Server Unavailable"
+                    : failedUploads.length > 0 &&
+                      (failedUploads[0].error.includes("invalid token") ||
+                        failedUploads[0].error.includes("Authentication"))
+                    ? "Authentication Error"
+                    : "Upload Failed"}
+                </AlertDialogTitle>
+                {!uploadInProgress && (
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="rounded-full p-1 transition-colors bg-destructive/10"
+                    aria-label="Close modal"
+                  >
+                    <X className="h-4 w-4 text-destructive" />
+                  </button>
+                )}
+              </div>
+            </AlertDialogHeader>
+            <div className="py-4">
+              {uploadInProgress
+                ? renderProcessingContent()
+                : uploadStatus === "allSuccess" ||
+                  uploadStatus === "partialSuccess"
+                ? renderCompletionContent()
+                : renderErrorContent()}
             </div>
-          </AlertDialogHeader>
-          <div className="py-4">
-            {uploadInProgress
-              ? renderProcessingContent()
-              : uploadStatus === "allSuccess" ||
-                uploadStatus === "partialSuccess"
-              ? renderCompletionContent()
-              : renderErrorContent()}
-          </div>
 
-          {/* Failed uploads section - only show detailed failures if not a token/server error */}
-          {!uploadInProgress &&
-            uploadStatus !== "allSuccess" &&
-            !failedUploads.some(
-              (f) =>
-                f.error.includes("invalid token") ||
-                f.error.includes("Authentication") ||
-                f.error.includes("Server unavailable")
-            ) &&
-            renderFailedUploads()}
+            {/* Failed uploads section - only show detailed failures if not a token/server error */}
+            {!uploadInProgress &&
+              uploadStatus !== "allSuccess" &&
+              !failedUploads.some(
+                (f) =>
+                  f.error.includes("invalid token") ||
+                  f.error.includes("Authentication") ||
+                  f.error.includes("Server unavailable")
+              ) &&
+              renderFailedUploads()}
 
-          {uploadInProgress ? (
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowConfirmDialog(true)}>
-                Cancel Upload
-              </AlertDialogCancel>
-            </AlertDialogFooter>
-          ) : (
-            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-              {failedUploads.length > 0 &&
-                !failedUploads.some(
+            {uploadInProgress ? (
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowConfirmDialog(true)}>
+                  Cancel Upload
+                </AlertDialogCancel>
+              </AlertDialogFooter>
+            ) : (
+              <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                {failedUploads.length > 0 &&
+                  !failedUploads.some(
+                    (f) =>
+                      f.error.includes("invalid token") ||
+                      f.error.includes("Authentication") ||
+                      f.error.includes("Server unavailable")
+                  ) && (
+                    <Button
+                      variant="secondary"
+                      onClick={regenerateFailedFiles}
+                      className="sm:flex-1"
+                      disabled={isRegenerating}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry Failed Files
+                    </Button>
+                  )}
+
+                {/* For authentication errors, provide a login button */}
+                {failedUploads.some(
                   (f) =>
                     f.error.includes("invalid token") ||
-                    f.error.includes("Authentication") ||
-                    f.error.includes("Server unavailable")
+                    f.error.includes("Authentication")
                 ) && (
-                  <Button
-                    variant="secondary"
-                    onClick={regenerateFailedFiles}
-                    className="sm:flex-1"
-                    disabled={isRegenerating}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry Failed Files
+                  <Button type="button" asChild className="sm:flex-1">
+                    <Link href="/login">Log In Again</Link>
                   </Button>
                 )}
 
-              {/* For authentication errors, provide a login button */}
-              {failedUploads.some(
-                (f) =>
-                  f.error.includes("invalid token") ||
-                  f.error.includes("Authentication")
-              ) && (
-                <Button type="button" asChild className="sm:flex-1">
-                  <Link href="/login">Log In Again</Link>
-                </Button>
-              )}
+                {/* For server unavailable errors, provide a retry button */}
+                {failedUploads.some((f) =>
+                  f.error.includes("Server unavailable")
+                ) && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowModal(false);
+                      setFailedUploads([]);
+                    }}
+                    className="sm:flex-1"
+                  >
+                    Try Again Later
+                  </Button>
+                )}
 
-              {/* For server unavailable errors, provide a retry button */}
-              {failedUploads.some((f) =>
-                f.error.includes("Server unavailable")
-              ) && (
                 <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowModal(false);
-                    setFailedUploads([]);
-                  }}
+                  variant="outline"
+                  onClick={handleGenerateMore}
                   className="sm:flex-1"
                 >
-                  Try Again Later
+                  Process More Images
                 </Button>
-              )}
 
+                {uploadStatus !== "allFailed" && (
+                  <Button type="button" asChild className="sm:flex-1">
+                    <Link href="/results">View Results</Link>
+                  </Button>
+                )}
+              </AlertDialogFooter>
+            )}
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Cancel Confirmation AlertDialog */}
+        <AlertDialog
+          open={showConfirmDialog}
+          onOpenChange={setShowConfirmDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Processing?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              Are you sure you want to cancel the current upload? This will stop
+              processing your images.
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel>No, continue processing</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={cancelUpload}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Yes, cancel upload
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Insufficient Tokens Dialog */}
+        <Dialog
+          open={inSufficientTokenModal}
+          onOpenChange={setInSufficientTokenModal}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Not Enough Tokens</DialogTitle>
+              <DialogDescription>
+                You don&apos;t have enough tokens to process all your images.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="flex items-center mb-4 text-amber-600">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                <p className="font-medium">Token Shortage</p>
+              </div>
+              <p>
+                You need {files.length} tokens to process these images, but you
+                only have {tokens?.availableTokens || 0} tokens available.
+              </p>
+              <p className="mt-4">
+                Please upgrade your plan to get more tokens and continue
+                processing your images.
+              </p>
+            </div>
+            <DialogFooter>
               <Button
                 variant="outline"
-                onClick={handleGenerateMore}
-                className="sm:flex-1"
+                onClick={() => setInSufficientTokenModal(false)}
               >
-                Process More Images
+                Cancel
               </Button>
-
-              {uploadStatus !== "allFailed" && (
-                <Button type="button" asChild className="sm:flex-1">
-                  <Link href="/results">View Results</Link>
-                </Button>
-              )}
-            </AlertDialogFooter>
-          )}
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Cancel Confirmation AlertDialog */}
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Processing?</AlertDialogTitle>
-          </AlertDialogHeader>
-          <AlertDialogDescription>
-            Are you sure you want to cancel the current upload? This will stop
-            processing your images.
-          </AlertDialogDescription>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, continue processing</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={cancelUpload}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              Yes, cancel upload
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Insufficient Tokens Dialog */}
-      <Dialog
-        open={inSufficientTokenModal}
-        onOpenChange={setInSufficientTokenModal}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Not Enough Tokens</DialogTitle>
-            <DialogDescription>
-              You don&apos;t have enough tokens to process all your images.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="flex items-center mb-4 text-amber-600">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              <p className="font-medium">Token Shortage</p>
-            </div>
-            <p>
-              You need {files.length} tokens to process these images, but you
-              only have {tokens?.availableTokens || 0} tokens available.
-            </p>
-            <p className="mt-4">
-              Please upgrade your plan to get more tokens and continue
-              processing your images.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setInSufficientTokenModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button asChild>
-              <Link href="/pricing">Upgrade Plan</Link>
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </form>
+              <Button asChild>
+                <Link href="/pricing">Upgrade Plan</Link>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </form>
+    </div>
   );
 }
