@@ -26,9 +26,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { ApiResponse } from "@/app/(main)/dashboard/page";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "../ui/badge";
@@ -73,6 +72,20 @@ export default function OverviewTab({
     }
   };
   const tokenHistory = data.userActivity?.tokenHistory || [];
+
+  useEffect(() => {
+    if (data.packages && data.packages.length > 0 && !selectedPackageId) {
+      // Find the popular package
+      const popularPackage = data.packages.find((pkg) => pkg.popular);
+
+      // Set it as selected, or fall back to the first package if none is marked as popular
+      if (popularPackage) {
+        setSelectedPackageId(popularPackage._id);
+      } else {
+        setSelectedPackageId(data.packages[0]._id);
+      }
+    }
+  }, [data.packages, selectedPackageId]);
 
   return (
     <div className="space-y-6">
@@ -196,42 +209,126 @@ export default function OverviewTab({
             <CardTitle>Quick Purchase</CardTitle>
             <CardDescription>Buy more tokens for your account</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="token-package">Token Package</Label>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <Label
+                htmlFor="token-package"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Select Token Package
+              </Label>
               {data.packages.length > 0 ? (
                 <Select
                   value={selectedPackageId}
                   onValueChange={setSelectedPackageId}
+                  defaultValue={
+                    data.packages.find((pkg) => pkg.popular)?._id ||
+                    data.packages[0]?._id
+                  }
                 >
-                  <SelectTrigger id="token-package">
-                    <SelectValue placeholder="Select token package" />
+                  <SelectTrigger
+                    id="token-package"
+                    className="w-full bg-background border-input hover:bg-accent/10 transition-colors h-16"
+                  >
+                    <SelectValue placeholder="Choose your token package" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px]">
                     {data.packages.map((pkg) => (
-                      <SelectItem key={pkg._id} value={pkg._id}>
-                        {pkg.tokens} Tokens - ৳{pkg.price}
-                        {pkg.popular && " (Popular)"}
+                      <SelectItem
+                        key={pkg._id}
+                        value={pkg._id}
+                        className="flex items-center py-3 px-3 cursor-pointer hover:bg-accent/20 transition-colors"
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{pkg.title}</span>
+                            {pkg.popular && (
+                              <Badge
+                                variant="outline"
+                                className="bg-primary/10 text-primary text-xs font-semibold"
+                              >
+                                Popular
+                              </Badge>
+                            )}
+                            {pkg.discount > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-500/10 text-green-600 text-xs font-semibold"
+                              >
+                                {pkg.discount}% OFF
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm">
+                              {pkg.tokens.toLocaleString()} Tokens
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              •
+                            </span>
+                            {pkg.discount > 0 ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-medium">
+                                  ৳{" "}
+                                  {(
+                                    pkg.price *
+                                    (1 - pkg.discount / 100)
+                                  ).toFixed(0)}
+                                </span>
+                                <span className="text-xs line-through text-muted-foreground">
+                                  ৳ {pkg.price}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-sm">৳ {pkg.price}</span>
+                            )}
+                          </div>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <Skeleton className="h-10 w-full" />
+                <div className="h-16 w-full rounded-md border border-input bg-background/50 flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading packages...</span>
+                  </div>
+                </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="payment-method">Payment Method</Label>
+
+            <div className="space-y-3">
+              <Label
+                htmlFor="payment-method"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Payment Method
+              </Label>
               <Select
                 value={paymentMethod}
                 onValueChange={setPaymentMethod}
                 disabled={data.packages.length === 0}
+                defaultValue="bkash"
               >
-                <SelectTrigger id="payment-method">
-                  <SelectValue placeholder="Select payment method" />
+                <SelectTrigger
+                  id="payment-method"
+                  className="w-full bg-background border-input hover:bg-accent/10 transition-colors"
+                >
+                  <SelectValue placeholder="Select payment option" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bkash">BKash</SelectItem>
+                  <SelectItem
+                    value="bkash"
+                    className="py-3 cursor-pointer hover:bg-accent/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-md bg-pink-500/10 flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-pink-500" />
+                      </div>
+                      <span>bKash</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 // Types
 type Package = {
   _id: string;
+  discount: number;
   title: string;
   tokens: number;
   price: number;
@@ -84,7 +85,7 @@ function Dashboard() {
 
   // Get active tab from URL search params, defaulting to "overview" if not present or invalid
   const getActiveTabFromParams = () => {
-    const tab = searchParams.get("tab");
+    const tab = searchParams?.get("tab");
     return tab && VALID_TABS.includes(tab) ? tab : DEFAULT_TAB;
   };
 
@@ -231,7 +232,7 @@ function Dashboard() {
   // Check for returning from payment
   useEffect(() => {
     // Check URL parameters for payment status
-    const paymentStatus = searchParams.get("payment_status");
+    const paymentStatus = searchParams?.get("payment_status");
 
     if (paymentStatus === "success") {
       toast.success("Payment successful! Your tokens have been added.");

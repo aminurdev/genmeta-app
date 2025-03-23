@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  PackageOpen,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -30,6 +29,7 @@ import type { ApiResponse } from "@/app/(main)/dashboard/page";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 import { getCurrentUser } from "@/services/auth-services";
 import { Progress } from "../ui/progress";
+import PricingTabs from "../pricing-tabs";
 
 interface DataProps {
   userActivity: ApiResponse["data"]["userActivity"];
@@ -67,9 +67,7 @@ const calculateRenewalDate = (expiresDate: string): string => {
 export default function AccountTab({
   userActivity,
   isLoading = false,
-  packages,
-  handlePurchase,
-  isPurchasing,
+
   onRefresh,
 }: DataProps) {
   const [savingAccount, setSavingAccount] = useState(false);
@@ -436,84 +434,10 @@ export default function AccountTab({
             </Button>
           )}
         </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <Skeleton className="h-5 w-24" />
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Skeleton className="h-8 w-16" />
-                    <Skeleton className="h-4 w-12" />
-                    <Skeleton className="h-5 w-20" />
-                    <Skeleton className="h-3 w-24" />
-                  </CardContent>
-                  <CardFooter>
-                    <Skeleton className="h-9 w-full" />
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : !packages || packages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <PackageOpen className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">
-                No Token Packages Available
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
-                We couldn&apos;t find any token packages at the moment. Please
-                try again later or contact support.
-              </p>
-              {onRefresh && (
-                <Button variant="outline" onClick={onRefresh}>
-                  Retry
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {packages.map(({ title, tokens, price, popular, _id }) => (
-                <Card
-                  key={_id}
-                  className={`${
-                    popular ? "border-primary" : ""
-                  } relative overflow-hidden transition-all hover:shadow-md`}
-                >
-                  {popular && (
-                    <div className="absolute -right-10 top-4 rotate-45 bg-primary px-10 py-1 text-xs font-semibold text-primary-foreground">
-                      Popular
-                    </div>
-                  )}
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-3xl font-bold">
-                      {tokens.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Tokens</p>
-                    <p className="font-medium">৳ {price.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">
-                      ৳ {(price / tokens).toFixed(2)} per token
-                    </p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      variant={popular ? "default" : "outline"}
-                      className="w-full"
-                      disabled={isPurchasing}
-                      onClick={() => handlePurchase(_id)}
-                    >
-                      Purchase
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
+        <div className="sm:p-5">
+          {" "}
+          <PricingTabs />
+        </div>
       </Card>
       <Card>
         <CardHeader>
