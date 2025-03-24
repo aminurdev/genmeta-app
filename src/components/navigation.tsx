@@ -1,10 +1,7 @@
-"use client"; // Ensure this is a client component if using Next.js 15
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { DecodedToken, getCurrentUser } from "@/services/auth-services";
+import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
 import { ModeToggle } from "./main/mode-toggle";
 import Image from "next/image";
@@ -17,16 +14,8 @@ import {
   Menu,
 } from "lucide-react";
 
-export function Navigation() {
-  const [user, setUser] = useState<DecodedToken | null>(null);
-
-  useEffect(() => {
-    async function fetchUser() {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    }
-    fetchUser();
-  }, []);
+export async function Navigation() {
+  const user = await getCurrentUser();
 
   return (
     <nav className="sticky top-0 z-50 bg-background border-b border-border">

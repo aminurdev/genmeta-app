@@ -1,9 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import type React from "react";
-
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Upload,
   X,
@@ -67,6 +71,9 @@ export default function UploadForm() {
   const [isPending, setIsPending] = useState(true);
   const [progress, setProgress] = useState<number>(0);
   const [processedCount, setProcessedCount] = useState<number>(0);
+  const [processingTime, setProcessingTime] = useState(0);
+  const [processingTimerId, setProcessingTimerId] =
+    useState<NodeJS.Timeout | null>(null);
 
   // Dialog states
   const [showModal, setShowModal] = useState(false);
@@ -106,6 +113,9 @@ export default function UploadForm() {
       keywordCount: 45,
     };
   });
+
+  // Optimize progress updates with requestAnimationFrame
+  const progressRef = useRef(0);
 
   // Fetch user tokens
   const fetchUserTokens = useCallback(async () => {
@@ -295,33 +305,103 @@ export default function UploadForm() {
         xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
         xhr.timeout = 3600000;
-        xhr.ontimeout = () => {
-          toast.error(
-            "The request timed out. Please try with fewer or smaller images."
-          );
-          setUploadInProgress(false);
-          setLoading(false);
-        };
 
-        // Track upload progress
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const uploadProgress = Math.round(
-              (event.loaded / event.total) * 100
-            );
-            setProgress(uploadProgress);
+        // Add connection test on long processes
+        let processingStartTime = 0;
+        xhr.onreadystatechange = () => {
+          // When upload completes and server processing begins
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            processingStartTime = Date.now();
           }
         };
 
+        // Use requestAnimationFrame for smoother progress updates
+        let rafId: number | null = null;
+        let lastProgressUpdate = 0;
+
+        // Update progress with animation frame for smoother UI
+        const updateProgressWithRAF = () => {
+          if (Math.abs(progressRef.current - progress) > 0.1) {
+            setProgress(progressRef.current);
+          }
+          rafId = requestAnimationFrame(updateProgressWithRAF);
+        };
+
+        // Start the animation loop
+        rafId = requestAnimationFrame(updateProgressWithRAF);
+
+        // Track upload progress with optimized updates
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const now = Date.now();
+            // Only calculate progress max once every 300ms to reduce overhead
+            if (now - lastProgressUpdate > 300) {
+              progressRef.current = Math.round(
+                (event.loaded / event.total) * 100
+              );
+              lastProgressUpdate = now;
+            }
+          }
+        };
+
+        // Add periodic console log during long processing
+        const processingInterval = setInterval(() => {
+          if (
+            processingStartTime > 0 &&
+            progressRef.current >= 99 &&
+            uploadInProgress
+          ) {
+            const processingTime = Math.round(
+              (Date.now() - processingStartTime) / 1000
+            );
+            console.log(
+              `Image processing in progress for ${processingTime} seconds`
+            );
+          }
+        }, 10000);
+
         // Set up promise for completion
         const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
+          // Add cleanup for interval and animation frame
+          const cleanup = () => {
+            clearInterval(processingInterval);
+            if (rafId !== null) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+          };
+
+          const clearIntervalAndResolve = (response: UploadResponse) => {
+            cleanup();
+            resolve(response);
+          };
+
+          const clearIntervalAndReject = (error: Error) => {
+            cleanup();
+            reject(error);
+          };
+
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const response: UploadResponse = JSON.parse(xhr.responseText);
-                resolve(response);
-              } catch {
-                reject(new Error("Failed to parse server response"));
+                clearIntervalAndResolve(response);
+              } catch (error: unknown) {
+                // The server returned a response, but it's not valid JSON
+                if (error instanceof Error) {
+                  console.log(error.message);
+                }
+                if (xhr.responseText && xhr.responseText.length > 0) {
+                  clearIntervalAndReject(
+                    new Error(
+                      "Invalid response format from server. The response was received but could not be processed."
+                    )
+                  );
+                } else {
+                  clearIntervalAndReject(
+                    new Error("Failed to parse server response")
+                  );
+                }
               }
             } else {
               try {
@@ -330,13 +410,13 @@ export default function UploadForm() {
                   errorResponse.status === "error" &&
                   errorResponse.message === "invalid token"
                 ) {
-                  reject(
+                  clearIntervalAndReject(
                     new Error(
                       "Authentication failed: Your session has expired. Please log in again."
                     )
                   );
                 } else {
-                  reject(
+                  clearIntervalAndReject(
                     new Error(
                       errorResponse.message ||
                         `Server error: ${xhr.status} ${xhr.statusText}`
@@ -344,23 +424,50 @@ export default function UploadForm() {
                   );
                 }
               } catch {
-                reject(
-                  new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
+                clearIntervalAndReject(
+                  new Error(
+                    `Server error: ${xhr.status || "unknown"} ${
+                      xhr.statusText || "error"
+                    }`
+                  )
                 );
               }
             }
           };
 
           xhr.onerror = () => {
-            reject(
-              new Error(
-                "Server unavailable. Please check your internet connection and try again later."
-              )
-            );
+            // Check if we actually received a response before showing connection error
+            if (xhr.status === 0 && xhr.responseText === "") {
+              clearIntervalAndReject(
+                new Error(
+                  "Server unavailable. Please check your internet connection and try again later."
+                )
+              );
+            } else {
+              // There was a response, but an error occurred during processing
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                clearIntervalAndReject(
+                  new Error(
+                    errorResponse.message ||
+                      `Server error: ${xhr.status} ${xhr.statusText}`
+                  )
+                );
+              } catch {
+                // If parsing fails, provide generic error
+                clearIntervalAndReject(
+                  new Error(
+                    `Server error: ${xhr.status || "unknown"} ${
+                      xhr.statusText || "error"
+                    }`
+                  )
+                );
+              }
+            }
           };
 
           xhr.onabort = () => {
-            reject(new Error("Upload cancelled by user"));
+            clearIntervalAndReject(new Error("Upload cancelled by user"));
           };
         });
 
@@ -369,6 +476,10 @@ export default function UploadForm() {
 
         // Wait for completion
         const response = await uploadPromise;
+
+        // Ensure progress is 100% for UI consistency
+        progressRef.current = 100;
+        setProgress(100);
 
         // Process upload response
         if (isRegeneration) {
@@ -420,7 +531,6 @@ export default function UploadForm() {
           setFailedFiles([]);
         }
 
-        setProgress(100);
         xhrRef.current = null;
         return response;
       } catch (error) {
@@ -561,9 +671,93 @@ export default function UploadForm() {
     [files, handleFileUpload, hasInsufficientTokens, settings]
   );
 
-  // Renderers for different UI sections
+  // Add processing time tracking with reduced update frequency
+  useEffect(() => {
+    if (processingTimerId) {
+      clearInterval(processingTimerId);
+      setProcessingTimerId(null);
+    }
+
+    if (progress === 100 && uploadInProgress) {
+      // Use a longer interval (2 seconds) to reduce UI updates
+      const timer = setInterval(() => {
+        setProcessingTime((prev) => prev + 2);
+      }, 2000);
+      setProcessingTimerId(timer);
+    } else if (!uploadInProgress) {
+      setProcessingTime(0);
+    }
+
+    return () => {
+      if (processingTimerId) {
+        clearInterval(processingTimerId);
+      }
+    };
+  }, [progress === 100, uploadInProgress]); // Simplified dependency array
+
+  // Optimize file grid rendering with virtualization for large file sets
+  const FileGridItem = React.memo(
+    ({
+      file,
+      index,
+      onRemove,
+    }: {
+      file: File;
+      index: number;
+      onRemove: (index: number) => void;
+    }) => {
+      // Use URL.createObjectURL once per component instance
+      const [objectUrl, setObjectUrl] = useState<string>("");
+
+      useEffect(() => {
+        const url = URL.createObjectURL(file);
+        setObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+      }, [file]);
+
+      return (
+        <div className="relative group">
+          <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden transition-all hover:shadow-md">
+            <div className="relative w-full h-full">
+              {file.type.startsWith("image/") ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={objectUrl || "/placeholder.svg"}
+                    alt={file.name}
+                    className="max-h-full max-w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+            aria-label={`Remove ${file.name}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="text-xs mt-1 ellipsis-clamp" title={file.name}>
+            {file.name}
+          </p>
+        </div>
+      );
+    }
+  );
+  FileGridItem.displayName = "FileGridItem";
+
+  // Use the optimized FileGridItem in renderFileGrid
   const renderFileGrid = useCallback(() => {
     if (files.length === 0) return null;
+
+    // Only render visible files to improve performance with large sets
+    const maxVisibleItems = Math.min(files.length, 100);
 
     return (
       <div className="mt-6">
@@ -586,39 +780,19 @@ export default function UploadForm() {
           </Button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 max-h-96 overflow-y-auto overflow-x-hidden">
-          {files.map((file, index) => (
-            <div key={index} className="relative group">
-              <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden transition-all hover:shadow-md">
-                <div className="relative w-full h-full">
-                  {file.type.startsWith("image/") ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img
-                        src={URL.createObjectURL(file) || "/placeholder.svg"}
-                        alt={file.name}
-                        className="max-h-full max-w-full object-contain"
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeFile(index)}
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <p className="text-xs mt-1 ellipsis-clamp" title={file.name}>
-                {file.name}
-              </p>
-            </div>
+          {files.slice(0, maxVisibleItems).map((file, index) => (
+            <FileGridItem
+              key={`${file.name}-${index}`}
+              file={file}
+              index={index}
+              onRemove={removeFile}
+            />
           ))}
+          {files.length > maxVisibleItems && (
+            <div className="col-span-2 sm:col-span-3 md:col-span-6 text-center py-4 text-sm text-muted-foreground">
+              {files.length - maxVisibleItems} more files not shown
+            </div>
+          )}
         </div>
       </div>
     );
@@ -689,11 +863,130 @@ export default function UploadForm() {
     );
   }, [failedUploads]);
 
+  // Extract the ProcessingIndicator as a memoized component to prevent unnecessary re-renders
+  const ProcessingIndicator = React.memo(({ time }: { time: number }) => {
+    if (time <= 30) return null;
+
+    return (
+      <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+        <p className="text-sm text-amber-700">
+          <AlertTriangle className="h-4 w-4 inline mr-2" />
+          Processing is taking longer than usual. Please keep this window open.
+          {time > 120 && (
+            <span> Large batches may take several minutes to complete.</span>
+          )}
+        </p>
+      </div>
+    );
+  });
+  ProcessingIndicator.displayName = "ProcessingIndicator";
+
+  // Create a pure CSS spinner component that doesn't rely on state updates
+  const CSSSpinner = React.memo(() => (
+    <div className="spinner-container">
+      <style jsx>{`
+        .spinner-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #ccc;
+          border-top-color: hsl(var(--primary));
+          border-radius: 50%;
+          animation: spinner 0.8s linear infinite;
+        }
+        @keyframes spinner {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .bounce-dots {
+          display: flex;
+          margin-top: 16px;
+        }
+        .dot {
+          width: 8px;
+          height: 8px;
+          margin: 0 4px;
+          background: hsl(var(--primary));
+          border-radius: 50%;
+        }
+        .dot:nth-child(1) {
+          animation: bounce 1.2s infinite 0ms;
+        }
+        .dot:nth-child(2) {
+          animation: bounce 1.2s infinite 150ms;
+        }
+        .dot:nth-child(3) {
+          animation: bounce 1.2s infinite 300ms;
+        }
+        @keyframes bounce {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+      `}</style>
+      <div className="spinner"></div>
+    </div>
+  ));
+  CSSSpinner.displayName = "CSSSpinner";
+
+  // Create a pure CSS bounce animation that doesn't rely on state updates
+  const BounceDots = React.memo(() => (
+    <div className="flex items-center justify-center mt-2 text-primary">
+      <style jsx>{`
+        .bounce-dots {
+          display: flex;
+        }
+        .dot {
+          width: 8px;
+          height: 8px;
+          margin: 0 4px;
+          background: hsl(var(--primary));
+          border-radius: 50%;
+        }
+        .dot:nth-child(1) {
+          animation: bounce 1.2s infinite 0ms;
+        }
+        .dot:nth-child(2) {
+          animation: bounce 1.2s infinite 150ms;
+        }
+        .dot:nth-child(3) {
+          animation: bounce 1.2s infinite 300ms;
+        }
+        @keyframes bounce {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+      `}</style>
+      <div className="bounce-dots">
+        <div className="dot"></div>
+        <div className="dot"></div>
+        <div className="dot"></div>
+      </div>
+      <span className="ml-2 text-sm">Generating metadata...</span>
+    </div>
+  ));
+  BounceDots.displayName = "BounceDots";
+
+  // Use the optimized components in renderProcessingContent
   const renderProcessingContent = useCallback(() => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <CSSSpinner />
         </div>
 
         <div className="space-y-2">
@@ -704,23 +997,7 @@ export default function UploadForm() {
           <Progress value={progress} className="h-2" />
 
           {progress === 100 && uploadInProgress ? (
-            <div className="flex items-center justify-center mt-2 text-primary">
-              <div className="flex space-x-1">
-                <div
-                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "0ms" }}
-                ></div>
-                <div
-                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                ></div>
-                <div
-                  className="h-2 w-2 bg-primary rounded-full animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                ></div>
-              </div>
-              <span className="ml-2 text-sm">Generating metadata...</span>
-            </div>
+            <BounceDots />
           ) : (
             <div className="flex justify-between text-sm mt-2">
               {uploadingStarted ? (
@@ -760,6 +1037,11 @@ export default function UploadForm() {
             This process may take several minutes for large batches
           </p>
         </div>
+
+        {/* Use the memoized component */}
+        {progress === 100 && uploadInProgress && (
+          <ProcessingIndicator time={processingTime} />
+        )}
       </div>
     );
   }, [
@@ -772,6 +1054,7 @@ export default function UploadForm() {
     failedFiles.length,
     failedUploads.length,
     files.length,
+    processingTime,
   ]);
 
   const renderCompletionContent = useCallback(() => {

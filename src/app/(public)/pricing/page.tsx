@@ -7,7 +7,7 @@ const PricingPage = () => {
   return (
     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-5xl">
           <span className="block">Supercharge Your Experience</span>
           <span className="block text-primary mt-2">with Token Packages</span>
         </h1>

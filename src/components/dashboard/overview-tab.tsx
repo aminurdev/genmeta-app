@@ -313,7 +313,7 @@ export default function OverviewTab({
               >
                 <SelectTrigger
                   id="payment-method"
-                  className="w-full bg-background border-input hover:bg-accent/10 transition-colors"
+                  className="w-full h-10 bg-background border-input hover:bg-accent/10 transition-colors"
                 >
                   <SelectValue placeholder="Select payment option" />
                 </SelectTrigger>
