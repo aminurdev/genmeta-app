@@ -1,8 +1,13 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import type React from "react";
-
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Upload,
   X,
@@ -16,9 +21,6 @@ import {
   AlertCircle,
   XCircle,
   AlertTriangle,
-  Sparkles,
-  ArrowRight,
-  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,17 +47,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import Link from "next/link";
 import { getBaseApi, getAccessToken } from "@/services/image-services";
 import { toast } from "sonner";
 import type { UploadResponse, UserPlanData } from "@/types/metadata";
-import { cn } from "@/lib/utils";
 
 export default function UploadForm() {
   // Core states
@@ -75,7 +70,10 @@ export default function UploadForm() {
   const [isPending, setIsPending] = useState(true);
   const [progress, setProgress] = useState<number>(0);
   const [processedCount, setProcessedCount] = useState<number>(0);
-  const [processingTime, setProcessingTime] = useState<number>(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [processingTime, setProcessingTime] = useState(0);
+  const [processingTimerId, setProcessingTimerId] =
+    useState<NodeJS.Timeout | null>(null);
 
   // Dialog states
   const [showModal, setShowModal] = useState(false);
@@ -115,6 +113,9 @@ export default function UploadForm() {
       keywordCount: 45,
     };
   });
+
+  // Optimize progress updates with requestAnimationFrame
+  const progressRef = useRef(0);
 
   // Fetch user tokens
   const fetchUserTokens = useCallback(async () => {
@@ -168,21 +169,6 @@ export default function UploadForm() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [uploadInProgress]);
-
-  // Add useEffect for tracking processing time
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (uploadInProgress) {
-      timer = setInterval(() => {
-        setProcessingTime((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setProcessingTime(0);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
     };
   }, [uploadInProgress]);
 
@@ -319,33 +305,103 @@ export default function UploadForm() {
         xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
         xhr.timeout = 3600000;
-        xhr.ontimeout = () => {
-          toast.error(
-            "The request timed out. Please try with fewer or smaller images."
-          );
-          setUploadInProgress(false);
-          setLoading(false);
-        };
 
-        // Track upload progress
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const uploadProgress = Math.round(
-              (event.loaded / event.total) * 100
-            );
-            setProgress(uploadProgress);
+        // Add connection test on long processes
+        let processingStartTime = 0;
+        xhr.onreadystatechange = () => {
+          // When upload completes and server processing begins
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            processingStartTime = Date.now();
           }
         };
 
+        // Use requestAnimationFrame for smoother progress updates
+        let rafId: number | null = null;
+        let lastProgressUpdate = 0;
+
+        // Update progress with animation frame for smoother UI
+        const updateProgressWithRAF = () => {
+          if (Math.abs(progressRef.current - progress) > 0.1) {
+            setProgress(progressRef.current);
+          }
+          rafId = requestAnimationFrame(updateProgressWithRAF);
+        };
+
+        // Start the animation loop
+        rafId = requestAnimationFrame(updateProgressWithRAF);
+
+        // Track upload progress with optimized updates
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const now = Date.now();
+            // Only calculate progress max once every 300ms to reduce overhead
+            if (now - lastProgressUpdate > 300) {
+              progressRef.current = Math.round(
+                (event.loaded / event.total) * 100
+              );
+              lastProgressUpdate = now;
+            }
+          }
+        };
+
+        // Add periodic console log during long processing
+        const processingInterval = setInterval(() => {
+          if (
+            processingStartTime > 0 &&
+            progressRef.current >= 99 &&
+            uploadInProgress
+          ) {
+            const processingTime = Math.round(
+              (Date.now() - processingStartTime) / 1000
+            );
+            console.log(
+              `Image processing in progress for ${processingTime} seconds`
+            );
+          }
+        }, 10000);
+
         // Set up promise for completion
         const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
+          // Add cleanup for interval and animation frame
+          const cleanup = () => {
+            clearInterval(processingInterval);
+            if (rafId !== null) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+          };
+
+          const clearIntervalAndResolve = (response: UploadResponse) => {
+            cleanup();
+            resolve(response);
+          };
+
+          const clearIntervalAndReject = (error: Error) => {
+            cleanup();
+            reject(error);
+          };
+
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               try {
                 const response: UploadResponse = JSON.parse(xhr.responseText);
-                resolve(response);
-              } catch {
-                reject(new Error("Failed to parse server response"));
+                clearIntervalAndResolve(response);
+              } catch (error: unknown) {
+                // The server returned a response, but it's not valid JSON
+                if (error instanceof Error) {
+                  console.log(error.message);
+                }
+                if (xhr.responseText && xhr.responseText.length > 0) {
+                  clearIntervalAndReject(
+                    new Error(
+                      "Invalid response format from server. The response was received but could not be processed."
+                    )
+                  );
+                } else {
+                  clearIntervalAndReject(
+                    new Error("Failed to parse server response")
+                  );
+                }
               }
             } else {
               try {
@@ -354,13 +410,13 @@ export default function UploadForm() {
                   errorResponse.status === "error" &&
                   errorResponse.message === "invalid token"
                 ) {
-                  reject(
+                  clearIntervalAndReject(
                     new Error(
                       "Authentication failed: Your session has expired. Please log in again."
                     )
                   );
                 } else {
-                  reject(
+                  clearIntervalAndReject(
                     new Error(
                       errorResponse.message ||
                         `Server error: ${xhr.status} ${xhr.statusText}`
@@ -368,23 +424,50 @@ export default function UploadForm() {
                   );
                 }
               } catch {
-                reject(
-                  new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
+                clearIntervalAndReject(
+                  new Error(
+                    `Server error: ${xhr.status || "unknown"} ${
+                      xhr.statusText || "error"
+                    }`
+                  )
                 );
               }
             }
           };
 
           xhr.onerror = () => {
-            reject(
-              new Error(
-                "Server unavailable. Please check your internet connection and try again later."
-              )
-            );
+            // Check if we actually received a response before showing connection error
+            if (xhr.status === 0 && xhr.responseText === "") {
+              clearIntervalAndReject(
+                new Error(
+                  "Server unavailable. Please check your internet connection and try again later."
+                )
+              );
+            } else {
+              // There was a response, but an error occurred during processing
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                clearIntervalAndReject(
+                  new Error(
+                    errorResponse.message ||
+                      `Server error: ${xhr.status} ${xhr.statusText}`
+                  )
+                );
+              } catch {
+                // If parsing fails, provide generic error
+                clearIntervalAndReject(
+                  new Error(
+                    `Server error: ${xhr.status || "unknown"} ${
+                      xhr.statusText || "error"
+                    }`
+                  )
+                );
+              }
+            }
           };
 
           xhr.onabort = () => {
-            reject(new Error("Upload cancelled by user"));
+            clearIntervalAndReject(new Error("Upload cancelled by user"));
           };
         });
 
@@ -393,6 +476,10 @@ export default function UploadForm() {
 
         // Wait for completion
         const response = await uploadPromise;
+
+        // Ensure progress is 100% for UI consistency
+        progressRef.current = 100;
+        setProgress(100);
 
         // Process upload response
         if (isRegeneration) {
@@ -444,7 +531,6 @@ export default function UploadForm() {
           setFailedFiles([]);
         }
 
-        setProgress(100);
         xhrRef.current = null;
         return response;
       } catch (error) {
@@ -501,6 +587,11 @@ export default function UploadForm() {
       formData.append("isRegeneration", "true");
 
       await handleFileUpload(formData, true);
+      toast.success(
+        `Successfully regenerated ${
+          regenerateFiles.length - failedFiles.length
+        } files`
+      );
     } catch (error) {
       console.error("Error during regeneration:", error);
       if (
@@ -580,9 +671,93 @@ export default function UploadForm() {
     [files, handleFileUpload, hasInsufficientTokens, settings]
   );
 
-  // Renderers for different UI sections
+  // Add processing time tracking with reduced update frequency
+  useEffect(() => {
+    if (processingTimerId) {
+      clearInterval(processingTimerId);
+      setProcessingTimerId(null);
+    }
+
+    if (progress === 100 && uploadInProgress) {
+      // Use a longer interval (2 seconds) to reduce UI updates
+      const timer = setInterval(() => {
+        setProcessingTime((prev) => prev + 2);
+      }, 2000);
+      setProcessingTimerId(timer);
+    } else if (!uploadInProgress) {
+      setProcessingTime(0);
+    }
+
+    return () => {
+      if (processingTimerId) {
+        clearInterval(processingTimerId);
+      }
+    };
+  }, [progress === 100, uploadInProgress]); // Simplified dependency array
+
+  // Optimize file grid rendering with virtualization for large file sets
+  const FileGridItem = React.memo(
+    ({
+      file,
+      index,
+      onRemove,
+    }: {
+      file: File;
+      index: number;
+      onRemove: (index: number) => void;
+    }) => {
+      // Use URL.createObjectURL once per component instance
+      const [objectUrl, setObjectUrl] = useState<string>("");
+
+      useEffect(() => {
+        const url = URL.createObjectURL(file);
+        setObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+      }, [file]);
+
+      return (
+        <div className="relative group">
+          <div className="aspect-square rounded-md border bg-muted flex items-center justify-center overflow-hidden transition-all hover:shadow-md">
+            <div className="relative w-full h-full">
+              {file.type.startsWith("image/") ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={objectUrl || "/placeholder.svg"}
+                    alt={file.name}
+                    className="max-h-full max-w-full object-contain"
+                    loading="lazy"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+            aria-label={`Remove ${file.name}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="text-xs mt-1 ellipsis-clamp" title={file.name}>
+            {file.name}
+          </p>
+        </div>
+      );
+    }
+  );
+  FileGridItem.displayName = "FileGridItem";
+
+  // Use the optimized FileGridItem in renderFileGrid
   const renderFileGrid = useCallback(() => {
     if (files.length === 0) return null;
+
+    // Only render visible files to improve performance with large sets
+    const maxVisibleItems = Math.min(files.length, 100);
 
     return (
       <div className="mt-6">
@@ -598,46 +773,26 @@ export default function UploadForm() {
             variant="outline"
             size="sm"
             onClick={clearAllFiles}
-            className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90 transition-colors"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Clear All
           </Button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[400px] overflow-y-auto overflow-x-hidden p-1">
-          {files.map((file, index) => (
-            <div key={index} className="relative group">
-              <div className="aspect-square rounded-lg border bg-background/50 backdrop-blur-sm flex items-center justify-center overflow-hidden transition-all hover:shadow-md group-hover:border-primary/50">
-                <div className="relative w-full h-full">
-                  {file.type.startsWith("image/") ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img
-                        src={URL.createObjectURL(file) || "/placeholder.svg"}
-                        alt={file.name}
-                        className="max-h-full max-w-full object-contain"
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeFile(index)}
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:scale-110 transition-transform"
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
-              <p className="text-xs mt-1 ellipsis-clamp" title={file.name}>
-                {file.name}
-              </p>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 max-h-96 overflow-y-auto overflow-x-hidden">
+          {files.slice(0, maxVisibleItems).map((file, index) => (
+            <FileGridItem
+              key={`${file.name}-${index}`}
+              file={file}
+              index={index}
+              onRemove={removeFile}
+            />
           ))}
+          {files.length > maxVisibleItems && (
+            <div className="col-span-2 sm:col-span-3 md:col-span-6 text-center py-4 text-sm text-muted-foreground">
+              {files.length - maxVisibleItems} more files not shown
+            </div>
+          )}
         </div>
       </div>
     );
@@ -647,46 +802,24 @@ export default function UploadForm() {
     if (!tokens) return null;
 
     return (
-      <div className="mb-4 flex justify-center items-center text-muted-foreground">
-        <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm border">
-          <div className="flex items-center">
-            <span className="text-sm font-medium mr-1">Available:</span>
-            <span
-              className={cn(
-                "text-sm font-bold",
-                hasInsufficientTokens ? "text-destructive" : "text-primary"
-              )}
-            >
-              {tokens.availableTokens}
-            </span>
-          </div>
-          <div className="w-px h-4 bg-border"></div>
-          <div className="flex items-center">
-            <span className="text-sm font-medium mr-1">Required:</span>
-            <span
-              className={cn(
-                "text-sm font-bold",
-                hasInsufficientTokens ? "text-destructive" : "text-primary"
-              )}
-            >
-              {files.length}
-            </span>
-          </div>
-
-          {hasInsufficientTokens && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="ml-1">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Not enough tokens available</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+      <div className="mb-4 flex justify-center items-center -mt-4 text-muted-foreground">
+        <div>
+          <span className="text-sm font-medium">Tokens: </span>
+          <span
+            className={`text-sm ${
+              hasInsufficientTokens ? "text-destructive" : "text-green-600"
+            }`}
+          >
+            {files.length}
+          </span>
+          <span>/</span>
+          <span
+            className={`text-sm ${
+              hasInsufficientTokens ? "text-destructive" : ""
+            }`}
+          >
+            {tokens.availableTokens}
+          </span>
         </div>
       </div>
     );
@@ -694,7 +827,7 @@ export default function UploadForm() {
 
   const renderErrorContent = useCallback(() => {
     let errorMessage = "An unknown error occurred";
-    let errorIcon = <AlertCircle className="h-10 w-10 text-destructive" />;
+    let errorIcon = <AlertCircle className="h-8 w-8 text-destructive" />;
 
     // Extract error message from failed uploads
     if (failedUploads.length > 0) {
@@ -706,85 +839,195 @@ export default function UploadForm() {
         errorMessage.includes("Authentication failed")
       ) {
         errorMessage = "Your session has expired. Please log in again.";
-        errorIcon = <XCircle className="h-10 w-10 text-destructive" />;
+        errorIcon = <XCircle className="h-8 w-8 text-destructive" />;
       } else if (
         errorMessage.includes("Server unavailable") ||
         errorMessage.includes("internet connection")
       ) {
-        errorIcon = <AlertTriangle className="h-10 w-10 text-amber-500" />;
+        errorIcon = <AlertTriangle className="h-8 w-8 text-amber-500" />;
       }
     }
 
     return (
-      <div className="space-y-6">
-        <div className="rounded-full bg-destructive/10 p-4 w-20 h-20 mx-auto flex items-center justify-center">
+      <div className="space-y-4">
+        <div className="rounded-full bg-red-100 p-3 w-16 h-16 mx-auto flex items-center justify-center">
           {errorIcon}
         </div>
         <div className="text-center">
-          <p className="text-xl font-semibold text-destructive">
+          <p className="text-lg font-semibold text-destructive">
             Processing Failed
           </p>
-          <p className="mt-3 text-muted-foreground">{errorMessage}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
         </div>
       </div>
     );
   }, [failedUploads]);
 
+  // Extract the ProcessingIndicator as a memoized component to prevent unnecessary re-renders
+  const ProcessingIndicator = React.memo(({ time }: { time: number }) => {
+    if (time <= 30) return null;
+
+    return (
+      <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+        <p className="text-sm text-amber-700">
+          <AlertTriangle className="h-4 w-4 inline mr-2" />
+          Processing is taking longer than usual. Please keep this window open.
+          {time > 120 && (
+            <span> Large batches may take several minutes to complete.</span>
+          )}
+        </p>
+      </div>
+    );
+  });
+  ProcessingIndicator.displayName = "ProcessingIndicator";
+
+  // Create a pure CSS spinner component that doesn't rely on state updates
+  const CSSSpinner = React.memo(() => (
+    <div className="spinner-container">
+      <style jsx>{`
+        .spinner-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .spinner {
+          width: 48px;
+          height: 48px;
+          border: 4px solid #ccc;
+          border-top-color: hsl(var(--primary));
+          border-radius: 50%;
+          animation: spinner 0.8s linear infinite;
+        }
+        @keyframes spinner {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .bounce-dots {
+          display: flex;
+          margin-top: 16px;
+        }
+        .dot {
+          width: 8px;
+          height: 8px;
+          margin: 0 4px;
+          background: hsl(var(--primary));
+          border-radius: 50%;
+        }
+        .dot:nth-child(1) {
+          animation: bounce 1.2s infinite 0ms;
+        }
+        .dot:nth-child(2) {
+          animation: bounce 1.2s infinite 150ms;
+        }
+        .dot:nth-child(3) {
+          animation: bounce 1.2s infinite 300ms;
+        }
+        @keyframes bounce {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+      `}</style>
+      <div className="spinner"></div>
+    </div>
+  ));
+  CSSSpinner.displayName = "CSSSpinner";
+
+  // Create a pure CSS bounce animation that doesn't rely on state updates
+  const BounceDots = React.memo(() => (
+    <div className="flex items-center justify-center mt-2 text-primary">
+      <style jsx>{`
+        .bounce-dots {
+          display: flex;
+        }
+        .dot {
+          width: 8px;
+          height: 8px;
+          margin: 0 4px;
+          background: hsl(var(--primary));
+          border-radius: 50%;
+        }
+        .dot:nth-child(1) {
+          animation: bounce 1.2s infinite 0ms;
+        }
+        .dot:nth-child(2) {
+          animation: bounce 1.2s infinite 150ms;
+        }
+        .dot:nth-child(3) {
+          animation: bounce 1.2s infinite 300ms;
+        }
+        @keyframes bounce {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+      `}</style>
+      <div className="bounce-dots">
+        <div className="dot"></div>
+        <div className="dot"></div>
+        <div className="dot"></div>
+      </div>
+      <span className="ml-2 text-sm">Generating metadata...</span>
+    </div>
+  ));
+  BounceDots.displayName = "BounceDots";
+
   const renderProcessingContent = useCallback(() => {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex items-center justify-center">
-          <div className="relative w-12 h-12">
-            {/* Outer ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
-
-            {/* Spinning inner ring */}
-            <div
-              className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"
-              style={{ animationDuration: "1.5s" }}
-            ></div>
+          {/* Improved loading spinner with smoother animation */}
+          <div className="w-12 h-12 relative">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/30"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin duration-1000"></div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm font-medium">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
             <span>Overall Progress</span>
             <span>{Math.round(progress)}%</span>
           </div>
 
-          {/* Enhanced progress bar */}
-          <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+          {/* Improved progress bar with smoother transition */}
+          <div className="h-2 bg-primary/20 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-              style={{
-                width: `${progress}%`,
-              }}
+              className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+              style={{ width: `${progress}%` }}
             ></div>
           </div>
 
           {progress === 100 && uploadInProgress ? (
-            <div className="flex items-center justify-center mt-3 text-primary">
+            <div className="flex items-center justify-center mt-2 text-primary">
+              {/* Improved bouncing dots with staggered animations */}
               <div className="flex space-x-1">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                    className="h-2 w-2 bg-primary rounded-full"
                     style={{
+                      animation: "bounce 1.4s infinite ease-in-out",
                       animationDelay: `${i * 150}ms`,
-                      animationDuration: "1.4s",
+                      animationFillMode: "both",
                     }}
                   ></div>
                 ))}
               </div>
-              <span className="ml-2 text-sm font-medium">
-                Generating metadata...
-              </span>
+              <span className="ml-2 text-sm">Generating metadata...</span>
             </div>
           ) : (
-            <div className="flex justify-between text-sm mt-3">
+            <div className="flex justify-between text-sm mt-2">
               {uploadingStarted ? (
-                <span className="flex items-center">
-                  <span className="inline-block w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></span>
+                <span>
                   {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
                   {Math.min(progress, 100)}% complete
                 </span>
@@ -798,7 +1041,7 @@ export default function UploadForm() {
                 </span>
               )}
               {failedUploads.length > 0 && (
-                <span className="text-destructive font-medium">
+                <span className="text-destructive">
                   Failed: {failedUploads.length}
                 </span>
               )}
@@ -806,26 +1049,18 @@ export default function UploadForm() {
           )}
         </div>
 
-        <div className="space-y-2 bg-muted/30 p-2 rounded-lg border">
-          <h4 className="text-sm font-medium flex items-center">
-            <Info className="h-4 w-4 mr-2 text-primary" />
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">
             {uploadingStarted
               ? isRegenerating
                 ? "Regenerating failed files..."
                 : progress === 100
-                ? "Upload complete! Generating SEO metadata..."
+                ? "Upload complete, generating SEO metadata..."
                 : "Uploading files to server..."
-              : "Analyzing images and generating SEO metadata..."}
+              : "Analyzing images and generating SEO metadata"}
           </h4>
-
           <p className="text-xs text-muted-foreground">
-            This process may take a few minutes depending on the batch size.
-            {processingTime > 60 && (
-              <span className="block mt-1 font-medium text-warning">
-                Please keep this window open to ensure the process completes
-                successfully.
-              </span>
-            )}
+            This process may take several minutes for large batches
           </p>
         </div>
       </div>
@@ -840,7 +1075,6 @@ export default function UploadForm() {
     failedFiles.length,
     failedUploads.length,
     files.length,
-    processingTime,
   ]);
 
   const renderCompletionContent = useCallback(() => {
@@ -851,29 +1085,29 @@ export default function UploadForm() {
     let statusTextColor = "text-green-600";
 
     if (uploadStatus === "allFailed") {
-      icon = <XCircle className="h-10 w-10 text-destructive" />;
+      icon = <XCircle className="h-8 w-8 text-destructive" />;
       statusColor = "bg-red-100";
       statusText = "Processing failed";
       statusTextColor = "text-destructive";
     } else if (uploadStatus === "partialSuccess") {
-      icon = <AlertTriangle className="h-10 w-10 text-amber-500" />;
+      icon = <AlertTriangle className="h-8 w-8 text-amber-500" />;
       statusColor = "bg-amber-100";
       statusText = "Partially completed";
       statusTextColor = "text-amber-600";
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div
-          className={`rounded-full ${statusColor} p-4 w-16 h-16 mx-auto flex items-center justify-center`}
+          className={`rounded-full ${statusColor} p-3 w-16 h-16 mx-auto flex items-center justify-center`}
         >
           {icon}
         </div>
         <div className="text-center">
-          <p className={`text-xl font-semibold ${statusTextColor}`}>
+          <p className={`text-lg font-semibold ${statusTextColor}`}>
             {statusText}
           </p>
-          <p className="mt-3 text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             {uploadResponse ? (
               <>
                 {uploadResponse.data.successfulImages.length} of {files.length}{" "}
@@ -891,13 +1125,11 @@ export default function UploadForm() {
             </p>
           )}
           {uploadResponse && (
-            <div className="mt-4 py-2 px-4 bg-muted/50 rounded-lg border">
+            <div className="mt-4 p-2 bg-primary/5 rounded-md">
               <div className="flex justify-between items-center">
                 <p className="text-sm">
                   <span className="font-medium">Remaining tokens:</span>{" "}
-                  <span className="text-primary font-bold">
-                    {uploadResponse.data.remainingTokens}
-                  </span>
+                  {uploadResponse.data.remainingTokens}
                 </p>
                 <Button
                   variant="ghost"
@@ -915,26 +1147,24 @@ export default function UploadForm() {
               </div>
 
               {showDetails && (
-                <div className=" space-y-3 text-left">
+                <div className="mt-2 space-y-2 text-left">
                   <p className="text-xs">
                     <span className="font-medium">Batch ID:</span>{" "}
-                    <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs">
-                      {uploadResponse.data.batchId}
-                    </span>
+                    {uploadResponse.data.batchId}
                   </p>
-                  <p className="text-xs flex items-center">
-                    <span className="font-medium mr-2">Status:</span>{" "}
+                  <p className="text-xs">
+                    <span className="font-medium">Status:</span>{" "}
                     <Badge
                       variant={
                         uploadStatus === "allSuccess" ? "default" : "outline"
                       }
-                      className={cn(
+                      className={`ml-1 ${
                         uploadStatus === "allFailed"
                           ? "border-destructive text-destructive"
                           : uploadStatus === "partialSuccess"
                           ? "border-amber-500 text-amber-500"
                           : ""
-                      )}
+                      }`}
                     >
                       {uploadStatus === "allSuccess"
                         ? "Complete"
@@ -963,16 +1193,13 @@ export default function UploadForm() {
     if (failedUploads.length === 0) return null;
 
     return (
-      <div className="border-t pt-4 ">
-        <h4 className="text-sm font-medium mb-3 flex items-center">
-          <XCircle className="h-4 w-4 mr-2 text-destructive" />
-          Failed Uploads:
-        </h4>
-        <div className="max-h-28 overflow-y-auto text-sm rounded-lg border bg-destructive/5">
+      <div className="border-t pt-4 mt-2">
+        <h4 className="text-sm font-medium mb-2">Failed Uploads:</h4>
+        <div className="max-h-32 overflow-y-auto text-sm">
           {failedUploads.map((fail, index) => (
             <div
               key={index}
-              className="py-2 px-3 border-b border-border/30 last:border-0"
+              className="py-1 border-b border-gray-100 last:border-0"
             >
               <p
                 className="font-medium ellipsis-clamp mb-1"
@@ -991,20 +1218,15 @@ export default function UploadForm() {
   }, [failedUploads]);
 
   return (
-    <div className="bg-gradient-to-br from-background to-muted/50 p-6 rounded-xl border shadow-sm">
+    <div className="">
       {/* Token info */}
       {renderTokenInfo()}
-
       {/* Loading state */}
       {isPending && (
-        <div className="flex justify-center items-center mb-4">
-          <div className="relative">
-            <div className="h-8 w-8 rounded-full border-2 border-primary/30 animate-ping absolute inset-0 opacity-75"></div>
-            <Loader2 className="h-8 w-8 animate-spin text-primary relative" />
-          </div>
+        <div className="flex justify-center items-center mb-4 -mt-4">
+          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
         </div>
       )}
-
       <form onSubmit={handleSubmit}>
         <Tabs
           defaultValue="upload"
@@ -1012,48 +1234,35 @@ export default function UploadForm() {
           value={tabValue}
           onValueChange={setTabValue}
         >
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger
-              value="upload"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Images
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">Upload Images</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="upload" className="mt-4 space-y-4">
-            <Card className="overflow-hidden border-dashed bg-background/50 backdrop-blur-sm">
+            <Card className="overflow-hidden">
               <CardContent className="pt-6">
                 {/* Drag and drop area */}
                 <div
-                  className={cn(
-                    "border-2 border-dashed rounded-xl text-center transition-all p-8",
+                  className={`border-2 border-dashed rounded-lg text-center transition-colors ${
                     isDragging
-                      ? "border-primary bg-primary/10 scale-[0.98]"
+                      ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
-                  )}
+                  }`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={(e) => triggerFileInput(e)}
                 >
-                  <div className="flex relative flex-col items-center justify-center gap-4">
-                    <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
-                      <Sparkles className="h-6 w-6 text-primary/50 " />
+                  <div className="flex relative flex-col items-center justify-center gap-4 p-8">
+                    <div className="rounded-full bg-primary/10 p-4">
+                      <Upload className="h-8 w-8 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold">
+                      <h3 className="text-lg font-semibold">
                         Drag and drop your images here
                       </h3>
-                      <p className="text-muted-foreground mt-2">
+                      <p className="text-sm text-muted-foreground mt-1">
                         or click to browse from your device
                       </p>
                     </div>
@@ -1068,15 +1277,17 @@ export default function UploadForm() {
                     />
                     <Label
                       htmlFor="file-upload"
-                      className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md bg-primary text-primary-foreground px-8 text-sm font-medium shadow hover:bg-primary/90 transition-colors mt-2"
+                      className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
                       onClick={(e) => e.stopPropagation()} // Stop propagation to prevent double triggering
                     >
                       Select Images
                     </Label>
-                    <div className="text-xs text-muted-foreground mt-4 flex flex-col items-center">
-                      <p className="mb-1">Supported formats: JPG, JPEG, PNG</p>
-                      <p>Max image size 45MB. Max 100 images per batch.</p>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Supported formats: JPG, JPEG, PNG
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Max image size 45MB. Max 100 images per batch.
+                    </p>
                   </div>
                 </div>
 
@@ -1087,27 +1298,23 @@ export default function UploadForm() {
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">
-            <Card className="bg-background/50 backdrop-blur-sm">
+            <Card>
               <CardContent className="pt-6 space-y-10">
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-semibold">Metadata Settings</h3>
-                    <p className="text-muted-foreground">
+                  <div className="space-y-0.5">
+                    <h3 className="font-medium">Metadata Settings</h3>
+                    <p className="text-sm text-muted-foreground">
                       Configure how your SEO metadata will be generated
                     </p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Settings className="h-6 w-6 text-primary" />
-                  </div>
+                  <Settings className="h-5 w-5 text-muted-foreground" />
                 </div>
 
-                <div className="space-y-10">
-                  <div className="space-y-3">
+                <div className="space-y-8">
+                  <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="title-length" className="text-base">
-                        Title Length
-                      </Label>
-                      <span className="text-sm font-medium bg-muted px-2 py-1 rounded-md">
+                      <Label htmlFor="title-length">Title Length</Label>
+                      <span className="text-sm text-muted-foreground">
                         {settings.titleLength} characters
                       </span>
                     </div>
@@ -1120,21 +1327,19 @@ export default function UploadForm() {
                       onValueChange={(value) =>
                         setSettings({ ...settings, titleLength: value[0] })
                       }
-                      className="py-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <Info className="h-3 w-3 mr-1" />
+                    <p className="text-xs text-muted-foreground mt-1">
                       Recommended: 50-60 characters for optimal display in
                       search results
                     </p>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="description-length" className="text-base">
+                      <Label htmlFor="description-length">
                         Description Length
                       </Label>
-                      <span className="text-sm font-medium bg-muted px-2 py-1 rounded-md">
+                      <span className="text-sm text-muted-foreground">
                         {settings.descriptionLength} characters
                       </span>
                     </div>
@@ -1150,21 +1355,17 @@ export default function UploadForm() {
                           descriptionLength: value[0],
                         })
                       }
-                      className="py-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <Info className="h-3 w-3 mr-1" />
+                    <p className="text-xs text-muted-foreground mt-1">
                       Recommended: 150-160 characters for optimal display in
                       search results
                     </p>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex justify-between">
-                      <Label htmlFor="keyword-count" className="text-base">
-                        Keyword Count
-                      </Label>
-                      <span className="text-sm font-medium bg-muted px-2 py-1 rounded-md">
+                      <Label htmlFor="keyword-count">Keyword Count</Label>
+                      <span className="text-sm text-muted-foreground">
                         {settings.keywordCount} keywords
                       </span>
                     </div>
@@ -1177,10 +1378,8 @@ export default function UploadForm() {
                       onValueChange={(value) =>
                         setSettings({ ...settings, keywordCount: value[0] })
                       }
-                      className="py-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                      <Info className="h-3 w-3 mr-1" />
+                    <p className="text-xs text-muted-foreground mt-1">
                       Recommended: 20-30 keywords for a balanced approach
                     </p>
                   </div>
@@ -1191,22 +1390,19 @@ export default function UploadForm() {
         </Tabs>
 
         {/* Submit Button */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-6 flex justify-center">
           <Button
             type="submit"
             disabled={files.length === 0 || loading || isPending}
-            className="px-12 h-12 text-base font-medium rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="px-12 h-11"
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Generating SEO Metadata
               </>
             ) : (
-              <>
-                <Sparkles className="mr-2 h-5 w-5" />
-                Generate SEO Metadata
-              </>
+              "Generate SEO Metadata"
             )}
           </Button>
         </div>
@@ -1227,7 +1423,7 @@ export default function UploadForm() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <div className="flex justify-between items-center">
-                <AlertDialogTitle className="text-xl">
+                <AlertDialogTitle>
                   {uploadInProgress
                     ? "Processing Images"
                     : uploadStatus === "allSuccess"
@@ -1246,10 +1442,10 @@ export default function UploadForm() {
                 {!uploadInProgress && (
                   <button
                     onClick={() => setShowModal(false)}
-                    className="rounded-full p-1.5 transition-colors hover:bg-muted"
+                    className="rounded-full p-1 transition-colors bg-destructive/10"
                     aria-label="Close modal"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4 text-destructive" />
                   </button>
                 )}
               </div>
@@ -1277,14 +1473,14 @@ export default function UploadForm() {
             {uploadInProgress ? (
               <AlertDialogFooter>
                 <AlertDialogCancel
+                  className="text-destructive border-destructive hover:text-destructive/90"
                   onClick={() => setShowConfirmDialog(true)}
-                  className="text-destructive border-destructive hover:text-destructive-foreground hover:bg-destructive/90"
                 >
                   Cancel Upload
                 </AlertDialogCancel>
               </AlertDialogFooter>
             ) : (
-              <AlertDialogFooter className="flex flex-col sm:flex-row flex-wrap gap-2">
+              <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
                 {failedUploads.length > 0 &&
                   !failedUploads.some(
                     (f) =>
@@ -1340,12 +1536,7 @@ export default function UploadForm() {
 
                 {uploadStatus !== "allFailed" && (
                   <Button type="button" asChild className="sm:flex-1">
-                    <Link href="/results">
-                      <span className="flex items-center">
-                        View Results
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </span>
-                    </Link>
+                    <Link href="/results">View Results</Link>
                   </Button>
                 )}
               </AlertDialogFooter>
@@ -1358,15 +1549,13 @@ export default function UploadForm() {
           open={showConfirmDialog}
           onOpenChange={setShowConfirmDialog}
         >
-          <AlertDialogContent className="max-w-md">
+          <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl">
-                Cancel Processing?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Cancel Processing?</AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogDescription>
               Are you sure you want to cancel the current upload? This will stop
-              processing your images and you may lose progress.
+              processing your images.
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel>No, continue processing</AlertDialogCancel>
@@ -1385,52 +1574,36 @@ export default function UploadForm() {
           open={inSufficientTokenModal}
           onOpenChange={setInSufficientTokenModal}
         >
-          <DialogContent className="max-w-md">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-xl">Not Enough Tokens</DialogTitle>
+              <DialogTitle>Not Enough Tokens</DialogTitle>
               <DialogDescription>
                 You don&apos;t have enough tokens to process all your images.
               </DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <div className="flex items-center mb-4 p-3 bg-amber-100 text-amber-800 rounded-lg">
-                <AlertCircle className="h-5 w-5 mr-3 flex-shrink-0" />
+              <div className="flex items-center mb-4 text-amber-600">
+                <AlertCircle className="h-5 w-5 mr-2" />
                 <p className="font-medium">Token Shortage</p>
               </div>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="font-medium">Required:</span>
-                  <span className="text-destructive font-bold">
-                    {files.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="font-medium">Available:</span>
-                  <span className="text-primary font-bold">
-                    {tokens?.availableTokens || 0}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-6 text-muted-foreground">
+              <p>
+                You need {files.length} tokens to process these images, but you
+                only have {tokens?.availableTokens || 0} tokens available.
+              </p>
+              <p className="mt-4">
                 Please upgrade your plan to get more tokens and continue
                 processing your images.
               </p>
             </div>
-            <DialogFooter className="gap-2">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setInSufficientTokenModal(false)}
-                className="flex-1"
               >
                 Cancel
               </Button>
-              <Button asChild className="flex-1">
-                <Link href="/pricing">
-                  <span className="flex items-center">
-                    Upgrade Plan
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </span>
-                </Link>
+              <Button asChild>
+                <Link href="/pricing">Upgrade Plan</Link>
               </Button>
             </DialogFooter>
           </DialogContent>
