@@ -1195,17 +1195,17 @@ export default function UploadForm() {
           <Button
             type="submit"
             disabled={files.length === 0 || loading || isPending}
-            className="px-12 h-12 text-base font-medium rounded-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="px-12 h-12 text-base font-medium rounded-md transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generating SEO Metadata
+                Generating Metadata
               </>
             ) : (
               <>
                 <Sparkles className="mr-2 h-5 w-5" />
-                Generate SEO Metadata
+                Generate Metadata
               </>
             )}
           </Button>
