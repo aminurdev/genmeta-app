@@ -134,17 +134,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
           <div className="flex flex-col">
             <div className="flex justify-between items-center">
               <span className="font-medium text-sm sm:text-base">Title:</span>
-              <span
-                className={`text-xs sm:text-sm ${
-                  editData.title.length > metadataLimits.titleLength
-                    ? "text-destructive font-medium"
-                    : "text-muted-foreground"
-                }`}
-              >
+              <span className="text-xs sm:text-sm text-muted-foreground">
                 {editData.title.length}/{metadataLimits.titleLength} chars |{" "}
                 {countWords(editData.title)} words
-                {editData.title.length > metadataLimits.titleLength &&
-                  " (Over limit)"}
               </span>
             </div>
             <div className="flex items-center mt-1">
