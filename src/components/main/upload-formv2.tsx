@@ -75,7 +75,9 @@ export default function UploadForm() {
   const [isPending, setIsPending] = useState(true);
   const [progress, setProgress] = useState<number>(0);
   const [processedCount, setProcessedCount] = useState<number>(0);
-  const [processingTime, setProcessingTime] = useState<number>(0);
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(
+    null
+  );
 
   // Dialog states
   const [showModal, setShowModal] = useState(false);
@@ -115,6 +117,14 @@ export default function UploadForm() {
       keywordCount: 45,
     };
   });
+
+  // New states for processing timeout
+  const [processingTimeout, setProcessingTimeout] =
+    useState<NodeJS.Timeout | null>(null);
+  const [isProcessingTimeout, setIsProcessingTimeout] = useState(false);
+  const MAX_PROCESSING_TIME = 1800000; // 30 minutes in milliseconds
+  const WARNING_TIME = 900000; // 15 minutes in milliseconds
+  const [showWarning, setShowWarning] = useState(false);
 
   // Fetch user tokens
   const fetchUserTokens = useCallback(async () => {
@@ -176,15 +186,34 @@ export default function UploadForm() {
     let timer: NodeJS.Timeout;
     if (uploadInProgress) {
       timer = setInterval(() => {
-        setProcessingTime((prev) => prev + 1);
+        setProcessedCount((prev) => prev + 1);
       }, 1000);
     } else {
-      setProcessingTime(0);
+      setProcessedCount(0);
     }
     return () => {
       if (timer) clearInterval(timer);
     };
   }, [uploadInProgress]);
+
+  // Add useEffect for warning timeout
+  useEffect(() => {
+    let warningTimer: NodeJS.Timeout;
+    if (processingStartTime && !showWarning) {
+      warningTimer = setTimeout(() => {
+        setShowWarning(true);
+        toast.warning(
+          "Processing is taking longer than usual. The process will continue, but you may want to check your internet connection.",
+          {
+            duration: 10000,
+          }
+        );
+      }, WARNING_TIME);
+    }
+    return () => {
+      if (warningTimer) clearTimeout(warningTimer);
+    };
+  }, [processingStartTime, showWarning]);
 
   // Derived state
   const hasInsufficientTokens = useMemo(() => {
@@ -318,6 +347,7 @@ export default function UploadForm() {
         xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
         xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
+        // Set upload timeout to 1 hour
         xhr.timeout = 3600000;
         xhr.ontimeout = () => {
           toast.error(
@@ -394,6 +424,22 @@ export default function UploadForm() {
         // Wait for completion
         const response = await uploadPromise;
 
+        // Start processing timeout after upload completes
+        setProcessingStartTime(Date.now());
+        setShowWarning(false);
+        const timeout = setTimeout(() => {
+          setIsProcessingTimeout(true);
+          setUploadInProgress(false);
+          setLoading(false);
+          toast.error(
+            "Processing has exceeded the maximum time limit. The process will continue in the background. You can check the results later.",
+            {
+              duration: 15000,
+            }
+          );
+        }, MAX_PROCESSING_TIME);
+        setProcessingTimeout(timeout);
+
         // Process upload response
         if (isRegeneration) {
           // For regeneration, merge with existing data
@@ -463,10 +509,28 @@ export default function UploadForm() {
 
         xhrRef.current = null;
         throw error;
+      } finally {
+        // Clear processing timeout
+        if (processingTimeout) {
+          clearTimeout(processingTimeout);
+          setProcessingTimeout(null);
+        }
+        setIsProcessingTimeout(false);
+        setProcessingStartTime(null);
+        setShowWarning(false);
       }
     },
-    [failedFiles, files, uploadResponse]
+    [failedFiles, files, uploadResponse, processingTimeout]
   );
+
+  // Add cleanup for processing timeout on component unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeout) {
+        clearTimeout(processingTimeout);
+      }
+    };
+  }, [processingTimeout]);
 
   const regenerateFailedFiles = useCallback(async () => {
     if (failedFiles.length === 0) return;
@@ -731,6 +795,15 @@ export default function UploadForm() {
   }, [failedUploads]);
 
   const renderProcessingContent = useCallback(() => {
+    const elapsedTime = processingStartTime
+      ? Math.floor((Date.now() - processingStartTime) / 1000)
+      : 0;
+    const minutes = Math.floor(elapsedTime / 60);
+    const seconds = elapsedTime % 60;
+    const remainingMinutes = Math.floor(
+      (MAX_PROCESSING_TIME - elapsedTime * 1000) / 60000
+    );
+
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-center">
@@ -755,7 +828,7 @@ export default function UploadForm() {
           {/* Enhanced progress bar */}
           <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+              className="h-full bg-primary rounded-full"
               style={{
                 width: `${progress}%`,
               }}
@@ -819,12 +892,27 @@ export default function UploadForm() {
           </h4>
 
           <p className="text-xs text-muted-foreground">
-            This process may take a few minutes depending on the batch size.
-            {processingTime > 60 && (
-              <span className="block mt-1 font-medium text-warning">
-                Please keep this window open to ensure the process completes
-                successfully.
+            {isProcessingTimeout ? (
+              <span className="text-destructive font-medium">
+                Processing has exceeded the time limit but will continue in the
+                background. You can check the results later.
               </span>
+            ) : showWarning ? (
+              <span className="text-warning font-medium">
+                Processing is taking longer than usual. The process will
+                continue, but you may want to check your internet connection.
+              </span>
+            ) : (
+              <>
+                This process may take few minutes depending on the batch size.
+                {elapsedTime > 60 && (
+                  <span className="block mt-1 font-medium text-warning">
+                    Processing time: {minutes}m {seconds}s. Estimated time
+                    remaining: {remainingMinutes}m. Please keep this window open
+                    to ensure the process completes successfully.
+                  </span>
+                )}
+              </>
             )}
           </p>
         </div>
@@ -840,7 +928,9 @@ export default function UploadForm() {
     failedFiles.length,
     failedUploads.length,
     files.length,
-    processingTime,
+    processingStartTime,
+    isProcessingTimeout,
+    showWarning,
   ]);
 
   const renderCompletionContent = useCallback(() => {

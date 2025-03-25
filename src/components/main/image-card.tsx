@@ -166,17 +166,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
               <span className="font-medium text-sm sm:text-base">
                 Description:
               </span>
-              <span
-                className={`text-xs sm:text-sm ${
-                  editData.description.length > metadataLimits.descriptionLength
-                    ? "text-destructive font-medium"
-                    : "text-muted-foreground"
-                }`}
-              >
+              <span className="text-xs sm:text-sm text-muted-foreground">
                 {editData.description.length}/{metadataLimits.descriptionLength}{" "}
                 chars | {countWords(editData.description)} words
-                {editData.description.length >
-                  metadataLimits.descriptionLength && " (Over limit)"}
               </span>
             </div>
             <div className="flex items-start mt-1">
@@ -261,17 +253,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 Title:
               </span>
               <div className="flex items-center gap-1">
-                <span
-                  className={`text-xs sm:text-sm ${
-                    item.metadata.title.length > metadataLimits.titleLength
-                      ? "text-destructive font-medium"
-                      : "text-muted-foreground"
-                  }`}
-                >
+                <span className="text-xs sm:text-sm text-muted-foreground">
                   {item.metadata.title.length}/{metadataLimits.titleLength}{" "}
                   chars | {countWords(item.metadata.title)} words
-                  {item.metadata.title.length > metadataLimits.titleLength &&
-                    " (Over limit)"}
                 </span>{" "}
                 <Button
                   variant="ghost"
@@ -301,19 +285,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
                 Description:
               </span>
               <div className="flex items-center gap-1">
-                <span
-                  className={`text-xs sm:text-sm ${
-                    item.metadata.description.length >
-                    metadataLimits.descriptionLength
-                      ? "text-destructive font-medium"
-                      : "text-muted-foreground"
-                  }`}
-                >
+                <span className="text-xs sm:text-sm text-muted-foreground">
                   {item.metadata.description.length}/
                   {metadataLimits.descriptionLength} chars |{" "}
                   {countWords(item.metadata.description)} words
-                  {item.metadata.description.length >
-                    metadataLimits.descriptionLength && " (Over limit)"}
                 </span>
                 <Button
                   variant="ghost"
