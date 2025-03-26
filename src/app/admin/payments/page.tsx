@@ -54,12 +54,23 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { usePayments } from "@/hooks/use-payments";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
 
 export default function PaymentsPage() {
   const { payments, loading, error, pagination, fetchPayments } = usePayments();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleSearch = (value: string) => {
@@ -71,6 +82,10 @@ export default function PaymentsPage() {
       status: statusFilter === "all" ? undefined : statusFilter,
       paymentMethod:
         paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
+      startDate: dateRange?.from
+        ? format(dateRange.from, "yyyy-MM-dd")
+        : undefined,
+      endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
     });
   };
 
@@ -83,6 +98,10 @@ export default function PaymentsPage() {
       status: value === "all" ? undefined : value,
       paymentMethod:
         paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
+      startDate: dateRange?.from
+        ? format(dateRange.from, "yyyy-MM-dd")
+        : undefined,
+      endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
     });
   };
 
@@ -94,6 +113,24 @@ export default function PaymentsPage() {
       search: searchTerm,
       status: statusFilter === "all" ? undefined : statusFilter,
       paymentMethod: value === "all" ? undefined : value,
+      startDate: dateRange?.from
+        ? format(dateRange.from, "yyyy-MM-dd")
+        : undefined,
+      endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+    });
+  };
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    setCurrentPage(1);
+    fetchPayments({
+      page: 1,
+      search: searchTerm,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      paymentMethod:
+        paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
+      startDate: range?.from ? format(range.from, "yyyy-MM-dd") : undefined,
+      endDate: range?.to ? format(range.to, "yyyy-MM-dd") : undefined,
     });
   };
 
@@ -105,6 +142,10 @@ export default function PaymentsPage() {
       status: statusFilter === "all" ? undefined : statusFilter,
       paymentMethod:
         paymentMethodFilter === "all" ? undefined : paymentMethodFilter,
+      startDate: dateRange?.from
+        ? format(dateRange.from, "yyyy-MM-dd")
+        : undefined,
+      endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
     });
   };
 
@@ -150,6 +191,43 @@ export default function PaymentsPage() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !dateRange?.from &&
+                            !dateRange?.to &&
+                            "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                          dateRange?.to ? (
+                            <>
+                              {format(dateRange.from, "LLL dd, y")} -{" "}
+                              {format(dateRange.to, "LLL dd, y")}
+                            </>
+                          ) : (
+                            format(dateRange.from, "LLL dd, y")
+                          )
+                        ) : (
+                          "Date Range"
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="range"
+                        defaultMonth={dateRange?.from}
+                        selected={dateRange}
+                        onSelect={handleDateRangeChange}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <Button variant="outline" size="sm">
                     <Download className="mr-2 h-4 w-4" />
                     Export
