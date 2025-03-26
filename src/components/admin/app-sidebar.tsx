@@ -17,11 +17,8 @@ import {
   CreditCard,
   LayoutDashboard,
   Package,
-  Settings,
   Users,
-  Coins,
   LogOut,
-  ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -86,41 +83,6 @@ export function AppSidebar() {
                   <Link href="/admin/plans">
                     <Package className="h-4 w-4" />
                     <span>Plans</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/tokens")}>
-                  <Link href="/admin/tokens">
-                    <Coins className="h-4 w-4" />
-                    <span>Tokens</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/images")}>
-                  <Link href="/admin/images">
-                    <ImageIcon className="h-4 w-4" />
-                    <span>Images</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/admin/settings")}
-                >
-                  <Link href="/admin/settings">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -365,9 +365,9 @@ export default function PlansPage() {
                                 </div>
                               </TableCell>
                               <TableCell>{plan.tokens}</TableCell>
-                              <TableCell>${plan.price}</TableCell>
+                              <TableCell>৳{plan.price}</TableCell>
                               <TableCell>{plan.discount}%</TableCell>
-                              <TableCell>${plan.discountedPrice}</TableCell>
+                              <TableCell>৳{plan.discountedPrice}</TableCell>
                               <TableCell>
                                 <Badge
                                   variant="outline"
@@ -397,13 +397,6 @@ export default function PlansPage() {
                                     >
                                       <Edit className="mr-2 h-4 w-4" />
                                       Edit plan
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={() => handleDeletePlan(plan._id)}
-                                    >
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      Delete plan
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>

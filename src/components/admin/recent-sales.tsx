@@ -61,7 +61,7 @@ export function RecentSales({ transactions }: RecentSalesProps) {
             </Badge>
           </div>
           <div className="ml-4 font-medium">
-            +${transaction.amount.toLocaleString()}
+            +৳{transaction.amount.toLocaleString()}
           </div>
         </div>
       ))}

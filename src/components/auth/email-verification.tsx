@@ -22,9 +22,9 @@ export default function EmailVerification() {
   const searchParams = useSearchParams();
 
   // Get step and tokens from URL params
-  const stepParam = searchParams.get("step");
-  const otpTokenParam = searchParams.get("otpToken");
-  const tempTokenParam = searchParams.get("tempToken");
+  const stepParam = searchParams?.get("step");
+  const otpTokenParam = searchParams?.get("otpToken") || "";
+  const tempTokenParam = searchParams?.get("tempToken");
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");

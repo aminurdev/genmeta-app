@@ -178,7 +178,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${metrics.totalRevenue.amount.toLocaleString()}
+                    ৳{metrics.totalRevenue.amount.toLocaleString()}
                   </div>
                   <div className="flex items-center text-xs text-muted-foreground">
                     {metrics.totalRevenue.growth >= 0 ? (

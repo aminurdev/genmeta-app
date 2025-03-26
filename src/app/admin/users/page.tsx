@@ -15,9 +15,7 @@ import {
   XCircle,
   Shield,
   User,
-  Filter,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 import {
   Card,
@@ -76,19 +74,14 @@ import { useUsers } from "@/hooks/use-users";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { getBaseApi } from "@/services/image-services";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
 
 export default function UsersPage() {
   const { users, loading, error, pagination, fetchUsers } = useUsers();
@@ -251,7 +244,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col ">
       <div className="flex-1 space-y-6 p-6 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -453,476 +446,434 @@ export default function UsersPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="all-users" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="all-users">All Users</TabsTrigger>
-            <TabsTrigger value="verified-users">Verified Users</TabsTrigger>
-            <TabsTrigger value="unverified-users">Unverified Users</TabsTrigger>
-            <TabsTrigger value="admin-users">Admin Users</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all-users" className="mt-0">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <CardTitle>Users</CardTitle>
-                    <CardDescription>
-                      Manage your platform users, their roles, and permissions.
-                    </CardDescription>
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle>Users</CardTitle>
+                <CardDescription>
+                  Manage your platform users, their roles, and permissions.
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export Users
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="relative flex-1 md:max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Search users by name or email..."
+                      className="pl-8"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
                   </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export Users
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Select value={roleFilter} onValueChange={handleRoleFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={handleStatusFilter}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(searchTerm ||
+                      roleFilter !== "all" ||
+                      statusFilter !== "all") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setRoleFilter("all");
+                          setStatusFilter("all");
+                          fetchUsers();
+                        }}
+                      >
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Reset filters
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col gap-6">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-1 items-center gap-2">
-                      <div className="relative flex-1 md:max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="search"
-                          placeholder="Search users..."
-                          className="pl-8"
-                          value={searchTerm}
-                          onChange={(e) => handleSearch(e.target.value)}
+                {(searchTerm ||
+                  roleFilter !== "all" ||
+                  statusFilter !== "all") && (
+                  <div className="flex flex-wrap gap-2">
+                    {searchTerm && (
+                      <Badge variant="secondary" className="gap-1">
+                        Search: {searchTerm}
+                        <XCircle
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => {
+                            setSearchTerm("");
+                            fetchUsers({
+                              page: 1,
+                              role:
+                                roleFilter === "all" ? undefined : roleFilter,
+                            });
+                          }}
                         />
-                      </div>
-
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-10">
-                            <Filter className="mr-2 h-4 w-4" />
-                            Filters
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                          <div className="grid gap-4">
-                            <div className="space-y-2">
-                              <h4 className="font-medium leading-none">
-                                Filters
-                              </h4>
-                              <p className="text-sm text-muted-foreground">
-                                Filter users by role and status
-                              </p>
-                            </div>
-                            <div className="grid gap-2">
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="role" className="text-right">
-                                  Role
-                                </Label>
-                                <Select
-                                  value={roleFilter}
-                                  onValueChange={handleRoleFilter}
-                                >
-                                  <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Select role" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">
-                                      All Roles
-                                    </SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="user">User</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="status" className="text-right">
-                                  Status
-                                </Label>
-                                <Select
-                                  value={statusFilter}
-                                  onValueChange={handleStatusFilter}
-                                >
-                                  <SelectTrigger className="col-span-3">
-                                    <SelectValue placeholder="Select status" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">
-                                      All Status
-                                    </SelectItem>
-                                    <SelectItem value="active">
-                                      Active
-                                    </SelectItem>
-                                    <SelectItem value="inactive">
-                                      Inactive
-                                    </SelectItem>
-                                    <SelectItem value="suspended">
-                                      Suspended
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                      </Badge>
+                    )}
+                    {roleFilter !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        Role: {roleFilter}
+                        <XCircle
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => {
+                            setRoleFilter("all");
+                            fetchUsers({
+                              page: 1,
+                              search: searchTerm,
+                            });
+                          }}
+                        />
+                      </Badge>
+                    )}
+                    {statusFilter !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        Status: {statusFilter}
+                        <XCircle
+                          className="h-3 w-3 cursor-pointer"
+                          onClick={() => {
+                            setStatusFilter("all");
+                            fetchUsers({
+                              page: 1,
+                              search: searchTerm,
+                              role:
+                                roleFilter === "all" ? undefined : roleFilter,
+                            });
+                          }}
+                        />
+                      </Badge>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow>
-                          <TableHead className="w-[80px]">Avatar</TableHead>
-                          <TableHead>
-                            <div className="flex items-center gap-1">
-                              User
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="ml-1 h-8 p-0"
-                              >
-                                <ArrowUpDown className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Verify Status</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Plan</TableHead>
-                          <TableHead>Usage</TableHead>
-                          <TableHead>Joined</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {loading ? (
-                          <>
-                            {Array.from({ length: 5 }).map((_, index) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  <Skeleton className="h-8 w-8 rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[120px]" />
-                                    <Skeleton className="h-3 w-[160px]" />
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-6 w-[60px] rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-6 w-[80px] rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-6 w-[80px] rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[100px]" />
-                                    <Skeleton className="h-3 w-[80px]" />
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[80px]" />
-                                    <Skeleton className="h-3 w-[60px]" />
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-[80px]" />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex justify-end">
-                                    <Skeleton className="h-8 w-8 rounded-full" />
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </>
-                        ) : users.length > 0 ? (
-                          users.map((user) => (
-                            <TableRow
-                              key={user.email}
-                              className="hover:bg-muted/50"
-                            >
-                              <TableCell>
-                                <Avatar className="h-9 w-9 border">
-                                  <AvatarImage
-                                    src={`https://avatar.vercel.sh/${user.email}`}
-                                    alt={user.name}
-                                  />
-                                  <AvatarFallback className="bg-primary/10 text-primary">
-                                    {user.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")}
-                                  </AvatarFallback>
-                                </Avatar>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <p className="font-medium">{user.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {user.email}
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant="outline"
-                                  className={`capitalize ${getRoleColor(
-                                    user.role
-                                  )}`}
-                                >
-                                  {user.role}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {getVerificationBadge(user.isVerified)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant="outline"
-                                  className={`${getStatusColor(user.status)}`}
-                                >
-                                  {user.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <p className="font-medium text-sm">
-                                    {user.currentPlan.name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Expires{" "}
-                                    {format(
-                                      new Date(user.currentPlan.expiresDate),
-                                      "MMM d, yyyy"
-                                    )}
-                                  </p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-1">
-                                    <Coins className="h-3.5 w-3.5 text-amber-500" />
-                                    <span className="text-sm">
-                                      <span className="font-medium">
-                                        {user.tokens.available}
-                                      </span>
-                                      /{user.tokens.total}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Image className="h-3.5 w-3.5 text-blue-500" />
-                                    <span className="text-sm">
-                                      <span className="font-medium">
-                                        {user.images.processed}
-                                      </span>
-                                      /{user.images.total}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                  <span className="text-sm">
-                                    {format(
-                                      new Date(user.createdAt),
-                                      "MMM d, yyyy"
-                                    )}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <MoreHorizontal className="h-4 w-4" />
-                                      <span className="sr-only">Open menu</span>
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="w-[160px]"
-                                  >
-                                    <DropdownMenuLabel>
-                                      Actions
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuItem>
-                                      View details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      Edit user
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem>
-                                      Reset password
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className={
-                                        user.status === "suspended"
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                      }
-                                    >
-                                      {user.status === "suspended"
-                                        ? "Activate account"
-                                        : "Suspend account"}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={9} className="h-24 text-center">
-                              <div className="flex flex-col items-center justify-center gap-2">
-                                <Users className="h-8 w-8 text-muted-foreground/60" />
-                                <p className="text-muted-foreground">
-                                  No users found.
-                                </p>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSearchTerm("");
-                                    setRoleFilter("all");
-                                    setStatusFilter("all");
-                                    fetchUsers();
-                                  }}
-                                >
-                                  Reset filters
-                                </Button>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="w-[80px]">Avatar</TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          User
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="ml-1 h-8 p-0"
+                          >
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Verify Status</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Usage</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <>
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Skeleton className="h-8 w-8 rounded-full" />
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-[120px]" />
+                                <Skeleton className="h-3 w-[160px]" />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-6 w-[60px] rounded-full" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-6 w-[80px] rounded-full" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-6 w-[80px] rounded-full" />
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-[100px]" />
+                                <Skeleton className="h-3 w-[80px]" />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-[80px]" />
+                                <Skeleton className="h-3 w-[60px]" />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-[80px]" />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex justify-end">
+                                <Skeleton className="h-8 w-8 rounded-full" />
                               </div>
                             </TableCell>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="text-sm text-muted-foreground">
-                      Showing <strong>{users.length}</strong> of{" "}
-                      <strong>{pagination.totalUsers}</strong> users
-                      {searchTerm && (
-                        <span>
-                          {" "}
-                          matching &quot;<strong>{searchTerm}</strong>&quot;
-                        </span>
-                      )}
-                      {roleFilter !== "all" && (
-                        <span>
-                          {" "}
-                          with role &quot;<strong>{roleFilter}</strong>&quot;
-                        </span>
-                      )}
-                    </div>
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious
-                            onClick={() =>
-                              handlePageChange(Math.max(currentPage - 1, 1))
-                            }
-                            className={
-                              currentPage === 1
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-                        {Array.from(
-                          { length: pagination.totalPages },
-                          (_, i) => i + 1
-                        ).map((page) => (
-                          <PaginationItem key={page}>
-                            <PaginationLink
-                              onClick={() => handlePageChange(page)}
-                              isActive={currentPage === page}
-                            >
-                              {page}
-                            </PaginationLink>
-                          </PaginationItem>
                         ))}
-                        <PaginationItem>
-                          <PaginationNext
-                            onClick={() =>
-                              handlePageChange(
-                                Math.min(currentPage + 1, pagination.totalPages)
-                              )
-                            }
-                            className={
-                              currentPage === pagination.totalPages
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
+                      </>
+                    ) : users.length > 0 ? (
+                      users.map((user) => (
+                        <TableRow
+                          key={user.email}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell>
+                            <Avatar className="h-9 w-9 border">
+                              <AvatarImage
+                                src={`https://avatar.vercel.sh/${user.email}`}
+                                alt={user.name}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-primary">
+                                {user.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <p className="font-medium">{user.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {user.email}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={`capitalize ${getRoleColor(
+                                user.role
+                              )}`}
+                            >
+                              {user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {getVerificationBadge(user.isVerified)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={`${getStatusColor(user.status)}`}
+                            >
+                              {user.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <p className="font-medium text-sm">
+                                {user.currentPlan.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Expires{" "}
+                                {format(
+                                  new Date(user.currentPlan.expiresDate),
+                                  "MMM d, yyyy"
+                                )}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <Coins className="h-3.5 w-3.5 text-amber-500" />
+                                <span className="text-sm">
+                                  <span className="font-medium">
+                                    {user.tokens.available}
+                                  </span>
+                                  /{user.tokens.total}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Image className="h-3.5 w-3.5 text-blue-500" />
+                                <span className="text-sm">
+                                  <span className="font-medium">
+                                    {user.images.processed}
+                                  </span>
+                                  /{user.images.total}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">
+                                {format(
+                                  new Date(user.createdAt),
+                                  "MMM d, yyyy"
+                                )}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Open menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-[160px]"
+                              >
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/users/${user._id}`}>
+                                    View details
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className={
+                                    user.status === "suspended"
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                  }
+                                >
+                                  {user.status === "suspended"
+                                    ? "Activate account"
+                                    : "Suspend account"}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={9} className="h-24 text-center">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Users className="h-8 w-8 text-muted-foreground/60" />
+                            <p className="text-muted-foreground">
+                              No users found.
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSearchTerm("");
+                                setRoleFilter("all");
+                                setStatusFilter("all");
+                                fetchUsers();
+                              }}
+                            >
+                              Reset filters
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing <strong>{users.length}</strong> of{" "}
+                  <strong>{pagination.totalUsers}</strong> users
+                  {searchTerm && (
+                    <span>
+                      {" "}
+                      matching &quot;<strong>{searchTerm}</strong>&quot;
+                    </span>
+                  )}
+                  {roleFilter !== "all" && (
+                    <span>
+                      {" "}
+                      with role &quot;<strong>{roleFilter}</strong>&quot;
+                    </span>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="verified-users" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Verified Users</CardTitle>
-                <CardDescription>
-                  Users who have completed email verification
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  This tab would display only verified users with similar
-                  functionality as the All Users tab.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="unverified-users" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Unverified Users</CardTitle>
-                <CardDescription>
-                  Users who have not completed email verification
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  This tab would display only unverified users with similar
-                  functionality as the All Users tab.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="admin-users" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Admin Users</CardTitle>
-                <CardDescription>
-                  Users with administrative privileges
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  This tab would display only admin users with similar
-                  functionality as the All Users tab.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() =>
+                          handlePageChange(Math.max(currentPage - 1, 1))
+                        }
+                        className={
+                          currentPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                    {Array.from(
+                      { length: pagination.totalPages },
+                      (_, i) => i + 1
+                    ).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(page)}
+                          isActive={currentPage === page}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() =>
+                          handlePageChange(
+                            Math.min(currentPage + 1, pagination.totalPages)
+                          )
+                        }
+                        className={
+                          currentPage === pagination.totalPages
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -348,7 +348,7 @@ export default function UploadForm() {
         xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
 
         // Set upload timeout to 1 hour
-        xhr.timeout = 3600000;
+        xhr.timeout = 2 * 60 * 60 * 1000;
         xhr.ontimeout = () => {
           toast.error(
             "The request timed out. Please try with fewer or smaller images."
@@ -406,11 +406,34 @@ export default function UploadForm() {
           };
 
           xhr.onerror = () => {
-            reject(
-              new Error(
-                "Server unavailable. Please check your internet connection and try again later."
-              )
-            );
+            // Check if we actually received a response before showing connection error
+            if (xhr.status === 0 && xhr.responseText === "") {
+              reject(
+                new Error(
+                  "Server unavailable. Please check your internet connection and try again later."
+                )
+              );
+            } else {
+              // There was a response, but an error occurred during processing
+              try {
+                const errorResponse = JSON.parse(xhr.responseText);
+                reject(
+                  new Error(
+                    errorResponse.message ||
+                      `Server error: ${xhr.status} ${xhr.statusText}`
+                  )
+                );
+              } catch {
+                // If parsing fails, provide generic error
+                reject(
+                  new Error(
+                    `Server error: ${xhr.status || "unknown"} ${
+                      xhr.statusText || "error"
+                    }`
+                  )
+                );
+              }
+            }
           };
 
           xhr.onabort = () => {
@@ -499,12 +522,26 @@ export default function UploadForm() {
 
         // Don't set failed uploads if it was a user cancellation
         if (errorMessage !== "Upload cancelled by user") {
-          setFailedUploads([
-            {
-              filename: isRegeneration ? "Batch regeneration" : "Batch upload",
-              error: errorMessage,
-            },
-          ]);
+          // Check if we're in the processing phase
+          if (progress === 100 && uploadInProgress) {
+            setFailedUploads([
+              {
+                filename: isRegeneration
+                  ? "Batch regeneration"
+                  : "Batch upload",
+                error: "Processing error: " + errorMessage,
+              },
+            ]);
+          } else {
+            setFailedUploads([
+              {
+                filename: isRegeneration
+                  ? "Batch regeneration"
+                  : "Batch upload",
+                error: errorMessage,
+              },
+            ]);
+          }
         }
 
         xhrRef.current = null;
@@ -520,7 +557,14 @@ export default function UploadForm() {
         setShowWarning(false);
       }
     },
-    [failedFiles, files, uploadResponse, processingTimeout]
+    [
+      failedFiles,
+      files,
+      uploadResponse,
+      processingTimeout,
+      progress,
+      uploadInProgress,
+    ]
   );
 
   // Add cleanup for processing timeout on component unmount
