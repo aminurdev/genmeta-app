@@ -7,7 +7,6 @@ import {
   MoreHorizontal,
   Search,
   UserPlus,
-  Image,
   Coins,
   Calendar,
   Users,
@@ -16,6 +15,8 @@ import {
   Shield,
   User,
   RefreshCw,
+  Trash2,
+  ImageIcon,
 } from "lucide-react";
 import {
   Card,
@@ -82,6 +83,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function UsersPage() {
   const { users, loading, error, pagination, fetchUsers } = useUsers();
@@ -90,6 +92,11 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     verifiedUsers: 0,
@@ -221,6 +228,39 @@ export default function UsersPage() {
         Unverified
       </Badge>
     );
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const baseApi = await getBaseApi();
+      const response = await fetch(
+        `${baseApi}/admin/users/delete/${userToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("User and all associated data deleted successfully");
+        // Refresh the users list
+        await fetchUsers({
+          page: currentPage,
+          search: searchTerm,
+          role: roleFilter === "all" ? undefined : roleFilter,
+        });
+      } else {
+        toast.error(data.message || "Failed to delete user");
+      }
+    } catch {
+      toast.error("An error occurred while deleting the user");
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
+    }
   };
 
   if (error) {
@@ -722,7 +762,7 @@ export default function UsersPage() {
                                 </span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Image className="h-3.5 w-3.5 text-blue-500" />
+                                <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
                                 <span className="text-sm">
                                   <span className="font-medium">
                                     {user.images.processed}
@@ -776,6 +816,19 @@ export default function UsersPage() {
                                   {user.status === "suspended"
                                     ? "Activate account"
                                     : "Suspend account"}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() =>
+                                    setUserToDelete({
+                                      id: user._id,
+                                      name: user.name,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete user
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -875,6 +928,60 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={!!userToDelete}
+        onOpenChange={(open) => !open && setUserToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription className="pt-4">
+              <div className="space-y-4">
+                <p className="text-red-500 font-medium">
+                  Warning: This action cannot be undone. This will permanently
+                  delete:
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+                  <li>User account and profile</li>
+                  <li>All associated images and data</li>
+                  <li>Usage history and statistics</li>
+                </ul>
+                <p className="font-medium">
+                  Are you sure you want to delete user{" "}
+                  <span className="text-primary">{userToDelete?.name}</span>?
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUserToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
