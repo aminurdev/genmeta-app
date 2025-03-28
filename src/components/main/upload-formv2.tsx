@@ -901,15 +901,6 @@ export default function UploadForm() {
   }, [failedUploads]);
 
   const renderProcessingContent = useCallback(() => {
-    const elapsedTime = processingStartTime
-      ? Math.floor((Date.now() - processingStartTime) / 1000)
-      : 0;
-    const minutes = Math.floor(elapsedTime / 60);
-    const seconds = elapsedTime % 60;
-    const remainingMinutes = Math.floor(
-      (MAX_PROCESSING_TIME - elapsedTime * 1000) / 60000
-    );
-
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-center">
@@ -931,10 +922,9 @@ export default function UploadForm() {
             <span>{Math.round(progress)}%</span>
           </div>
 
-          {/* Enhanced progress bar with smoother transition */}
           <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-500 ease-in-out"
+              className="h-full bg-primary rounded-full "
               style={{
                 width: `${progress}%`,
               }}
@@ -1013,14 +1003,7 @@ export default function UploadForm() {
             ) : (
               <>
                 This process may take several minutes depending on the batch
-                size.
-                {elapsedTime > 60 && (
-                  <span className="block mt-1 font-medium text-amber-500">
-                    Processing time: {minutes}m {seconds}s. Estimated time
-                    remaining: {remainingMinutes}m. Please keep this window open
-                    to ensure the process completes successfully.
-                  </span>
-                )}
+                size. Don&apos;t worry just chill and keep wait.
               </>
             )}
           </p>
