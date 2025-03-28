@@ -54,8 +54,78 @@ import {
 import Link from "next/link";
 import { getBaseApi, getAccessToken } from "@/services/image-services";
 import { toast } from "sonner";
-import type { UploadResponse, UserPlanData } from "@/types/metadata";
 import { cn } from "@/lib/utils";
+
+interface BatchData {
+  batchId: string;
+  status: "Processing";
+  totalImages: number;
+  userId: string;
+  _id: string;
+  successfulImages?: Metadata[];
+  failedImages?: FailedImage[];
+  remainingTokens?: number;
+  successfulImagesCount?: number;
+  failedImagesCount?: number;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  data: BatchData;
+}
+
+type Plan = {
+  planId: string;
+  status: "Active" | "Expired";
+  expiresDate: string;
+};
+
+export type UserPlanData = {
+  _id: string;
+  userId: string;
+  availableTokens: number;
+  totalImageProcessed?: number;
+  tokensUsedThisMonth?: number;
+  totalTokensUsed?: number;
+  totalTokensPurchased: number;
+  plan?: Plan;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Define types for batch and image
+type Metadata = {
+  imageName: string;
+  metadata: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
+};
+
+interface FailedImage {
+  filename: string;
+  error: string;
+}
+
+interface BatchResultData {
+  _id: string;
+  batchId: string;
+  name: string;
+  status: "Pending" | "Partial" | "Completed" | "Failed";
+  tokensUsed: number;
+  successfulImagesCount?: number;
+  failedImagesCount?: number;
+  failedImages?: FailedImage[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface PollProcessResponse {
+  success: boolean;
+  message: string;
+  data: BatchResultData;
+}
 
 export default function UploadForm() {
   // Core states
@@ -125,6 +195,10 @@ export default function UploadForm() {
   const MAX_PROCESSING_TIME = 1800000; // 30 minutes in milliseconds
   const WARNING_TIME = 900000; // 15 minutes in milliseconds
   const [showWarning, setShowWarning] = useState(false);
+
+  // New state for tracking processing status
+  const [processingStatusCheckInterval, setProcessingStatusCheckInterval] =
+    useState<NodeJS.Timeout | null>(null);
 
   // Fetch user tokens
   const fetchUserTokens = useCallback(async () => {
@@ -326,274 +400,344 @@ export default function UploadForm() {
       xhrRef.current = null;
     }
 
+    // Clear any intervals
+    if (processingStatusCheckInterval) {
+      clearInterval(processingStatusCheckInterval);
+      setProcessingStatusCheckInterval(null);
+    }
+
     setShowConfirmDialog(false);
     setShowModal(false);
     setLoading(false);
     setUploadingStarted(false);
     setUploadInProgress(false);
     toast.info("Upload process cancelled");
+  }, [processingStatusCheckInterval]);
+
+  // First declare the file upload function
+  const handleFileUpload = useCallback(async (formData: FormData) => {
+    try {
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+      console.log("API endpoint:", `${baseApi}/images/upload/multiple`);
+
+      // Create XHR for upload only
+      const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+
+      xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
+      xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
+
+      // Track upload progress
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      // Set up promise for completion
+      const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
+        xhr.onload = () => {
+          console.log("XHR status:", xhr.status);
+          console.log("XHR response text:", xhr.responseText);
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const parsedResponse = JSON.parse(xhr.responseText);
+              console.log("Parsed response:", parsedResponse);
+              resolve(parsedResponse);
+            } catch (err) {
+              console.error("Failed to parse response:", err);
+              reject(new Error("Failed to parse server response"));
+            }
+          } else {
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              console.error("Error response:", errorResponse);
+              reject(new Error(errorResponse.message || "Unknown error"));
+            } catch (err) {
+              console.error("Failed to parse error response:", err);
+              reject(
+                new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
+              );
+            }
+          }
+        };
+
+        xhr.onerror = () => {
+          console.error("XHR error occurred");
+          reject(new Error("Server timeout or connection error"));
+        };
+        xhr.onabort = () => {
+          console.log("Upload aborted by user");
+          reject(new Error("Upload cancelled by user"));
+        };
+      });
+
+      xhr.send(formData);
+      console.log("XHR request sent, waiting for response...");
+      const response = await uploadPromise;
+      console.log("Upload complete, received response:", response);
+      xhrRef.current = null;
+      return response;
+    } catch (error) {
+      console.error("Error in handleFileUpload:", error);
+      xhrRef.current = null;
+      throw error;
+    }
   }, []);
 
-  const handleFileUpload = useCallback(
-    async (formData: FormData, isRegeneration = false) => {
+  // Extract processing status check to a separate function
+  const startProcessingStatusCheck = useCallback(
+    async (batchId: string) => {
       try {
         const baseApi = await getBaseApi();
         const accessToken = await getAccessToken();
 
-        // Create XHR for progress tracking
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr; // Store reference for cancellation
-
-        xhr.open("POST", `${baseApi}/images/upload/multiple`, true);
-        xhr.setRequestHeader("authorization", `Bearer ${accessToken}`);
-
-        // Set upload timeout to 1 hour
-        xhr.timeout = 2 * 60 * 60 * 1000;
-        xhr.ontimeout = () => {
-          toast.error(
-            "The request timed out. Please try with fewer or smaller images."
-          );
-          setUploadInProgress(false);
-          setLoading(false);
-        };
-
-        // Track upload progress
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const uploadProgress = Math.round(
-              (event.loaded / event.total) * 100
+        // Set up the interval for checking processing status
+        const interval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(
+              `${baseApi}/images/processingStatus/${batchId}`,
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              }
             );
-            setProgress(uploadProgress);
+
+            if (!statusResponse.ok) return;
+
+            const statusData = await statusResponse.json();
+            console.log("Status check response:", statusData);
+
+            // Update processed count with fallback handling
+            if (statusData.data.successfulImagesCount) {
+              setProcessedCount(statusData.data.successfulImagesCount);
+            }
+
+            // Check if processing is complete
+            if (statusData.data.status !== "Pending") {
+              clearInterval(interval);
+              console.log("Processing complete:", statusData.data.status);
+
+              // Update with final response data with proper structure handling
+              setUploadResponse((current) => {
+                if (!current) return null;
+
+                return {
+                  success: statusData.success,
+                  message: statusData.message,
+                  data: {
+                    ...current.data,
+                    batchId: statusData.data.batchId,
+                    _id: statusData.data._id || current.data._id,
+                    successfulImagesCount:
+                      statusData.data.successfulImagesCount || 0,
+                    failedImagesCount: statusData.data.failedImagesCount || 0,
+                    failedImages: statusData.data.failedImages || [],
+                    remainingTokens: tokens?.availableTokens
+                      ? tokens.availableTokens -
+                        (statusData.data.tokensUsed || 0)
+                      : 0,
+                  },
+                };
+              });
+
+              // Update failed uploads with better error handling
+              if (statusData.data.failedImages?.length > 0) {
+                setFailedUploads(statusData.data.failedImages);
+
+                // Map failed filenames to actual file objects with improved matching
+                const newFailedFiles = files.filter((file) =>
+                  statusData.data.failedImages.some(
+                    (failed: { filename: string }) =>
+                      failed.filename === file.name
+                  )
+                );
+                setFailedFiles(newFailedFiles);
+              } else {
+                setFailedUploads([]);
+                setFailedFiles([]);
+              }
+
+              // Finish up
+              await fetchUserTokens();
+              setUploadInProgress(false);
+              setProgress(100);
+              setProcessingStatusCheckInterval(null);
+
+              if (processingTimeout) {
+                clearTimeout(processingTimeout);
+                setProcessingTimeout(null);
+              }
+
+              // Add smooth transition
+              setTimeout(() => {
+                setLoading(false);
+              }, 500);
+            }
+          } catch (error) {
+            console.error("Error checking status:", error);
+            /* Continue checking despite errors */
           }
-        };
+        }, 3000);
 
-        // Set up promise for completion
-        const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const response: UploadResponse = JSON.parse(xhr.responseText);
-                resolve(response);
-              } catch {
-                reject(new Error("Failed to parse server response"));
-              }
-            } else {
-              try {
-                const errorResponse = JSON.parse(xhr.responseText);
-                if (
-                  errorResponse.status === "error" &&
-                  errorResponse.message === "invalid token"
-                ) {
-                  reject(
-                    new Error(
-                      "Authentication failed: Your session has expired. Please log in again."
-                    )
-                  );
-                } else {
-                  reject(
-                    new Error(
-                      errorResponse.message ||
-                        `Server error: ${xhr.status} ${xhr.statusText}`
-                    )
-                  );
-                }
-              } catch {
-                reject(
-                  new Error(`Server error: ${xhr.status} ${xhr.statusText}`)
-                );
-              }
-            }
-          };
+        // Store the interval for cleanup
+        setProcessingStatusCheckInterval(interval);
 
-          xhr.onerror = () => {
-            // Check if we actually received a response before showing connection error
-            if (xhr.status === 0 && xhr.responseText === "") {
-              reject(
-                new Error(
-                  "Server unavailable. Please check your internet connection and try again later."
-                )
-              );
-            } else {
-              // There was a response, but an error occurred during processing
-              try {
-                const errorResponse = JSON.parse(xhr.responseText);
-                reject(
-                  new Error(
-                    errorResponse.message ||
-                      `Server error: ${xhr.status} ${xhr.statusText}`
-                  )
-                );
-              } catch {
-                // If parsing fails, provide generic error
-                reject(
-                  new Error(
-                    `Server error: ${xhr.status || "unknown"} ${
-                      xhr.statusText || "error"
-                    }`
-                  )
-                );
-              }
-            }
-          };
-
-          xhr.onabort = () => {
-            reject(new Error("Upload cancelled by user"));
-          };
-        });
-
-        // Start the upload
-        xhr.send(formData);
-
-        // Wait for completion
-        const response = await uploadPromise;
-
-        // Start processing timeout after upload completes
-        setProcessingStartTime(Date.now());
-        setShowWarning(false);
+        // Set up timeout for maximum processing time
         const timeout = setTimeout(() => {
+          clearInterval(interval);
+          setProcessingStatusCheckInterval(null);
           setIsProcessingTimeout(true);
           setUploadInProgress(false);
-          setLoading(false);
           toast.error(
-            "Processing has exceeded the maximum time limit. The process will continue in the background. You can check the results later.",
+            "Processing has exceeded the maximum time limit. The process will continue in the background.",
             {
               duration: 15000,
             }
           );
         }, MAX_PROCESSING_TIME);
+
         setProcessingTimeout(timeout);
-
-        // Process upload response
-        if (isRegeneration) {
-          // For regeneration, merge with existing data
-          const previousSuccessfulImages =
-            uploadResponse?.data.successfulImages || [];
-          const newSuccessfulImages = response.data.successfulImages;
-
-          const mergedResponse = {
-            ...response,
-            data: {
-              ...response.data,
-              successfulImages: [
-                ...previousSuccessfulImages,
-                ...newSuccessfulImages,
-              ],
-            },
-          };
-
-          setUploadResponse(mergedResponse);
-
-          // Update successful uploads count (add to existing count)
-          const previousSuccessCount =
-            uploadResponse?.data.successfulImages.length || 0;
-          const newSuccessCount = response.data.successfulImages.length;
-          setProcessedCount(previousSuccessCount + newSuccessCount);
-        } else {
-          setUploadResponse(response);
-          setProcessedCount(response.data.successfulImages.length);
-        }
-
-        // Process failed uploads
-        if (
-          response.data.failedImages &&
-          response.data.failedImages.length > 0
-        ) {
-          setFailedUploads(response.data.failedImages);
-
-          // Store failed files for potential regeneration
-          const filesToRegenerate = isRegeneration ? failedFiles : files;
-          const newFailedFiles = filesToRegenerate.filter((file) =>
-            response.data.failedImages.some(
-              (failed) => failed.filename === file.name
-            )
-          );
-          setFailedFiles(newFailedFiles);
-        } else {
-          setFailedUploads([]);
-          setFailedFiles([]);
-        }
-
-        setProgress(100);
-        xhrRef.current = null;
-        return response;
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
+        console.error("Error starting status check:", error);
+        toast.error("Error checking processing status");
+      }
+    },
+    [files, tokens, fetchUserTokens, processingTimeout]
+  );
 
-        // Don't set failed uploads if it was a user cancellation
-        if (errorMessage !== "Upload cancelled by user") {
-          // Check if we're in the processing phase
-          if (progress === 100 && uploadInProgress) {
-            setFailedUploads([
-              {
-                filename: isRegeneration
-                  ? "Batch regeneration"
-                  : "Batch upload",
-                error: "Processing error: " + errorMessage,
-              },
-            ]);
-          } else {
-            setFailedUploads([
-              {
-                filename: isRegeneration
-                  ? "Batch regeneration"
-                  : "Batch upload",
-                error: errorMessage,
-              },
-            ]);
-          }
+  // Now define the submit function which depends on both of the above
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+
+      if (files.length === 0) {
+        toast.error("Please upload at least one image");
+        return;
+      }
+
+      if (hasInsufficientTokens) {
+        setInSufficientTokenModal(true);
+        return;
+      }
+
+      // Set initial state with smoother transitions
+      setLoading(true);
+
+      // Short delay before showing modal for smoother transition
+      setTimeout(() => {
+        setUploadingStarted(true);
+        setShowModal(true);
+        setProcessedCount(0);
+        setProgress(0);
+        setFailedUploads([]);
+        setFailedFiles([]);
+        setUploadInProgress(true);
+        setProcessingStartTime(Date.now());
+      }, 100);
+
+      try {
+        // Prepare form data
+        const formData = new FormData();
+        files.forEach((file) => formData.append("images", file));
+        formData.append("titleLength", settings.titleLength.toString());
+        formData.append(
+          "descriptionLength",
+          settings.descriptionLength.toString()
+        );
+        formData.append("keywordCount", settings.keywordCount.toString());
+        formData.append("totalExpectedFiles", files.length.toString());
+
+        // Step 1: Upload files
+        console.log("Starting file upload...");
+        const uploadResponse = await handleFileUpload(formData);
+
+        console.log(
+          "Upload response received:",
+          JSON.stringify(uploadResponse)
+        );
+
+        // Store the response in state immediately
+        setUploadResponse(uploadResponse);
+
+        // Step 2: Start checking processing status
+        if (uploadResponse?.data?.batchId) {
+          console.log(
+            `Starting processing check for batch ID: ${uploadResponse.data.batchId}`
+          );
+          await startProcessingStatusCheck(uploadResponse.data.batchId);
+        } else {
+          console.error(
+            "Invalid upload response - missing batch ID:",
+            uploadResponse
+          );
+          throw new Error("Invalid upload response: missing batch ID");
+        }
+      } catch (error) {
+        console.error("Error initiating upload:", error);
+
+        if (
+          error instanceof Error &&
+          error.message !== "Upload cancelled by user"
+        ) {
+          toast.error(
+            "Upload failed: " +
+              (error instanceof Error ? error.message : "Unknown error")
+          );
+
+          setFailedUploads([
+            {
+              filename: "Batch upload",
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          ]);
         }
 
-        xhrRef.current = null;
-        throw error;
-      } finally {
-        // Clear processing timeout
-        if (processingTimeout) {
-          clearTimeout(processingTimeout);
-          setProcessingTimeout(null);
-        }
-        setIsProcessingTimeout(false);
-        setProcessingStartTime(null);
-        setShowWarning(false);
+        setUploadInProgress(false);
+
+        // Add slight delay for smoother transition
+        setTimeout(() => {
+          setLoading(false);
+        }, 300);
       }
     },
     [
-      failedFiles,
       files,
-      uploadResponse,
-      processingTimeout,
-      progress,
-      uploadInProgress,
+      hasInsufficientTokens,
+      settings,
+      handleFileUpload,
+      startProcessingStatusCheck,
     ]
   );
-
-  // Add cleanup for processing timeout on component unmount
-  useEffect(() => {
-    return () => {
-      if (processingTimeout) {
-        clearTimeout(processingTimeout);
-      }
-    };
-  }, [processingTimeout]);
 
   const regenerateFailedFiles = useCallback(async () => {
     if (failedFiles.length === 0) return;
 
+    // Set initial state with smoother transitions
     setIsRegenerating(true);
     setLoading(true);
-    setUploadingStarted(true);
-    setUploadInProgress(true);
-    setProgress(0);
 
-    // Use the failed files for regeneration
-    const regenerateFiles = [...failedFiles];
+    // Short delay before showing modal for smoother transition
+    setTimeout(() => {
+      setUploadingStarted(true);
+      setShowModal(true);
+      setProcessedCount(0);
+      setProgress(0);
+      setFailedUploads([]);
+      setUploadInProgress(true);
+      setProcessingStartTime(Date.now());
+    }, 100);
 
     try {
-      // Create FormData with failed files
+      // Prepare form data
       const formData = new FormData();
-
-      // Append all failed files
-      regenerateFiles.forEach((file) => {
+      failedFiles.forEach((file) => {
+        console.log(`Re-uploading failed file: ${file.name}`);
         formData.append("images", file);
       });
 
@@ -605,88 +749,66 @@ export default function UploadForm() {
         settings.descriptionLength.toString()
       );
       formData.append("keywordCount", settings.keywordCount.toString());
-      formData.append("totalExpectedFiles", regenerateFiles.length.toString());
+      formData.append("totalExpectedFiles", failedFiles.length.toString());
       formData.append("isRegeneration", "true");
 
-      await handleFileUpload(formData, true);
+      // Show toast notification
+      toast.info(`Retrying upload for ${failedFiles.length} failed files...`);
+
+      // Step 1: Upload files
+      console.log("Starting failed files upload...");
+      const response = await handleFileUpload(formData);
+
+      console.log("Upload response received:", JSON.stringify(response));
+
+      // Store the response in state immediately
+      setUploadResponse(response);
+
+      // Step 2: Start checking processing status
+      if (response?.data?.batchId) {
+        console.log(
+          `Starting processing check for batch ID: ${response.data.batchId}`
+        );
+        await startProcessingStatusCheck(response.data.batchId);
+      } else {
+        console.error("Invalid upload response - missing batch ID:", response);
+        throw new Error("Invalid upload response: missing batch ID");
+      }
     } catch (error) {
       console.error("Error during regeneration:", error);
+
       if (
         error instanceof Error &&
         error.message !== "Upload cancelled by user"
       ) {
-        toast.error("Failed to regenerate files");
-        // Keep the failed files for potential retry
-        setFailedFiles(regenerateFiles);
-      }
-    } finally {
-      setLoading(false);
-      setUploadingStarted(false);
-      setUploadInProgress(false);
-      setIsRegenerating(false);
-    }
-  }, [failedFiles, handleFileUpload, settings, uploadResponse?.data.batchId]);
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (files.length === 0) {
-        toast.error("Please upload at least one image");
-        return;
-      }
-
-      // Check if user has enough tokens
-      if (hasInsufficientTokens) {
-        setInSufficientTokenModal(true);
-        return;
-      }
-
-      // Setup UI state
-      setLoading(true);
-      setUploadingStarted(true);
-      setShowModal(true);
-      setProcessedCount(0);
-      setProgress(0);
-      setFailedUploads([]);
-      setFailedFiles([]);
-      setUploadInProgress(true);
-
-      try {
-        // Create FormData with all files and metadata
-        const formData = new FormData();
-
-        // Append all files
-        files.forEach((file) => {
-          formData.append("images", file);
-        });
-
-        // Append settings
-        formData.append("titleLength", settings.titleLength.toString());
-        formData.append(
-          "descriptionLength",
-          settings.descriptionLength.toString()
+        toast.error(
+          "Upload failed: " +
+            (error instanceof Error ? error.message : "Unknown error")
         );
-        formData.append("keywordCount", settings.keywordCount.toString());
-        formData.append("totalExpectedFiles", files.length.toString());
 
-        await handleFileUpload(formData);
-      } catch (error) {
-        console.error("Error initiating upload:", error);
-        if (
-          error instanceof Error &&
-          error.message !== "Upload cancelled by user"
-        ) {
-          toast.error("Upload failed. Please try again.");
-        }
-      } finally {
-        setLoading(false);
-        setUploadingStarted(false);
-        setUploadInProgress(false);
+        setFailedUploads([
+          {
+            filename: "Batch upload",
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+        ]);
       }
-    },
-    [files, handleFileUpload, hasInsufficientTokens, settings]
-  );
+
+      setUploadInProgress(false);
+
+      // Add slight delay for smoother transition
+      setTimeout(() => {
+        setLoading(false);
+        setIsRegenerating(false);
+      }, 300);
+    }
+  }, [
+    failedFiles,
+    handleFileUpload,
+    settings,
+    uploadResponse?.data.batchId,
+    startProcessingStatusCheck,
+  ]);
 
   // Renderers for different UI sections
   const renderFileGrid = useCallback(() => {
@@ -855,7 +977,7 @@ export default function UploadForm() {
             {/* Outer ring */}
             <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
 
-            {/* Spinning inner ring */}
+            {/* Spinning inner ring with smoother animation */}
             <div
               className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"
               style={{ animationDuration: "1.5s" }}
@@ -869,10 +991,10 @@ export default function UploadForm() {
             <span>{Math.round(progress)}%</span>
           </div>
 
-          {/* Enhanced progress bar */}
+          {/* Enhanced progress bar with smoother transition */}
           <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full"
+              className="h-full bg-primary rounded-full transition-all duration-500 ease-in-out"
               style={{
                 width: `${progress}%`,
               }}
@@ -902,16 +1024,18 @@ export default function UploadForm() {
               {uploadingStarted ? (
                 <span className="flex items-center">
                   <span className="inline-block w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></span>
-                  {isRegenerating ? "Regenerating" : "Uploading"} files{" "}
-                  {Math.min(progress, 100)}% complete
+                  {progress < 100
+                    ? `${
+                        isRegenerating ? "Regenerating" : "Uploading"
+                      } files ${Math.min(progress, 100)}% complete`
+                    : `Processing images: ${processedCount} of ${
+                        isRegenerating ? failedFiles.length : files.length
+                      } processed so far`}
                 </span>
               ) : (
                 <span>
                   Processed: {processedCount} of{" "}
-                  {isRegenerating
-                    ? (uploadResponse?.data.successfulImages.length || 0) +
-                      failedFiles.length
-                    : files.length}
+                  {isRegenerating ? failedFiles.length : files.length}
                 </span>
               )}
               {failedUploads.length > 0 && (
@@ -930,9 +1054,9 @@ export default function UploadForm() {
               ? isRegenerating
                 ? "Regenerating failed files..."
                 : progress === 100
-                ? "Upload complete! Generating SEO metadata..."
+                ? "Upload complete! Processing images for SEO metadata..."
                 : "Uploading files to server..."
-              : "Analyzing images and generating SEO metadata..."}
+              : "Processing images for SEO metadata..."}
           </h4>
 
           <p className="text-xs text-muted-foreground">
@@ -942,15 +1066,16 @@ export default function UploadForm() {
                 background. You can check the results later.
               </span>
             ) : showWarning ? (
-              <span className="text-warning font-medium">
+              <span className="text-amber-500 font-medium">
                 Processing is taking longer than usual. The process will
                 continue, but you may want to check your internet connection.
               </span>
             ) : (
               <>
-                This process may take few minutes depending on the batch size.
+                This process may take several minutes depending on the batch
+                size.
                 {elapsedTime > 60 && (
-                  <span className="block mt-1 font-medium text-warning">
+                  <span className="block mt-1 font-medium text-amber-500">
                     Processing time: {minutes}m {seconds}s. Estimated time
                     remaining: {remainingMinutes}m. Please keep this window open
                     to ensure the process completes successfully.
@@ -968,7 +1093,6 @@ export default function UploadForm() {
     uploadingStarted,
     processedCount,
     isRegenerating,
-    uploadResponse?.data?.successfulImages?.length,
     failedFiles.length,
     failedUploads.length,
     files.length,
@@ -1010,8 +1134,10 @@ export default function UploadForm() {
           <p className="mt-3 text-muted-foreground">
             {uploadResponse ? (
               <>
-                {uploadResponse.data.successfulImages.length} of {files.length}{" "}
-                images processed successfully
+                {uploadResponse.data?.successfulImagesCount ||
+                  uploadResponse.data?.successfulImages?.length ||
+                  0}{" "}
+                of {files.length} images processed successfully
               </>
             ) : (
               <>

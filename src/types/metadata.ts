@@ -1,37 +1,20 @@
-export interface MetadataResult {
-  id: string;
-  fileName: string;
-  title: string;
-  description: string;
-  keywords: string[];
-  status: "pending" | "processing" | "completed" | "failed";
-  error?: string;
-  imageUrl?: string;
+interface BatchData {
+  batchId: string;
+  status: "Processing";
+  totalImages: number;
+  userId: string;
+  _id: string;
+  successfulImages?: Metadata[];
+  failedImages?: FailedImage[];
+  remainingTokens?: number;
+  successfulImagesCount?: number;
+  failedImagesCount?: number;
 }
 
 export interface UploadResponse {
   success: boolean;
   message: string;
-  data: {
-    _id: string;
-    userId: string;
-    batchId: string;
-    successfulImages: {
-      imageName: string;
-      imageUrl: string;
-      size: number;
-      metadata: {
-        title: string;
-        description: string;
-        keywords: string[];
-      };
-    }[];
-    failedImages: {
-      filename: string;
-      error: string;
-    }[];
-    remainingTokens: number;
-  };
+  data: BatchData;
 }
 
 type Plan = {
@@ -62,3 +45,25 @@ export type Metadata = {
     keywords: string[];
   };
 };
+
+interface FailedImage {
+  filename: string;
+  error: string;
+}
+
+interface BatchResultData {
+  _id: string;
+  batchId: string;
+  name: string;
+  status: "Pending" | "Partial" | "Completed" | "Failed";
+  tokensUsed: number;
+  successfulImagesCount?: number;
+  failedImagesCount?: number;
+  failedImages?: FailedImage[];
+}
+
+export interface PollProcessResponse {
+  success: boolean;
+  message: string;
+  data: BatchResultData;
+}
