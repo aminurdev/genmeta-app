@@ -58,11 +58,10 @@ import { cn } from "@/lib/utils";
 
 interface BatchData {
   batchId: string;
-  status: "Processing";
+  status: "Processing" | "Completed" | "Failed" | "Pending" | "Partial";
   totalImages: number;
   userId: string;
-  _id: string;
-  successfulImages?: Metadata[];
+  tokensUsed?: number;
   failedImages?: FailedImage[];
   remainingTokens?: number;
   successfulImagesCount?: number;
@@ -94,37 +93,9 @@ export type UserPlanData = {
   updatedAt: string;
 };
 
-// Define types for batch and image
-type Metadata = {
-  imageName: string;
-  metadata: {
-    title: string;
-    description: string;
-    keywords: string[];
-  };
-};
-
 interface FailedImage {
   filename: string;
   error: string;
-}
-
-interface BatchResultData {
-  _id: string;
-  batchId: string;
-  name: string;
-  status: "Pending" | "Partial" | "Completed" | "Failed";
-  tokensUsed: number;
-  successfulImagesCount?: number;
-  failedImagesCount?: number;
-  failedImages?: FailedImage[];
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface PollProcessResponse {
-  success: boolean;
-  message: string;
-  data: BatchResultData;
 }
 
 export default function UploadForm() {
@@ -295,18 +266,6 @@ export default function UploadForm() {
     return tokens.availableTokens < files.length;
   }, [tokens, files.length]);
 
-  // Determine upload status for UI
-  const uploadStatus = useMemo(() => {
-    if (!uploadResponse) return "none";
-
-    const totalFiles = files.length;
-    const failedCount = failedUploads.length;
-
-    if (failedCount === totalFiles) return "allFailed";
-    if (failedCount > 0) return "partialSuccess";
-    return "allSuccess";
-  }, [uploadResponse, files.length, failedUploads.length]);
-
   // File management handlers
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,7 +378,6 @@ export default function UploadForm() {
     try {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
-      console.log("API endpoint:", `${baseApi}/images/upload/multiple`);
 
       // Create XHR for upload only
       const xhr = new XMLHttpRequest();
@@ -438,13 +396,9 @@ export default function UploadForm() {
       // Set up promise for completion
       const uploadPromise = new Promise<UploadResponse>((resolve, reject) => {
         xhr.onload = () => {
-          console.log("XHR status:", xhr.status);
-          console.log("XHR response text:", xhr.responseText);
-
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               const parsedResponse = JSON.parse(xhr.responseText);
-              console.log("Parsed response:", parsedResponse);
               resolve(parsedResponse);
             } catch (err) {
               console.error("Failed to parse response:", err);
@@ -469,15 +423,12 @@ export default function UploadForm() {
           reject(new Error("Server timeout or connection error"));
         };
         xhr.onabort = () => {
-          console.log("Upload aborted by user");
           reject(new Error("Upload cancelled by user"));
         };
       });
 
       xhr.send(formData);
-      console.log("XHR request sent, waiting for response...");
       const response = await uploadPromise;
-      console.log("Upload complete, received response:", response);
       xhrRef.current = null;
       return response;
     } catch (error) {
@@ -511,7 +462,6 @@ export default function UploadForm() {
             if (!statusResponse.ok) return;
 
             const statusData = await statusResponse.json();
-            console.log("Status check response:", statusData);
 
             // Update processed count with fallback handling
             if (statusData.data.successfulImagesCount) {
@@ -521,23 +471,21 @@ export default function UploadForm() {
             // Check if processing is complete
             if (statusData.data.status !== "Pending") {
               clearInterval(interval);
-              console.log("Processing complete:", statusData.data.status);
 
               // Update with final response data with proper structure handling
               setUploadResponse((current) => {
                 if (!current) return null;
-
                 return {
                   success: statusData.success,
                   message: statusData.message,
                   data: {
                     ...current.data,
-                    batchId: statusData.data.batchId,
-                    _id: statusData.data._id || current.data._id,
+                    status: statusData.data.status,
                     successfulImagesCount:
                       statusData.data.successfulImagesCount || 0,
                     failedImagesCount: statusData.data.failedImagesCount || 0,
                     failedImages: statusData.data.failedImages || [],
+                    tokensUsed: statusData.data.tokensUsed,
                     remainingTokens: tokens?.availableTokens
                       ? tokens.availableTokens -
                         (statusData.data.tokensUsed || 0)
@@ -583,7 +531,7 @@ export default function UploadForm() {
             console.error("Error checking status:", error);
             /* Continue checking despite errors */
           }
-        }, 3000);
+        }, 5000);
 
         // Store the interval for cleanup
         setProcessingStatusCheckInterval(interval);
@@ -653,23 +601,22 @@ export default function UploadForm() {
         formData.append("keywordCount", settings.keywordCount.toString());
         formData.append("totalExpectedFiles", files.length.toString());
 
-        // Step 1: Upload files
-        console.log("Starting file upload...");
         const uploadResponse = await handleFileUpload(formData);
 
-        console.log(
-          "Upload response received:",
-          JSON.stringify(uploadResponse)
-        );
-
         // Store the response in state immediately
-        setUploadResponse(uploadResponse);
+        setUploadResponse({
+          message: uploadResponse.message,
+          success: uploadResponse.success,
+          data: {
+            batchId: uploadResponse.data.batchId,
+            status: "Processing",
+            totalImages: uploadResponse.data.totalImages,
+            userId: uploadResponse.data.userId,
+          },
+        });
 
         // Step 2: Start checking processing status
         if (uploadResponse?.data?.batchId) {
-          console.log(
-            `Starting processing check for batch ID: ${uploadResponse.data.batchId}`
-          );
           await startProcessingStatusCheck(uploadResponse.data.batchId);
         } else {
           console.error(
@@ -737,7 +684,6 @@ export default function UploadForm() {
       // Prepare form data
       const formData = new FormData();
       failedFiles.forEach((file) => {
-        console.log(`Re-uploading failed file: ${file.name}`);
         formData.append("images", file);
       });
 
@@ -756,19 +702,13 @@ export default function UploadForm() {
       toast.info(`Retrying upload for ${failedFiles.length} failed files...`);
 
       // Step 1: Upload files
-      console.log("Starting failed files upload...");
       const response = await handleFileUpload(formData);
-
-      console.log("Upload response received:", JSON.stringify(response));
 
       // Store the response in state immediately
       setUploadResponse(response);
 
       // Step 2: Start checking processing status
       if (response?.data?.batchId) {
-        console.log(
-          `Starting processing check for batch ID: ${response.data.batchId}`
-        );
         await startProcessingStatusCheck(response.data.batchId);
       } else {
         console.error("Invalid upload response - missing batch ID:", response);
@@ -1102,22 +1042,36 @@ export default function UploadForm() {
   ]);
 
   const renderCompletionContent = useCallback(() => {
-    // Determine icon and message based on upload status
+    if (!uploadResponse?.data) return null;
+
+    // Determine icon and message based on batch status
     let icon = <CheckCircle2 className="h-8 w-8 text-green-600" />;
     let statusColor = "bg-green-100";
     let statusText = "Processing complete!";
     let statusTextColor = "text-green-600";
 
-    if (uploadStatus === "allFailed") {
-      icon = <XCircle className="h-10 w-10 text-destructive" />;
-      statusColor = "bg-red-100";
-      statusText = "Processing failed";
-      statusTextColor = "text-destructive";
-    } else if (uploadStatus === "partialSuccess") {
-      icon = <AlertTriangle className="h-10 w-10 text-amber-500" />;
-      statusColor = "bg-amber-100";
-      statusText = "Partially completed";
-      statusTextColor = "text-amber-600";
+    switch (uploadResponse.data.status) {
+      case "Failed":
+        icon = <XCircle className="h-10 w-10 text-destructive" />;
+        statusColor = "bg-red-100";
+        statusText = "Processing failed";
+        statusTextColor = "text-destructive";
+        break;
+      case "Partial":
+        icon = <AlertTriangle className="h-10 w-10 text-amber-500" />;
+        statusColor = "bg-amber-100";
+        statusText = "Partially completed";
+        statusTextColor = "text-amber-600";
+        break;
+      case "Completed":
+        // Success case - keep default values
+        break;
+      default:
+        // For any other status, show processing state
+        icon = <Loader2 className="h-8 w-8 text-primary animate-spin" />;
+        statusColor = "bg-primary/10";
+        statusText = "Processing in progress";
+        statusTextColor = "text-primary";
     }
 
     return (
@@ -1132,22 +1086,13 @@ export default function UploadForm() {
             {statusText}
           </p>
           <p className="mt-3 text-muted-foreground">
-            {uploadResponse ? (
-              <>
-                {uploadResponse.data?.successfulImagesCount ||
-                  uploadResponse.data?.successfulImages?.length ||
-                  0}{" "}
-                of {files.length} images processed successfully
-              </>
-            ) : (
-              <>
-                {processedCount} of {files.length} images processed successfully
-              </>
-            )}
+            {uploadResponse.data.successfulImagesCount || 0} of{" "}
+            {uploadResponse.data.totalImages || files.length} images processed
+            successfully
           </p>
-          {failedUploads.length > 0 && (
+          {(uploadResponse.data.failedImagesCount ?? 0) > 0 && (
             <p className="mt-1 text-sm text-destructive">
-              {failedUploads.length} uploads failed
+              {uploadResponse.data.failedImagesCount} uploads failed
             </p>
           )}
           {uploadResponse && (
@@ -1175,7 +1120,7 @@ export default function UploadForm() {
               </div>
 
               {showDetails && (
-                <div className=" space-y-3 text-left">
+                <div className="space-y-3 text-left">
                   <p className="text-xs">
                     <span className="font-medium">Batch ID:</span>{" "}
                     <span className="font-mono bg-background px-1.5 py-0.5 rounded text-xs">
@@ -1186,19 +1131,21 @@ export default function UploadForm() {
                     <span className="font-medium mr-2">Status:</span>{" "}
                     <Badge
                       variant={
-                        uploadStatus === "allSuccess" ? "default" : "outline"
+                        uploadResponse.data.status === "Completed"
+                          ? "default"
+                          : "outline"
                       }
                       className={cn(
-                        uploadStatus === "allFailed"
+                        uploadResponse.data.status === "Failed"
                           ? "border-destructive text-destructive"
-                          : uploadStatus === "partialSuccess"
+                          : uploadResponse.data.status === "Partial"
                           ? "border-amber-500 text-amber-500"
                           : ""
                       )}
                     >
-                      {uploadStatus === "allSuccess"
+                      {uploadResponse.data.status === "Completed"
                         ? "Complete"
-                        : uploadStatus === "partialSuccess"
+                        : uploadResponse.data.status === "Partial"
                         ? "Partial Success"
                         : "Failed"}
                     </Badge>
@@ -1210,14 +1157,7 @@ export default function UploadForm() {
         </div>
       </div>
     );
-  }, [
-    uploadResponse,
-    files.length,
-    processedCount,
-    failedUploads.length,
-    showDetails,
-    uploadStatus,
-  ]);
+  }, [uploadResponse, files.length, showDetails]);
 
   const renderFailedUploads = useCallback(() => {
     if (failedUploads.length === 0) return null;
@@ -1240,7 +1180,7 @@ export default function UploadForm() {
               >
                 {fail.filename}
               </p>
-              <p className="text-xs text-destructive break-words">
+              <p className="text-xs text-destructive break-words ellipsis-clamp">
                 {fail.error}
               </p>
             </div>
@@ -1490,9 +1430,9 @@ export default function UploadForm() {
                 <AlertDialogTitle className="text-xl">
                   {uploadInProgress
                     ? "Processing Images"
-                    : uploadStatus === "allSuccess"
+                    : uploadResponse?.data.status === "Completed"
                     ? "Upload Complete"
-                    : uploadStatus === "partialSuccess"
+                    : uploadResponse?.data.status === "Partial"
                     ? "Partially Completed"
                     : failedUploads.length > 0 &&
                       failedUploads[0].error.includes("Server unavailable")
@@ -1517,15 +1457,15 @@ export default function UploadForm() {
             <div className="py-4">
               {uploadInProgress
                 ? renderProcessingContent()
-                : uploadStatus === "allSuccess" ||
-                  uploadStatus === "partialSuccess"
+                : uploadResponse?.data.status === "Completed" ||
+                  uploadResponse?.data.status === "Partial"
                 ? renderCompletionContent()
                 : renderErrorContent()}
             </div>
 
             {/* Failed uploads section - only show detailed failures if not a token/server error */}
             {!uploadInProgress &&
-              uploadStatus !== "allSuccess" &&
+              uploadResponse?.data.status !== "Completed" &&
               !failedUploads.some(
                 (f) =>
                   f.error.includes("invalid token") ||
@@ -1598,7 +1538,7 @@ export default function UploadForm() {
                   Process More Images
                 </Button>
 
-                {uploadStatus !== "allFailed" && (
+                {uploadResponse?.data.status !== "Failed" && (
                   <Button type="button" asChild className="sm:flex-1">
                     <Link href="/results">
                       <span className="flex items-center">
