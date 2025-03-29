@@ -22,7 +22,7 @@ import {
 import { Batch } from "@/app/(main)/results/page";
 import { Badge } from "../ui/badge";
 import { handleDownloadCSV, handleDownloadZip } from "@/actions";
-import { formatFileSize } from "@/lib/utils";
+import { formatFileSize, formatTimeAgo } from "@/lib/utils";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
@@ -150,19 +150,9 @@ export default function BatchesPage({
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   if (!batches.length) {
     return <div className="text-center p-8">No batches found</div>;
   }
-
   return (
     <div className="space-y-6 pb-8">
       <h1 className="text-2xl font-bold mb-6">Your Image Batches</h1>
@@ -182,7 +172,7 @@ export default function BatchesPage({
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Created:</span>{" "}
-                  {formatDate(batch.createdAt)}
+                  {formatTimeAgo(batch.createdAt)}
                 </div>
                 <div className="flex items-center gap-2">
                   <ImageIcon className="h-4 w-4 text-muted-foreground" />

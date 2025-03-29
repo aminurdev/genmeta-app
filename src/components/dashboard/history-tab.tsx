@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getAccessToken, getBaseApi } from "@/services/image-services";
 import type { Batch } from "@/app/(main)/results/page";
-import { formatDate, formatFileSize } from "@/lib/utils";
+import { formatFileSize, formatTimeAgo } from "@/lib/utils";
 import { handleDownloadZip } from "@/actions";
 import { Loader2 } from "lucide-react";
 
@@ -104,7 +104,7 @@ export default function HistoryTab() {
               batches.map((batch) => (
                 <TableRow key={batch._id}>
                   <TableCell className=" ">{batch.name}</TableCell>
-                  <TableCell>{formatDate(batch.createdAt)}</TableCell>
+                  <TableCell>{formatTimeAgo(batch.createdAt)}</TableCell>
                   <TableCell>Metadata Generate</TableCell>
                   <TableCell>{batch.imagesCount}</TableCell>
                   <TableCell>{batch.imagesCount}</TableCell>

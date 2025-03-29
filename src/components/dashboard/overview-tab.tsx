@@ -29,7 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import { CreditCard, Loader2 } from "lucide-react";
 import { ApiResponse } from "@/app/(main)/dashboard/page";
-import { formatDate } from "@/lib/utils";
+import { formatTimeAgo } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 
 interface DataProps {
@@ -173,7 +173,7 @@ export default function OverviewTab({
                           : "-"}
                       </TableCell>
                       <TableCell className="text-center">
-                        {formatDate(item.createdAt)}
+                        {formatTimeAgo(item.createdAt)}
                       </TableCell>
                       <TableCell className="text-center">
                         {item.imagesCount ?? "-"}
@@ -383,7 +383,7 @@ export default function OverviewTab({
                         return (
                           <TableRow key={transaction._id}>
                             <TableCell>
-                              {formatDate(transaction.createdAt || "")}
+                              {formatTimeAgo(transaction.createdAt || "")}
                             </TableCell>
                             <TableCell>
                               <Badge

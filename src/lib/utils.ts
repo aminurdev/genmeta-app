@@ -10,35 +10,31 @@ export const formatFileSize = (bytes: number): string => {
     Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   );
 };
-export const formatDate = (date: string): string => {
-  if (!date) return "-";
 
-  const today = new Date();
-  const givenDate = new Date(date);
+export function formatTimeAgo(timestamp: string): string {
+  const now = new Date();
+  const past = new Date(timestamp);
+  const secondsElapsed = Math.floor((now.getTime() - past.getTime()) / 1000);
 
-  // Check if the given date is today
-  const isToday = today.toDateString() === givenDate.toDateString();
+  if (secondsElapsed < 60)
+    return `${secondsElapsed} second${secondsElapsed !== 1 ? "s" : ""} ago`;
 
-  // Check if the given date is yesterday
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const isYesterday = yesterday.toDateString() === givenDate.toDateString();
+  const minutesElapsed = Math.floor(secondsElapsed / 60);
+  if (minutesElapsed < 60)
+    return `${minutesElapsed} minute${minutesElapsed !== 1 ? "s" : ""} ago`;
 
-  if (isToday) {
-    return `Today, ${givenDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
-  } else if (isYesterday) {
-    return "Yesterday";
-  } else {
-    return givenDate.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
-};
+  const hoursElapsed = Math.floor(minutesElapsed / 60);
+  if (hoursElapsed < 24)
+    return `${hoursElapsed} hour${hoursElapsed !== 1 ? "s" : ""} ago`;
+
+  const daysElapsed = Math.floor(hoursElapsed / 24);
+  if (daysElapsed === 1) return "yesterday";
+
+  return past.toISOString().split("T")[0];
+}
+
+// Example usage
+console.log(formatTimeAgo("2025-03-28T16:18:26.948Z"));
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
