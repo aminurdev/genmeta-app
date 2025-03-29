@@ -11,30 +11,32 @@ export const formatFileSize = (bytes: number): string => {
   );
 };
 
-export function formatTimeAgo(timestamp: string): string {
+export function formatTimeAgo(timestamp: string | number): string {
   const now = new Date();
   const past = new Date(timestamp);
-  const secondsElapsed = Math.floor((now.getTime() - past.getTime()) / 1000);
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
 
-  if (secondsElapsed < 60)
-    return `${secondsElapsed} second${secondsElapsed !== 1 ? "s" : ""} ago`;
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} seconds ago`;
+  }
 
-  const minutesElapsed = Math.floor(secondsElapsed / 60);
-  if (minutesElapsed < 60)
-    return `${minutesElapsed} minute${minutesElapsed !== 1 ? "s" : ""} ago`;
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minutes ago`;
+  }
 
-  const hoursElapsed = Math.floor(minutesElapsed / 60);
-  if (hoursElapsed < 24)
-    return `${hoursElapsed} hour${hoursElapsed !== 1 ? "s" : ""} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  }
 
-  const daysElapsed = Math.floor(hoursElapsed / 24);
-  if (daysElapsed === 1) return "yesterday";
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) {
+    return "yesterday";
+  }
 
-  return past.toISOString().split("T")[0];
+  return past.toISOString().split("T")[0]; // Format as YYYY-MM-DD
 }
-
-// Example usage
-console.log(formatTimeAgo("2025-03-28T16:18:26.948Z"));
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
