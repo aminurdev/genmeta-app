@@ -12,6 +12,7 @@ import {
   OctagonAlert,
   Sparkles,
   Menu,
+  Smartphone,
 } from "lucide-react";
 
 export async function Navigation() {
@@ -93,6 +94,12 @@ function NavLinks() {
         className="text-muted-foreground hover:text-foreground flex items-center"
       >
         <Home className="h-5 w-5 inline-block mr-2" /> Home
+      </Link>
+      <Link
+        href="/get-app"
+        className="text-muted-foreground hover:text-foreground flex items-center"
+      >
+        <Smartphone className="h-5 w-5 inline-block mr-2" /> Get App
       </Link>
       <Link
         href="/generate/v2"

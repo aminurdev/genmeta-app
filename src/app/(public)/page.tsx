@@ -7,41 +7,93 @@ import {
   CpuChipIcon,
   ArrowPathIcon,
   UserGroupIcon,
+  DevicePhoneMobileIcon,
+  Cog6ToothIcon,
+  FolderIcon,
+  ListBulletIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
 
-export default function HomePage() {
+interface GitHubAsset {
+  name: string;
+  browser_download_url: string;
+}
+
+async function getLatestRelease() {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/aminurjs/genmeta-app/releases/latest`,
+      {
+        next: { revalidate: 3600 }, // Revalidate every hour
+      }
+    );
+    if (!response.ok) throw new Error("Failed to fetch release info");
+    const data = await response.json();
+
+    // Find the Windows executable in the assets
+    const windowsExe = data.assets.find(
+      (asset: GitHubAsset) =>
+        asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe")
+    );
+
+    return {
+      version: data.tag_name,
+      downloadUrl:
+        windowsExe?.browser_download_url ||
+        "https://github.com/aminurjs/genmeta-app/releases",
+    };
+  } catch (error) {
+    console.error("Error fetching release info:", error);
+    return null;
+  }
+}
+
+export default async function HomePage() {
+  const releaseInfo = await getLatestRelease();
+  const downloadUrl =
+    releaseInfo?.downloadUrl ||
+    "https://github.com/aminurjs/genmeta-app/releases";
+  const version = releaseInfo?.version || "3.2.2";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="pt-20 pb-32 bg-muted/20">
         <div className="max-w-7xl mx-auto text-center px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Transform Your Images with{" "}
-            <span className="text-primary">AI Power</span>
+            Supercharge Your Images with{" "}
+            <span className="text-primary">AI Metadata</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Generate accurate metadata, enhance quality, and optimize your
-            images using advanced AI technology. Start with 20 free tokens!
+            Automatically generate accurate titles, descriptions, and keywords
+            for your images using advanced AI. Boost discoverability and SEO
+            effortlessly. Now available for Windows!
           </p>
           <div className="flex gap-4 justify-center">
-            <RedirectUrl text="Get Started Free" />
-            {/* <Link
-              href="/generate"
-              className="px-8 py-3 bg-background text-primary rounded-lg border-2 border-primary hover:bg-accent transition-colors font-medium"
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
             >
-              Try Demo
-            </Link> */}
+              <DevicePhoneMobileIcon className="w-5 h-5" />
+              Download Latest Version (v{version})
+            </a>
           </div>
-        </div>
-        <div className=" py-10">
-          <Image
-            src="/Assets/banner.png"
-            alt="Banner"
-            width={2000}
-            height={2000}
-          />
+          <p className="text-sm text-muted-foreground mt-4">
+            Windows 10/11 (64-bit)
+          </p>{" "}
+          <div className="py-10">
+            <Image
+              src="/Assets/app.png"
+              alt="App Preview"
+              width={2000}
+              height={2000}
+              className="rounded-lg shadow-lg"
+            />
+          </div>
         </div>
       </section>
 
@@ -53,88 +105,136 @@ export default function HomePage() {
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <FeatureCard
-              title="AI Metadata Generation"
-              description="Automatically generate accurate and SEO-friendly metadata for your images using advanced AI technology."
+              title="AI-Powered Analysis"
+              description="Generate accurate titles, descriptions, and SEO-optimized keywords using Gemini AI technology."
               icon={SparklesIcon}
             />
             <FeatureCard
-              title="Batch Processing"
-              description="Process multiple images simultaneously with our efficient batch processing system. Save time and effort."
+              title="Bulk Processing"
+              description="Process entire directories of images at once with customizable metadata settings."
               icon={ArrowPathIcon}
             />
             <FeatureCard
-              title="Smart Analysis"
-              description="Get detailed technical analysis, EXIF data extraction, and content insights for each processed image."
-              icon={CpuChipIcon}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-20  bg-muted/20">
-        <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
-            Why Choose Our Platform
-          </h2>
-          <div className="grid md:grid-cols-4 gap-8">
-            <BenefitCard
-              icon={ShieldCheckIcon}
-              title="Secure"
-              description="Your images and data are protected with enterprise-grade security"
-            />
-            <BenefitCard
-              icon={CloudArrowUpIcon}
-              title="Cloud-Based"
-              description="Access your processed images and metadata from anywhere"
-            />
-            <BenefitCard
+              title="Flexible Export"
+              description="Export metadata to CSV or save directly to processed images with embedded metadata."
               icon={DocumentTextIcon}
-              title="Export Options"
-              description="Download results in multiple formats (CSV, ZIP)"
-            />
-            <BenefitCard
-              icon={UserGroupIcon}
-              title="User-Friendly"
-              description="Intuitive interface designed for all skill levels"
             />
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 bg-background">
+      <section className="py-20 bg-muted/20">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
-            How It Works
+            Quick Start Guide
           </h2>
           <div className="grid md:grid-cols-4 gap-8">
             <StepCard
               number="1"
-              title="Sign Up"
-              description="Create your account and get 20 free tokens"
+              title="Configure"
+              description="Set up your API key and preferences in Settings"
+              icon={Cog6ToothIcon}
             />
             <StepCard
               number="2"
-              title="Upload"
-              description="Upload your images individually or in batch"
+              title="Select"
+              description="Choose your images directory using Browse"
+              icon={FolderIcon}
             />
             <StepCard
               number="3"
-              title="Process"
-              description="Let our AI analyze and enhance your images"
+              title="Generate"
+              description="Start AI processing with one click"
+              icon={CpuChipIcon}
             />
             <StepCard
               number="4"
-              title="Download"
-              description="Get your processed images with metadata"
+              title="Review"
+              description="View results and access processed images"
+              icon={ListBulletIcon}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Settings Section */}
+      <section className="py-20 bg-background">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
+            Customizable Settings
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-foreground">
+                API Configuration
+              </h3>
+              <ul className="space-y-4 text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <ShieldCheckIcon className="w-5 h-5 text-primary" />
+                  Gemini API key for AI image analysis
+                </li>
+                <li className="flex items-center gap-2">
+                  <UserGroupIcon className="w-5 h-5 text-primary" />
+                  User ID for access validation
+                </li>
+                <li className="flex items-center gap-2">
+                  <ChartBarIcon className="w-5 h-5 text-primary" />
+                  Premium API option for faster processing
+                </li>
+              </ul>
+            </div>
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold text-foreground">
+                Output Settings
+              </h3>
+              <ul className="space-y-4 text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <DocumentTextIcon className="w-5 h-5 text-primary" />
+                  Customizable title length
+                </li>
+                <li className="flex items-center gap-2">
+                  <DocumentTextIcon className="w-5 h-5 text-primary" />
+                  Adjustable description length
+                </li>
+                <li className="flex items-center gap-2">
+                  <ListBulletIcon className="w-5 h-5 text-primary" />
+                  Configurable keyword count
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Bulk Operations Section */}
+      <section className="py-20 bg-muted/20">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12 text-foreground">
+            Bulk Operations
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard
+              title="Save All Changes"
+              description="Save any edits you've made to the metadata in one click"
+              icon={CloudArrowUpIcon}
+            />
+            <FeatureCard
+              title="Export CSV"
+              description="Export all metadata to a CSV file for easy management"
+              icon={DocumentTextIcon}
+            />
+            <FeatureCard
+              title="Common Keywords"
+              description="Add the same keyword to all images at once with flexible positioning"
+              icon={ListBulletIcon}
             />
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-muted/20">
+      <section className="py-20 bg-background">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-3xl font-bold mb-6 text-foreground">
             Ready to Transform Your Images?
@@ -170,26 +270,6 @@ function FeatureCard({
   );
 }
 
-function BenefitCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="text-center">
-      <div className="inline-block p-3 bg-accent rounded-full mb-4">
-        <Icon className="w-6 h-6 text-primary" />
-      </div>
-      <h3 className="text-lg font-semibold mb-2 text-foreground">{title}</h3>
-      <p className="text-muted-foreground text-sm">{description}</p>
-    </div>
-  );
-}
-
 function StepCard({
   number,
   title,
@@ -198,6 +278,7 @@ function StepCard({
   number: string;
   title: string;
   description: string;
+  icon: React.ElementType;
 }) {
   return (
     <div className="text-center">
