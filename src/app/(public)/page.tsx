@@ -16,17 +16,17 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-interface GitHubAsset {
+export interface GitHubAsset {
   name: string;
   browser_download_url: string;
 }
 
-async function getLatestRelease() {
+export async function getLatestRelease() {
   try {
     const response = await fetch(
       `https://api.github.com/repos/aminurjs/genmeta-app/releases/latest`,
       {
-        next: { revalidate: 3600 }, // Revalidate every hour
+        next: { revalidate: 3600 },
       }
     );
     if (!response.ok) throw new Error("Failed to fetch release info");
@@ -37,12 +37,10 @@ async function getLatestRelease() {
       (asset: GitHubAsset) =>
         asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe")
     );
-
+    console.log(windowsExe);
     return {
       version: data.tag_name,
-      downloadUrl:
-        windowsExe?.browser_download_url ||
-        "https://github.com/aminurjs/genmeta-app/releases",
+      downloadUrl: windowsExe?.browser_download_url,
     };
   } catch (error) {
     console.error("Error fetching release info:", error);
@@ -52,10 +50,8 @@ async function getLatestRelease() {
 
 export default async function HomePage() {
   const releaseInfo = await getLatestRelease();
-  const downloadUrl =
-    releaseInfo?.downloadUrl ||
-    "https://github.com/aminurjs/genmeta-app/releases";
-  const version = releaseInfo?.version || "3.2.2";
+  const downloadUrl = releaseInfo?.downloadUrl;
+  const version = releaseInfo?.version;
 
   return (
     <div className="min-h-screen bg-background">
