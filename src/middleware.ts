@@ -9,17 +9,18 @@ const protectedRoutes = [
   /^\/payment-status(\/.*)?$/,
   /^\/results(\/.*)?$/,
   /^\/settings(\/.*)?$/,
+  /^\/get-app$/,
 ];
-const adminRoutes = [/^\/admin(\/.*)?$/]; // New admin routes pattern
+const adminRoutes = [/^\/admin(\/.*)?$/]; // Admin routes pattern
 
 export const middleware = async function handleRequest(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const userInfo = await getCurrentUser(); // Always fetch user info per request
+  const userInfo = await getCurrentUser();
 
   // If the user is not authenticated
   if (!userInfo) {
     if (authRoutes.includes(pathname)) {
-      return NextResponse.next(); // Allow access to auth pages
+      return NextResponse.next();
     } else {
       return NextResponse.redirect(
         new URL(`/login?redirectPath=${pathname}`, request.url)
@@ -34,20 +35,18 @@ export const middleware = async function handleRequest(request: NextRequest) {
 
   // Check for admin routes - only allow if user has admin role
   if (adminRoutes.some((route) => pathname.match(route))) {
-    // Check if user has admin role
     if (userInfo.role !== "admin") {
-      // Redirect non-admin users to home or unauthorized page
-      return NextResponse.redirect(new URL("/unauthorized", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
-    return NextResponse.next(); // Allow access for admin users
+    return NextResponse.next();
   }
 
   // Restrict access to protected routes for unauthenticated users
   if (protectedRoutes.some((route) => pathname.match(route))) {
-    return NextResponse.next(); // Allow access
+    return NextResponse.next();
   }
 
-  return NextResponse.next(); // Default: Allow access to all other pages
+  return NextResponse.next();
 };
 
 export const config = {
@@ -59,6 +58,7 @@ export const config = {
     "/results/:path*",
     "/payment-status/:path*",
     "/settings/:path*",
-    "/admin/:path*", // Added admin routes to matcher
+    "/get-app",
+    "/admin/:path*",
   ],
 };
