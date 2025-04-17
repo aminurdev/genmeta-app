@@ -7,12 +7,12 @@ import {
   CpuChipIcon,
   ArrowPathIcon,
   UserGroupIcon,
-  DevicePhoneMobileIcon,
   Cog6ToothIcon,
   FolderIcon,
   ListBulletIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
+import { Laptop } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -37,7 +37,6 @@ export async function getLatestRelease() {
       (asset: GitHubAsset) =>
         asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe")
     );
-    console.log(windowsExe);
     return {
       version: data.tag_name,
       downloadUrl: windowsExe?.browser_download_url,
@@ -74,13 +73,18 @@ export default async function HomePage() {
               rel="noopener noreferrer"
               className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
             >
-              <DevicePhoneMobileIcon className="w-5 h-5" />
+              <Laptop className="w-5 h-5" />
               Download Latest Version (v{version})
             </a>
           </div>
           <p className="text-sm text-muted-foreground mt-4">
             Windows 10/11 (64-bit)
           </p>{" "}
+          <p className="text-sm text-muted-foreground mt-4">
+            <Link href="/generate/v2" className="text-primary hover:underline">
+              Try the Web Version
+            </Link>
+          </p>
           <div className="py-10">
             <Image
               src="/Assets/app.png"

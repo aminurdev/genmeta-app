@@ -26,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { getAccessToken } from "@/services/auth-services";
 import { getBaseApi } from "@/services/image-services";
 import {
-  Smartphone,
   Key,
   Copy,
   AlertTriangle,
@@ -42,6 +41,7 @@ import { getLatestRelease } from "@/app/(public)/page";
 
 export default function GetAppPage() {
   const [userId, setUserId] = useState<string>("");
+  const [hideUserId, setHideUserId] = useState<boolean>(true);
 
   interface ReleaseInfo {
     version: string;
@@ -273,7 +273,7 @@ export default function GetAppPage() {
                 <Key className="w-4 h-4 mr-2" /> App User ID
               </TabsTrigger>
               <TabsTrigger value="preview" className="text-sm md:text-base">
-                <Smartphone className="w-4 h-4 mr-2" /> App Preview
+                <Laptop className="w-4 h-4 mr-2" /> App Preview
               </TabsTrigger>
             </TabsList>
 
@@ -398,13 +398,65 @@ export default function GetAppPage() {
                         <Skeleton className="h-10 w-full" />
                       ) : (
                         <div className="flex gap-2">
-                          <Input
-                            id="userId"
-                            value={userId}
-                            readOnly
-                            placeholder="Click Generate to create your App User ID"
-                            className="font-mono"
-                          />
+                          <div className="relative flex-1">
+                            <Input
+                              id="userId"
+                              value={
+                                userId
+                                  ? hideUserId
+                                    ? "•".repeat(userId.length)
+                                    : userId
+                                  : ""
+                              }
+                              readOnly
+                              placeholder="Click Generate to create your App User ID"
+                              className="font-mono pr-10"
+                            />
+                            {userId && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-0 top-0 h-full"
+                                onClick={() => setHideUserId(!hideUserId)}
+                              >
+                                {hideUserId ? (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="lucide lucide-eye"
+                                  >
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="lucide lucide-eye-off"
+                                  >
+                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                                    <line x1="2" x2="22" y1="2" y2="22" />
+                                  </svg>
+                                )}
+                              </Button>
+                            )}
+                          </div>
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -539,7 +591,7 @@ export default function GetAppPage() {
               <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
                 <CardHeader className="space-y-1">
                   <CardTitle className="flex items-center gap-2 text-2xl">
-                    <Smartphone className="w-6 h-6" />
+                    <Laptop className="w-6 h-6" />
                     App Preview
                   </CardTitle>
                   <CardDescription className="text-base">
@@ -624,9 +676,10 @@ export default function GetAppPage() {
                 Can I use GenMeta on multiple computers?
               </h3>
               <p className="text-sm text-muted-foreground">
-                Yes, you can install GenMeta on multiple computers. Use the same
-                App User ID on each installation to sync your content and
-                settings.
+                No, your App User ID can only be used on one device at a time.
+                If you need to use GenMeta on a different computer, you&apos;ll
+                need to log out from your current device first. This restriction
+                helps protect your account security.
               </p>
             </div>
             <div className="p-5 bg-muted/50 rounded-lg border border-border/50">

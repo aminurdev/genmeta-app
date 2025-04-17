@@ -174,8 +174,6 @@ export default function UploadForm() {
     setLoading(false);
   };
 
-  console.log({ loading, completeCount });
-  console.log(settings);
 
   useEffect(() => {
     // Handle page unload during processing

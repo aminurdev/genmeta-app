@@ -12,7 +12,7 @@ import {
   OctagonAlert,
   Sparkles,
   Menu,
-  Smartphone,
+  Laptop,
 } from "lucide-react";
 
 export async function Navigation() {
@@ -99,7 +99,13 @@ function NavLinks() {
         href="/get-app"
         className="text-muted-foreground hover:text-foreground flex items-center"
       >
-        <Smartphone className="h-5 w-5 inline-block mr-2" /> Get App
+        <Laptop className="h-5 w-5 inline-block mr-2" /> Get App
+      </Link>{" "}
+      <Link
+        href="/pricing"
+        className="text-muted-foreground hover:text-foreground flex items-center"
+      >
+        <DollarSign className="h-5 w-5 inline-block mr-1" /> Pricing
       </Link>
       <Link
         href="/generate/v2"
@@ -112,12 +118,6 @@ function NavLinks() {
         className="text-muted-foreground hover:text-foreground flex items-center"
       >
         <ImageIcon className="h-5 w-5 inline-block mr-2" /> Results
-      </Link>
-      <Link
-        href="/pricing"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <DollarSign className="h-5 w-5 inline-block mr-1" /> Pricing
       </Link>
       <Link
         href="/help"
