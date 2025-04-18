@@ -32,7 +32,6 @@ import { getBaseApi } from "@/services/image-services";
 import { getAccessToken } from "@/services/auth-services";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { motion, AnimatePresence } from "framer-motion";
 
 const PricingPage = () => {
   const [billingCycle, setBillingCycle] = useState<string>("monthly");
@@ -271,28 +270,20 @@ const PricingPage = () => {
           </Tabs>
         </div>
         <div className=" flex justify-center items-center">
-          <AnimatePresence>
-            {errorMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="w-full max-w-md"
-              >
-                <Alert variant="destructive" className="mb-4 flex items-center">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{errorMessage}</AlertDescription>
-                  <button
-                    onClick={() => setErrorMessage(null)}
-                    className="absolute right-2 top-2 p-1 rounded-full hover:bg-destructive/20 transition-colors"
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </button>
-                </Alert>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {errorMessage && (
+            <div className="w-full max-w-md">
+              <Alert variant="destructive" className="mb-4 flex items-center">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{errorMessage}</AlertDescription>
+                <button
+                  onClick={() => setErrorMessage(null)}
+                  className="absolute right-2 top-2 p-1 rounded-full hover:bg-destructive/20 transition-colors"
+                >
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </Alert>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 max-w-5xl mx-auto">
