@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import {
   Check,
   Sparkles,
@@ -33,7 +33,8 @@ import { getAccessToken } from "@/services/auth-services";
 import { useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const PricingPage = () => {
+// Component that uses useSearchParams, to be wrapped in Suspense
+const PricingContent = () => {
   const [billingCycle, setBillingCycle] = useState<string>("monthly");
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -524,6 +525,27 @@ const PricingPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Loading component to show while the content loads
+const PricingLoading = () => {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <Laptop className="h-12 w-12 text-primary mx-auto animate-pulse" />
+        <h2 className="text-2xl font-medium">Loading pricing information...</h2>
+      </div>
+    </div>
+  );
+};
+
+// Main component that wraps PricingContent in a Suspense boundary
+const PricingPage = () => {
+  return (
+    <Suspense fallback={<PricingLoading />}>
+      <PricingContent />
+    </Suspense>
   );
 };
 
