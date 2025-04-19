@@ -1,36 +1,124 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GenMeta: AI-Powered Image Metadata Generator
 
-## Getting Started
+GenMeta is a full-stack application that automatically generates accurate titles, descriptions, and SEO-optimized keywords for images using advanced AI technology. The application consists of a Next.js frontend and a Node.js/Express backend.
 
-First, run the development server:
+## Project Structure
+
+The project is organized into two main directories:
+
+- **client**: Next.js frontend application
+- **server**: Node.js/Express backend API
+
+## Client (Frontend)
+
+The client is built with:
+
+- [Next.js 15](https://nextjs.org/) - React framework with App Router
+- [React 19](https://react.dev/) - UI library
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Radix UI](https://www.radix-ui.com/) - Unstyled, accessible UI components
+- [Authentication](https://next-auth.js.org/) - User authentication
+
+### Key Features
+
+- Modern, responsive UI with dark/light mode
+- Image upload and processing
+- Metadata generation and editing
+- Bulk operations for processing multiple images
+- User authentication and role management
+- Analytics dashboard
+
+### Getting Started with Client
 
 ```bash
+# Navigate to client directory
+cd client
+
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Server (Backend)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The server is built with:
 
-## Learn More
+- [Node.js](https://nodejs.org/) - JavaScript runtime
+- [Express](https://expressjs.com/) - Web framework
+- [MongoDB](https://www.mongodb.com/) - Database
+- [Google Generative AI](https://ai.google.dev/) - AI for image analysis
+- [AWS S3](https://aws.amazon.com/s3/) - Image storage
 
-To learn more about Next.js, take a look at the following resources:
+### Key Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- RESTful API for image processing
+- AI-powered image analysis and metadata generation
+- User authentication with JWT
+- File upload handling
+- Image processing with Sharp and ExifTool
+- S3 integration for image storage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Getting Started with Server
 
-## Deploy on Vercel
+```bash
+# Navigate to server directory
+cd server
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Install dependencies
+npm install
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Create environment file
+cp .env.sample .env
+
+# Configure environment variables
+# Edit .env with your specific configuration
+
+# Start development server
+npm run dev
+
+# Start production server
+npm start
+```
+
+## Environment Setup
+
+### Client Environment Variables
+
+Create a `.env` file in the client directory with:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+```
+
+### Server Environment Variables
+
+Create a `.env` file in the server directory with appropriate values for:
+
+```
+PORT=5000
+MONGODB_URI=
+JWT_SECRET=
+GOOGLE_API_KEY=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=
+AWS_BUCKET_NAME=
+```
+
+## Desktop Application
+
+GenMeta is also available as a desktop application for Windows. You can download the latest version from the website.
+
+## License
+
+This project is licensed under the MIT License.
