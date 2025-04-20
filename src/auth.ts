@@ -14,7 +14,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const res = await fetch(`${baseApi}/usersa/google-login`, {
+          const res = await fetch(`${baseApi}/users/google-login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
