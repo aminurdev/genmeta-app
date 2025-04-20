@@ -237,7 +237,7 @@ export default async function HomePage() {
               <StepCard
                 number="3"
                 title="Generate"
-                description="Start AI processing with one click"
+                description="Start AI processing with just a single click"
                 icon={CpuChipIcon}
               />
               <StepCard
