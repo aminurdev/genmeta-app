@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -942,11 +941,8 @@ export default function GetAppPage() {
 
                 <div className="grid md:grid-cols-3 gap-4 mt-6">
                   {features.map((feature, index) => (
-                    <motion.div
+                    <div
                       key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
                       className="p-4 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-background rounded-lg border border-violet-200 dark:border-violet-800 hover:border-violet-400 dark:hover:border-violet-600 transition-all hover:shadow-md group"
                     >
                       <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center mb-3 group-hover:bg-violet-500 transition-colors duration-300">
@@ -958,7 +954,7 @@ export default function GetAppPage() {
                       <p className="text-sm text-muted-foreground">
                         {feature.description}
                       </p>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </CardContent>
