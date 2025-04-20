@@ -8,12 +8,12 @@ import { useSearchParams } from "next/navigation";
 const Social = () => {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
-  const redirectPath = searchParams?.get("redirectPath") || "/dashboard";
+  const redirectPath = searchParams?.get("redirectPath") || "/";
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: redirectPath });
+      await signIn("google", { callbackUrl: `/${redirectPath}` });
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {
