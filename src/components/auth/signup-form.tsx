@@ -29,15 +29,18 @@ import { Eye, EyeOff, Loader2, User, Mail, Lock } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
 import { registerUser } from "@/services/auth-services";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const SignUpForm = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isShowConfirm, setIsShowConfirm] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
+  const redirect = searchParams?.get("redirectPath");
+
   const form = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
@@ -57,7 +60,13 @@ const SignUpForm = () => {
       try {
         const res = await registerUser(values);
         if (res?.success) {
-          router.push(`/login?message=${res.message}`);
+          if (redirect) {
+            router.push(
+              `/login?message=${res.message}&redirectPath=${redirect}`
+            );
+          } else {
+            router.push(`/login?message=${res.message}`);
+          }
           // setSuccess(res?.message);
         } else {
           setError(res?.message);
@@ -75,7 +84,10 @@ const SignUpForm = () => {
         <CardDescription>
           <p className="text-neutral-600 max-w-sm mt-2 dark:text-neutral-300">
             Already have an account?{" "}
-            <Link href="/login" className="underline text-blue-500">
+            <Link
+              href={redirect ? `/login?redirectPath=${redirect}` : "/login"}
+              className="underline text-blue-500"
+            >
               Login
             </Link>
           </p>

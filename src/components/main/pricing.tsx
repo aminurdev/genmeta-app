@@ -29,8 +29,8 @@ import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
 import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
-import { useSearchParams } from "next/navigation";
+import { getAccessToken, getCurrentUser } from "@/services/auth-services";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Component that uses useSearchParams, to be wrapped in Suspense
@@ -38,6 +38,7 @@ const PricingContent = () => {
   const [billingCycle, setBillingCycle] = useState<string>("monthly");
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (searchParams) {
@@ -202,31 +203,37 @@ const PricingContent = () => {
         price,
         name,
       };
-      const baseAPI = await getBaseApi();
-      const accessToken = await getAccessToken();
-      const response = await fetch(`${baseAPI}/payment/create-app-payment`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          plan,
-        }),
-      });
+      const user = await getCurrentUser();
 
-      const data = await response.json();
+      if (user) {
+        const baseAPI = await getBaseApi();
+        const accessToken = await getAccessToken();
+        const response = await fetch(`${baseAPI}/payment/create-app-payment`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            plan,
+          }),
+        });
 
-      if (data.success && data.data?.bkashURL) {
-        // Redirect to bKash payment URL
-        window.location.href = data.data.bkashURL;
+        const data = await response.json();
+
+        if (data.success && data.data?.bkashURL) {
+          // Redirect to bKash payment URL
+          window.location.href = data.data.bkashURL;
+        } else {
+          // Handle error case
+          console.error(
+            "Payment creation failed:",
+            data.message || "Unknown error occurred"
+          );
+          alert("Payment processing failed. Please try again later.");
+        }
       } else {
-        // Handle error case
-        console.error(
-          "Payment creation failed:",
-          data.message || "Unknown error occurred"
-        );
-        alert("Payment processing failed. Please try again later.");
+        router.push("/login?redirectPath=pricing");
       }
     } catch (error) {
       console.error("Payment request error:", error);

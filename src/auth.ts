@@ -36,7 +36,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (result.success) {
             (await cookies()).set("accessToken", result.data.accessToken);
             (await cookies()).set("refreshToken", result.data.refreshToken);
-
           }
         } catch (error) {
           console.error("Error during API call:", error);

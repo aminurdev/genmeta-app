@@ -81,7 +81,10 @@ const LoginForm = () => {
           {" "}
           <p className="text-neutral-600 max-w-sm mt-2 dark:text-neutral-300">
             {"Don't"} have an account?{" "}
-            <Link href="/signup" className="underline text-blue-500">
+            <Link
+              href={redirect ? `/signup?redirectPath=${redirect}` : "/signup"}
+              className="underline text-blue-500"
+            >
               sign up
             </Link>
           </p>
