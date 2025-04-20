@@ -1,4 +1,4 @@
-import { CheckCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, ArrowLeft, Laptop } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,11 +66,17 @@ export default async function PaymentStatus({
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center pb-8">
+        <CardFooter className="flex justify-center pb-8 gap-4">
           <Button asChild className="gap-2">
-            <Link href="/">
+            <Link href="/" aria-label="Go to Home">
               <ArrowLeft className="h-4 w-4" />
-              Return to Home
+              Home
+            </Link>
+          </Button>
+          <Button asChild className="gap-2">
+            <Link href="/get-app" aria-label="Get the App">
+              <Laptop className="h-4 w-4" />
+              Get App
             </Link>
           </Button>
         </CardFooter>

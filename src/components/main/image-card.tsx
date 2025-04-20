@@ -74,7 +74,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
   handleDeleteDialogOpen,
 }) => {
   return (
-    <div key={item._id} className="p-3 sm:p-4 bg-accent/40 rounded-lg">
+    <div key={item._id} className="p-3 sm:p-4 bg-accent/5 rounded-lg">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3">
         <div className="flex flex-col sm:flex-row items-start gap-3 sm:space-x-4">
           <img
@@ -347,7 +347,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
               {item.metadata.keywords?.map((keyword, idx) => (
                 <span
                   key={idx}
-                  className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary/10 text-primary rounded-full text-xs sm:text-sm"
+                  className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-primary/10 text-blue-500 rounded-full text-xs sm:text-sm"
                 >
                   {keyword}
                 </span>

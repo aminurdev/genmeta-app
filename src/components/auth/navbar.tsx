@@ -10,7 +10,7 @@ const navbar = () => {
         <nav className="w-full py-8 flex justify-between items-center">
           <Link href="/" className="block w-52">
             <Image
-              src="/Assets/SVG/Asset 5.svg"
+              src="/Assets/SVG/logo.svg"
               className="h-16 py-2 w-auto"
               alt="logo"
               width={128}

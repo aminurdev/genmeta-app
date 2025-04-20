@@ -33,13 +33,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const LoginForm = () => {
   const searchParams = useSearchParams();
+  const redirect = searchParams?.get("redirectPath");
+  const errorMessage = searchParams?.get("error");
   const message = searchParams?.get("message") ?? "";
-  const [error, setError] = useState<string | undefined>("");
+  const [error, setError] = useState<string | undefined>(
+    errorMessage ?? undefined
+  );
   const [success, setSuccess] = useState<string | undefined>(message ?? "");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
 
-  const redirect = searchParams?.get("redirectPath");
   const router = useRouter();
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),

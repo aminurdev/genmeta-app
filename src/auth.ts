@@ -7,14 +7,14 @@ const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [Google],
   pages: {
-    error: "/auth-error",
+    error: "/login",
     signIn: "/login",
   },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const res = await fetch(`${baseApi}/users/google-login`, {
+          const res = await fetch(`${baseApi}/usersa/google-login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -30,7 +30,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const result = await res.json();
 
           if (!result.success) {
-            return `/auth-error?error=${result.message}`;
+            throw new Error(result.message);
           }
 
           if (result.success) {

@@ -65,7 +65,7 @@ export const refreshAccessToken = async () => {
     const refreshToken = (await cookies()).get("refreshToken");
 
     if (!refreshToken) {
-      throw new Error("No refresh token found");
+      return { success: false, message: "No refresh token found" };
     }
 
     const res = await fetch(`${baseApi}/users/refresh-token`, {
@@ -73,7 +73,7 @@ export const refreshAccessToken = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ refreshToken }),
+      body: JSON.stringify({ refreshToken: refreshToken.value }),
     });
 
     const result = await res.json();
@@ -85,9 +85,13 @@ export const refreshAccessToken = async () => {
 
     return result;
   } catch (error: any) {
-    return Error(error.message || "Failed to refresh access token");
+    return {
+      success: false,
+      message: error.message || "Failed to refresh access token",
+    };
   }
 };
+
 export const getAccessToken = async () => {
   let accessToken = (await cookies()).get("accessToken")?.value;
 

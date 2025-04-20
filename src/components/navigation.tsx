@@ -20,12 +20,12 @@ export async function Navigation() {
 
   return (
     <nav className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="h-20 max-w-screen-xl mx-auto flex items-center justify-between px-4">
+      <div className="h-28 max-w-screen-xl mx-auto flex items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center gap-4 w-52">
           <Link href="/">
             <Image
-              src="/Assets/SVG/Asset 5.svg"
+              src="/Assets/SVG/logo.svg"
               className="h-16 py-2 w-auto"
               alt="logo"
               width={128}

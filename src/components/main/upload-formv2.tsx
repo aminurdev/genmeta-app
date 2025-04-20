@@ -824,7 +824,9 @@ export default function UploadForm() {
             <span
               className={cn(
                 "text-sm font-bold",
-                hasInsufficientTokens ? "text-destructive" : "text-primary"
+                hasInsufficientTokens
+                  ? "text-destructive"
+                  : "text-violet-600 dark:text-violet-400"
               )}
             >
               {tokens.availableTokens}
@@ -836,7 +838,9 @@ export default function UploadForm() {
             <span
               className={cn(
                 "text-sm font-bold",
-                hasInsufficientTokens ? "text-destructive" : "text-primary"
+                hasInsufficientTokens
+                  ? "text-destructive"
+                  : "text-violet-600 dark:text-violet-400"
               )}
             >
               {files.length}
@@ -906,11 +910,11 @@ export default function UploadForm() {
         <div className="flex items-center justify-center">
           <div className="relative w-12 h-12">
             {/* Outer ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-violet-200 dark:border-violet-800"></div>
 
             {/* Spinning inner ring with smoother animation */}
             <div
-              className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"
+              className="absolute inset-0 rounded-full border-4 border-transparent border-t-violet-600 dark:border-t-violet-400 animate-spin"
               style={{ animationDuration: "1.5s" }}
             ></div>
           </div>
@@ -922,9 +926,9 @@ export default function UploadForm() {
             <span>{Math.round(progress)}%</span>
           </div>
 
-          <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+          <div className="h-2 bg-violet-100 dark:bg-violet-900/30 rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary rounded-full "
+              className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full"
               style={{
                 width: `${progress}%`,
               }}
@@ -932,12 +936,12 @@ export default function UploadForm() {
           </div>
 
           {progress === 100 && uploadInProgress ? (
-            <div className="flex items-center justify-center mt-3 text-primary">
+            <div className="flex items-center justify-center mt-3 text-violet-600 dark:text-violet-400">
               <div className="flex space-x-1">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                    className="h-2 w-2 bg-violet-600 dark:bg-violet-400 rounded-full animate-bounce"
                     style={{
                       animationDelay: `${i * 150}ms`,
                       animationDuration: "1.4s",
@@ -953,7 +957,7 @@ export default function UploadForm() {
             <div className="flex justify-between text-sm mt-3">
               {uploadingStarted ? (
                 <span className="flex items-center">
-                  <span className="inline-block w-2 h-2 bg-primary rounded-full mr-2 animate-pulse"></span>
+                  <span className="inline-block w-2 h-2 bg-violet-600 dark:bg-violet-400 rounded-full mr-2 animate-pulse"></span>
                   {progress < 100
                     ? `${
                         isRegenerating ? "Regenerating" : "Uploading"
@@ -979,7 +983,7 @@ export default function UploadForm() {
 
         <div className="space-y-2 bg-muted/30 p-2 rounded-lg border">
           <h4 className="text-sm font-medium flex items-center">
-            <Info className="h-4 w-4 mr-2 text-primary" />
+            <Info className="h-4 w-4 mr-2 text-violet-600 dark:text-violet-400" />
             {uploadingStarted
               ? isRegenerating
                 ? "Regenerating failed files..."
@@ -1182,8 +1186,8 @@ export default function UploadForm() {
       {isPending && (
         <div className="flex justify-center items-center mb-4">
           <div className="relative">
-            <div className="h-8 w-8 rounded-full border-2 border-primary/30 animate-ping absolute inset-0 opacity-75"></div>
-            <Loader2 className="h-8 w-8 animate-spin text-primary relative" />
+            <div className="h-8 w-8 rounded-full border-2 border-violet-400/30 dark:border-violet-400/20 animate-ping absolute inset-0 opacity-75"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-violet-600 dark:text-violet-400 relative" />
           </div>
         </div>
       )}
@@ -1198,14 +1202,14 @@ export default function UploadForm() {
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger
               value="upload"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload Images
             </TabsTrigger>
             <TabsTrigger
               value="settings"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
@@ -1220,8 +1224,8 @@ export default function UploadForm() {
                   className={cn(
                     "border-2 border-dashed rounded-xl text-center transition-all p-8",
                     isDragging
-                      ? "border-primary bg-primary/10 scale-[0.98]"
-                      : "border-border hover:border-primary/50"
+                      ? "border-violet-500 bg-violet-50/50 dark:bg-violet-900/20 scale-[0.98]"
+                      : "border-border hover:border-violet-400 dark:hover:border-violet-600"
                   )}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -1229,8 +1233,8 @@ export default function UploadForm() {
                   onClick={(e) => triggerFileInput(e)}
                 >
                   <div className="flex relative flex-col items-center justify-center gap-4">
-                    <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
-                      <Sparkles className="h-6 w-6 text-primary/50 " />
+                    <div className="rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 group-hover:bg-violet-200 dark:group-hover:bg-violet-800 transition-colors">
+                      <Sparkles className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold">
@@ -1251,7 +1255,7 @@ export default function UploadForm() {
                     />
                     <Label
                       htmlFor="file-upload"
-                      className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md bg-primary text-primary-foreground px-8 text-sm font-medium shadow hover:bg-primary/90 transition-colors mt-2"
+                      className="cursor-pointer inline-flex h-10 items-center justify-center rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-8 text-sm font-medium shadow hover:shadow-md shadow-violet-500/20 transition-colors mt-2"
                       onClick={(e) => e.stopPropagation()} // Stop propagation to prevent double triggering
                     >
                       Select Images
@@ -1279,8 +1283,8 @@ export default function UploadForm() {
                       Configure how your SEO metadata will be generated
                     </p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Settings className="h-6 w-6 text-primary" />
+                  <div className="h-12 w-12 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                    <Settings className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                   </div>
                 </div>
 
@@ -1378,7 +1382,7 @@ export default function UploadForm() {
           <Button
             type="submit"
             disabled={files.length === 0 || loading || isPending}
-            className="px-12 h-12 text-base font-medium rounded-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="px-12 h-12 text-base font-medium rounded-md transition-all hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20"
           >
             {loading ? (
               <>
@@ -1522,7 +1526,11 @@ export default function UploadForm() {
                 </Button>
 
                 {uploadResponse?.data.status !== "Failed" && (
-                  <Button type="button" asChild className="sm:flex-1">
+                  <Button
+                    type="button"
+                    asChild
+                    className="sm:flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20"
+                  >
                     <Link href="/results">
                       <span className="flex items-center">
                         View Results
@@ -1607,7 +1615,10 @@ export default function UploadForm() {
               >
                 Cancel
               </Button>
-              <Button asChild className="flex-1">
+              <Button
+                asChild
+                className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20"
+              >
                 <Link href="/pricing">
                   <span className="flex items-center">
                     Upgrade Plan

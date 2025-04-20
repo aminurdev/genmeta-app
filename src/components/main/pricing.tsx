@@ -13,6 +13,14 @@ import {
   Laptop,
   AlertCircle,
   XCircle,
+  ArrowRight,
+  Download,
+  Star,
+  Infinity,
+  BarChart3,
+  ImageIcon,
+  Repeat,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +34,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import Image from "next/image";
 import Link from "next/link";
 import { getBaseApi } from "@/services/image-services";
@@ -69,131 +83,121 @@ const PricingContent = () => {
 
   const currentPricing = pricingData[billingCycle as keyof typeof pricingData];
 
-  // Free plan features
-
-  const freeFeatures = [
+  // Plan features with improved organization and clarity
+  const features = [
     {
-      name: "3-day Trial Period",
-
-      icon: <Clock className="h-4 w-4" />,
-
-      included: true,
+      name: "Batch Processing",
+      free: "Limited (5 per batch)",
+      premium: "Unlimited",
+      freeIcon: <X className="h-4 w-4" />,
+      premiumIcon: <Infinity className="h-4 w-4" />,
+      highlight: true,
     },
-
     {
-      name: "Limited 5 Requests per Batch",
-
-      icon: <X className="h-4 w-4" />,
-
-      included: true,
+      name: "Trial Period",
+      free: "3 days",
+      premium: "Lifetime access",
+      freeIcon: <Clock className="h-4 w-4" />,
+      premiumIcon: <Check className="h-4 w-4" />,
+      highlight: false,
     },
-
     {
-      name: "Own Gemini API Key",
-
-      icon: <Zap className="h-4 w-4" />,
-
-      included: true,
+      name: "Gemini API Integration",
+      free: "Own API key required",
+      premium: "Own API key required",
+      freeIcon: <Zap className="h-4 w-4" />,
+      premiumIcon: <Zap className="h-4 w-4" />,
+      highlight: false,
     },
-
     {
-      name: "Unlimited Results",
-
-      icon: <X className="h-4 w-4" />,
-
-      included: true,
+      name: "Results Generation",
+      free: "Limited",
+      premium: "Unlimited",
+      freeIcon: <X className="h-4 w-4" />,
+      premiumIcon: <Infinity className="h-4 w-4" />,
+      highlight: true,
     },
-
     {
-      name: "Meta Included JPG, PNG",
-
-      icon: <Check className="h-4 w-4" />,
-
-      included: true,
+      name: "Supported Formats",
+      free: "JPG, PNG",
+      premium: "JPG, PNG",
+      freeIcon: <ImageIcon className="h-4 w-4" />,
+      premiumIcon: <ImageIcon className="h-4 w-4" />,
+      highlight: false,
     },
-
     {
       name: "Metadata Editing",
-
-      icon: <Edit className="h-4 w-4" />,
-
-      included: true,
+      free: "Basic",
+      premium: "Advanced",
+      freeIcon: <Edit className="h-4 w-4" />,
+      premiumIcon: <Edit className="h-4 w-4" />,
+      highlight: false,
     },
-
     {
-      name: "Custom Order Keywords",
-
-      icon: <Edit className="h-4 w-4" />,
-
-      included: true,
+      name: "Custom Keyword Ordering",
+      free: "Basic",
+      premium: "Advanced",
+      freeIcon: <Edit className="h-4 w-4" />,
+      premiumIcon: <Edit className="h-4 w-4" />,
+      highlight: false,
     },
-
     {
       name: "CSV Exports",
-
-      icon: <FileText className="h-4 w-4" />,
-
-      included: true,
+      free: "Limited",
+      premium: "Full-featured",
+      freeIcon: <FileText className="h-4 w-4" />,
+      premiumIcon: <FileText className="h-4 w-4" />,
+      highlight: false,
+    },
+    {
+      name: "Bulk Operations",
+      free: "Limited",
+      premium: "Full access",
+      freeIcon: <X className="h-4 w-4" />,
+      premiumIcon: <Repeat className="h-4 w-4" />,
+      highlight: true,
+    },
+    {
+      name: "Priority Support",
+      free: "Community support",
+      premium: "Direct email support",
+      freeIcon: <X className="h-4 w-4" />,
+      premiumIcon: <Check className="h-4 w-4" />,
+      highlight: true,
     },
   ];
 
-  // Premium plan features
-
-  const premiumFeatures = [
+  // FAQ data
+  const faqItems = [
     {
-      name: "Unlimited Batch Requests",
-
-      icon: <Check className="h-4 w-4" />,
-
-      included: true,
+      question: "How does the free trial work?",
+      answer:
+        "The free trial gives you 3 days of access to GenMeta Desktop with a limit of 5 requests per batch. After the trial period ends, you'll need to upgrade to the Premium plan to continue using the app with unlimited capabilities.",
     },
-
     {
-      name: "Own Gemini API Key",
-
-      icon: <Zap className="h-4 w-4" />,
-
-      included: true,
+      question: "Can I use GenMeta Desktop on multiple computers?",
+      answer:
+        "Your license is tied to a single device. If you need to use GenMeta on a different computer, you'll need to deactivate it on your current device first through your account settings.",
     },
-
     {
-      name: "Unlimited Results",
-
-      icon: <Check className="h-4 w-4" />,
-
-      included: true,
+      question: "What payment methods do you accept?",
+      answer:
+        "We accept all major credit cards, PayPal, and bank transfers for annual plans. All payments are securely processed and your information is never stored on our servers.",
     },
-
     {
-      name: "Meta Included JPG, PNG",
-
-      icon: <Check className="h-4 w-4" />,
-
-      included: true,
+      question: "Can I upgrade from monthly to yearly billing?",
+      answer:
+        "Yes, you can upgrade from monthly to yearly billing at any time. When you upgrade, we'll prorate your existing subscription and apply any remaining credit to your new plan.",
     },
-
     {
-      name: "Metadata Editing",
-
-      icon: <Edit className="h-4 w-4" />,
-
-      included: true,
+      question: "Is there a refund policy?",
+      answer:
+        "We offer a 30-day money-back guarantee for all premium plans. If you're not satisfied with GenMeta Desktop, contact our support team within 30 days of purchase for a full refund.",
     },
-
     {
-      name: "Custom Order Keywords",
-
-      icon: <Edit className="h-4 w-4" />,
-
-      included: true,
-    },
-
-    {
-      name: "CSV Exports",
-
-      icon: <FileText className="h-4 w-4" />,
-
-      included: true,
+      question: "Do I need to provide my own API key?",
+      answer:
+        "Yes, both free and premium plans require you to use your own Gemini API key. This gives you full control over your API usage and ensures your data privacy.",
     },
   ];
 
@@ -245,65 +249,85 @@ const PricingContent = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-12">
-        <div className="flex flex-col items-center justify-center space-y-4 mb-12">
-          <div className="flex items-center gap-2 mb-2">
-            <Laptop className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl font-bold">GenMeta Desktop</h1>
-          </div>
-          <h2 className="text-3xl font-bold text-center">Choose Your Plan</h2>
-          <p className="text-muted-foreground text-center max-w-md">
-            Unlock the full potential of GenMeta Desktop with our premium plan
-            or try it for free.
-          </p>
-
-          <Tabs
-            defaultValue="monthly"
-            value={billingCycle}
-            onValueChange={setBillingCycle}
-            className="w-full max-w-md mt-6"
-          >
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="yearly">
-                Yearly
-                <Badge
-                  variant="secondary"
-                  className="ml-2 bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20"
-                >
-                  Save 60%
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className=" flex justify-center items-center">
-          {errorMessage && (
-            <div className="w-full max-w-md">
-              <Alert variant="destructive" className="mb-4 flex items-center">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage}</AlertDescription>
-                <button
-                  onClick={() => setErrorMessage(null)}
-                  className="absolute right-2 top-2 p-1 rounded-full hover:bg-destructive/20 transition-colors"
-                >
-                  <XCircle className="h-4 w-4" />
-                </button>
-              </Alert>
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background pt-16 pb-24">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center justify-center space-y-6 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-4 py-1.5 text-sm font-medium text-violet-600 dark:text-violet-400">
+              <Sparkles className="h-4 w-4" />
+              <span>Unlock the full power of GenMeta</span>
             </div>
-          )}
-        </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 max-w-5xl mx-auto">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+              Choose the Perfect Plan <br className="hidden sm:inline" />
+              <span className="bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                for Your Workflow
+              </span>
+            </h1>
+
+            <p className="max-w-2xl text-lg text-muted-foreground">
+              Transform your image metadata workflow with GenMeta Desktop.
+              Select the plan that fits your needs and start enhancing your
+              images today.
+            </p>
+
+            <Tabs
+              defaultValue="monthly"
+              value={billingCycle}
+              onValueChange={setBillingCycle}
+              className="w-full max-w-md mt-6"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="yearly">
+                  Yearly
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 border-green-500/20 bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                  >
+                    Save 60%
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="container mx-auto px-4 -mt-10 mb-10">
+          <div className="mx-auto max-w-md">
+            <Alert variant="destructive" className="flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="absolute right-2 top-2 rounded-full p-1 transition-colors hover:bg-destructive/20"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </Alert>
+          </div>
+        </div>
+      )}
+
+      {/* Pricing Cards */}
+      <div className="container mx-auto px-4 -mt-10">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-2">
           {/* Free Plan */}
-          <Card className="border-border/50 relative overflow-hidden transition-all hover:shadow-lg">
+          <Card className="relative overflow-hidden border-violet-100 dark:border-violet-900 transition-all hover:shadow-lg">
             <CardHeader className="pb-2">
-              <CardTitle className="text-2xl">Free Trial</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                Free Trial
+              </CardTitle>
               <CardDescription>Try GenMeta Desktop for 3 days</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <p className="text-4xl font-bold">$0</p>
+                <p className="text-4xl font-bold">৳0</p>
                 <p className="text-sm text-muted-foreground">
                   3-day trial period
                 </p>
@@ -312,19 +336,38 @@ const PricingContent = () => {
               <Separator className="my-4" />
 
               <div className="space-y-3">
-                {freeFeatures.map((feature, index) => (
+                {features.slice(0, 5).map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <div className="rounded-full p-1 bg-primary/10 text-primary flex-shrink-0">
-                      {feature.icon}
+                    <div className="flex-shrink-0 rounded-full bg-muted p-1 text-muted-foreground">
+                      {feature.freeIcon}
                     </div>
-                    <span className="text-sm">{feature.name}</span>
+                    <span className="text-sm">{feature.free}</span>
+                    <span className="ml-auto text-sm font-medium">
+                      {feature.name}
+                    </span>
                   </div>
                 ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-muted-foreground"
+                  asChild
+                >
+                  <Link href="#feature-comparison">View all features</Link>
+                </Button>
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full" size="lg" asChild>
-                <Link href="/get-app"> Download Free Trial</Link>
+              <Button
+                variant="outline"
+                className="w-full border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                size="lg"
+                asChild
+              >
+                <Link href="/get-app">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Free Trial
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -332,18 +375,18 @@ const PricingContent = () => {
           {/* Premium Plan */}
           <Card
             id="premium"
-            className="border-primary shadow-md relative overflow-hidden transition-all hover:shadow-lg"
+            className="relative overflow-hidden border-violet-200 dark:border-violet-800 shadow-md transition-all hover:shadow-lg"
           >
-            <div className="absolute -right-10 top-5 rotate-45 bg-primary px-10 py-1 text-xs font-semibold text-primary-foreground">
+            <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
               Recommended
             </div>
-            <Badge className="absolute top-4 left-4 bg-green-500 hover:bg-green-600">
+            <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
               {currentPricing.discount}% OFF
             </Badge>
 
-            <CardHeader className="pb-2 mt-6">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
+            <CardHeader className="mt-6 pb-2">
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                 Premium
               </CardTitle>
               <CardDescription>
@@ -354,10 +397,10 @@ const PricingContent = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <p className="text-4xl font-bold text-foreground">
-                    ${currentPricing.discountedPrice}
+                    ৳{currentPricing.discountedPrice}
                   </p>
-                  <p className="text-sm line-through text-muted-foreground">
-                    ${currentPricing.originalPrice}
+                  <p className="text-sm text-muted-foreground line-through">
+                    ৳{currentPricing.originalPrice}
                   </p>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -366,10 +409,10 @@ const PricingContent = () => {
                     : "per month"}
                 </p>
                 {billingCycle === "yearly" && (
-                  <p className="text-xs text-green-500 font-medium">
+                  <p className="text-xs font-medium text-green-500">
                     {billingCycle === "yearly" &&
                       "totalSavings" in currentPricing &&
-                      `Save $${currentPricing.totalSavings} per year`}
+                      `Save ৳${currentPricing.totalSavings} per year`}
                   </p>
                 )}
               </div>
@@ -377,19 +420,38 @@ const PricingContent = () => {
               <Separator className="my-4" />
 
               <div className="space-y-3">
-                {premiumFeatures.map((feature, index) => (
+                {features.slice(0, 5).map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <div className="rounded-full p-1 bg-primary/10 text-primary flex-shrink-0">
-                      {feature.icon}
+                    <div className="flex-shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/50 p-1 text-violet-600 dark:text-violet-400">
+                      {feature.premiumIcon}
                     </div>
-                    <span className="text-sm">{feature.name}</span>
+                    <span
+                      className={`text-sm ${
+                        feature.highlight
+                          ? "font-medium text-violet-600 dark:text-violet-400"
+                          : ""
+                      }`}
+                    >
+                      {feature.premium}
+                    </span>
+                    <span className="ml-auto text-sm font-medium">
+                      {feature.name}
+                    </span>
                   </div>
                 ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-violet-600 dark:text-violet-400"
+                  asChild
+                >
+                  <Link href="#feature-comparison">View all features</Link>
+                </Button>
               </div>
             </CardContent>
             <CardFooter>
               <Button
-                className="w-full"
+                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
                 size="lg"
                 onClick={() =>
                   handlePurchase(
@@ -399,134 +461,249 @@ const PricingContent = () => {
                   )
                 }
               >
+                <Star className="mr-2 h-4 w-4" />
                 {billingCycle === "yearly"
-                  ? `Get Premium - $${currentPricing.totalPrice}/year`
+                  ? `Get Premium - ৳${currentPricing.totalPrice}/year`
                   : "Get Premium"}
               </Button>
             </CardFooter>
           </Card>
         </div>
+      </div>
 
-        {/* FAQ Section */}
-        <div className="max-w-3xl mx-auto mt-20">
-          <h3 className="text-2xl font-bold text-center mb-8">
+      {/* Feature Comparison Table */}
+      <div id="feature-comparison" className="container mx-auto px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-8 text-center text-3xl font-bold">
+            Feature Comparison
+          </h2>
+
+          <div className="overflow-hidden rounded-xl border border-violet-100 dark:border-violet-900">
+            <div className="grid grid-cols-3 bg-violet-50 dark:bg-violet-950/30 p-4 font-medium">
+              <div>Feature</div>
+              <div className="text-center">Free Trial</div>
+              <div className="text-center">Premium</div>
+            </div>
+
+            <Separator className="bg-violet-100 dark:bg-violet-900" />
+
+            {features.map((feature, index) => (
+              <div key={index}>
+                <div
+                  className={`grid grid-cols-3 p-4 ${
+                    feature.highlight
+                      ? "bg-violet-50/50 dark:bg-violet-950/20"
+                      : ""
+                  }`}
+                >
+                  <div className="flex items-center font-medium">
+                    {feature.name}
+                    {feature.highlight && (
+                      <Badge
+                        variant="outline"
+                        className="ml-2 border-violet-200 dark:border-violet-800 bg-violet-100/50 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400"
+                      >
+                        Popular
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`rounded-full p-1 ${
+                          feature.highlight
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-muted/50 text-muted-foreground"
+                        }`}
+                      >
+                        {feature.freeIcon}
+                      </div>
+                      <span className="text-sm">{feature.free}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`rounded-full p-1 ${
+                          feature.highlight
+                            ? "bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400"
+                            : "bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+                        }`}
+                      >
+                        {feature.premiumIcon}
+                      </div>
+                      <span
+                        className={`text-sm ${
+                          feature.highlight
+                            ? "font-medium text-violet-600 dark:text-violet-400"
+                            : ""
+                        }`}
+                      >
+                        {feature.premium}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                {index < features.length - 1 && (
+                  <Separator className="bg-violet-100 dark:bg-violet-900/50" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex justify-center gap-4">
+            <Button
+              size="lg"
+              className="px-8 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+              asChild
+            >
+              <a href="#premium">Get Premium</a>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="px-8 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+              asChild
+            >
+              <Link href="/get-app">Try for Free</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* App Screenshot */}
+      <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="mb-8 text-center text-3xl font-bold">
+              Powerful Desktop Experience
+            </h2>
+
+            <div className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800 bg-gradient-to-b from-background to-violet-50/50 dark:from-background dark:to-violet-950/20 p-2 shadow-lg">
+              <div className="overflow-hidden rounded-lg">
+                <Image
+                  src="/Assets/app.png"
+                  alt="GenMeta Desktop App Preview"
+                  width={2000}
+                  height={2000}
+                  className="w-full rounded-lg shadow-md transition-transform duration-500 hover:scale-[1.02]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
+                  <Zap className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">Powerful AI</h3>
+                <p className="text-muted-foreground">
+                  Process images with state-of-the-art AI technology for
+                  accurate and fast results. Generate metadata that improves
+                  discoverability.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
+                  <Shield className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">
+                  Secure Processing
+                </h3>
+                <p className="text-muted-foreground">
+                  All processing happens locally on your device, ensuring your
+                  data never leaves your computer. Your images stay private.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
+                  <BarChart3 className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+                </div>
+                <h3 className="mb-2 text-xl font-semibold">
+                  Advanced Workflow
+                </h3>
+                <p className="text-muted-foreground">
+                  Streamline your image processing with batch operations, custom
+                  metadata editing, and flexible export options for any project.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ Section */}
+      <div className="container mx-auto px-4 py-20">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="mb-8 text-center text-3xl font-bold">
             Frequently Asked Questions
-          </h3>
+          </h2>
 
-          <div className="space-y-6">
-            <div className="bg-muted/50 p-6 rounded-lg">
-              <h4 className="font-medium text-lg mb-2">
-                How does the free trial work?
-              </h4>
-              <p className="text-muted-foreground">
-                The free trial gives you 3 days of access to GenMeta Desktop
-                with a limit of 5 requests. After the trial period ends,
-                you&apos;ll need to upgrade to the Premium plan to continue
-                using the app.
-              </p>
-            </div>
-
-            <div className="bg-muted/50 p-6 rounded-lg">
-              <h4 className="font-medium text-lg mb-2">
-                Can I use GenMeta Desktop on multiple computers?
-              </h4>
-              <p className="text-muted-foreground">
-                Your license is tied to a single device. If you need to use
-                GenMeta on a different computer, you&apos;ll need to deactivate
-                it on your current device first.
-              </p>
-            </div>
-
-            <div className="bg-muted/50 p-6 rounded-lg">
-              <h4 className="font-medium text-lg mb-2">
-                What payment methods do you accept?
-              </h4>
-              <p className="text-muted-foreground">
-                We accept all major credit cards, PayPal, and bank transfers for
-                annual plans. All payments are securely processed and your
-                information is never stored on our servers.
-              </p>
-            </div>
-
-            <div className="bg-muted/50 p-6 rounded-lg">
-              <h4 className="font-medium text-lg mb-2">
-                Can I upgrade from monthly to yearly billing?
-              </h4>
-              <p className="text-muted-foreground">
-                Yes, you can upgrade from monthly to yearly billing at any time.
-                When you upgrade, we&apos;ll prorate your existing subscription
-                and apply any remaining credit to your new plan.
-              </p>
-            </div>
-          </div>
+          <Accordion type="single" collapsible className="w-full">
+            {faqItems.map((item, index) => (
+              <AccordionItem
+                key={index}
+                value={`item-${index}`}
+                className="border-violet-100 dark:border-violet-900"
+              >
+                <AccordionTrigger className="text-left hover:text-violet-600 dark:hover:text-violet-400">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-violet-500" />
+                    {item.question}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
+      </div>
 
-        {/* App Screenshot */}
-        <div className="mt-20 max-w-5xl mx-auto">
-          <h3 className="text-2xl font-bold text-center mb-8">
-            Powerful Desktop Experience
-          </h3>
-
-          <div className="bg-gradient-to-b from-muted/50 to-background p-6 rounded-xl border border-border/50 shadow-lg">
-            <div>
-              <Image
-                src="/Assets/app.png"
-                alt="App Preview"
-                width={2000}
-                height={2000}
-                className="rounded-lg shadow-lg"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div className="bg-muted/30 p-5 rounded-lg">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" /> Powerful AI
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                Process images with state-of-the-art AI technology for accurate
-                and fast results.
+      {/* CTA Section */}
+      <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-3xl rounded-2xl bg-card p-8 shadow-lg border border-violet-200 dark:border-violet-800">
+            <div className="text-center">
+              <Badge className="mb-4 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 hover:bg-violet-200 dark:hover:bg-violet-800">
+                Limited Time Offer
+              </Badge>
+              <h2 className="mb-4 text-3xl font-bold">
+                Ready to transform your workflow?
+              </h2>
+              <p className="mb-8 text-muted-foreground">
+                Join thousands of professionals who use GenMeta Desktop to
+                streamline their image metadata workflow. Get started today with
+                our special pricing.
               </p>
-            </div>
 
-            <div className="bg-muted/30 p-5 rounded-lg">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" /> Secure Processing
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                All processing happens locally on your device, ensuring your
-                data never leaves your computer.
+              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto px-8 gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                  asChild
+                >
+                  <a href="#premium">
+                    Get Premium
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto px-8 border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
+                  asChild
+                >
+                  <Link href="/get-app">Try for Free</Link>
+                </Button>
+              </div>
+
+              <p className="mt-4 text-sm text-muted-foreground">
+                30-day money-back guarantee. No questions asked.
               </p>
-            </div>
-
-            <div className="bg-muted/30 p-5 rounded-lg">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Edit className="h-5 w-5 text-primary" /> Advanced Editing
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                Edit metadata and export your results in various formats for
-                seamless workflow integration.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="mt-20 text-center">
-          <div className="bg-primary/10 rounded-xl p-8 max-w-3xl mx-auto">
-            <h3 className="text-2xl font-bold mb-4">Ready to get started?</h3>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Download GenMeta Desktop today and transform how you work with
-              images and metadata.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="px-8" asChild>
-                <a href="#premium">Get Premium</a>
-              </Button>
-              <Button size="lg" variant="outline" className="px-8" asChild>
-                <Link href="/get-app">Try for Free</Link>
-              </Button>
             </div>
           </div>
         </div>
@@ -540,7 +717,7 @@ const PricingLoading = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center space-y-4">
-        <Laptop className="h-12 w-12 text-primary mx-auto animate-pulse" />
+        <Laptop className="h-12 w-12 text-violet-600 dark:text-violet-400 mx-auto animate-pulse" />
         <h2 className="text-2xl font-medium">Loading pricing information...</h2>
       </div>
     </div>
