@@ -84,6 +84,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { toast } from "sonner";
+import { getAccessToken } from "@/services/auth-services";
 
 export default function UsersPage() {
   const { users, loading, error, pagination, fetchUsers } = useUsers();
@@ -110,7 +111,12 @@ export default function UsersPage() {
     const fetchStats = async () => {
       try {
         const baseApi = await getBaseApi();
-        const response = await fetch(`${baseApi}/admin/users/statistics`);
+        const accessToken = await getAccessToken();
+        const response = await fetch(`${baseApi}/admin/users/statistics`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
         const data = await response.json();
         if (data.success) {
           setStats(data.data);
@@ -174,7 +180,13 @@ export default function UsersPage() {
     // Refresh stats
     try {
       const baseApi = await getBaseApi();
-      const response = await fetch(`${baseApi}/admin/users/statistics`);
+      const accessToken = await getAccessToken();
+
+      const response = await fetch(`${baseApi}/admin/users/statistics`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
@@ -236,10 +248,16 @@ export default function UsersPage() {
     setIsDeleting(true);
     try {
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const response = await fetch(
         `${baseApi}/admin/users/delete/${userToDelete.id}`,
         {
           method: "DELETE",
+
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         }
       );
       const data = await response.json();
@@ -739,12 +757,12 @@ export default function UsersPage() {
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <p className="font-medium text-sm">
-                                {user.currentPlan.name}
+                                {user.currentPlan?.name}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Expires{" "}
                                 {format(
-                                  new Date(user.currentPlan.expiresDate),
+                                  new Date(user.currentPlan?.expiresDate || 0),
                                   "MMM d, yyyy"
                                 )}
                               </p>

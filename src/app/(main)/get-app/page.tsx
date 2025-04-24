@@ -12,8 +12,6 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,11 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { getAccessToken } from "@/services/auth-services";
-import { getBaseApi } from "@/services/image-services";
 import {
-  Key,
-  Copy,
   AlertTriangle,
   CheckCircle2,
   Download,
@@ -38,9 +32,6 @@ import {
   ArrowRight,
   Laptop,
   RefreshCw,
-  Eye,
-  EyeOff,
-  Sparkles,
   CheckCircle,
   type LucideIcon,
   HelpCircle,
@@ -73,14 +64,11 @@ interface FAQ {
 }
 
 export default function GetAppPage() {
-  const [userId, setUserId] = useState<string>("");
-  const [hideUserId, setHideUserId] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("download");
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadComplete, setDownloadComplete] = useState<boolean>(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
   const downloadTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   interface ReleaseInfo {
@@ -89,10 +77,7 @@ export default function GetAppPage() {
   }
 
   const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showWarning, setShowWarning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Features list
@@ -135,27 +120,17 @@ export default function GetAppPage() {
     },
   ];
 
-  // FAQ list
+  // FAQ list - removed user ID related FAQs
   const faqs: FAQ[] = [
-    {
-      question: "What is an App User ID?",
-      answer:
-        "The App User ID is a unique identifier that connects your web account with the desktop application. It allows you to access your content and settings across platforms and ensures your subscription benefits are applied to your desktop experience.",
-    },
     {
       question: "Can I use GenMeta on multiple computers?",
       answer:
-        "No, your App User ID can only be used on one device at a time. If you need to use GenMeta on a different computer, you'll need to log out from your current device first. This restriction helps protect your account security and ensures compliance with our licensing terms.",
-    },
-    {
-      question: "What if I lose my App User ID?",
-      answer:
-        "If you lose your App User ID, you can return to this page while logged in to view it. We recommend storing it in a secure password manager. For security reasons, we cannot recover your App User ID if you lose access to your account.",
+        "Yes, you can install GenMeta on multiple computers. Each installation will function independently.",
     },
     {
       question: "Do I need to be online to use GenMeta?",
       answer:
-        "GenMeta requires an internet connection for initial activation and for AI-powered features. However, basic metadata editing functions can work offline once the application has been activated with your App User ID.",
+        "GenMeta requires an internet connection for initial activation and for AI-powered features. However, basic metadata editing functions can work offline.",
     },
     {
       question: "How do I update to the latest version?",
@@ -169,69 +144,23 @@ export default function GetAppPage() {
     },
   ];
 
-  const getUserIdFromServer = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const baseAPI = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      if (!baseAPI || !accessToken) {
-        throw new Error("Failed to initialize API connection");
-      }
-
-      const response = await fetch(`${baseAPI}/users/userid`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Server error: ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-      return data.data?.data?.[0]?.key;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch user ID");
-      return "";
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fetchedUserId, releaseData] = await Promise.allSettled([
-          getUserIdFromServer(),
-          getLatestRelease(),
-        ]);
+        const releaseData = await getLatestRelease();
 
-        if (fetchedUserId.status === "fulfilled") {
-          setUserId(fetchedUserId.value);
-          // If user already has an ID, suggest moving to the setup tab
-          if (fetchedUserId.value) {
-            setCurrentStep(2);
-          }
-        }
-
-        if (releaseData.status === "fulfilled" && releaseData.value) {
+        if (releaseData) {
           setReleaseInfo({
-            version: releaseData.value.version,
-            downloadUrl: releaseData.value.downloadUrl,
+            version: releaseData.version,
+            downloadUrl: releaseData.downloadUrl,
           });
         } else {
           setError("Failed to fetch latest release information");
         }
+        setIsLoading(false);
       } catch {
         setError("Failed to initialize application data");
+        setIsLoading(false);
       }
     };
 
@@ -248,83 +177,11 @@ export default function GetAppPage() {
   // Update active tab when step changes
   useEffect(() => {
     if (currentStep === 1) setActiveTab("download");
-    else if (currentStep === 2) setActiveTab("setup");
-    else if (currentStep === 3) setActiveTab("preview");
+    else if (currentStep === 2) setActiveTab("preview");
   }, [currentStep]);
-
-  const handleGenerateUserId = async () => {
-    if (userId) {
-      setShowWarning(true);
-      setTimeout(() => setShowWarning(false), 5000);
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      setError(null);
-
-      const baseAPI = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      if (!baseAPI || !accessToken) {
-        throw new Error("Failed to initialize API connection");
-      }
-
-      const response = await fetch(`${baseAPI}/users/userid`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Server error: ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.data?.data?.key) {
-        setUserId(data.data.data.key);
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 5000);
-        // Auto-switch to the setup tab after successful generation
-        setActiveTab("setup");
-        setCurrentStep(2);
-      } else {
-        throw new Error("Failed to generate user ID");
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to generate user ID"
-      );
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyUserId = () => {
-    if (!userId) return;
-
-    navigator.clipboard
-      .writeText(userId)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {
-        setError("Failed to copy to clipboard");
-      });
-  };
 
   const handleRetry = async () => {
     setError(null);
-    const fetchedUserId = await getUserIdFromServer();
-    setUserId(fetchedUserId);
-
     try {
       const releaseInfo = await getLatestRelease();
       if (releaseInfo) {
@@ -358,7 +215,7 @@ export default function GetAppPage() {
   };
 
   const goToNextStep = () => {
-    if (currentStep < 3) {
+    if (currentStep < 2) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -420,12 +277,12 @@ export default function GetAppPage() {
           </Alert>
         )}
 
-        {/* Progress Steps */}
+        {/* Progress Steps - Modified to have only 2 steps */}
         <div className="max-w-5xl mx-auto mb-12">
           <div className="relative">
             <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-violet-200 via-indigo-300 to-violet-200 dark:from-violet-900 dark:via-indigo-800 dark:to-violet-900 transform -translate-y-1/2 z-0"></div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div
                 className={`flex flex-col items-center text-center relative z-10 ${
                   currentStep >= 1 ? "opacity-100" : "opacity-50"
@@ -463,57 +320,20 @@ export default function GetAppPage() {
                 className={`flex flex-col items-center text-center relative z-10 ${
                   currentStep >= 2 ? "opacity-100" : "opacity-50"
                 }`}
-                onClick={() => (userId ? setCurrentStep(2) : null)}
+                onClick={() => setCurrentStep(2)}
               >
                 <div
                   className={`flex items-center justify-center w-12 h-12 rounded-full ${
                     currentStep >= 2
                       ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white"
                       : "bg-muted text-muted-foreground"
-                  } mb-3 transition-all duration-300 ${
-                    userId ? "cursor-pointer" : "cursor-not-allowed"
-                  }`}
-                >
-                  {currentStep > 2 ? (
-                    <CheckCircle className="h-6 w-6" />
-                  ) : (
-                    <Key className="h-5 w-5" />
-                  )}
-                </div>
-                <h3
-                  className={`font-medium ${
-                    currentStep === 2
-                      ? "text-violet-600 dark:text-violet-400"
-                      : ""
-                  }`}
-                >
-                  Generate User ID
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Create your unique ID
-                </p>
-              </div>
-
-              <div
-                className={`flex flex-col items-center text-center relative z-10 ${
-                  currentStep >= 3 ? "opacity-100" : "opacity-50"
-                }`}
-                onClick={() => (userId ? setCurrentStep(3) : null)}
-              >
-                <div
-                  className={`flex items-center justify-center w-12 h-12 rounded-full ${
-                    currentStep >= 3
-                      ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white"
-                      : "bg-muted text-muted-foreground"
-                  } mb-3 transition-all duration-300 ${
-                    userId ? "cursor-pointer" : "cursor-not-allowed"
-                  }`}
+                  } mb-3 transition-all duration-300 cursor-pointer`}
                 >
                   <Laptop className="h-5 w-5" />
                 </div>
                 <h3
                   className={`font-medium ${
-                    currentStep === 3
+                    currentStep === 2
                       ? "text-violet-600 dark:text-violet-400"
                       : ""
                   }`}
@@ -533,7 +353,7 @@ export default function GetAppPage() {
           onValueChange={setActiveTab}
           className="w-full max-w-5xl mx-auto"
         >
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger
               value="download"
               className="text-sm md:text-base"
@@ -542,16 +362,9 @@ export default function GetAppPage() {
               <Download className="w-4 h-4 mr-2" /> Download
             </TabsTrigger>
             <TabsTrigger
-              value="setup"
-              className="text-sm md:text-base"
-              onClick={() => setCurrentStep(2)}
-            >
-              <Key className="w-4 h-4 mr-2" /> App User ID
-            </TabsTrigger>
-            <TabsTrigger
               value="preview"
               className="text-sm md:text-base"
-              onClick={() => setCurrentStep(3)}
+              onClick={() => setCurrentStep(2)}
             >
               <Laptop className="w-4 h-4 mr-2" /> App Preview
             </TabsTrigger>
@@ -673,10 +486,7 @@ export default function GetAppPage() {
                             instructions
                           </li>
                           <li>Launch GenMeta after installation</li>
-                          <li>
-                            You&apos;ll need your App User ID to activate the
-                            application
-                          </li>
+                          <li>Start using the application immediately</li>
                         </ol>
                       </div>
                     </div>
@@ -698,214 +508,9 @@ export default function GetAppPage() {
                     className="text-sm p-0 h-auto text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
                     onClick={goToNextStep}
                   >
-                    Next: Generate your App User ID{" "}
-                    <ArrowRight className="ml-1 w-3 h-3" />
+                    Next: App Preview <ArrowRight className="ml-1 w-3 h-3" />
                   </Button>
                 </div>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="setup" className="mt-0">
-            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 border-violet-100 dark:border-violet-900 overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-indigo-500"></div>
-              <CardHeader className="space-y-1">
-                <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Key className="w-6 h-6 text-violet-600 dark:text-violet-400" />
-                  Generate Your App User ID
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Create your unique App User ID to connect with GenMeta
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="userId"
-                      className="text-base flex items-center gap-2"
-                    >
-                      Your App User ID
-                      {userId && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs border-green-200 bg-green-50 text-green-600 dark:border-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        >
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> Generated
-                        </Badge>
-                      )}
-                    </Label>
-                    {isLoading ? (
-                      <Skeleton className="h-10 w-full" />
-                    ) : (
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            id="userId"
-                            value={
-                              userId
-                                ? hideUserId
-                                  ? "•".repeat(userId.length)
-                                  : userId
-                                : ""
-                            }
-                            readOnly
-                            placeholder="Click Generate to create your App User ID"
-                            className="font-mono pr-10 border-violet-200 dark:border-violet-800 focus-visible:ring-violet-500"
-                          />
-                          {userId && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-0 top-0 h-full text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
-                              onClick={() => setHideUserId(!hideUserId)}
-                            >
-                              {hideUserId ? (
-                                <Eye className="w-4 h-4" />
-                              ) : (
-                                <EyeOff className="w-4 h-4" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={handleCopyUserId}
-                                disabled={!userId}
-                                className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-                              >
-                                {copied ? (
-                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{copied ? "Copied!" : "Copy to clipboard"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    )}
-                  </div>
-
-                  <Button
-                    onClick={handleGenerateUserId}
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20"
-                    size="lg"
-                    disabled={!!userId || isGenerating || isLoading}
-                  >
-                    {isGenerating ? (
-                      <span className="flex items-center gap-2">
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Generating...
-                      </span>
-                    ) : userId ? (
-                      <span className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        App User ID Generated
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4" />
-                        Generate App User ID
-                      </span>
-                    )}
-                  </Button>
-
-                  {showWarning && (
-                    <div className="p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-600 dark:text-yellow-400" />
-                        <div>
-                          <p className="font-medium mb-1 text-yellow-600 dark:text-yellow-400">
-                            Important
-                          </p>
-                          <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                            You can only generate one App User ID. Please keep
-                            it secure.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {showSuccessMessage && (
-                    <div className="p-5 bg-green-500/10 border border-green-500/20 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0 text-green-600 dark:text-green-400" />
-                        <div>
-                          <p className="font-medium mb-1 text-green-600 dark:text-green-400">
-                            Success
-                          </p>
-                          <p className="text-sm text-green-600 dark:text-green-400">
-                            Your App User ID has been generated successfully.
-                            Please copy and keep it secure.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {userId && (
-                    <div className="p-5 bg-gradient-to-r from-green-50 to-green-100/50 dark:from-green-950/20 dark:to-green-900/10 border border-green-200 dark:border-green-800 rounded-lg">
-                      <h3 className="font-medium text-green-600 dark:text-green-400 flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="w-4 h-4" /> Next Steps
-                      </h3>
-                      <ol className="list-decimal ml-5 text-sm text-green-600/90 dark:text-green-400/90 space-y-1">
-                        <li>Copy your App User ID using the button above</li>
-                        <li>Launch the GenMeta application on your computer</li>
-                        <li>
-                          Paste your App User ID when prompted during first
-                          launch
-                        </li>
-                        <li>
-                          Your app will automatically connect to your account
-                        </li>
-                      </ol>
-                    </div>
-                  )}
-
-                  <div className="p-5 bg-violet-50/50 dark:bg-violet-950/20 rounded-lg border border-violet-200 dark:border-violet-800">
-                    <div className="flex items-start gap-3">
-                      <Shield className="w-5 h-5 mt-0.5 flex-shrink-0 text-violet-600 dark:text-violet-400" />
-                      <div>
-                        <p className="font-medium mb-1 text-violet-700 dark:text-violet-300">
-                          Security Notice
-                        </p>
-                        <p className="text-sm text-violet-600/80 dark:text-violet-400/80">
-                          Keep this App User ID secure. You&apos;ll need it to
-                          authenticate with the app and access your content.
-                          This ID cannot be recovered if lost, so store it in a
-                          safe place.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between border-t border-violet-100 dark:border-violet-900 pt-4">
-                <Button
-                  variant="outline"
-                  className="text-sm border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-                  onClick={goToPreviousStep}
-                >
-                  <ArrowRight className="mr-1 w-3 h-3 rotate-180" /> Back to
-                  Download
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-sm border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-                  onClick={goToNextStep}
-                  disabled={!userId}
-                >
-                  View App Preview <ArrowRight className="ml-1 w-3 h-3" />
-                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -964,8 +569,8 @@ export default function GetAppPage() {
                   className="text-sm border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
                   onClick={goToPreviousStep}
                 >
-                  <ArrowRight className="mr-1 w-3 h-3 rotate-180" /> Back to App
-                  User ID
+                  <ArrowRight className="mr-1 w-3 h-3 rotate-180" /> Back to
+                  Download
                 </Button>
                 <Button
                   className="text-sm bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
@@ -1049,21 +654,6 @@ export default function GetAppPage() {
                     v{releaseInfo.version}
                   </Badge>
                 )}
-              </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-                onClick={() => {
-                  if (!userId) {
-                    setActiveTab("setup");
-                    setCurrentStep(2);
-                  }
-                }}
-              >
-                <Key className="w-5 h-5 mr-2" />
-                {userId ? "View Your App User ID" : "Generate App User ID"}
               </Button>
             </div>
 

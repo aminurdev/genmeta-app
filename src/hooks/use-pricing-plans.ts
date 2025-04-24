@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/services/auth-services";
 import { getBaseApi } from "@/services/image-services";
 import { useState, useEffect } from "react";
 
@@ -27,7 +28,13 @@ export function usePricingPlans() {
   const fetchPlans = async () => {
     try {
       const baseApi = await getBaseApi();
-      const response = await fetch(`${baseApi}/admin/pricingPlans/get`);
+      const accessToken = await getAccessToken();
+
+      const response = await fetch(`${baseApi}/admin/pricingPlans/get`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const result: ApiResponse<PricingPlan[]> = await response.json();
 
       if (!result.success) {
@@ -50,10 +57,13 @@ export function usePricingPlans() {
   ) => {
     try {
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const response = await fetch(`${baseApi}/admin/pricingPlans/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(planData),
       });
@@ -75,12 +85,15 @@ export function usePricingPlans() {
   const updatePlan = async (id: string, planData: Partial<PricingPlan>) => {
     try {
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const response = await fetch(
         `${baseApi}/admin/pricingPlans/update/${id}`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(planData),
         }
@@ -103,10 +116,16 @@ export function usePricingPlans() {
   const deletePlan = async (id: string) => {
     try {
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const response = await fetch(
         `${baseApi}/admin/pricingPlans/delete/${id}`,
         {
           method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
         }
       );
 

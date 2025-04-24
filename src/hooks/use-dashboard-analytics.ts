@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBaseApi } from "@/services/image-services";
+import { getAccessToken } from "@/services/auth-services";
 
 interface KeyMetrics {
   totalUsers: {
@@ -50,7 +51,13 @@ export function useDashboardAnalytics() {
     async function fetchData() {
       try {
         const baseAPI = await getBaseApi();
-        const response = await fetch(`${baseAPI}/admin/dashboardAnalytics`);
+        const accessToken = await getAccessToken();
+
+        const response = await fetch(`${baseAPI}/admin/dashboardAnalytics`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
         const result = await response.json();
 
         if (!result.success) {

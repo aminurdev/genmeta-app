@@ -1,6 +1,13 @@
 "use client";
 import { useState } from "react";
-import { LifeBuoy, LogOut, UserCircle, Loader2 } from "lucide-react";
+import {
+  LifeBuoy,
+  LogOut,
+  UserCircle,
+  Loader2,
+  Package,
+  AppWindow,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -71,6 +78,32 @@ export function UserMenu({ user }: { user: User }) {
             </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        {user?.role === "admin" && (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin"
+                  className="cursor-pointer flex items-center gap-2 w-full"
+                >
+                  <Package className="h-4 w-4" />
+                  <span>Admin</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/admin/app"
+                  className="cursor-pointer flex items-center gap-2 w-full"
+                >
+                  <AppWindow className="h-4 w-4" />
+                  <span>App Admin</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem className="cursor-pointer">
           <Button

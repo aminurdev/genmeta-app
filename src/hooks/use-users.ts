@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/services/auth-services";
 import { getBaseApi } from "@/services/image-services";
 import { useState, useEffect } from "react";
 
@@ -25,7 +26,7 @@ export interface User {
   email: string;
   role: string;
   status: string;
-  currentPlan: CurrentPlan;
+  currentPlan?: CurrentPlan;
   isVerified: boolean;
   tokens: Tokens;
   images: Images;
@@ -74,6 +75,8 @@ export function useUsers() {
     try {
       setLoading(true);
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const queryParams = new URLSearchParams({
         page: params.page?.toString() || "1",
         limit: params.limit?.toString() || "5",
@@ -84,7 +87,12 @@ export function useUsers() {
       });
 
       const response = await fetch(
-        `${baseApi}/admin/users/all?${queryParams.toString()}`
+        `${baseApi}/admin/users/all?${queryParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
       );
       const result: ApiResponse<UsersResponse> = await response.json();
 

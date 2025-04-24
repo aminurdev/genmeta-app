@@ -44,14 +44,14 @@ export async function Navigation() {
           {user ? (
             <UserMenu user={user} />
           ) : (
-            <>
+            <span className="hidden md:flex items-center gap-4">
               <Button variant="outline" asChild>
                 <Link href="/login">Login</Link>
               </Button>
               <Button asChild>
                 <Link href="/signup">Sign Up</Link>
               </Button>
-            </>
+            </span>
           )}
           <ModeToggle />
           {/* Mobile Menu Button */}

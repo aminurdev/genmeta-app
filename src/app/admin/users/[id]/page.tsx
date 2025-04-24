@@ -75,6 +75,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getAccessToken } from "@/services/auth-services";
 
 interface UserDetails {
   user: {
@@ -85,7 +86,7 @@ interface UserDetails {
     status: string;
     createdAt: string;
   };
-  currentPlan: {
+  currentPlan?: {
     name: string;
     tokens: number;
     status: string;
@@ -186,8 +187,15 @@ export default function UserDetailsPage() {
     async (page = 1) => {
       try {
         const baseApi = await getBaseApi();
+        const accessToken = await getAccessToken();
+
         const response = await fetch(
-          `${baseApi}/admin/users/images/${params.id}?page=${page}&limit=5`
+          `${baseApi}/admin/users/images/${params.id}?page=${page}&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
         const data = await response.json();
         if (data.success) {
@@ -205,8 +213,15 @@ export default function UserDetailsPage() {
     async (page = 1) => {
       try {
         const baseApi = await getBaseApi();
+        const accessToken = await getAccessToken();
+
         const response = await fetch(
-          `${baseApi}/admin/users/payments/${params.id}?page=${page}&limit=5`
+          `${baseApi}/admin/users/payments/${params.id}?page=${page}&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
         const data = await response.json();
         if (data.success) {
@@ -224,8 +239,15 @@ export default function UserDetailsPage() {
     async (page = 1) => {
       try {
         const baseApi = await getBaseApi();
+        const accessToken = await getAccessToken();
+
         const response = await fetch(
-          `${baseApi}/admin/users/tokens/${params.id}?page=${page}&limit=5`
+          `${baseApi}/admin/users/tokens/${params.id}?page=${page}&limit=5`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
         const data = await response.json();
         if (data.success) {
@@ -243,12 +265,15 @@ export default function UserDetailsPage() {
     try {
       setIsAssigning(true);
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const response = await fetch(
         `${baseApi}/admin/users/tokens/assign/${params.id}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             tokens,
@@ -305,10 +330,16 @@ export default function UserDetailsPage() {
 
     try {
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
 
       // Fetch user details
       const userResponse = await fetch(
-        `${baseApi}/admin/users/details/${params.id}`
+        `${baseApi}/admin/users/details/${params.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
       );
       const userData = await userResponse.json();
 
@@ -447,7 +478,7 @@ export default function UserDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50 p-6 md:p-8">
+      <div className="flex min-h-screen flex-col bg-background p-6 md:p-8">
         <div className="flex items-center gap-4 mb-6">
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="space-y-2">
@@ -490,7 +521,7 @@ export default function UserDetailsPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center space-y-2">
             <XCircle className="h-12 w-12 text-red-500 mx-auto" />
@@ -519,7 +550,7 @@ export default function UserDetailsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 p-4 md:p-8 animate-in fade-in duration-300">
+    <div className="flex min-h-screen flex-col bg-background p-4 md:p-8 animate-in fade-in duration-300">
       <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center gap-4">
           <Link href="/admin/users">
@@ -730,20 +761,20 @@ export default function UserDetailsPage() {
                 <div>
                   <span className="font-medium">Plan Name:</span>
                   <p className="text-muted-foreground">
-                    {userDetails.currentPlan.name}
+                    {userDetails?.currentPlan?.name}
                   </p>
                 </div>
                 <div>
                   <span className="font-medium">Status:</span>
                   <p className="text-muted-foreground">
-                    {userDetails.currentPlan.status}
+                    {userDetails?.currentPlan?.status}
                   </p>
                 </div>
                 <div>
                   <span className="font-medium">Expires:</span>
                   <p className="text-muted-foreground">
                     {format(
-                      new Date(userDetails.currentPlan.expiresDate),
+                      new Date(userDetails?.currentPlan?.expiresDate || 0),
                       "MMM d, yyyy"
                     )}
                   </p>

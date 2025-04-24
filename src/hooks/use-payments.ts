@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/services/auth-services";
 import { getBaseApi } from "@/services/image-services";
 import { useState, useEffect } from "react";
 
@@ -64,6 +65,8 @@ export function usePayments() {
     try {
       setLoading(true);
       const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
       const queryParams = new URLSearchParams({
         page: params.page?.toString() || "1",
         limit: params.limit?.toString() || "5",
@@ -77,7 +80,12 @@ export function usePayments() {
       });
 
       const response = await fetch(
-        `${baseApi}/admin/payments/all?${queryParams.toString()}`
+        `${baseApi}/admin/payments/all?${queryParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
       );
       const result: ApiResponse<PaymentsResponse> = await response.json();
 
