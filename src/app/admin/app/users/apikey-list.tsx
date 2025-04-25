@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -148,18 +148,7 @@ export default function ApiKeyList() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch API keys when page, limit, or search term changes
-  useEffect(() => {
-    fetchApiKeys();
-  }, [
-    currentPage,
-    limit,
-    debouncedSearchTerm,
-    selectedPlanFilter,
-    selectedStatusFilter,
-  ]);
-
-  const fetchApiKeys = async () => {
+  const fetchApiKeys = useCallback(async () => {
     try {
       setLoading(true);
       const baseApi = await getBaseApi();
@@ -215,7 +204,25 @@ export default function ApiKeyList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    currentPage,
+    limit,
+    debouncedSearchTerm,
+    selectedPlanFilter,
+    selectedStatusFilter,
+  ]);
+
+  // Fetch API keys when page, limit, or search term changes
+  useEffect(() => {
+    fetchApiKeys();
+  }, [
+    currentPage,
+    limit,
+    debouncedSearchTerm,
+    selectedPlanFilter,
+    selectedStatusFilter,
+    fetchApiKeys,
+  ]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

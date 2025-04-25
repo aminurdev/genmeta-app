@@ -103,9 +103,9 @@ export function AppSidebar({ user }: { user: User }) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive("/admin/app/pricing")}
+                  isActive={isActive("/admin/app/manage-pricing")}
                 >
-                  <Link href="/admin/app/pricing">
+                  <Link href="/admin/app/manage-pricing">
                     <Package className="h-4 w-4" />
                     <span>Manage Pricing</span>
                   </Link>
