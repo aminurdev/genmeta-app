@@ -81,9 +81,11 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Eye,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface ApiKey {
   _id: string;
@@ -751,7 +753,13 @@ export default function ApiKeyList() {
               <TableCell>{formatDate(apiKey.expiresAt)}</TableCell>
               <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
               <TableCell>{apiKey.totalProcess}</TableCell>
-              <TableCell className="text-right">
+              <TableCell className="text-right flex items-center justify-end">
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link href={`/admin/app/users/${apiKey.key}`}>
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">View user details</span>
+                  </Link>
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">

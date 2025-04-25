@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -123,12 +123,7 @@ export default function PaymentHistory() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch payments when page, limit, search term, or date range changes
-  useEffect(() => {
-    fetchPaymentHistory();
-  }, [currentPage, limit, debouncedSearchTerm, userId, startDate, endDate]);
-
-  const fetchPaymentHistory = async () => {
+  const fetchPaymentHistory = useCallback(async () => {
     try {
       setLoading(true);
       const baseApi = await getBaseApi();
@@ -188,7 +183,19 @@ export default function PaymentHistory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, limit, debouncedSearchTerm, userId, startDate, endDate]);
+  // Fetch payments when page, limit, search term, or date range changes
+  useEffect(() => {
+    fetchPaymentHistory();
+  }, [
+    currentPage,
+    limit,
+    debouncedSearchTerm,
+    userId,
+    startDate,
+    endDate,
+    fetchPaymentHistory,
+  ]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
