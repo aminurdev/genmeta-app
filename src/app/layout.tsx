@@ -28,6 +28,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${plusJakartaSans.variable} h-full scroll-smooth antialiased`}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-secondary-50">
         <ThemeProvider

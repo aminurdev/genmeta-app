@@ -57,9 +57,9 @@ export async function Navigation() {
           {/* Mobile Menu Button */}
           <Sheet>
             <SheetTrigger className="md:hidden" aria-label="Toggle menu">
-              <Button variant="ghost" size="icon">
+              <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10">
                 <Menu className="h-6 w-6" />
-              </Button>
+              </span>
             </SheetTrigger>
             <SheetContent side="right">
               <div className="flex flex-col items-start gap-6 py-4">
