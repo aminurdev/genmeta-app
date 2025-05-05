@@ -9,7 +9,6 @@ const protectedRoutes = [
   /^\/payment-status(\/.*)?$/,
   /^\/results(\/.*)?$/,
   /^\/settings(\/.*)?$/,
-  /^\/get-app$/,
 ];
 const adminRoutes = [/^\/admin(\/.*)?$/]; // Admin routes pattern
 
@@ -58,7 +57,6 @@ export const config = {
     "/results/:path*",
     "/payment-status/:path*",
     "/settings/:path*",
-    "/get-app",
     "/admin/:path*",
   ],
 };
