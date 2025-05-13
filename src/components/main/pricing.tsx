@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState, useEffect, Suspense } from "react";
 import {
   Check,
@@ -42,18 +44,107 @@ import {
 } from "@/components/ui/accordion";
 import Image from "next/image";
 import Link from "next/link";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken, getCurrentUser } from "@/services/auth-services";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getBaseApi } from "@/services/image-services";
+
+// Define types for better type safety
+type BillingCycle = "monthly" | "yearly" | "quarterly";
+
+interface SubscriptionPlan {
+  _id: string;
+  name: string;
+  basePrice: number;
+  discountPercent: number;
+  isActive: boolean;
+  billingCycle: BillingCycle;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreditPlan {
+  _id: string;
+  name: string;
+  basePrice: number;
+  discountPercent: number;
+  isActive: boolean;
+  credit: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PricingData {
+  subscriptionPlans: SubscriptionPlan[];
+  creditPlans: CreditPlan[];
+}
+
+interface PricingResponse {
+  success: boolean;
+  message: string;
+  data: PricingData;
+}
+
+interface ProcessedPricingData {
+  monthly: {
+    _id?: string;
+    originalPrice: number;
+    discount: number;
+    discountedPrice: number;
+    totalPrice: number;
+  };
+  yearly: {
+    _id?: string;
+    originalPrice: number;
+    discount: number;
+    discountedPrice: number;
+    billingLabel: string;
+    totalPrice: number;
+    totalSavings: number;
+  };
+}
+
+interface Feature {
+  name: string;
+  free: string;
+  premium: string;
+  freeIcon: React.ReactNode;
+  premiumIcon: React.ReactNode;
+  highlight: boolean;
+}
+
+interface FaqItem {
+  question: string;
+  answer: string;
+}
 
 // Component that uses useSearchParams, to be wrapped in Suspense
 const PricingContent = () => {
-  const [billingCycle, setBillingCycle] = useState<string>("monthly");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
+  // State for pricing data
+  const [pricingData, setPricingData] = useState<ProcessedPricingData>({
+    monthly: {
+      originalPrice: 500,
+      discount: 50,
+      discountedPrice: 250,
+      totalPrice: 250,
+    },
+    yearly: {
+      originalPrice: 6000,
+      discount: 55,
+      discountedPrice: 225,
+      billingLabel: "per month, billed annually",
+      totalPrice: 2700,
+      totalSavings: 3300,
+    },
+  });
+  const [creditPlans, setCreditPlans] = useState<CreditPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Parse error message from URL if present
   useEffect(() => {
     if (searchParams) {
       const message = searchParams.get("message");
@@ -63,28 +154,80 @@ const PricingContent = () => {
     }
   }, [searchParams]);
 
-  // Static pricing data
-  const pricingData = {
-    monthly: {
-      originalPrice: 500,
-      discount: 50,
-      discountedPrice: 250,
-      totalPrice: 250,
-    },
-    yearly: {
-      originalPrice: 500,
-      discount: 55,
-      discountedPrice: 225,
-      billingLabel: "per month, billed annually",
-      totalPrice: 2700,
-      totalSavings: 3300,
-    },
-  };
+  // Fetch pricing data
+  useEffect(() => {
+    const fetchPricingData = async () => {
+      try {
+        setIsLoading(true);
+        const baseApi = await getBaseApi();
+        const response = await fetch(`${baseApi}/plans/pricing-data`);
+        const result = (await response.json()) as PricingResponse;
 
-  const currentPricing = pricingData[billingCycle as keyof typeof pricingData];
+        if (result.success && result.data) {
+          const { subscriptionPlans, creditPlans } = result.data;
+
+          // Process subscription plans
+          const monthlyPlan = subscriptionPlans.find(
+            (plan) => plan.billingCycle === "monthly"
+          );
+          const yearlyPlan = subscriptionPlans.find(
+            (plan) => plan.billingCycle === "yearly"
+          );
+
+          if (monthlyPlan && yearlyPlan) {
+            const newPricingData: ProcessedPricingData = {
+              monthly: {
+                _id: monthlyPlan._id,
+                originalPrice: monthlyPlan.basePrice,
+                discount: monthlyPlan.discountPercent,
+                discountedPrice: Math.round(
+                  monthlyPlan.basePrice *
+                    (1 - monthlyPlan.discountPercent / 100)
+                ),
+                totalPrice: Math.round(
+                  monthlyPlan.basePrice *
+                    (1 - monthlyPlan.discountPercent / 100)
+                ),
+              },
+              yearly: {
+                _id: yearlyPlan._id,
+                originalPrice: yearlyPlan.basePrice,
+                discount: yearlyPlan.discountPercent,
+                discountedPrice: Math.round(
+                  (yearlyPlan.basePrice *
+                    (1 - yearlyPlan.discountPercent / 100)) /
+                    12
+                ),
+                billingLabel: "per month, billed annually",
+                totalPrice: Math.round(
+                  yearlyPlan.basePrice * (1 - yearlyPlan.discountPercent / 100)
+                ),
+                totalSavings: Math.round(
+                  yearlyPlan.basePrice -
+                    yearlyPlan.basePrice *
+                      (1 - yearlyPlan.discountPercent / 100)
+                ),
+              },
+            };
+
+            setPricingData(newPricingData);
+          }
+
+          // Store credit plans
+          setCreditPlans(creditPlans);
+        }
+      } catch (error) {
+        console.error("Error fetching pricing data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPricingData();
+  }, []);
 
   // Plan features with improved organization and clarity
-  const features = [
+  const features: Feature[] = [
     {
       name: "Batch Processing",
       free: "Limited (5 per batch)",
@@ -168,7 +311,7 @@ const PricingContent = () => {
   ];
 
   // FAQ data
-  const faqItems = [
+  const faqItems: FaqItem[] = [
     {
       question: "How does the free trial work?",
       answer:
@@ -201,51 +344,23 @@ const PricingContent = () => {
     },
   ];
 
-  const handlePurchase = async (price: number, name: string) => {
-    try {
-      const plan = {
-        price,
-        name,
-      };
-      const user = await getCurrentUser();
-
-      if (user) {
-        const baseAPI = await getBaseApi();
-        const accessToken = await getAccessToken();
-        const response = await fetch(`${baseAPI}/payment/create-app-payment`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            plan,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.success && data.data?.bkashURL) {
-          // Redirect to bKash payment URL
-          window.location.href = data.data.bkashURL;
-        } else {
-          // Handle error case
-          console.error(
-            "Payment creation failed:",
-            data.message || "Unknown error occurred"
-          );
-          alert("Payment processing failed. Please try again later.");
-        }
-      } else {
-        router.push("/login?redirectPath=pricing");
-      }
-    } catch (error) {
-      console.error("Payment request error:", error);
-      alert(
-        "An error occurred while processing your payment. Please try again."
-      );
-    }
+  const handlePurchase = (id: string, type: string) => {
+    router.push(`/cart/${id}?type=${type}`);
   };
+
+  // In the PricingContent component, wrap the main content with a loading check:
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Laptop className="h-12 w-12 text-violet-600 dark:text-violet-400 mx-auto animate-pulse" />
+          <h2 className="text-2xl font-medium">
+            Loading pricing information...
+          </h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,7 +390,7 @@ const PricingContent = () => {
             <Tabs
               defaultValue="monthly"
               value={billingCycle}
-              onValueChange={setBillingCycle}
+              onValueChange={(value) => setBillingCycle(value as BillingCycle)}
               className="w-full max-w-md mt-6"
             >
               <TabsList className="grid w-full grid-cols-2">
@@ -305,6 +420,7 @@ const PricingContent = () => {
               <button
                 onClick={() => setErrorMessage(null)}
                 className="absolute right-2 top-2 rounded-full p-1 transition-colors hover:bg-destructive/20"
+                aria-label="Close"
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -381,7 +497,7 @@ const PricingContent = () => {
               Recommended
             </div>
             <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-              {currentPricing.discount}% OFF
+              {pricingData[billingCycle as "monthly" | "yearly"].discount}% OFF
             </Badge>
 
             <CardHeader className="mt-6 pb-2">
@@ -397,10 +513,18 @@ const PricingContent = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <p className="text-4xl font-bold text-foreground">
-                    ৳{currentPricing.discountedPrice}
+                    ৳
+                    {
+                      pricingData[billingCycle as "monthly" | "yearly"]
+                        .discountedPrice
+                    }
                   </p>
                   <p className="text-sm text-muted-foreground line-through">
-                    ৳{currentPricing.originalPrice}
+                    ৳
+                    {
+                      pricingData[billingCycle as keyof ProcessedPricingData]
+                        .originalPrice
+                    }
                   </p>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -410,9 +534,7 @@ const PricingContent = () => {
                 </p>
                 {billingCycle === "yearly" && (
                   <p className="text-xs font-medium text-green-500">
-                    {billingCycle === "yearly" &&
-                      "totalSavings" in currentPricing &&
-                      `Save ৳${currentPricing.totalSavings} per year`}
+                    Save ৳{pricingData.yearly.totalSavings} per year
                   </p>
                 )}
               </div>
@@ -455,15 +577,14 @@ const PricingContent = () => {
                 size="lg"
                 onClick={() =>
                   handlePurchase(
-                    pricingData[billingCycle as keyof typeof pricingData]
-                      .totalPrice,
-                    billingCycle
+                    pricingData[billingCycle as "monthly" | "yearly"]._id || "",
+                    "subscription"
                   )
                 }
               >
                 <Star className="mr-2 h-4 w-4" />
                 {billingCycle === "yearly"
-                  ? `Get Premium - ৳${currentPricing.totalPrice}/year`
+                  ? `Get Premium - ৳${pricingData.yearly.totalPrice}/year`
                   : "Get Premium"}
               </Button>
             </CardFooter>
@@ -551,7 +672,7 @@ const PricingContent = () => {
             ))}
           </div>
 
-          <div className="mt-8 flex justify-center gap-4">
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button
               size="lg"
               className="px-8 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
@@ -571,6 +692,58 @@ const PricingContent = () => {
         </div>
       </div>
 
+      {/* Credit Plans Section */}
+      <div className="container mx-auto px-4 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-8 text-center text-3xl font-bold">
+            Credit Packages
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {creditPlans.map((plan) => (
+              <Card
+                key={plan._id}
+                className="border-violet-100 dark:border-violet-900 transition-all hover:shadow-lg"
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-2xl">
+                    {plan.name}
+                  </CardTitle>
+                  <CardDescription>{plan.credit} credits</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-4xl font-bold text-foreground">
+                        ৳
+                        {Math.round(
+                          plan.basePrice * (1 - plan.discountPercent / 100)
+                        )}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-through">
+                        ৳{plan.basePrice}
+                      </p>
+                    </div>
+                    <p className="text-xs font-medium text-green-500">
+                      {plan.discountPercent}% OFF
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                    onClick={() => handlePurchase(plan._id, "credit")}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    Buy Credits
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* App Screenshot */}
       <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
         <div className="container mx-auto px-4">
@@ -585,7 +758,7 @@ const PricingContent = () => {
                   src="/Assets/app.png"
                   alt="GenMeta Desktop App Preview"
                   width={2000}
-                  height={2000}
+                  height={1200}
                   className="w-full rounded-lg shadow-md transition-transform duration-500 hover:scale-[1.02]"
                 />
               </div>

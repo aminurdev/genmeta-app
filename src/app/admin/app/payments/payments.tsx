@@ -231,9 +231,9 @@ export default function PaymentHistory() {
     switch (plan.toLowerCase()) {
       case "monthly":
         return "bg-blue-500/20 text-blue-700 hover:bg-blue-500/20";
-      case "yearly":
+      case "quarterly":
         return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
-      case "lifetime":
+      case "yearly":
         return "bg-green-500/20 text-green-700 hover:bg-green-500/20";
       default:
         return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
