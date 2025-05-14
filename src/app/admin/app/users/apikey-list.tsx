@@ -96,7 +96,9 @@ interface ApiKey {
   isActive: boolean;
   status: string;
   suspendedAt: string | null;
-  plan: string;
+  plan: {
+    type: string;
+  };
   totalProcess: number;
   createdAt: string;
   deviceId?: string | null;
@@ -376,15 +378,9 @@ export default function ApiKeyList() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getPlanBadge = (plan: string) => {
-    switch (plan.toLowerCase()) {
-      case "premium":
-        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
-      case "free_trial":
-        return "bg-blue-500/20 text-blue-700 hover:bg-blue-500/20";
-      default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-    }
+    return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
   };
 
   const updateApiKey = async () => {
@@ -494,7 +490,7 @@ export default function ApiKeyList() {
 
   const openUpdateDialog = (apiKey: ApiKey) => {
     setUpdateUsername(apiKey.username);
-    setUpdatePlan(apiKey.plan);
+    setUpdatePlan(apiKey.plan.type);
     setUpdateExpiryDays("30"); // Default to 30 days
     setUpdateDialogOpen(true);
   };
@@ -528,7 +524,7 @@ export default function ApiKeyList() {
       const row = [
         key.username,
         key.key,
-        key.plan,
+        key.plan.type, // Access the 'type' property of the plan
         key.status,
         key.expiresAt,
         key.createdAt,
@@ -725,8 +721,11 @@ export default function ApiKeyList() {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className={getPlanBadge(apiKey.plan)}>
-                  {apiKey.plan.replace("_", " ")}
+                <Badge
+                  variant="outline"
+                  className={getPlanBadge(apiKey.plan.type)}
+                >
+                  -
                 </Badge>
               </TableCell>
               <TableCell>

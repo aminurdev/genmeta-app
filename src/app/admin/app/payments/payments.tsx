@@ -75,7 +75,9 @@ interface Payment {
   user: User;
   paymentID: string;
   trxID: string;
-  plan: string;
+  plan: {
+    type: string;
+  };
   amount: number;
   createdAt: string;
   transactionStatus: string;
@@ -227,17 +229,9 @@ export default function PaymentHistory() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getPlanBadge = (plan: string) => {
-    switch (plan.toLowerCase()) {
-      case "monthly":
-        return "bg-blue-500/20 text-blue-700 hover:bg-blue-500/20";
-      case "quarterly":
-        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
-      case "yearly":
-        return "bg-green-500/20 text-green-700 hover:bg-green-500/20";
-      default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-    }
+    return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
   };
 
   const handlePageChange = (page: number) => {
@@ -274,7 +268,7 @@ export default function PaymentHistory() {
         payment.trxID,
         payment.user.name,
         payment.user.email,
-        payment.plan,
+        payment.plan.type,
         payment.amount.toString(),
         new Date(payment.createdAt).toISOString(),
         payment.transactionStatus,
@@ -462,8 +456,12 @@ export default function PaymentHistory() {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className={getPlanBadge(payment.plan)}>
-                  {payment.plan.charAt(0).toUpperCase() + payment.plan.slice(1)}
+                <Badge
+                  variant="outline"
+                  className={getPlanBadge(payment.plan.type)}
+                >
+                  {payment.plan.type.charAt(0).toUpperCase() +
+                    payment.plan.type.slice(1)}
                 </Badge>
               </TableCell>
               <TableCell className="font-medium">
@@ -675,10 +673,10 @@ export default function PaymentHistory() {
                 <div className="col-span-3">
                   <Badge
                     variant="outline"
-                    className={getPlanBadge(selectedPayment.plan)}
+                    className={getPlanBadge(selectedPayment.plan.type)}
                   >
-                    {selectedPayment.plan.charAt(0).toUpperCase() +
-                      selectedPayment.plan.slice(1)}
+                    {selectedPayment.plan.type.charAt(0).toUpperCase() +
+                      selectedPayment.plan.type.slice(1)}
                   </Badge>
                 </div>
               </div>
