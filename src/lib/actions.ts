@@ -38,6 +38,21 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface PromoCode {
+  _id: string;
+  code: string;
+  description?: string;
+  discountPercent: number;
+  isActive: boolean;
+  appliesTo: "subscription" | "credit" | "both";
+  usageLimit: number | null;
+  usedCount: number;
+  validFrom: string;
+  validUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Helper function to handle API responses
 async function handleApiResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -288,5 +303,151 @@ export async function deletePricingPlan(
     throw new Error(
       error instanceof Error ? error.message : "Failed to delete pricing plan"
     );
+  }
+}
+
+export async function fetchPromoCodes(params?: {
+  active?: boolean;
+  appliesTo?: "subscription" | "credit" | "both";
+}) {
+  try {
+    const baseApi = await getBaseApi();
+    const accessToken = await getAccessToken();
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params?.active !== undefined) {
+      queryParams.append("active", params.active.toString());
+    }
+    if (params?.appliesTo) {
+      queryParams.append("appliesTo", params.appliesTo);
+    }
+
+    const queryString = queryParams.toString();
+    const url = `${baseApi}/promo-codes${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch promo codes");
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error("Error fetching promo codes:", error);
+    throw error;
+  }
+}
+
+/**
+ * Create a new promo code
+ */
+export async function createPromoCode(data: {
+  code: string;
+  description?: string;
+  discountPercent: number;
+  isActive: boolean;
+  appliesTo: "subscription" | "credit" | "both";
+  usageLimit?: number | null;
+  validFrom: string;
+  validUntil: string;
+}) {
+  try {
+    const baseApi = await getBaseApi();
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${baseApi}/promo-codes`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to create promo code");
+    }
+
+    const responseData = await response.json();
+    return responseData.data.promoCode;
+  } catch (error) {
+    console.error("Error creating promo code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a promo code by ID
+ */
+export async function deletePromoCode(id: string) {
+  try {
+    const baseApi = await getBaseApi();
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${baseApi}/promo-codes/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to delete promo code");
+    }
+
+    const responseData = await response.json();
+    return responseData.data;
+  } catch (error) {
+    console.error("Error deleting promo code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update an existing promo code
+ */
+export async function updatePromoCode(
+  id: string,
+  data: Partial<{
+    code?: string;
+    description?: string;
+    discountPercent?: number;
+    isActive?: boolean;
+    appliesTo?: "subscription" | "credit" | "both";
+    usageLimit?: number | null;
+    validFrom?: string;
+    validUntil?: string;
+  }>
+) {
+  try {
+    const baseApi = await getBaseApi();
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${baseApi}/promo-codes/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to update promo code");
+    }
+
+    const responseData = await response.json();
+    return responseData.data.promoCode;
+  } catch (error) {
+    console.error("Error updating promo code:", error);
+    throw error;
   }
 }
