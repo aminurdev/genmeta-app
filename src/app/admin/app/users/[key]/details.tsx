@@ -66,8 +66,8 @@ import {
   Trash2,
   User,
   XCircle,
+  Plus,
 } from "lucide-react";
-import { format } from "date-fns";
 
 interface UserDetails {
   _id: string;
@@ -79,23 +79,31 @@ interface UserDetails {
 
 interface ApiKeyDetails {
   _id: string;
+  userId: string;
   username: string;
   key: string;
   expiresAt: string;
   isActive: boolean;
   status: string;
   suspendedAt: string | null;
-  plan: string;
+  plan: {
+    type: string;
+    id?: string;
+  };
+  credit?: number;
   totalProcess: number;
   createdAt: string;
   deviceId?: string | null;
   monthlyProcess: Record<string, number>;
+  isValid: boolean;
 }
 
 interface Payment {
   _id: string;
   trxID: string;
-  plan: string;
+  plan: {
+    type: string;
+  };
   amount: number;
   createdAt: string;
 }
@@ -127,6 +135,11 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [updatePlan, setUpdatePlan] = useState("");
   const [updateExpiryDays, setUpdateExpiryDays] = useState("30");
+
+  // Add credit states
+  const [addCreditDialogOpen, setAddCreditDialogOpen] = useState(false);
+  const [creditAmount, setCreditAmount] = useState<string>("50");
+  const [isAddingCredit, setIsAddingCredit] = useState(false);
 
   useEffect(() => {
     if (apiKey) {
@@ -168,7 +181,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
 
         // Initialize update form with current values
         if (responseData.apiKey) {
-          setUpdatePlan(responseData.apiKey.plan);
+          setUpdatePlan(responseData.apiKey.plan.type);
         }
       } else {
         throw new Error(result.message || "Failed to fetch API key details");
@@ -185,10 +198,6 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   const copyToClipboard = (text: string, message = "Copied to clipboard") => {
     navigator.clipboard.writeText(text);
     toast(message);
-  };
-
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "PPP p");
   };
 
   const formatCurrency = (amount: number) => {
@@ -211,10 +220,14 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
 
   const getPlanBadge = (plan: string) => {
     switch (plan?.toLowerCase()) {
-      case "premium":
-        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
+      case "free":
+        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
       case "free_trial":
         return "bg-blue-500/20 text-blue-700 hover:bg-blue-500/20";
+      case "credit":
+        return "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20";
+      case "subscription":
+        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
       default:
         return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
     }
@@ -228,17 +241,43 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
+      // Create the request body with only the necessary fields
+      const requestBody: {
+        username: string;
+        plan?: string;
+        expiryDays?: number;
+        credit?: number;
+      } = {
+        username: apiKeyDetails.username,
+      };
+
+      // Only include the plan if it's set
+      if (updatePlan) {
+        requestBody.plan = updatePlan;
+      }
+
+      // Only include expiryDays if it's set and valid
+      if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
+        requestBody.expiryDays = Number.parseInt(updateExpiryDays);
+      }
+
+      // Include credit if credit plan and value set
+      if (updatePlan === "credit") {
+        const creditInput = document.getElementById(
+          "credit"
+        ) as HTMLInputElement;
+        if (creditInput && creditInput.value) {
+          requestBody.credit = Number.parseInt(creditInput.value);
+        }
+      }
+
       const response = await fetch(`${baseApi}/app/apikey/update`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: apiKeyDetails.username,
-          plan: updatePlan,
-          expiryDays: Number.parseInt(updateExpiryDays),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -406,9 +445,57 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   const openUpdateDialog = () => {
     if (!apiKeyDetails) return;
 
-    setUpdatePlan(apiKeyDetails.plan);
+    setUpdatePlan(apiKeyDetails.plan.type);
     setUpdateExpiryDays("30"); // Default to 30 days
     setUpdateDialogOpen(true);
+  };
+
+  const addCredits = async () => {
+    if (!apiKeyDetails) return;
+
+    try {
+      setIsAddingCredit(true);
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
+      const response = await fetch(`${baseApi}/app/apikey/add-credits`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: apiKeyDetails.key,
+          credits: parseInt(creditAmount),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to add credits");
+      }
+
+      if (result.success) {
+        toast(result.message || `${creditAmount} credits added successfully`);
+
+        // Refresh the API key details
+        if (apiKey) {
+          fetchApiKeyDetails(apiKey);
+        }
+
+        setAddCreditDialogOpen(false);
+        setCreditAmount("50");
+      } else {
+        throw new Error(result.message || "Failed to add credits");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setIsAddingCredit(false);
+    }
   };
 
   if (loading) {
@@ -544,7 +631,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Registered</div>
               <div className="col-span-2">
-                {formatDate(userDetails.createdAt)}
+                {/* {formatDate(userDetails.createdAt)} */}
               </div>
             </div>
           </CardContent>
@@ -600,12 +687,19 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               <div className="col-span-2">
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(apiKeyDetails.plan)}
+                  className={getPlanBadge(apiKeyDetails.plan.type)}
                 >
-                  {apiKeyDetails.plan.replace("_", " ")}
+                  {apiKeyDetails.plan.type.replace("_", " ")}
+                  {apiKeyDetails.plan.id && ` (${apiKeyDetails.plan.id})`}
                 </Badge>
               </div>
             </div>
+            {apiKeyDetails.credit !== undefined && (
+              <div className="grid grid-cols-3 gap-4">
+                <div className="font-medium">Credits Remaining</div>
+                <div className="col-span-2">{apiKeyDetails.credit}</div>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Device Bound</div>
               <div className="col-span-2">
@@ -629,13 +723,13 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Created</div>
               <div className="col-span-2">
-                {formatDate(apiKeyDetails.createdAt)}
+                {/* {formatDate(apiKeyDetails.createdAt)} */}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Expires</div>
               <div className="col-span-2">
-                {formatDate(apiKeyDetails.expiresAt)}
+                {/* {formatDate(apiKeyDetails.expiresAt)} */}
               </div>
             </div>
           </CardContent>
@@ -683,6 +777,16 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                   <ShieldCheck className="mr-2 h-4 w-4" />
                 )}
                 {isChangingStatus ? "Reactivating..." : "Reactivate Key"}
+              </Button>
+            )}
+            {apiKeyDetails.plan.type === "credit" && (
+              <Button
+                variant="outline"
+                onClick={() => setAddCreditDialogOpen(true)}
+                className="flex items-center gap-1"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Credits
               </Button>
             )}
             <AlertDialog>
@@ -782,9 +886,13 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                     <TableCell className="font-medium">
                       {payment.trxID}
                     </TableCell>
-                    <TableCell className="capitalize">{payment.plan}</TableCell>
+                    <TableCell className="capitalize">
+                      {payment.plan.type}
+                    </TableCell>
                     <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                    <TableCell>
+                      {/* {formatDate(payment.createdAt)} */}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -803,7 +911,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
           <DialogHeader>
             <DialogTitle>Update API Key</DialogTitle>
             <DialogDescription>
-              Update the plan and expiry days for the API key.
+              Update the plan, expiry days, or credit for the API key.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -823,8 +931,12 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                   <SelectValue placeholder="Select plan" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="free">Free Plan</SelectItem>
                   <SelectItem value="free_trial">Free Trial</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="credit">Credit Plan</SelectItem>
+                  <SelectItem value="subscription">
+                    Subscription Plan
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -839,6 +951,18 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                 onChange={(e) => setUpdateExpiryDays(e.target.value)}
               />
             </div>
+            {updatePlan === "credit" && (
+              <div className="grid gap-2">
+                <Label htmlFor="credit">Credit</Label>
+                <Input
+                  id="credit"
+                  type="number"
+                  min="0"
+                  placeholder="Credit amount"
+                  defaultValue={apiKeyDetails.credit?.toString() || "0"}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -855,6 +979,48 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                 </>
               ) : (
                 "Update Key"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Credits Dialog */}
+      <Dialog open={addCreditDialogOpen} onOpenChange={setAddCreditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Credits</DialogTitle>
+            <DialogDescription>
+              Add additional credits to this API key.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="creditAmount">Credit Amount</Label>
+              <Input
+                id="creditAmount"
+                type="number"
+                min="1"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddCreditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={addCredits} disabled={isAddingCredit}>
+              {isAddingCredit ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Credits"
               )}
             </Button>
           </DialogFooter>

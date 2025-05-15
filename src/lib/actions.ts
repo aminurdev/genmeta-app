@@ -451,3 +451,29 @@ export async function updatePromoCode(
     throw error;
   }
 }
+
+/**
+ * Validate a promo code
+ */
+export async function validatePromoCode(code: string) {
+  try {
+    const baseApi = await getBaseApi();
+    const response = await fetch(`${baseApi}/promo-codes/validate/${code}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Invalid promo code");
+    }
+
+    const responseData = await response.json();
+    return responseData.data.promoCode;
+  } catch (error) {
+    console.error("Error validating promo code:", error);
+    throw error;
+  }
+}

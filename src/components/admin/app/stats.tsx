@@ -70,7 +70,14 @@ interface DashboardStats {
   payments: {
     total: number;
     newThisMonth: number;
-    recent: Payment[];
+    recent: Array<{
+      amount: number;
+      createdAt: string;
+      userId: {
+        name: string;
+        email: string;
+      };
+    }>;
   };
 }
 

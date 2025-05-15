@@ -98,7 +98,9 @@ interface ApiKey {
   suspendedAt: string | null;
   plan: {
     type: string;
+    id?: string;
   };
+  credit?: number;
   totalProcess: number;
   createdAt: string;
   deviceId?: string | null;
@@ -139,9 +141,15 @@ export default function ApiKeyList() {
   // Create API key states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createUsername, setCreateUsername] = useState("");
-  const [createPlan, setCreatePlan] = useState("free_trial");
+  const [createPlan, setCreatePlan] = useState("free");
   const [createExpiryDays, setCreateExpiryDays] = useState("7");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Add credit states
+  const [addCreditDialogOpen, setAddCreditDialogOpen] = useState(false);
+  const [creditApiKey, setCreditApiKey] = useState<string>("");
+  const [creditAmount, setCreditAmount] = useState<string>("50");
+  const [isAddingCredit, setIsAddingCredit] = useState(false);
 
   // Handle search debounce
   useEffect(() => {
@@ -378,9 +386,17 @@ export default function ApiKeyList() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getPlanBadge = (plan: string) => {
-    return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+    switch (plan.toLowerCase()) {
+      case "free":
+        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+      case "credit":
+        return "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20";
+      case "subscription":
+        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
+      default:
+        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+    }
   };
 
   const updateApiKey = async () => {
@@ -389,17 +405,32 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
+      // Create the request body with only the necessary fields
+      const requestBody: {
+        username: string;
+        plan?: string;
+        expiryDays?: number;
+      } = {
+        username: updateUsername,
+      };
+
+      // Only include the plan if it's set
+      if (updatePlan) {
+        requestBody.plan = updatePlan;
+      }
+
+      // Only include expiryDays if it's set and valid
+      if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
+        requestBody.expiryDays = Number.parseInt(updateExpiryDays);
+      }
+
       const response = await fetch(`${baseApi}/app/apikey/update`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: updateUsername,
-          plan: updatePlan,
-          expiryDays: Number.parseInt(updateExpiryDays),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -431,17 +462,37 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
+      // Build request body based on selected plan
+      const requestBody: {
+        username: string;
+        plan?: string | { type: string; id: string };
+        expiryDays: number;
+        initialCredit?: number;
+      } = {
+        username: createUsername,
+        expiryDays: Number.parseInt(createExpiryDays),
+      };
+
+      // Handle different plan types
+      if (createPlan === "credit") {
+        requestBody.plan = "credit";
+        requestBody.initialCredit = 100; // Default value, could be made configurable
+      } else if (createPlan === "subscription") {
+        requestBody.plan = {
+          type: "subscription",
+          id: "premium_monthly", // Default value, could be made configurable
+        };
+      } else {
+        requestBody.plan = createPlan;
+      }
+
       const response = await fetch(`${baseApi}/app/apikey/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: createUsername,
-          plan: createPlan,
-          expiryDays: Number.parseInt(createExpiryDays),
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -476,7 +527,7 @@ export default function ApiKeyList() {
         setCreateDialogOpen(false);
         // Reset form
         setCreateUsername("");
-        setCreatePlan("free_trial");
+        setCreatePlan("free");
         setCreateExpiryDays("7");
       } else {
         throw new Error(result.message || "Failed to create API key");
@@ -497,7 +548,7 @@ export default function ApiKeyList() {
 
   const openCreateDialog = () => {
     setCreateUsername("");
-    setCreatePlan("free_trial");
+    setCreatePlan("free");
     setCreateExpiryDays("7");
     setCreateDialogOpen(true);
   };
@@ -697,6 +748,9 @@ export default function ApiKeyList() {
             <TableHead>Expires</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Processes</TableHead>
+            {apiKeys.some((key) => key.credit !== undefined) && (
+              <TableHead>Credit</TableHead>
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -725,7 +779,8 @@ export default function ApiKeyList() {
                   variant="outline"
                   className={getPlanBadge(apiKey.plan.type)}
                 >
-                  -
+                  {apiKey.plan.type.replace("_", " ")}
+                  {apiKey.plan.id && ` (${apiKey.plan.id})`}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -752,6 +807,9 @@ export default function ApiKeyList() {
               <TableCell>{formatDate(apiKey.expiresAt)}</TableCell>
               <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
               <TableCell>{apiKey.totalProcess}</TableCell>
+              {apiKeys.some((key) => key.credit !== undefined) && (
+                <TableCell>{apiKey.credit || 0}</TableCell>
+              )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                   <Link href={`/admin/app/users/${apiKey.key}`}>
@@ -779,6 +837,15 @@ export default function ApiKeyList() {
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
+
+                    {apiKey.plan.type === "credit" && (
+                      <DropdownMenuItem
+                        onClick={() => openAddCreditDialog(apiKey)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Credits
+                      </DropdownMenuItem>
+                    )}
 
                     {/* Reset Device ID option */}
                     <DropdownMenuItem
@@ -882,6 +949,54 @@ export default function ApiKeyList() {
     );
   };
 
+  const addCredits = async () => {
+    try {
+      setIsAddingCredit(true);
+      const baseApi = await getBaseApi();
+      const accessToken = await getAccessToken();
+
+      const response = await fetch(`${baseApi}/app/apikey/add-credits`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key: creditApiKey,
+          credits: parseInt(creditAmount),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to add credits");
+      }
+
+      if (result.success) {
+        toast(result.message || `${creditAmount} credits added successfully`);
+
+        // Refresh the API keys list
+        await fetchApiKeys();
+
+        setAddCreditDialogOpen(false);
+        setCreditAmount("50");
+      } else {
+        throw new Error(result.message || "Failed to add credits");
+      }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "An unknown error occurred");
+    } finally {
+      setIsAddingCredit(false);
+    }
+  };
+
+  const openAddCreditDialog = (apiKey: ApiKey) => {
+    setCreditApiKey(apiKey.key);
+    setCreditAmount("50");
+    setAddCreditDialogOpen(true);
+  };
+
   return (
     <Card className="mt-6">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -942,8 +1057,11 @@ export default function ApiKeyList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Plans</SelectItem>
-                  <SelectItem value="free_trial">Free Trial</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="free">Free Plan</SelectItem>
+                  <SelectItem value="credit">Credit Plan</SelectItem>
+                  <SelectItem value="subscription">
+                    Subscription Plan
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1001,7 +1119,7 @@ export default function ApiKeyList() {
           <DialogHeader>
             <DialogTitle>Update API Key</DialogTitle>
             <DialogDescription>
-              Update the plan and expiry days for the API key.
+              Update the plan, expiry days, or credit for the API key.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1021,8 +1139,11 @@ export default function ApiKeyList() {
                   <SelectValue placeholder="Select plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free_trial">Free Trial</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="free">Free Plan</SelectItem>
+                  <SelectItem value="credit">Credit Plan</SelectItem>
+                  <SelectItem value="subscription">
+                    Subscription Plan
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1037,6 +1158,18 @@ export default function ApiKeyList() {
                 onChange={(e) => setUpdateExpiryDays(e.target.value)}
               />
             </div>
+            {updatePlan === "credit" && (
+              <div className="grid gap-2">
+                <Label htmlFor="credit">Credit</Label>
+                <Input
+                  id="credit"
+                  type="number"
+                  min="0"
+                  placeholder="Credit amount"
+                  defaultValue="0"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -1088,11 +1221,47 @@ export default function ApiKeyList() {
                   <SelectValue placeholder="Select plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free_trial">Free Trial</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
+                  <SelectItem value="free">Free Plan</SelectItem>
+                  <SelectItem value="credit">Credit Plan</SelectItem>
+                  <SelectItem value="subscription">
+                    Subscription Plan
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {createPlan === "credit" && (
+              <div className="grid gap-2">
+                <Label htmlFor="initialCredit">Initial Credits</Label>
+                <Input
+                  id="initialCredit"
+                  type="number"
+                  min="1"
+                  defaultValue="100"
+                />
+              </div>
+            )}
+
+            {createPlan === "subscription" && (
+              <div className="grid gap-2">
+                <Label htmlFor="subscriptionPlanId">Subscription Plan ID</Label>
+                <Select defaultValue="premium_monthly">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subscription plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="premium_monthly">
+                      Premium Monthly
+                    </SelectItem>
+                    <SelectItem value="premium_yearly">
+                      Premium Yearly
+                    </SelectItem>
+                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="createExpiryDays">Expiry Days</Label>
               <Input
@@ -1127,6 +1296,48 @@ export default function ApiKeyList() {
                   <KeyRound className="h-4 w-4 mr-2" />
                   Create Key
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Credits Dialog */}
+      <Dialog open={addCreditDialogOpen} onOpenChange={setAddCreditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Credits</DialogTitle>
+            <DialogDescription>
+              Add additional credits to this API key.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="creditAmount">Credit Amount</Label>
+              <Input
+                id="creditAmount"
+                type="number"
+                min="1"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddCreditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={addCredits} disabled={isAddingCredit}>
+              {isAddingCredit ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Credits"
               )}
             </Button>
           </DialogFooter>
