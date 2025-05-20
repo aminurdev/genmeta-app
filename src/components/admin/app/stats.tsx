@@ -40,19 +40,6 @@ import {
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-interface Payment {
-  _id: string;
-  userId: User;
-  amount: number;
-  createdAt: string;
-}
-
 interface DashboardStats {
   revenue: {
     total: number;
@@ -71,6 +58,7 @@ interface DashboardStats {
     total: number;
     newThisMonth: number;
     recent: Array<{
+      _id: string;
       amount: number;
       createdAt: string;
       userId: {
