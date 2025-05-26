@@ -75,9 +75,11 @@ interface Payment {
   user: User;
   paymentID: string;
   trxID: string;
-  plan: {
-    type: string;
-  };
+  plan:
+    | string
+    | {
+        type: string;
+      };
   amount: number;
   createdAt: string;
   transactionStatus: string;
@@ -268,7 +270,9 @@ export default function PaymentHistory() {
         payment.trxID,
         payment.user.name,
         payment.user.email,
-        payment.plan.type,
+        typeof payment.plan === "object" && payment.plan !== null
+          ? payment.plan.type
+          : payment.plan,
         payment.amount.toString(),
         new Date(payment.createdAt).toISOString(),
         payment.transactionStatus,
@@ -458,10 +462,17 @@ export default function PaymentHistory() {
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(payment.plan.type)}
+                  className={
+                    typeof payment.plan === "object" && payment.plan !== null
+                      ? getPlanBadge(payment.plan.type)
+                      : getPlanBadge(payment.plan)
+                  }
                 >
-                  {payment.plan.type.charAt(0).toUpperCase() +
-                    payment.plan.type.slice(1)}
+                  {typeof payment.plan === "object" && payment.plan !== null
+                    ? payment.plan.type.charAt(0).toUpperCase() +
+                      payment.plan.type.slice(1)
+                    : payment.plan.charAt(0).toUpperCase() +
+                      payment.plan.slice(1)}
                 </Badge>
               </TableCell>
               <TableCell className="font-medium">
@@ -673,10 +684,19 @@ export default function PaymentHistory() {
                 <div className="col-span-3">
                   <Badge
                     variant="outline"
-                    className={getPlanBadge(selectedPayment.plan.type)}
+                    className={
+                      typeof selectedPayment.plan === "object" &&
+                      selectedPayment.plan !== null
+                        ? getPlanBadge(selectedPayment.plan.type)
+                        : getPlanBadge(selectedPayment.plan)
+                    }
                   >
-                    {selectedPayment.plan.type.charAt(0).toUpperCase() +
-                      selectedPayment.plan.type.slice(1)}
+                    {typeof selectedPayment.plan === "object" &&
+                    selectedPayment.plan !== null
+                      ? selectedPayment.plan.type.charAt(0).toUpperCase() +
+                        selectedPayment.plan.type.slice(1)
+                      : selectedPayment.plan.charAt(0).toUpperCase() +
+                        selectedPayment.plan.slice(1)}
                   </Badge>
                 </div>
               </div>
