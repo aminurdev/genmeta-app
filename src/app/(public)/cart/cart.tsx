@@ -406,7 +406,7 @@ export default function Cart({ planId }: { planId: string }) {
                       : ""
                   }
                 >
-                  ${plan.basePrice.toFixed(2)}
+                  ৳{plan.basePrice.toFixed(2)}
                 </span>
               </div>
 
@@ -414,7 +414,7 @@ export default function Cart({ planId }: { planId: string }) {
                 <div className="flex justify-between items-center">
                   <span>Plan Discount ({plan.discountPercent}%)</span>
                   <span className="text-green-600">
-                    -${(plan.basePrice - priceAfterPlanDiscount).toFixed(2)}
+                    -৳{(plan.basePrice - priceAfterPlanDiscount).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -423,7 +423,7 @@ export default function Cart({ planId }: { planId: string }) {
                 <div className="flex justify-between items-center">
                   <span>Promo Discount ({validPromo.discountPercent}%)</span>
                   <span className="text-green-600">
-                    -${(priceAfterPlanDiscount - finalPrice).toFixed(2)}
+                    -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -432,7 +432,7 @@ export default function Cart({ planId }: { planId: string }) {
 
               <div className="flex justify-between items-center font-bold">
                 <span>Total</span>
-                <span>${finalPrice.toFixed(2)}</span>
+                <span>৳{finalPrice.toFixed(2)}</span>
               </div>
             </CardContent>
             <CardFooter>
