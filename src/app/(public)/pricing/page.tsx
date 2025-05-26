@@ -663,10 +663,10 @@ const PricingContent = () => {
             <div className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800 bg-gradient-to-b from-background to-violet-50/50 dark:from-background dark:to-violet-950/20 p-2 shadow-lg">
               <div className="overflow-hidden rounded-lg">
                 <Image
-                  src="/placeholder.svg?height=600&width=1000"
-                  alt="AI Image Processing Platform Preview"
-                  width={1000}
-                  height={600}
+                  src="/Assets/app.png"
+                  alt="GenMeta App Preview"
+                  width={2000}
+                  height={1200}
                   className="w-full rounded-lg shadow-md transition-transform duration-500 hover:scale-[1.02]"
                 />
               </div>
