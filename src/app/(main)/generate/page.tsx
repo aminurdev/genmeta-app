@@ -1,10 +1,10 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import UploadForm from "@/components/main/upload-form";
 
 export const metadata: Metadata = {
-  title: "Image Metadata Generator",
+  title: "Image SEO Generator",
   description:
     "Generate SEO-friendly metadata for your images including titles, descriptions, and keywords",
 };
@@ -15,7 +15,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight">
-            Generate Metadata for Your Images
+            Image SEO Generator
           </h1>
           <p className="mt-3 text-xl text-muted-foreground">
             Upload images and generate SEO-friendly titles, descriptions, and

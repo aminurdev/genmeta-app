@@ -3,24 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { getCurrentUser } from "@/services/auth-services";
 import { UserMenu } from "./user-menu";
-import { ModeToggle } from "./main/mode-toggle";
 import Image from "next/image";
-import {
-  DollarSign,
-  Home,
-  ImageIcon,
-  OctagonAlert,
-  Sparkles,
-  Menu,
-  Laptop,
-} from "lucide-react";
+import { Menu } from "lucide-react";
+import { NavLinks } from "./navLinks";
 
 export async function Navigation() {
   const user = await getCurrentUser();
 
   return (
-    <nav className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="h-28 max-w-screen-xl mx-auto flex items-center justify-between px-4">
+    <nav className="md:sticky top-0 z-50 bg-background border-b border-border">
+      <div className="h-20 md:h-28 max-w-screen-xl mx-auto flex items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center gap-4 w-52">
           <Link href="/">
@@ -35,7 +27,7 @@ export async function Navigation() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-12">
+        <div className="hidden md:flex items-center gap-5">
           <NavLinks />
         </div>
 
@@ -48,12 +40,20 @@ export async function Navigation() {
               <Button variant="outline" asChild>
                 <Link href="/login">Login</Link>
               </Button>
-              <Button asChild>
-                <Link href="/signup">Sign Up</Link>
-              </Button>
             </span>
-          )}
-          <ModeToggle />
+          )}{" "}
+          <Button asChild>
+            <Link className="flex items-center gap-2" href="/download">
+              <Image
+                src="/Assets/SVG/win.svg"
+                alt="Download"
+                width={16}
+                height={16}
+              />
+              Download
+            </Link>
+          </Button>
+          {/* <ModeToggle /> */}
           {/* Mobile Menu Button */}
           <Sheet>
             <SheetTrigger className="md:hidden" aria-label="Toggle menu">
@@ -83,48 +83,5 @@ export async function Navigation() {
         </div>
       </div>
     </nav>
-  );
-}
-
-function NavLinks() {
-  return (
-    <>
-      <Link
-        href="/"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <Home className="h-5 w-5 inline-block mr-2" /> Home
-      </Link>
-      <Link
-        href="/get-app"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <Laptop className="h-5 w-5 inline-block mr-2" /> Get App
-      </Link>{" "}
-      <Link
-        href="/pricing"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <DollarSign className="h-5 w-5 inline-block mr-1" /> Pricing
-      </Link>
-      <Link
-        href="/generate/v2"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <Sparkles className="h-5 w-5 inline-block mr-2" /> Generate
-      </Link>
-      <Link
-        href="/results"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <ImageIcon className="h-5 w-5 inline-block mr-2" /> Results
-      </Link>
-      <Link
-        href="/help"
-        className="text-muted-foreground hover:text-foreground flex items-center"
-      >
-        <OctagonAlert className="h-5 w-5 inline-block mr-2" /> Help
-      </Link>
-    </>
   );
 }
