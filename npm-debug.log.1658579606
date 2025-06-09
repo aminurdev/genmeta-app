@@ -1,0 +1,43 @@
+0 info it worked if it ends with ok
+1 verbose cli [
+1 verbose cli   'C:\\Program Files\\nodejs\\node.exe',
+1 verbose cli   'C:\\Users\\devam\\node_modules\\npm\\bin\\npm-cli.js',
+1 verbose cli   'run',
+1 verbose cli   'server'
+1 verbose cli ]
+2 info using npm@2.15.12
+3 info using node@v23.10.0
+4 verbose run-script [ 'preserver', 'server', 'postserver' ]
+5 info preserver @
+6 info server @
+7 verbose unsafe-perm in lifecycle true
+8 info @ Failed to exec server script
+9 verbose stack Error: @ server: `cd server && npm run dev`
+9 verbose stack Exit status 3221225786
+9 verbose stack     at EventEmitter.<anonymous> (C:\Users\devam\node_modules\npm\lib\utils\lifecycle.js:217:16)
+9 verbose stack     at EventEmitter.emit (node:events:507:28)
+9 verbose stack     at ChildProcess.<anonymous> (C:\Users\devam\node_modules\npm\lib\utils\spawn.js:24:14)
+9 verbose stack     at ChildProcess.emit (node:events:507:28)
+9 verbose stack     at maybeClose (node:internal/child_process:1101:16)
+9 verbose stack     at ChildProcess._handle.onexit (node:internal/child_process:305:5)
+10 verbose pkgid @
+11 verbose cwd C:\Users\devam\Desktop\image-tag-title-generator\gen-meta-app
+12 error Windows_NT 10.0.26100
+13 error argv "C:\\Program Files\\nodejs\\node.exe" "C:\\Users\\devam\\node_modules\\npm\\bin\\npm-cli.js" "run" "server"
+14 error node v23.10.0
+15 error npm  v2.15.12
+16 error code ELIFECYCLE
+17 error @ server: `cd server && npm run dev`
+17 error Exit status 3221225786
+18 error Failed at the @ server script 'cd server && npm run dev'.
+18 error This is most likely a problem with the  package,
+18 error not with npm itself.
+18 error Tell the author that this fails on your system:
+18 error     cd server && npm run dev
+18 error You can get information on how to open an issue for this project with:
+18 error     npm bugs
+18 error Or if that isn't available, you can get their info via:
+18 error
+18 error     npm owner ls
+18 error There is likely additional logging output above.
+19 verbose exit [ 1, true ]
