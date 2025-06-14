@@ -21,23 +21,25 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [
       function () {
-        return this.loginProvider === "email";
+        return this.loginProvider?.includes("email");
       },
-      "Password is required",
+      "Password is required for email login",
     ],
     minlength: [6, "Password must be at least 6 characters"],
   },
+  avatar: { type: String, default: null },
   isVerified: { type: Boolean, default: false },
   isDisabled: { type: Boolean, default: false },
   ipAddress: { type: String },
   verificationToken: { type: String },
   loginProvider: {
-    type: String,
+    type: [String],
     enum: {
       values: ["email", "google"],
-      message: "Login provider must be either email or google",
+      message: "Login provider must be either 'email' or 'google'",
     },
     required: [true, "Login provider is required"],
+    default: ["email"],
   },
   googleId: { type: String, unique: true, sparse: true },
   refreshToken: { type: String },
@@ -87,16 +89,6 @@ userSchema.methods.generateRefreshToken = function () {
     },
     config.refresh_token_secret,
     { expiresIn: config.refresh_token_expiry }
-  );
-};
-
-userSchema.methods.generateEmailverifyUser = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-    },
-    config.email_verify_token_secret,
-    { expiresIn: config.email_verify_token_expiry }
   );
 };
 

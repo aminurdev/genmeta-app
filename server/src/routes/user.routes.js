@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   getUserToken,
   googleLogin,
+  googleLoginCallback,
   loginUser,
   logoutUser,
   refreshAccessToken,
@@ -23,8 +24,9 @@ import {
 
 const router = Router();
 
-router.post("/google-login", googleLogin);
-router.get("/verify-email", verifyEmail);
+router.get("/google-login", googleLogin);
+router.get("/google/callback", googleLoginCallback);
+router.post("/verify-email", verifyEmail);
 router.post("/request-password-reset", requestPasswordReset);
 router.post("/verify-otp", verifyOTP);
 router.post("/reset-password", resetPassword);

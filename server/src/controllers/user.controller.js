@@ -1,3 +1,4 @@
+import passport from "passport";
 import config from "../config/index.js";
 import { User } from "../models/user.model.js";
 import {
@@ -12,60 +13,71 @@ import { generateAccessAndRefreshTokens } from "../utils/generate-token.utils.js
 
 const token_secret = config.email_verify_token_secret;
 
-const googleLogin = asyncHandler(async (req, res) => {
-  const { name, email, googleId } = req.body;
+// Initiate Google OAuth Login
+const googleLogin = asyncHandler(async (req, res, next) => {
+  const { state } = req.query;
 
-  if (!email || !googleId) {
-    throw new ApiError(400, "Google authentication failed");
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state: state || undefined,
+  })(req, res, next);
+});
+
+const googleLoginCallback = asyncHandler(async (req, res, next) => {
+  const { state, error, error_description } = req.query;
+
+  // If Google sent an error
+  if (error) {
+    console.log("Google OAuth Error:", error, error_description);
+    const redirectUrl = `${config.cors_origin}/autherror?error=${encodeURIComponent(
+      error
+    )}&error_description=${encodeURIComponent(
+      error_description || "Authentication cancelled"
+    )}${state ? `&state=${state}` : ""}`;
+
+    return res.redirect(redirectUrl);
   }
 
-  // Extract user IP address
-  const userIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+  // Use Passport to handle the Google callback
+  passport.authenticate("google", { session: false }, async (err, user) => {
+    try {
+      if (err || !user) {
+        console.error("Authentication failed:", err);
+        const redirectUrl = `${config.cors_origin}/autherror?error=auth_failed&error_description=${encodeURIComponent(
+          "Authentication failed"
+        )}${state ? `&state=${state}` : ""}`;
+        return res.redirect(redirectUrl);
+      }
 
-  let user = await User.findOne({ email });
+      // Generate tokens
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
 
-  if (!user) {
-    // Create new user if not found
-    user = new User({
-      name,
-      email,
-      googleId,
-      loginProvider: "google",
-      isVerified: true,
-      ipAddress: userIp,
-      token: {
-        available: 20,
-        used: 0,
-      },
-    });
+      user.refreshToken = refreshToken;
 
-    await user.save();
-  } else if (user.loginProvider !== "google") {
-    throw new ApiError(
-      400,
-      "This email is already registered with another provider"
-    );
-  }
+      // Capture user IP
+      const userIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+      if (!user.ipAddress) {
+        user.ipAddress = userIp;
+      }
 
-  // Store IP if not already stored
-  if (!user.ipAddress) {
-    user.ipAddress = userIp;
-    await user.save();
-  }
+      await user.save({ validateBeforeSave: false });
 
-  // Generate JWT tokens
-  const accessToken = user.generateAccessToken();
-  const refreshToken = user.generateRefreshToken();
+      // Redirect back to your app with tokens
+      const successUrl = `${config.cors_origin}/authsuccess?token=${accessToken}&refresh_token=${refreshToken}${
+        state ? `&state=${state}` : ""
+      }`;
 
-  // Store refreshToken in the database
-  user.refreshToken = refreshToken;
-  await user.save();
+      return res.redirect(successUrl);
+    } catch (error) {
+      console.error("Google Callback Error:", error);
+      const redirectUrl = `${config.cors_origin}/autherror?error=server_error&error_description=${encodeURIComponent(
+        "Internal server error"
+      )}${state ? `&state=${state}` : ""}`;
 
-  return new ApiResponse(200, true, "Google Login Successful", {
-    user,
-    accessToken,
-    refreshToken,
-  }).send(res);
+      return res.redirect(redirectUrl);
+    }
+  })(req, res, next);
 });
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -104,7 +116,7 @@ const registerUser = asyncHandler(async (req, res) => {
       name,
       email,
       password,
-      loginProvider: "email",
+      loginProvider: ["email"],
       ipAddress: userIp,
       token: {
         available: 20,
@@ -112,39 +124,58 @@ const registerUser = asyncHandler(async (req, res) => {
     });
   }
 
-  const verificationToken = user.generateEmailverifyUser();
-  user.verificationToken = verificationToken;
   await user.save();
 
-  await sendVerificationEmail(email, name, verificationToken);
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpToken = jwt.sign({ otp, userId: user._id }, token_secret, {
+    expiresIn: "10m",
+  });
+
+  await sendVerificationEmail(email, name, otp);
 
   return new ApiResponse(
     201,
     true,
-    "Registration successful! Check your email to verify and login."
+    "Registration successful! Check your email to verify and login.",
+    { otpToken }
   ).send(res);
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
-  const { token } = req.query;
-  const decoded = jwt.verify(token, config.email_verify_token_secret);
-  const user = await User.findById(decoded._id);
+  const { otp, otpToken } = req.body;
+  if (!otp || !otpToken) throw new ApiError(400, "OTP and token are required");
 
-  if (!user) {
-    throw new ApiError(400, "Invalid token");
+  let decoded;
+  try {
+    decoded = jwt.verify(otpToken, token_secret);
+  } catch (err) {
+    if (err.name === "TokenExpiredError") {
+      throw new ApiError(400, "OTP token has expired. ");
+    } else if (err.name === "JsonWebTokenError") {
+      throw new ApiError(400, "Invalid OTP token.");
+    } else {
+      console.error("Unexpected error verifying OTP token:", err.message);
+      throw new ApiError(400, "Failed to verify OTP token.");
+    }
   }
 
-  if (user.isVerified) {
-    throw new ApiError(400, "Email already verified");
+  if (decoded.otp !== otp) {
+    throw new ApiError(400, "Invalid OTP");
   }
-  if (!(token === user.verificationToken)) {
-    throw new ApiError(400, "Invalid token");
-  }
-  user.isVerified = true;
-  user.verificationToken = null;
-  await user.save();
 
-  return new ApiResponse(200, "Email verified successfully").send(res);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    decoded.userId
+  );
+
+  const loggedInUser = await User.findById(decoded.userId).select(
+    "-password -refreshToken"
+  );
+
+  return new ApiResponse(200, true, "Email verified successfully", {
+    user: loggedInUser,
+    accessToken,
+    refreshToken,
+  }).send(res);
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -380,4 +411,5 @@ export {
   verifyOTP,
   resetPassword,
   getUserToken,
+  googleLoginCallback,
 };

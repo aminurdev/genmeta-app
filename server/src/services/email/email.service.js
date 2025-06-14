@@ -22,8 +22,7 @@ const emailFooter = `
   </div>
 `;
 
-export const sendVerificationEmail = async (email, name, token) => {
-  const verificationLink = `${config.cors_origin}/verify-email?token=${token}`;
+export const sendVerificationEmail = async (email, name, verificationCode) => {
   const emailHtml = `
     <!DOCTYPE html>
     <html lang="en">
@@ -37,17 +36,35 @@ export const sendVerificationEmail = async (email, name, token) => {
       <div style="padding: 20px; background-color: #ffffff;">
         <h2 style="color: #1a1a1a; margin-top: 0; font-size: 20px;">Email Verification</h2>
         <p>Assalamu a'laikum, ${name},</p>
-        <p>You recently created a GenMeta account. To complete your registration, please verify your email address by clicking the link below:</p>
-        <div style="text-align: center; margin: 25px 0;">
-          <a href="${verificationLink}" style="display: inline-block; background-color: #4a90e2; color: #ffffff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">Verify Email</a>
+        <p>You recently created a GenMeta account. To complete your registration, please use the verification code below:</p>
+        <div style="background-color: #f4f4f4; border: 2px solid #4a90e2; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Your verification code is:</p>
+          <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4a90e2;">${verificationCode}</span>
         </div>
-        <p>If the button doesn't work, copy this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${verificationLink}</p>
-        <p style="font-size: 12px; color: #888;">This link is valid for 24 hours.</p>
+        <p>Enter this code in the verification form to activate your account.</p>
+        <p style="font-size: 12px; color: #888;">This code is valid for 15 minutes and can only be used once.</p>
+        <p style="font-size: 12px; color: #888;">If you didn't request this verification, please ignore this email.</p>
       </div>
       ${emailFooter}
     </body>
     </html>
+  `;
+
+  const textContent = `
+    Hi ${name},
+    
+    You recently created a GenMeta account. To complete your registration, please use this verification code:
+    
+    ${verificationCode}
+    
+    Enter this code in the verification form to activate your account.
+    
+    This code is valid for 15 minutes and can only be used once.
+    
+    If you didn't request this verification, please ignore this email.
+    
+    © ${new Date().getFullYear()} GenMeta
+    Need help? Contact support@genmeta.app
   `;
 
   try {
@@ -56,7 +73,7 @@ export const sendVerificationEmail = async (email, name, token) => {
       to: email,
       subject: "Verify Your GenMeta Account",
       html: emailHtml,
-      text: `Hi ${name}, verify your GenMeta account: ${verificationLink}`,
+      text: textContent,
       headers: {
         "X-Entity-Ref-ID": `verify-${Date.now()}`,
       },
