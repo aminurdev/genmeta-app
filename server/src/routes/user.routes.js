@@ -25,7 +25,19 @@ import {
 const router = Router();
 
 router.get("/google-login", googleLogin);
-router.get("/google/callback", googleLoginCallback);
+router.get("/google/callback", (req, res, next) => {
+  const { state, error, error_description } = req.query;
+
+  // If Google sent an error
+  if (error) {
+    console.log("Google OAuth Error:", error, error_description);
+  }
+  if (state) {
+    googleCallback(req, res, next);
+  } else {
+    googleLoginCallback(req, res, next);
+  }
+});
 router.post("/verify-email", verifyEmail);
 router.post("/request-password-reset", requestPasswordReset);
 router.post("/verify-otp", verifyOTP);
@@ -42,8 +54,6 @@ router.get("/me", verifyUser, getCurrentUser);
 router.get("/tokens", verifyUser, getUserToken);
 
 router.get("/app/google", googleLoginAPP);
-
-router.get("/app/google/callback", googleCallback);
 
 router.post("/app/verify-google", verifyUser, verifyGoogle);
 

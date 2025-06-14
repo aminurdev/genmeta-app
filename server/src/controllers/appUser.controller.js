@@ -1,57 +1,10 @@
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import ApiError from "../utils/api.error.js";
-import config from "../config/index.js";
 import { ApiKey } from "../models/appApiKey.model.js";
 import { generateApiKey } from "./appApiKey.controller.js";
-
-// Setup Google Strategy
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: config.google_client_id,
-      clientSecret: config.google_client_secret,
-      callbackURL: config.google_callback_url,
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0].value;
-        let user = await User.findOne({ email });
-
-        if (!user) {
-          user = await User.create({
-            name: profile.displayName,
-            email,
-            loginProvider: "google",
-            googleId: profile.id,
-            isVerified: true,
-          });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        return done(error, null);
-      }
-    }
-  )
-);
-
-// Serialize and Deserialize
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
-
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (error) {
-    done(error, null);
-  }
-});
 
 // Initiate Google OAuth Login
 const googleLoginAPP = asyncHandler(async (req, res, next) => {
@@ -519,7 +472,7 @@ const appUserLogin = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user || !user.isVerified) throw new ApiError(404, "User not found");
-  if (user.loginProvider !== "email")
+  if (!user.loginProvider.includes("email"))
     throw new ApiError(403, "Use social login");
 
   const isPasswordValid = await user.isPasswordCorrect(password);

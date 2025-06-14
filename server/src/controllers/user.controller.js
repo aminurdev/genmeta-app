@@ -24,7 +24,7 @@ const googleLogin = asyncHandler(async (req, res, next) => {
 });
 
 const googleLoginCallback = asyncHandler(async (req, res, next) => {
-  const { state, error, error_description } = req.query;
+  const { error, error_description } = req.query;
 
   // If Google sent an error
   if (error) {
@@ -33,7 +33,7 @@ const googleLoginCallback = asyncHandler(async (req, res, next) => {
       error
     )}&error_description=${encodeURIComponent(
       error_description || "Authentication cancelled"
-    )}${state ? `&state=${state}` : ""}`;
+    )}`;
 
     return res.redirect(redirectUrl);
   }
@@ -45,7 +45,7 @@ const googleLoginCallback = asyncHandler(async (req, res, next) => {
         console.error("Authentication failed:", err);
         const redirectUrl = `${config.cors_origin}/autherror?error=auth_failed&error_description=${encodeURIComponent(
           "Authentication failed"
-        )}${state ? `&state=${state}` : ""}`;
+        )}`;
         return res.redirect(redirectUrl);
       }
 
@@ -64,16 +64,14 @@ const googleLoginCallback = asyncHandler(async (req, res, next) => {
       await user.save({ validateBeforeSave: false });
 
       // Redirect back to your app with tokens
-      const successUrl = `${config.cors_origin}/authsuccess?token=${accessToken}&refresh_token=${refreshToken}${
-        state ? `&state=${state}` : ""
-      }`;
+      const successUrl = `${config.cors_origin}/authsuccess?token=${accessToken}&refresh_token=${refreshToken}`;
 
       return res.redirect(successUrl);
     } catch (error) {
       console.error("Google Callback Error:", error);
       const redirectUrl = `${config.cors_origin}/autherror?error=server_error&error_description=${encodeURIComponent(
         "Internal server error"
-      )}${state ? `&state=${state}` : ""}`;
+      )}`;
 
       return res.redirect(redirectUrl);
     }
@@ -190,7 +188,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "User does not exist");
   }
 
-  if (user.loginProvider !== "email") {
+  if (!user.loginProvider.includes("email")) {
     throw new ApiError(
       403,
       "This account is registered with a different login provider"
@@ -305,7 +303,7 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   const user = await User.findOne({
     email,
     isVerified: true,
-    loginProvider: "email",
+    loginProvider: { $in: ["email"] },
   });
   if (!user) throw new ApiError(404, "User not found");
 
