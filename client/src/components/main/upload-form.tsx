@@ -1023,7 +1023,6 @@ export default function UploadForm() {
     failedFiles.length,
     failedUploads.length,
     files.length,
-    processingStartTime,
     isProcessingTimeout,
     showWarning,
   ]);
