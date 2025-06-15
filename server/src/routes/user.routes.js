@@ -10,6 +10,7 @@ import {
   refreshAccessToken,
   registerUser,
   requestPasswordReset,
+  resendVerificationEmail,
   resetPassword,
   verifyEmail,
   verifyOTP,
@@ -39,6 +40,7 @@ router.get("/google/callback", (req, res, next) => {
   }
 });
 router.post("/verify-email", verifyEmail);
+router.post("/resend-verification-email", resendVerificationEmail);
 router.post("/request-password-reset", requestPasswordReset);
 router.post("/verify-otp", verifyOTP);
 router.post("/reset-password", resetPassword);
@@ -54,7 +56,6 @@ router.get("/me", verifyUser, getCurrentUser);
 router.get("/tokens", verifyUser, getUserToken);
 
 router.get("/app/google", googleLoginAPP);
-
 router.post("/app/verify-google", verifyUser, verifyGoogle);
 
 export default router;

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "./services/auth-services";
-export { auth as authMiddleware } from "@/auth";
 
 const authRoutes = ["/login", "/signup"];
 const protectedRoutes = [

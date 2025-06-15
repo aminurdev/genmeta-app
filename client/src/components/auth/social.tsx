@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
 const Social = () => {
@@ -13,7 +12,6 @@ const Social = () => {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: `/${redirectPath}` });
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {

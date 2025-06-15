@@ -124,10 +124,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpToken = jwt.sign({ otp, userId: user._id }, token_secret, {
-    expiresIn: "10m",
-  });
+  const { otp, otpToken } = generateOtpAndOtpToken(user._id);
 
   await sendVerificationEmail(email, name, otp);
 
@@ -139,16 +136,38 @@ const registerUser = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw new ApiError(400, "Email is required");
+
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (user.isVerified) {
+    throw new ApiError(400, "Email is already verified");
+  }
+  const { otp, otpToken } = generateOtpAndOtpToken(user._id);
+
+  await sendVerificationEmail(user.email, user.name, otp);
+
+  return new ApiResponse(200, true, "Verification email sent successfully", {
+    otpToken,
+  }).send(res);
+});
+
 const verifyEmail = asyncHandler(async (req, res) => {
   const { otp, otpToken } = req.body;
-  if (!otp || !otpToken) throw new ApiError(400, "OTP and token are required");
+
+  if (!otp || !otpToken) {
+    throw new ApiError(400, "OTP and token are required");
+  }
 
   let decoded;
   try {
     decoded = jwt.verify(otpToken, token_secret);
   } catch (err) {
     if (err.name === "TokenExpiredError") {
-      throw new ApiError(400, "OTP token has expired. ");
+      throw new ApiError(400, "OTP token has expired.");
     } else if (err.name === "JsonWebTokenError") {
       throw new ApiError(400, "Invalid OTP token.");
     } else {
@@ -161,16 +180,25 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid OTP");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-    decoded.userId
+  // ✅ Update the user as verified
+  const updatedUser = await User.findByIdAndUpdate(
+    decoded.userId,
+    {
+      isVerified: true,
+    },
+    { new: true, select: "-password -refreshToken" }
   );
 
-  const loggedInUser = await User.findById(decoded.userId).select(
-    "-password -refreshToken"
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+    updatedUser._id
   );
 
   return new ApiResponse(200, true, "Email verified successfully", {
-    user: loggedInUser,
+    user: updatedUser,
     accessToken,
     refreshToken,
   }).send(res);
@@ -197,14 +225,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid credentials");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   if (!user.isVerified) {
-    throw new ApiError(
-      403,
-      "Email is not verified. Check your email and verify."
-    );
+    throw new ApiError(401, "Invalid email or password");
   }
 
   if (!user.ipAddress) {
@@ -307,10 +332,7 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   });
   if (!user) throw new ApiError(404, "User not found");
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpToken = jwt.sign({ otp, userId: user._id }, token_secret, {
-    expiresIn: "10m",
-  });
+  const { otp, otpToken } = generateOtpAndOtpToken(user._id);
 
   await sendOTPEmail(email, user.name, otp);
 
@@ -410,4 +432,13 @@ export {
   resetPassword,
   getUserToken,
   googleLoginCallback,
+  resendVerificationEmail,
+};
+
+const generateOtpAndOtpToken = (userId) => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpToken = jwt.sign({ otp, userId }, token_secret, {
+    expiresIn: "10m",
+  });
+  return { otp, otpToken };
 };

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
-import { signIn } from "@/auth";
 import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
+import { apiRequest } from "../api";
 
 export interface DecodedToken {
   userId: string;
@@ -17,37 +17,49 @@ export interface DecodedToken {
 
 const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
-export const handleGoogleSignIn = async () => {
-  await signIn("google");
-};
+export const handleGoogleSignIn = async () => {};
 
 export const registerUser = async (userData: FieldValues) => {
   try {
-    const res = await fetch(`${baseApi}/users/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userData),
+    if (!userData.email || !userData.password) {
+      return { success: false, message: "Email and password are required" };
+    }
+
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/register",
+      useAuth: false,
+      data: userData,
     });
-    const result = await res.json();
     return result;
   } catch (error: any) {
-    return error;
+    return Error(error.message || "Failed to register user");
   }
 };
 
-export const loginUser = async (userData: FieldValues) => {
+export const resendVerificationEmail = async (email: string) => {
   try {
-    const res = await fetch(`${baseApi}/users/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(userData),
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/resend-verification-email",
+      useAuth: false,
+      data: { email },
     });
+    return result;
+  } catch (error: any) {
+    return Error(error.message || "Failed to resend verification email");
+  }
+};
 
-    const result = await res.json();
+export const verifyEmail = async (otpToken: string, otp: string) => {
+  console.log(`Verifying email with otpToken: ${otpToken} and otp: ${otp}`);
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/verify-email",
+      useAuth: false,
+      data: { otpToken, otp },
+    });
 
     if (result.success) {
       (await cookies()).set("accessToken", result.data.accessToken);
@@ -56,7 +68,31 @@ export const loginUser = async (userData: FieldValues) => {
 
     return result;
   } catch (error: any) {
-    return Error(error);
+    return Error(error.message || "Failed to verify email");
+  }
+};
+
+export const loginUser = async (userData: FieldValues) => {
+  try {
+    if (!userData.email || !userData.password) {
+      return { success: false, message: "Email and password are required" };
+    }
+
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/login",
+      useAuth: false,
+      data: userData,
+    });
+
+    if (result.success) {
+      (await cookies()).set("accessToken", result.data.accessToken);
+      (await cookies()).set("refreshToken", result.data.refreshToken);
+    }
+
+    return result;
+  } catch (error: any) {
+    return Error(error.message || "Failed to login user");
   }
 };
 
