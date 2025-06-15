@@ -5,7 +5,6 @@ import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 import { apiRequest } from "../api";
-import { redirect } from "next/navigation";
 
 export interface DecodedToken {
   userId: string;
@@ -94,17 +93,6 @@ export const loginUser = async (userData: FieldValues) => {
   } catch (error: any) {
     return Error(error.message || "Failed to login user");
   }
-};
-
-export const loginWithGoogle = async (redirectPath: string, path: string) => {
-  const state = JSON.stringify({
-    redirectPath,
-    path,
-  });
-
-  redirect(
-    `${baseApi}/users/google-login?state=${encodeURIComponent(state)}&type=web`
-  );
 };
 
 export const verifyGoogleToken = async (token: string) => {

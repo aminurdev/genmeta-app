@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { loginWithGoogle } from "@/services/auth-services";
+import { getBaseApi } from "@/services/image-services";
 
 const Social = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,7 +14,15 @@ const Social = () => {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await loginWithGoogle(redirectPath, pathname);
+      const baseApi = await getBaseApi();
+      const state = JSON.stringify({
+        redirectPath,
+        path: pathname,
+      });
+
+      window.location.href = `${baseApi}/users/google-login?state=${encodeURIComponent(
+        state
+      )}&type=web`;
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {
