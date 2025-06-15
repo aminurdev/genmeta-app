@@ -12,19 +12,22 @@ const Social = () => {
   const redirectPath = searchParams?.get("redirectPath") || "/";
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+
       const baseApi = await getBaseApi();
-      const state = JSON.stringify({
+      const statePayload = {
         redirectPath,
         path: pathname,
-      });
+      };
 
-      window.location.href = `${baseApi}/users/google-login?state=${encodeURIComponent(
-        state
-      )}&type=web`;
+      const state = encodeURIComponent(JSON.stringify(statePayload));
+
+      const loginUrl = `${baseApi}/users/google-login?state=${state}&type=web`;
+
+      window.location.href = loginUrl;
     } catch (error) {
-      console.error("Sign in error:", error);
+      console.error("Google Sign-In failed:", error);
     } finally {
       setIsLoading(false);
     }
