@@ -5,6 +5,7 @@ import { jwtDecode } from "jwt-decode";
 import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 import { apiRequest } from "../api";
+import { redirect } from "next/navigation";
 
 export interface DecodedToken {
   userId: string;
@@ -52,7 +53,6 @@ export const resendVerificationEmail = async (email: string) => {
 };
 
 export const verifyEmail = async (otpToken: string, otp: string) => {
-  console.log(`Verifying email with otpToken: ${otpToken} and otp: ${otp}`);
   try {
     const result = await apiRequest({
       method: "post",
@@ -93,6 +93,43 @@ export const loginUser = async (userData: FieldValues) => {
     return result;
   } catch (error: any) {
     return Error(error.message || "Failed to login user");
+  }
+};
+
+export const loginWithGoogle = async (redirectPath: string, path: string) => {
+  const state = JSON.stringify({
+    redirectPath,
+    path,
+  });
+
+  redirect(
+    `${baseApi}/users/google-login?state=${encodeURIComponent(state)}&type=web`
+  );
+};
+
+export const verifyGoogleToken = async (token: string) => {
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/verify-google",
+      useAuth: false,
+      data: { token },
+    });
+
+    if (result.success) {
+      try {
+        (await cookies()).set("accessToken", result.data.accessToken);
+        (await cookies()).set("refreshToken", result.data.refreshToken);
+      } catch (cookieError) {
+        console.error("Error setting cookies:", cookieError);
+      }
+    }
+
+    return result;
+  } catch (error: any) {
+    console.error("Error in verifyGoogleToken:", error);
+    // Return a consistent object structure instead of Error object
+    return Error(error.message || "Failed to verify Google token");
   }
 };
 

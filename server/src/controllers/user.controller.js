@@ -15,67 +15,79 @@ const token_secret = config.email_verify_token_secret;
 
 // Initiate Google OAuth Login
 const googleLogin = asyncHandler(async (req, res, next) => {
-  const { state } = req.query;
+  const { state, type } = req.query;
 
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    state: state || undefined,
+    state: JSON.stringify({ state, type }),
   })(req, res, next);
 });
 
 const googleLoginCallback = asyncHandler(async (req, res, next) => {
-  const { error, error_description } = req.query;
+  const { state, error } = req.query;
 
-  // If Google sent an error
+  const parsedState = state ? JSON.parse(JSON.parse(state).state) : {};
+  const { redirectPath = "", path = "login" } = parsedState;
+
+  // If Google OAuth returned an error
   if (error) {
-    console.log("Google OAuth Error:", error, error_description);
-    const redirectUrl = `${config.cors_origin}/autherror?error=${encodeURIComponent(
-      error
-    )}&error_description=${encodeURIComponent(
-      error_description || "Authentication cancelled"
-    )}`;
-
-    return res.redirect(redirectUrl);
+    return res.redirect(
+      `${config.cors_origin}/${path}?error=${encodeURIComponent(error)}`
+    );
   }
 
-  // Use Passport to handle the Google callback
+  // Authenticate with Passport
   passport.authenticate("google", { session: false }, async (err, user) => {
+    if (err || !user) {
+      return res.redirect(`${config.cors_origin}/${path}?error=auth_failed`);
+    }
+
     try {
-      if (err || !user) {
-        console.error("Authentication failed:", err);
-        const redirectUrl = `${config.cors_origin}/autherror?error=auth_failed&error_description=${encodeURIComponent(
-          "Authentication failed"
-        )}`;
-        return res.redirect(redirectUrl);
-      }
-
-      // Generate tokens
       const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken();
 
-      user.refreshToken = refreshToken;
-
-      // Capture user IP
-      const userIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+      // Set IP address if missing
+      const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
       if (!user.ipAddress) {
-        user.ipAddress = userIp;
+        user.ipAddress = ip;
+        await user.save({ validateBeforeSave: false });
       }
 
-      await user.save({ validateBeforeSave: false });
-
-      // Redirect back to your app with tokens
-      const successUrl = `${config.cors_origin}/authsuccess?token=${accessToken}&refresh_token=${refreshToken}`;
-
-      return res.redirect(successUrl);
-    } catch (error) {
-      console.error("Google Callback Error:", error);
-      const redirectUrl = `${config.cors_origin}/autherror?error=server_error&error_description=${encodeURIComponent(
-        "Internal server error"
-      )}`;
+      let redirectUrl = `${config.cors_origin}/verify-google?token=${accessToken}`;
+      if (redirectPath) {
+        redirectUrl += `&redirectPath=${encodeURIComponent(redirectPath)}`;
+      }
 
       return res.redirect(redirectUrl);
+    } catch (e) {
+      console.error("Google Callback Error:", e);
+      return res.redirect(`${config.cors_origin}/${path}?error=server_error`);
     }
   })(req, res, next);
+});
+
+const verifyGoogleToken = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    throw new ApiError(400, "Token is required");
+  }
+
+  const decoded = jwt.verify(token, config.access_token_secret);
+  const user = await User.findById(decoded.userId).select(
+    "-password -refreshToken -verificationToken"
+  );
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const accessToken = user.generateAccessToken();
+  const refreshToken = user.generateRefreshToken();
+
+  return new ApiResponse(200, true, "Google verification successful", {
+    user,
+    accessToken,
+    refreshToken,
+  }).send(res);
 });
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -433,6 +445,7 @@ export {
   getUserToken,
   googleLoginCallback,
   resendVerificationEmail,
+  verifyGoogleToken,
 };
 
 const generateOtpAndOtpToken = (userId) => {

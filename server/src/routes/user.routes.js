@@ -13,6 +13,7 @@ import {
   resendVerificationEmail,
   resetPassword,
   verifyEmail,
+  verifyGoogleToken,
   verifyOTP,
 } from "../controllers/user.controller.js";
 import { verifyUser } from "../middlewares/auth.middleware.js";
@@ -22,23 +23,26 @@ import {
   googleLoginAPP,
   verifyGoogle,
 } from "../controllers/appUser.controller.js";
-
 const router = Router();
 
 router.get("/google-login", googleLogin);
 router.get("/google/callback", (req, res, next) => {
   const { state, error, error_description } = req.query;
 
+  const { type } = JSON.parse(state);
+
   // If Google sent an error
   if (error) {
     console.log("Google OAuth Error:", error, error_description);
   }
-  if (state) {
+  if (type && type === "app") {
     googleCallback(req, res, next);
   } else {
     googleLoginCallback(req, res, next);
   }
 });
+
+router.post("/verify-google", verifyGoogleToken);
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification-email", resendVerificationEmail);
 router.post("/request-password-reset", requestPasswordReset);

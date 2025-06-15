@@ -19,11 +19,13 @@ const googleLoginAPP = asyncHandler(async (req, res, next) => {
 const googleCallback = asyncHandler(async (req, res, next) => {
   const { state, error, error_description } = req.query;
 
+  const parsedState = JSON.parse(state);
+
   // Handle user cancellation or OAuth errors
   if (error) {
     console.log("Google OAuth Error:", error, error_description);
 
-    if (state) {
+    if (parsedState.state) {
       // Mobile app - redirect with error
       const errorUrl = `genmeta://auth?error=${encodeURIComponent(error)}&error_description=${encodeURIComponent(error_description || "Authentication cancelled")}&state=${state}`;
 
@@ -122,7 +124,7 @@ const googleCallback = asyncHandler(async (req, res, next) => {
       if (err) {
         console.error("Passport authentication error:", err);
 
-        if (state) {
+        if (parsedState.state) {
           const errorUrl = `genmeta://auth?error=authentication_failed&error_description=${encodeURIComponent("Authentication failed")}&state=${state}`;
 
           const errorHtml = `
@@ -247,8 +249,8 @@ const googleCallback = asyncHandler(async (req, res, next) => {
       // Success case - generate access token
       const accessToken = user.generateAccessToken();
 
-      if (state) {
-        const redirectUrl = `genmeta://auth?token=${accessToken}&state=${state}`;
+      if (parsedState.state) {
+        const redirectUrl = `genmeta://auth?token=${accessToken}&state=${parsedState.state}`;
 
         // Render success page with branding before redirecting
         const html = `
@@ -401,8 +403,8 @@ const googleCallback = asyncHandler(async (req, res, next) => {
     } catch (error) {
       console.error("Error in Google callback:", error);
 
-      if (state) {
-        const errorUrl = `genmeta://auth?error=server_error&error_description=${encodeURIComponent("Server error occurred")}&state=${state}`;
+      if (parsedState.state) {
+        const errorUrl = `genmeta://auth?error=server_error&error_description=${encodeURIComponent("Server error occurred")}&state=${parsedState.state}`;
         const errorHtml = `
           <!DOCTYPE html>
           <html lang="en">

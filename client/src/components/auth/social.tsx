@@ -2,16 +2,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { loginWithGoogle } from "@/services/auth-services";
 
 const Social = () => {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const redirectPath = searchParams?.get("redirectPath") || "/";
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
+      await loginWithGoogle(redirectPath, pathname);
     } catch (error) {
       console.error("Sign in error:", error);
     } finally {
