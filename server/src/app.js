@@ -29,10 +29,15 @@ import appRoutes from "./routes/app.routes.js";
 import pricingRoutes from "./routes/appPricing.routes.js";
 import promoCodeRoutes from "./routes/promoCode.routes.js";
 import aiApiKeyRoutes from "./routes/aiApiKey.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
+
+app.use("/api/v1/users/dashboard", dashboardRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/app", appRoutes);
 
 app.use("/api/v1/aiApi", aiApiKeyRoutes);
+app.use("/api/v1/payment", paymentRoutes);
 
 app.use("/api/v1/pricing", pricingRoutes);
 app.use("/api/v1/promo-codes", promoCodeRoutes);
