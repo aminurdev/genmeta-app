@@ -3,58 +3,98 @@ import { AppPayment } from "../models/appPayment.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import dayjs from "dayjs";
 
 // GET /overview
 export const getOverview = asyncHandler(async (req, res) => {
-  const userId = req.user._id; // assuming auth middleware sets this
+  const userId = req.user._id;
 
-  const apiKey = await ApiKey.findOne({ userId });
-  const user = await User.findById(userId);
-  const payments = await AppPayment.find({ userId }).sort({ createdAt: -1 });
+  const [apiKey, user, payments] = await Promise.all([
+    ApiKey.findOne({ userId }),
+    User.findById(userId),
+    AppPayment.find({ userId }).sort({ createdAt: -1 }),
+  ]);
 
-  if (!apiKey || !user) {
-    return res.status(404).json({ message: "User or API Key not found" });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
   }
 
-  // Get today's date info
   const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const todayStr = dayjs(now).format("YYYY-MM-DD");
+  const currentMonthKey = dayjs(now).format("YYYY-MM");
 
-  // Calculate total payment spent
-  const totalSpent = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  // Payments
+  const totalSpent = payments.reduce((sum, p) => sum + p.amount, 0);
 
-  // Get last 6 months keys
-  const last6MonthKeys = Array.from({ length: 6 }).map((_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const last5Payments = payments.slice(0, 5).map((p) => ({
+    id: p._id,
+    trxID: p.trxID,
+    plan: p.plan,
+    amount: p.amount,
+    createdAt: p.createdAt,
+  }));
 
-  // Create summary of last 6 months
-  const last6MonthProcess = last6MonthKeys
-    .map((key) => ({
-      month: key,
-      count: apiKey.monthlyProcess?.get(key) || 0,
-    }))
-    .reverse(); // oldest first
+  // Monthly and daily processing maps
+  const monthlyProcess = apiKey?.monthlyProcess || new Map();
+  const dailyProcess = apiKey?.dailyProcess || new Map();
 
-  // Credit status
-  const creditRemaining =
-    apiKey.plan?.type === "subscription" ? Infinity : apiKey.credit;
-  const webCreditRemaining = user.token?.available || 0;
+  // Last 6 months usage
+  const last6MonthProcess = Array.from({ length: 6 })
+    .map((_, i) => {
+      const d = dayjs(now).subtract(i, "month").format("YYYY-MM");
+      return { month: d, count: monthlyProcess.get(d) || 0 };
+    })
+    .reverse();
 
-  return new ApiResponse(200, true, "Overview fetched successfully", {
-    totalProcess: apiKey.totalProcess || 0,
-    currentMonthProcess: apiKey.monthlyProcess?.get(currentMonthKey) || 0,
-    creditRemaining,
-    webCreditRemaining,
-    totalPaymentSpent: totalSpent,
-    last6MonthProcess,
-    last5Payments: payments.slice(0, 5).map((p) => ({
-      id: p._id,
-      trxID: p.trxID,
-      plan: p.plan,
-      amount: p.amount,
-      createdAt: p.createdAt,
-    })),
-  }).send(res);
+  // Last 7 days usage
+  const last7DaysProcess = Array.from({ length: 7 })
+    .map((_, i) => {
+      const d = dayjs(now).subtract(i, "day").format("YYYY-MM-DD");
+      return { day: d, count: dailyProcess.get(d) || 0 };
+    })
+    .reverse();
+
+  const planType = apiKey?.plan?.type || "free";
+  const planId = apiKey?.plan?.id || null;
+  const expiresAt = apiKey?.expiresAt || null;
+  const daysLeft = expiresAt
+    ? Math.max(0, dayjs(expiresAt).diff(dayjs(), "day"))
+    : null;
+
+  const overview = {
+    user: {
+      name: user.name,
+      email: user.email,
+      isVerified: user.isVerified,
+      loginProvider: user.loginProvider,
+    },
+    apiKey: {
+      exists: !!apiKey,
+      totalProcess: apiKey?.totalProcess || 0,
+      todayUsage: dailyProcess.get(todayStr) || 0,
+      thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
+      last6MonthProcess,
+      last7DaysProcess,
+      creditRemaining:
+        planType === "subscription" ? Infinity : apiKey?.credit || 0,
+      webCreditRemaining: user.token?.available || 0,
+      planType,
+      planId,
+      expiresAt,
+      daysLeft,
+      isSuspended: apiKey?.status === "suspended" || false,
+      isManuallyDisabled: apiKey?.isActive === false || false,
+    },
+    payments: {
+      totalSpent,
+      last5Payments,
+    },
+  };
+
+  return new ApiResponse(
+    200,
+    true,
+    "Overview fetched successfully",
+    overview
+  ).send(res);
 });
