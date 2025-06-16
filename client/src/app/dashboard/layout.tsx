@@ -24,7 +24,7 @@ export default async function RootLayout({
               <Separator orientation="vertical" className="mr-2 h-4" />
             </div>
           </header>
-          {children}
+          <main className="p-5">{children}</main>
         </SidebarInset>
       </SidebarProvider>
     </>
