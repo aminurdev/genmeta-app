@@ -27,9 +27,8 @@ const Social = () => {
 
       window.location.href = loginUrl;
     } catch (error) {
-      console.error("Google Sign-In failed:", error);
-    } finally {
       setIsLoading(false);
+      console.error("Google Sign-In failed:", error);
     }
   };
 
