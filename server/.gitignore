@@ -84,6 +84,7 @@ web_modules/
 .env.local
 fixLoginProvider.js
 /src/config/fixLoginProvider.js
+/src/config/fixLoginProvider.js
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
