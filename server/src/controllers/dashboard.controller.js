@@ -98,3 +98,46 @@ export const getOverview = asyncHandler(async (req, res) => {
     overview
   ).send(res);
 });
+
+export const getProfile = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const [user, apiKey] = await Promise.all([
+    User.findById(userId).select("-password -__v"),
+    ApiKey.findOne({ userId }),
+  ]);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  const profile = {
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+    loginProvider: user.loginProvider,
+    isVerified: user.isVerified,
+    isDisabled: user.isDisabled,
+    createdAt: user.createdAt,
+    role: user.role,
+    webCreditRemaining: user.token?.available || 0,
+    apiKey: apiKey
+      ? {
+          plan: apiKey.plan,
+          totalProcess: apiKey.totalProcess,
+          credit:
+            apiKey.plan.type === "subscription" ? Infinity : apiKey.credit,
+          isActive: apiKey.isActive,
+          status: apiKey.status,
+          expiresAt: apiKey.expiresAt,
+        }
+      : null,
+  };
+
+  return new ApiResponse(
+    200,
+    true,
+    "Profile fetched successfully",
+    profile
+  ).send(res);
+});

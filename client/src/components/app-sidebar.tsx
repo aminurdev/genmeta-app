@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { LayoutDashboard, User } from "lucide-react";
+import { LayoutDashboard, Palette, User } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -28,6 +28,11 @@ const data = {
       title: "Profile",
       url: "/dashboard/profile",
       icon: User,
+    },
+    {
+      title: "Appearance",
+      url: "/dashboard/appearance",
+      icon: Palette,
     },
   ],
 };

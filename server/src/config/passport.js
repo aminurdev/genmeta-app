@@ -43,6 +43,11 @@ const configureGoogleStrategy = () => {
             // Update existing user if needed
             let needsUpdate = false;
 
+            if (!user.avatar) {
+              user.avatar = profile.photos?.[0]?.value || null;
+              needsUpdate = true;
+            }
+
             if (!user.googleId) {
               user.googleId = profile.id;
               needsUpdate = true;

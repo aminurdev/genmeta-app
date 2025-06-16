@@ -8,3 +8,11 @@ export const getOverview = async () => {
 
   return result;
 };
+export const getProfile = async () => {
+  const result = await apiRequest({
+    method: "GET",
+    endpoint: "/users/dashboard/profile",
+  });
+
+  return result;
+};

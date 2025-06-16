@@ -318,11 +318,12 @@ export default async function Page() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Days Remaining</span>
               <div className="flex items-center gap-2">
-                {data.apiKey.daysLeft <= 7 && (
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                )}
+                {data.apiKey.daysLeft <= 7 &&
+                  data.apiKey.planType === "subscription" && (
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  )}
                 <span className="text-sm font-medium">
-                  {data.apiKey.daysLeft} days
+                  {data.apiKey.daysLeft ?? 365} days
                 </span>
               </div>
             </div>
