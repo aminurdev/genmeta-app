@@ -13,8 +13,8 @@ import {
   TrendingUp,
   Zap,
   Shield,
-  Clock,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -170,10 +170,9 @@ export default async function Page() {
           </CardContent>
         </Card>
 
-        {/* API Credits */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Credits</CardTitle>
+            <CardTitle className="text-sm font-medium">App Credits</CardTitle>
             <div className="rounded-full bg-primary/10 p-1">
               {data.apiKey.creditRemaining === null ? (
                 <Infinity className="h-4 w-4 text-primary" />
@@ -189,7 +188,7 @@ export default async function Page() {
             <div className="flex items-center pt-1">
               {data.apiKey.creditRemaining === null ? (
                 <Badge variant="secondary" className="text-xs">
-                  Unlimited Plan
+                  Subscription Plan
                 </Badge>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -216,21 +215,19 @@ export default async function Page() {
           </CardContent>
         </Card>
 
-        {/* Days Left */}
+        {/* Total Spent */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Plan Status</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
             <div className="rounded-full bg-primary/10 p-1">
-              <Clock className="h-4 w-4 text-primary" />
+              <DollarSign className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.apiKey.daysLeft}</div>
-            <div className="flex items-center pt-1">
-              <Badge variant={getStatusColor()} className="text-xs">
-                {getStatusText()}
-              </Badge>
+            <div className="text-2xl font-bold">
+              {formatCurrency(data.payments.totalSpent)}
             </div>
+            <p className="text-xs text-muted-foreground">Lifetime payments</p>
           </CardContent>
         </Card>
       </div>
@@ -313,7 +310,9 @@ export default async function Page() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Expires At</span>
               <span className="text-sm">
-                {formatDate(data.apiKey.expiresAt)}
+                {data.apiKey.planType === "subscription"
+                  ? formatDate(data.apiKey.expiresAt)
+                  : "N/A"}
               </span>
             </div>
             <div className="flex justify-between items-center">
