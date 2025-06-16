@@ -52,7 +52,7 @@ export function PaymentsTable({ payments, totalSpent }: PaymentsTableProps) {
   };
 
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Receipt className="h-5 w-5" />
@@ -60,7 +60,7 @@ export function PaymentsTable({ payments, totalSpent }: PaymentsTableProps) {
         </CardTitle>
         <CardDescription>Your latest payment transactions</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-hidden">
         {payments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <CreditCard className="h-12 w-12 text-muted-foreground/50 mb-4" />
