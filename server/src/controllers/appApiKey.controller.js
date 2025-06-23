@@ -506,7 +506,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  // === 1. ALL PAYMENTS ===
+  // === 1. PAYMENTS ===
   const allPayments = await AppPayment.find({});
   const totalRevenue = allPayments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -538,11 +538,12 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     "plan.type": { $ne: "free" },
     expiresAt: { $gt: now },
   });
+  const newApiKeysThisMonth = await ApiKey.countDocuments({
+    createdAt: { $gte: thisMonth },
+  });
 
-  // === 3. MONTHLY PROCESS LIST (last 6 months) ===
   const apiKeys = await ApiKey.find({});
   const monthlyProcessList = {};
-
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -556,6 +557,12 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         monthlyProcessList[month] += count;
       }
     }
+  });
+
+  // === 3. USERS ===
+  const totalUsers = await User.countDocuments();
+  const newUsersThisMonth = await User.countDocuments({
+    createdAt: { $gte: thisMonth },
   });
 
   // === 4. MONTHLY REVENUE LIST (last 6 months) ===
@@ -581,12 +588,11 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     .populate("userId", "name email")
     .select("amount createdAt userId");
 
-  // === 6. MONTHLY NEW PAYMENTS COUNT ===
   const monthlyNewPayments = await AppPayment.countDocuments({
     createdAt: { $gte: thisMonth },
   });
 
-  // === RESPONSE ===
+  // === 6. RESPONSE ===
   return new ApiResponse(
     200,
     true,
@@ -601,9 +607,14 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
       apiKeys: {
         total: totalApiKeys,
+        newThisMonth: newApiKeysThisMonth,
         active: activeApiKeys,
         activePremium: activePremiumKeys,
         monthlyProcessList,
+      },
+      users: {
+        total: totalUsers,
+        newThisMonth: newUsersThisMonth,
       },
       payments: {
         total: allPayments.length,

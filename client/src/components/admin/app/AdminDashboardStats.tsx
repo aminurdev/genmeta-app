@@ -35,6 +35,7 @@ import {
   Key,
   Loader2,
   RefreshCw,
+  Users,
   XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -45,23 +46,28 @@ interface DashboardStats {
     total: number;
     currentMonth: number;
     lastMonth: number;
-    growthPercentage: number | null;
+    growthPercentage: number;
     monthlyRevenueList: Record<string, number>;
   };
   apiKeys: {
     total: number;
+    newThisMonth: number;
     active: number;
     activePremium: number;
     monthlyProcessList: Record<string, number>;
+  };
+  users: {
+    total: number;
+    newThisMonth: number;
   };
   payments: {
     total: number;
     newThisMonth: number;
     recent: Array<{
-      _id: string;
       amount: number;
       createdAt: string;
       userId: {
+        _id: string;
         name: string;
         email: string;
       };
@@ -118,7 +124,7 @@ export default function DashboardStats() {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
@@ -143,6 +149,14 @@ export default function DashboardStats() {
       month: formatMonthYear(month),
       value,
     }));
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   if (loading) {
@@ -188,13 +202,7 @@ export default function DashboardStats() {
 
   const revenueData = prepareChartData(stats.revenue.monthlyRevenueList);
   const processData = prepareChartData(stats.apiKeys.monthlyProcessList);
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -206,7 +214,7 @@ export default function DashboardStats() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-3 md:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {/* Total Revenue Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -224,9 +232,7 @@ export default function DashboardStats() {
         {/* Monthly Revenue Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Current Month Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Current Month</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -234,35 +240,31 @@ export default function DashboardStats() {
               {formatCurrency(stats.revenue.currentMonth)}
             </div>
             <div className="flex items-center pt-1">
-              {stats.revenue.growthPercentage !== null && (
-                <>
-                  {stats.revenue.growthPercentage > 0 ? (
-                    <ArrowUpIcon className="mr-1 h-3 w-3 text-green-500" />
-                  ) : (
-                    <ArrowDownIcon className="mr-1 h-3 w-3 text-red-500" />
-                  )}
-                  <span
-                    className={
-                      stats.revenue.growthPercentage > 0
-                        ? "text-xs text-green-500"
-                        : "text-xs text-red-500"
-                    }
-                  >
-                    {Math.abs(stats.revenue.growthPercentage)}% from last month
-                  </span>
-                </>
-              )}
-              {stats.revenue.growthPercentage === null && (
-                <span className="text-xs text-muted-foreground">
-                  No previous data
-                </span>
-              )}
+              {stats.revenue.growthPercentage > 0 ? (
+                <ArrowUpIcon className="mr-1 h-3 w-3 text-green-500" />
+              ) : stats.revenue.growthPercentage < 0 ? (
+                <ArrowDownIcon className="mr-1 h-3 w-3 text-red-500" />
+              ) : null}
+              <span
+                className={
+                  stats.revenue.growthPercentage > 0
+                    ? "text-xs text-green-500"
+                    : stats.revenue.growthPercentage < 0
+                    ? "text-xs text-red-500"
+                    : "text-xs text-muted-foreground"
+                }
+              >
+                {stats.revenue.growthPercentage !== 0
+                  ? `${Math.abs(
+                      stats.revenue.growthPercentage
+                    )}% from last month`
+                  : "No change from last month"}
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Last Month Revenue*/}
-
+        {/* Last Month Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -279,17 +281,31 @@ export default function DashboardStats() {
             </p>
           </CardContent>
         </Card>
-        {/* App Users Card */}
+
+        {/* Total Users Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">App Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.users.total}</div>
+            <p className="text-xs text-muted-foreground">
+              +{stats.users.newThisMonth} new this month
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* APP Users Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">APP Users</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.apiKeys.total}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.apiKeys.active} active ({stats.apiKeys.activePremium}{" "}
-              premium)
+              +{stats.apiKeys.newThisMonth} new this month
             </p>
           </CardContent>
         </Card>
@@ -303,11 +319,12 @@ export default function DashboardStats() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.payments.total}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.payments.newThisMonth} new this month
+              +{stats.payments.newThisMonth} new this month
             </p>
           </CardContent>
         </Card>
       </div>
+
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Revenue Chart */}
         <Card>
@@ -382,11 +399,11 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* Images process Chart */}
+        {/* Images Process Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Images process Overview</CardTitle>
-            <CardDescription>Monthly Images process trends</CardDescription>
+            <CardTitle>Image Processing Overview</CardTitle>
+            <CardDescription>Monthly image processing trends</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -472,11 +489,12 @@ export default function DashboardStats() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stats.payments.recent.map((payment) => (
-                <TableRow key={payment._id}>
+              {stats.payments.recent.map((payment, index) => (
+                <TableRow
+                  key={`${payment.userId._id}-${payment.createdAt}-${index}`}
+                >
                   <TableCell>
                     <div className="flex gap-4">
-                      {" "}
                       <Avatar className="h-9 w-9">
                         <AvatarImage
                           src={`https://avatar.vercel.sh/${payment.userId.email}`}
