@@ -29,16 +29,6 @@ const config = {
 
   resend_api_key: process.env.RESEND_API_KEY,
 
-  aws: {
-    bucketName: process.env.AWS_S3_BUCKET_NAME,
-    compressBucketName: process.env.AWS_S3_COMPRESS_BUCKET_NAME,
-    endpoint: process.env.AWS_S3_ENDPOINT,
-    region: process.env.AWS_S3_REGION,
-    credentials: {
-      accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
-    },
-  },
   bkash: {
     base_url: process.env.BKASH_BASE_URL,
     app_key: process.env.BKASH_APP_KEY,

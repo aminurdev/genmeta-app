@@ -151,13 +151,6 @@ export default async function ProfilePage() {
                 <span className="text-sm font-medium">Member Since</span>
                 <span className="text-sm">{formatDate(data.createdAt)}</span>
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Web Credits</span>
-                <Badge variant="outline">
-                  {data.webCreditRemaining} remaining
-                </Badge>
-              </div>
             </div>
           </CardContent>
         </Card>

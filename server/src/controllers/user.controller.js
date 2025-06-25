@@ -128,9 +128,6 @@ const registerUser = asyncHandler(async (req, res) => {
       password,
       loginProvider: ["email"],
       ipAddress: userIp,
-      token: {
-        available: 20,
-      },
     });
   }
 
@@ -420,16 +417,6 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   return new ApiResponse(200, req.user, "User fetched successfully").send(res);
 });
 
-const getUserToken = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select("token");
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-  return new ApiResponse(200, true, "User token fetched successfully", {
-    token: user.token,
-  }).send(res);
-});
-
 export {
   registerUser,
   loginUser,
@@ -442,7 +429,6 @@ export {
   requestPasswordReset,
   verifyOTP,
   resetPassword,
-  getUserToken,
   googleLoginCallback,
   resendVerificationEmail,
   verifyGoogleToken,

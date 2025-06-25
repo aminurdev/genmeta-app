@@ -77,7 +77,6 @@ export const getOverview = asyncHandler(async (req, res) => {
       last7DaysProcess,
       creditRemaining:
         planType === "subscription" ? Infinity : apiKey?.credit || 0,
-      webCreditRemaining: user.token?.available || 0,
       planType,
       planId,
       expiresAt,
@@ -120,7 +119,6 @@ export const getProfile = asyncHandler(async (req, res) => {
     isDisabled: user.isDisabled,
     createdAt: user.createdAt,
     role: user.role,
-    webCreditRemaining: user.token?.available || 0,
     apiKey: apiKey
       ? {
           plan: apiKey.plan,

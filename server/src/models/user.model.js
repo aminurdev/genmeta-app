@@ -43,10 +43,6 @@ const userSchema = new mongoose.Schema({
   },
   googleId: { type: String, unique: true, sparse: true },
   refreshToken: { type: String },
-  token: {
-    available: { type: Number, default: 0 },
-    used: { type: Number, default: 0 },
-  },
   role: {
     type: String,
     enum: {

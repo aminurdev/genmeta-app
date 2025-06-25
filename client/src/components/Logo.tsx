@@ -13,7 +13,7 @@ export function Logo() {
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" asChild>
-          <Link href="/dashboard">
+          <Link href="/">
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground ">
               <Image
                 src="/Assets/SVG/icon.svg"

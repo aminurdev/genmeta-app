@@ -50,7 +50,7 @@ export default async function Page() {
 
   const formatCredit = (credit: number | null) => {
     if (credit === null) {
-      return "Unlimited";
+      return <Infinity className="h-6 w-6 text-primary" />;
     }
     return credit.toLocaleString();
   };
@@ -119,7 +119,7 @@ export default async function Page() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-3 md:grid-cols-5">
         {/* Total Processes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -187,31 +187,15 @@ export default async function Page() {
             </div>
             <div className="flex items-center pt-1">
               {data.apiKey.creditRemaining === null ? (
-                <Badge variant="secondary" className="text-xs">
-                  Subscription Plan
-                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  Subscription Plan (Unlimited)
+                </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Credits remaining
                 </p>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Web Credits */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Web Credits</CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
-              <Zap className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {data.apiKey.webCreditRemaining.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Web credits left</p>
           </CardContent>
         </Card>
 

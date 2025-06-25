@@ -2,7 +2,6 @@ import { Router } from "express";
 import {
   changeCurrentPassword,
   getCurrentUser,
-  getUserToken,
   googleLogin,
   googleLoginCallback,
   loginUser,
@@ -57,7 +56,6 @@ router.post("/logout", verifyUser, logoutUser);
 router.post("/refresh-token", refreshAccessToken);
 router.patch("/change-password", verifyUser, changeCurrentPassword);
 router.get("/me", verifyUser, getCurrentUser);
-router.get("/tokens", verifyUser, getUserToken);
 
 router.get("/app/google", googleLoginAPP);
 router.post("/app/verify-google", verifyUser, verifyGoogle);

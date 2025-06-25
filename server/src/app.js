@@ -24,7 +24,6 @@ initializePassport(app);
 // Routes import
 import adminRoutes from "./routes/admin.routes.js";
 import userRoutes from "./routes/user.routes.js";
-import imagesRoutes from "./routes/images.routes.js";
 import appRoutes from "./routes/app.routes.js";
 import pricingRoutes from "./routes/appPricing.routes.js";
 import promoCodeRoutes from "./routes/promoCode.routes.js";
@@ -43,7 +42,6 @@ app.use("/api/v1/pricing", pricingRoutes);
 app.use("/api/v1/promo-codes", promoCodeRoutes);
 
 app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/images", imagesRoutes);
 
 // 404 route handler
 app.use("*", (req) => {
