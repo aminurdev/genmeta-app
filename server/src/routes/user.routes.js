@@ -22,7 +22,23 @@ import {
   googleLoginAPP,
   verifyGoogle,
 } from "../controllers/appUser.controller.js";
+import { createRateLimiter } from "../middlewares/rate.limit.middleware.js";
 const router = Router();
+
+// Custom rate limiter for registration: max 5 per hour
+const registerLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: "Too many registration attempts from this IP, try again in an hour.",
+});
+
+const loginLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 10,
+  message: "Too many login attempts, try again soon.",
+});
+
+const limiter = createRateLimiter({ max: 3, windowMs: 5 * 60 * 1000 });
 
 router.get("/google-login", googleLogin);
 router.get("/google/callback", (req, res, next) => {
@@ -46,10 +62,10 @@ router.post("/verify-email", verifyEmail);
 router.post("/resend-verification-email", resendVerificationEmail);
 router.post("/request-password-reset", requestPasswordReset);
 router.post("/verify-otp", verifyOTP);
-router.post("/reset-password", resetPassword);
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.post("/app/login", appUserLogin);
+router.post("/reset-password", limiter, resetPassword);
+router.post("/register", registerLimiter, registerUser);
+router.post("/login", loginLimiter, loginUser);
+router.post("/app/login", loginLimiter, appUserLogin);
 
 // Secured routes
 router.post("/logout", verifyUser, logoutUser);
