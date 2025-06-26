@@ -54,7 +54,7 @@ export function AppSidebar({ user }: { user: User }) {
           <Link href="/">
             <Package className="h-6 w-6" />
           </Link>
-          <span className="font-bold">App Admin Dashboard</span>
+          <span className="font-bold">Admin Dashboard</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -78,12 +78,21 @@ export function AppSidebar({ user }: { user: User }) {
           <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {" "}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/users")}>
+                  <Link href="/admin/users">
+                    <Users className="h-4 w-4" />
+                    <span>Users</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive("/admin/app/users")}
+                  isActive={isActive("/admin/app-users")}
                 >
-                  <Link href="/admin/app/users">
+                  <Link href="/admin/app-users">
                     <Users className="h-4 w-4" />
                     <span>App Users</span>
                   </Link>
@@ -92,9 +101,9 @@ export function AppSidebar({ user }: { user: User }) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive("/admin/app/payments")}
+                  isActive={isActive("/admin/payments")}
                 >
-                  <Link href="/admin/app/payments">
+                  <Link href="/admin/payments">
                     <CreditCard className="h-4 w-4" />
                     <span>Payments</span>
                   </Link>
@@ -103,9 +112,9 @@ export function AppSidebar({ user }: { user: User }) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive("/admin/app/manage-pricing")}
+                  isActive={isActive("/admin/manage-pricing")}
                 >
-                  <Link href="/admin/app/manage-pricing">
+                  <Link href="/admin/manage-pricing">
                     <Package className="h-4 w-4" />
                     <span>Manage Pricing</span>
                   </Link>
@@ -115,14 +124,14 @@ export function AppSidebar({ user }: { user: User }) {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel>User</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                  <Link href="/admin">
+                <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
+                  <Link href="/dashboard">
                     <Package className="h-4 w-4" />
-                    <span>Admin Dashboard</span>
+                    <span>User Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

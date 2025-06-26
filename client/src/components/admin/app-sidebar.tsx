@@ -108,21 +108,6 @@ export function AppSidebar({ user }: { user: User }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>App Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/app")}>
-                  <Link href="/admin/app">
-                    <Package className="h-4 w-4" />
-                    <span>App Admin Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-2">
         <div className="flex items-center justify-between">

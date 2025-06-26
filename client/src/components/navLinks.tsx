@@ -1,6 +1,6 @@
 "use client";
 
-import { Dock, DollarSign, Home, Laptop, Sparkles } from "lucide-react";
+import { Dock, DollarSign, Home, Laptop } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -23,11 +23,6 @@ export function NavLinks() {
       href: "/pricing",
       label: "Pricing",
       icon: <DollarSign className="h-5 w-5 inline-block mr-1" />,
-    },
-    {
-      href: "/generate",
-      label: "Try in Web",
-      icon: <Sparkles className="h-5 w-5 inline-block mr-2" />,
     },
     {
       href: "/docs",

@@ -1,6 +1,6 @@
 {
   "name": "gen-meta-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "This application generates tags and titles for images using machine learning algorithms.",
   "keywords": [
     "keywords",
