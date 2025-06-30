@@ -34,7 +34,7 @@ export interface GitHubAsset {
 export async function getLatestRelease() {
   try {
     const response = await fetch(
-      `https://api.github.com/repos/aminurjs/genmeta-app/releases/latest`
+      `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`
     );
     if (!response.ok) throw new Error("Failed to fetch release info");
     const data = await response.json();
