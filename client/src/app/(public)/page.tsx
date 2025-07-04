@@ -5,18 +5,17 @@ import {
   ShieldCheckIcon,
   CpuChipIcon,
   ArrowPathIcon,
-  UserGroupIcon,
   Cog6ToothIcon,
   FolderIcon,
   ListBulletIcon,
   ChartBarIcon,
-  CloudArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import {
   ArrowRight,
   CheckCircle,
   Download,
   MousePointerClick,
+  Crown,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,33 +24,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banner } from "@/components/main/banner";
+import { getLatestRelease } from "./download/page";
 
 export interface GitHubAsset {
   name: string;
   browser_download_url: string;
-}
-
-export async function getLatestRelease() {
-  try {
-    const response = await fetch(
-      `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`
-    );
-    if (!response.ok) throw new Error("Failed to fetch release info");
-    const data = await response.json();
-
-    // Find the Windows executable in the assets
-    const windowsExe = data.assets.find(
-      (asset: GitHubAsset) =>
-        asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe")
-    );
-    return {
-      version: data.tag_name,
-      downloadUrl: windowsExe?.browser_download_url,
-    };
-  } catch (error) {
-    console.error("Error fetching release info:", error);
-    return null;
-  }
 }
 
 export default async function HomePage() {
@@ -65,7 +42,6 @@ export default async function HomePage() {
       <section className="relative pt-24 pb-32 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
-
         <div className="max-w-7xl mx-auto text-center px-4 relative">
           <Badge
             variant="outline"
@@ -76,20 +52,17 @@ export default async function HomePage() {
             </span>
             <span>Version {version} now available</span>
           </Badge>
-
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 tracking-tight">
             Supercharge Your Images with{" "}
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400">
               AI Metadata
             </span>
           </h1>
-
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Automatically generate accurate titles, descriptions, and keywords
-            for your images using advanced AI. Boost discoverability and SEO
-            effortlessly.
+            Powerful desktop application that automatically generates accurate
+            titles, descriptions, and keywords for your images using advanced AI
+            technology.
           </p>
-
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Button
               size="lg"
@@ -107,24 +80,22 @@ export default async function HomePage() {
                 </Badge>
               </a>
             </Button>
-
             <Button
               size="lg"
               variant="outline"
-              className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 group"
+              className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 group bg-transparent"
               asChild
             >
-              <Link href="/generate/v2">
-                Try Web Version
+              <Link href="/pricing">
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Pro
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>
           </div>
-
           <p className="text-sm text-muted-foreground">
-            Compatible with Windows 10/11 (64-bit)
+            Compatible with Windows 10/11 (64-bit) • Free version available
           </p>
-
           <Banner />
         </div>
       </section>
@@ -140,18 +111,17 @@ export default async function HomePage() {
               Features
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Powerful AI Tools for Your Images
+              Powerful Desktop AI Tools
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to enhance your image metadata and improve
-              discoverability
+              Everything you need to enhance your image metadata with our
+              desktop application
             </p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-8">
             <FeatureCard
               title="AI-Powered Analysis"
-              description="Generate accurate titles, descriptions, and SEO-optimized keywords using Gemini AI technology."
+              description="Generate accurate titles, descriptions, and SEO-optimized keywords using Gemini AI technology directly on your desktop."
               icon={SparklesIcon}
             />
             <FeatureCard
@@ -160,12 +130,12 @@ export default async function HomePage() {
               icon={ArrowPathIcon}
             />
             <FeatureCard
-              title="Flexible Export"
-              description="Export metadata to CSV or save directly to processed images with embedded metadata for seamless workflow."
-              icon={DocumentTextIcon}
+              title="Local Processing"
+              description="All processing happens on your desktop with secure API connections. Your images never leave your computer."
+              icon={ShieldCheckIcon}
             />
             <FeatureCard
-              title="Smart Keyword Generation"
+              title="Smart Keywords"
               description="Get relevant, SEO-optimized keywords that improve discoverability across platforms and search engines."
               icon={ListBulletIcon}
             />
@@ -175,9 +145,9 @@ export default async function HomePage() {
               icon={Cog6ToothIcon}
             />
             <FeatureCard
-              title="Cloud Integration"
-              description="Seamlessly save your metadata to cloud services or export for use in other applications."
-              icon={CloudArrowUpIcon}
+              title="Export Options"
+              description="Export metadata to CSV or save directly to processed images with embedded metadata for seamless workflow."
+              icon={DocumentTextIcon}
             />
           </div>
         </div>
@@ -186,7 +156,6 @@ export default async function HomePage() {
       {/* How It Works Section */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
-
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <Badge
@@ -199,36 +168,35 @@ export default async function HomePage() {
               Four Simple Steps to Get Started
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Begin enhancing your images in minutes with our intuitive workflow
+              Begin enhancing your images in minutes with our intuitive desktop
+              application
             </p>
           </div>
-
           <div className="relative">
             <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-violet-200 via-indigo-300 to-violet-200 dark:from-violet-900 dark:via-indigo-800 dark:to-violet-900 transform -translate-y-1/2 z-0"></div>
-
             <div className="grid md:grid-cols-4 gap-8 relative z-10">
               <StepCard
                 number="1"
-                title="Configure"
-                description="Set up your API key and preferences in Settings"
+                title="Install & Configure"
+                description="Download and install GenMeta, then set up your API key in Settings"
                 icon={Cog6ToothIcon}
               />
               <StepCard
                 number="2"
-                title="Select"
-                description="Choose your images directory using Browse"
+                title="Select Images"
+                description="Choose your images directory using the Browse button"
                 icon={FolderIcon}
               />
               <StepCard
                 number="3"
-                title="Generate"
+                title="Generate Metadata"
                 description="Start AI processing with just a single click"
                 icon={CpuChipIcon}
               />
               <StepCard
                 number="4"
-                title="Review"
-                description="View results and access processed images"
+                title="Export Results"
+                description="View results and export processed images with metadata"
                 icon={MousePointerClick}
               />
             </div>
@@ -247,20 +215,17 @@ export default async function HomePage() {
               Customization
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Powerful Settings for Every Need
+              Flexible Configuration Options
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Tailor GenMeta to your specific workflow with flexible
-              configuration options
+              Tailor GenMeta desktop app to your specific workflow needs
             </p>
           </div>
-
           <Tabs defaultValue="api" className="w-full max-w-4xl mx-auto">
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="api">API Configuration</TabsTrigger>
               <TabsTrigger value="output">Output Settings</TabsTrigger>
             </TabsList>
-
             <TabsContent
               value="api"
               className="p-6 bg-card rounded-xl border border-border shadow-sm"
@@ -277,19 +242,20 @@ export default async function HomePage() {
                     icon={<CheckCircle className="w-5 h-5 text-green-500" />}
                   />
                   <SettingItem
-                    title="User Authentication"
-                    description="Secure access with user ID validation"
-                    icon={<UserGroupIcon className="w-5 h-5 text-violet-500" />}
+                    title="Secure Processing"
+                    description="All API calls are made securely from your desktop application"
+                    icon={
+                      <ShieldCheckIcon className="w-5 h-5 text-violet-500" />
+                    }
                   />
                   <SettingItem
-                    title="Premium API Options"
-                    description="Unlock faster processing and additional features"
+                    title="Rate Limiting"
+                    description="Built-in rate limiting to respect API quotas and limits"
                     icon={<ChartBarIcon className="w-5 h-5 text-violet-500" />}
                   />
                 </div>
               </div>
             </TabsContent>
-
             <TabsContent
               value="output"
               className="p-6 bg-card rounded-xl border border-border shadow-sm"
@@ -331,37 +297,35 @@ export default async function HomePage() {
       {/* Bulk Operations Section */}
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
-
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <Badge
               variant="outline"
               className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800"
             >
-              Efficiency
+              Desktop Power
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Streamlined Bulk Operations
+              Professional Desktop Features
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Process multiple images at once with powerful batch tools
+              Powerful batch processing capabilities built for professionals
             </p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-8">
             <BulkFeatureCard
-              title="Unlimited Generation"
-              description="Generate and edit metadata for an unlimited number of images without any restrictions."
-              icon={CloudArrowUpIcon}
+              title="Unlimited Processing"
+              description="Process unlimited images with no restrictions. Perfect for large photo libraries and professional workflows."
+              icon={ArrowPathIcon}
             />
             <BulkFeatureCard
-              title="Meta Included JPG, PNG, and CSV Exports"
-              description="Export processed images with embedded metadata or download all metadata neatly organized in a CSV file."
+              title="Multiple Export Formats"
+              description="Export processed images with embedded metadata or download all metadata organized in CSV format."
               icon={DocumentTextIcon}
             />
             <BulkFeatureCard
-              title="Custom Order Keywords"
-              description="Easily add and arrange keywords across all images to maintain consistent and optimized tagging."
+              title="Custom Keywords"
+              description="Add and arrange custom keywords across all images to maintain consistent and optimized tagging."
               icon={ListBulletIcon}
             />
           </div>
@@ -386,10 +350,9 @@ export default async function HomePage() {
               workflow
             </p>
           </div>
-
           <div className="grid md:grid-cols-3 gap-8">
             <TestimonialCard
-              quote="GenMeta has saved me countless hours of manual metadata entry. The AI is surprisingly accurate!"
+              quote="GenMeta desktop app has saved me countless hours of manual metadata entry. The AI is surprisingly accurate!"
               author="Sarah J."
               role="Professional Photographer"
             />
@@ -399,7 +362,7 @@ export default async function HomePage() {
               role="Stock Photographer"
             />
             <TestimonialCard
-              quote="The bulk processing feature is a game-changer for managing large image libraries."
+              quote="The bulk processing feature is a game-changer for managing large image libraries on my desktop."
               author="Elena R."
               role="Digital Marketing Manager"
             />
@@ -411,7 +374,6 @@ export default async function HomePage() {
       <section className="py-24 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
-
         <div className="max-w-4xl mx-auto text-center px-4">
           <Badge
             variant="outline"
@@ -423,29 +385,30 @@ export default async function HomePage() {
             Ready to Transform Your Images?
           </h2>
           <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-            Join thousands of users who are already enhancing their images with
-            our AI-powered platform.
+            Download our powerful desktop application and start enhancing your
+            images with AI-powered metadata generation.
           </p>
-
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
               className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
               asChild
             >
-              <Link href="/generate/v2">Start Free Trial</Link>
-            </Button>
-
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30"
-              asChild
-            >
               <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
                 <Download className="w-5 h-5 mr-2" />
                 Download Desktop App
               </a>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 bg-transparent"
+              asChild
+            >
+              <Link href="/pricing">
+                <Crown className="w-5 h-5 mr-2" />
+                View Pricing Plans
+              </Link>
             </Button>
           </div>
         </div>
@@ -605,8 +568,9 @@ export const Footer = () => {
               </Link>
             </div>
             <p className="text-muted-foreground text-sm">
-              Transform your images with advanced AI technology and
-              professional-grade metadata tools for better discoverability.
+              Transform your images with our powerful desktop application
+              featuring advanced AI technology and professional-grade metadata
+              tools.
             </p>
             <div className="flex space-x-4 mt-4">
               <a
@@ -674,20 +638,11 @@ export const Footer = () => {
             <ul className="space-y-3 text-muted-foreground">
               <li>
                 <Link
-                  href="/generate/v2"
+                  href="/docs"
                   className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center"
                 >
                   <ArrowRight className="w-3 h-3 mr-2" />
-                  Generate
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/help"
-                  className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center"
-                >
-                  <ArrowRight className="w-3 h-3 mr-2" />
-                  Help Center
+                  Docs
                 </Link>
               </li>
               <li>
@@ -697,6 +652,15 @@ export const Footer = () => {
                 >
                   <ArrowRight className="w-3 h-3 mr-2" />
                   Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/pricing"
+                  className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center"
+                >
+                  <ArrowRight className="w-3 h-3 mr-2" />
+                  Pricing
                 </Link>
               </li>
             </ul>

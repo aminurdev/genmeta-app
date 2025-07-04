@@ -26,9 +26,6 @@ export const signUpSchema = z
     name: z.string().min(1, {
       message: "Name is required.",
     }),
-    terms: z.boolean().refine((val) => val === true, {
-      message: "You must accept the terms and conditions.",
-    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match.",

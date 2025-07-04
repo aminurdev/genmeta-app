@@ -34,10 +34,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getBaseApi } from "@/services/image-services";
+import { Banner } from "@/components/main/banner";
 
 interface SubscriptionPlan {
   _id: string;
@@ -660,16 +660,8 @@ const PricingContent = () => {
               Powerful AI-Driven Experience
             </h2>
 
-            <div className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800 bg-gradient-to-b from-background to-violet-50/50 dark:from-background dark:to-violet-950/20 p-2 shadow-lg">
-              <div className="overflow-hidden rounded-lg">
-                <Image
-                  src="/Assets/app.png"
-                  alt="GenMeta App Preview"
-                  width={2000}
-                  height={1200}
-                  className="w-full rounded-lg shadow-md transition-transform duration-500 hover:scale-[1.02]"
-                />
-              </div>
+            <div>
+              <Banner />
             </div>
 
             <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">

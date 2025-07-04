@@ -27,7 +27,7 @@ export async function Navigation() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-5">
+        <div className="hidden lg:flex items-center gap-5">
           <NavLinks />
         </div>
 
@@ -36,7 +36,7 @@ export async function Navigation() {
           {user ? (
             <UserMenu user={user} />
           ) : (
-            <span className="hidden md:flex items-center gap-4">
+            <span className="hidden lg:flex items-center gap-4">
               <Button variant="outline" asChild>
                 <Link href="/login">Login</Link>
               </Button>
