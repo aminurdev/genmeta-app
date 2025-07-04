@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Banner } from "@/components/main/banner";
 
 export interface GitHubAsset {
   name: string;
@@ -33,7 +34,7 @@ export interface GitHubAsset {
 export async function getLatestRelease() {
   try {
     const response = await fetch(
-      `https://api.github.com/repos/aminurjs/genmeta-app/releases/latest`
+      `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`
     );
     if (!response.ok) throw new Error("Failed to fetch release info");
     const data = await response.json();
@@ -124,20 +125,7 @@ export default async function HomePage() {
             Compatible with Windows 10/11 (64-bit)
           </p>
 
-          <div className="mt-16 relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl blur-sm opacity-50"></div>
-            <div className="relative bg-card rounded-xl overflow-hidden shadow-2xl border border-violet-200 dark:border-violet-800">
-              <Image
-                src="/Assets/app.png"
-                alt="GenMeta App Preview"
-                width={2000}
-                height={1200}
-                className="w-full h-auto"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-          </div>
+          <Banner />
         </div>
       </section>
 
