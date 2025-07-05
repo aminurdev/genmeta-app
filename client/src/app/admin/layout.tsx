@@ -17,7 +17,7 @@ export default async function AdminLayout({
     <div>
       <SidebarProvider>
         <div className="flex min-h-screen">
-          <AppSidebar user={user} />
+          <AppSidebar user={user ?? undefined} />
           <div className="w-full">{children}</div>
         </div>
       </SidebarProvider>
