@@ -76,7 +76,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-4">
+    <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-4 w-full">
       <div className="w-full max-w-lg">
         <Card className="shadow-2xl border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
           <CardHeader className="space-y-4 pb-8">
@@ -256,7 +256,7 @@ const LoginForm = () => {
 const LoginFormWrapper = () => (
   <Suspense
     fallback={
-      <div className=" flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20">
+      <div className=" flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 w-full">
         <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm">
           <CardContent className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-violet-600" />

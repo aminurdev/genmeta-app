@@ -18,10 +18,10 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 
-export function NavMain({
-  items,
-}: {
+interface Props {
+  label: string;
   items: {
     title: string;
     url: string;
@@ -32,10 +32,13 @@ export function NavMain({
       url: string;
     }[];
   }[];
-}) {
+}
+
+export function NavMain({ label, items }: Props) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <Separator />
       <SidebarMenu>
         {items.map((item) => {
           const hasSubItems = item.items && item.items.length > 0;

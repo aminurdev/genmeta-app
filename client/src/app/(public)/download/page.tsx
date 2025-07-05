@@ -78,7 +78,7 @@ export default async function DownloadPage() {
       {/* Download Section */}
       <section className="py-5 bg-background">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="grid md:grid-cols-1 gap-8 max-w-md mx-auto">
+          <div className="grid md:grid-cols-1 gap-8 mx-auto">
             <Card className="overflow-hidden border-2 border-violet-200 dark:border-violet-800 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-violet-50 dark:from-background dark:to-violet-950/20">
               <CardContent className="p-8 text-center">
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/20">

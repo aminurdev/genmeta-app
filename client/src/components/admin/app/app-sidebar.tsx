@@ -22,11 +22,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { DecodedToken, logout } from "@/services/auth-services";
+import { User, logout } from "@/services/auth-services";
 
-type User = DecodedToken | null;
+interface Props {
+  user?: User;
+}
 
-export function AppSidebar({ user }: { user: User }) {
+export function AppSidebar({ user }: Props) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {

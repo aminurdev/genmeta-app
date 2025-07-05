@@ -2,12 +2,15 @@
 
 import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { DecodedToken, logout } from "@/services/auth-services";
+import { logout } from "@/services/auth-services";
 import { useRouter } from "next/navigation";
+import { User } from "@/types/user";
 
-type User = DecodedToken | null;
+interface Props {
+  user?: User;
+}
 
-export function NavUser({ user }: { user: User }) {
+export function NavUser({ user }: Props) {
   const router = useRouter();
   const handleLogout = async () => {
     const result = await logout();

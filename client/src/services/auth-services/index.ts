@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { FieldValues } from "react-hook-form";
 import { apiRequest } from "../api";
 
-export interface DecodedToken {
+export interface User {
   userId: string;
   name: string;
   email: string;
@@ -158,7 +158,7 @@ export const getAccessToken = async () => {
 
   const isTokenExpired = (token: string): boolean => {
     try {
-      const decoded = jwtDecode<DecodedToken>(token);
+      const decoded = jwtDecode<User>(token);
       return decoded.exp * 1000 < Date.now();
     } catch {
       return true;
@@ -180,11 +180,11 @@ export const getAccessToken = async () => {
 
 export const getCurrentUser = async () => {
   let accessToken = (await cookies()).get("accessToken")?.value;
-  let decodedData: DecodedToken | null = null;
+  let decodedData: User | null = null;
 
   const isTokenExpired = (token: string): boolean => {
     try {
-      const decoded = jwtDecode<DecodedToken>(token);
+      const decoded = jwtDecode<User>(token);
       return decoded.exp * 1000 < Date.now();
     } catch {
       return true;
@@ -203,7 +203,7 @@ export const getCurrentUser = async () => {
 
   try {
     if (accessToken) {
-      decodedData = jwtDecode<DecodedToken>(accessToken);
+      decodedData = jwtDecode<User>(accessToken);
     }
     return decodedData;
   } catch (error: any) {
