@@ -1,5 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
-import { DynamicBreadcrumb } from "@/components/dashboard/dynamic-breadcrumb";
+import { DynamicBreadcrumb } from "@/components/dynamic-breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -17,7 +17,7 @@ export default async function RootLayout({
   return (
     <>
       <SidebarProvider>
-        <AppSidebar user={user ?? undefined} />
+        <AppSidebar user={user ?? undefined} type="user" />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 border-b">
             <div className="flex items-center gap-2 px-4">

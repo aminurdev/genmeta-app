@@ -5,7 +5,7 @@ const Login = () => {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <div className="flex justify-center items-center mb-5">
+      <div className="flex justify-center items-center my-5">
         <LoginForm />
       </div>
     </div>

@@ -11,7 +11,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Suspense } from "react";
 
 interface BreadcrumbConfig {
   [key: string]: {
@@ -59,7 +58,7 @@ function getBreadcrumbLabel(path: string, segment: string): string {
   return formatSegment(segment);
 }
 
-function BreadcrumbContainer() {
+export function DynamicBreadcrumb() {
   const pathname = usePathname();
 
   // Don't show breadcrumb on home page
@@ -117,11 +116,3 @@ function BreadcrumbContainer() {
     </Breadcrumb>
   );
 }
-
-export const DynamicBreadcrumb = () => {
-  return (
-    <Suspense fallback={null}>
-      <BreadcrumbContainer />
-    </Suspense>
-  );
-};

@@ -6,12 +6,10 @@ import DashboardStats from "@/components/admin/app/AdminDashboardStats";
 export default async function StatsPage() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="flex flex-col">
-        <main className="flex-1 px-4 sm:px-6 lg:px-8">
-          <Suspense fallback={<DashboardSkeleton />}>
-            <DashboardStats />
-          </Suspense>
-        </main>
+      <div className="flex flex-col px-5">
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardStats />
+        </Suspense>
       </div>
     </div>
   );

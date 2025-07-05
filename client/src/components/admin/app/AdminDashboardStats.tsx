@@ -204,7 +204,7 @@ export default function DashboardStats() {
   const processData = prepareChartData(stats.apiKeys.monthlyProcessList);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button variant="outline" onClick={fetchDashboardStats}>

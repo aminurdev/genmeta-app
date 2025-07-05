@@ -2,25 +2,27 @@ import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatisticsContent from "./statistics-content";
 import ApiKeyList from "./apikey-list";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 export default function StatisticsPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <div className="flex flex-col">
-        <header className="sticky top-0 z-10 border-b bg-background px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">API Key Statistics</h1>
-          </div>
-        </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <Suspense fallback={<StatisticsLoading />}>
-            <StatisticsContent />
-          </Suspense>
+      <div className="flex flex-col px-5">
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-2xl font-bold">App Users</h1>
+          <Button variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+        <Suspense fallback={<StatisticsLoading />}>
+          <StatisticsContent />
+        </Suspense>
 
-          <Suspense fallback={<ApiKeyListLoading />}>
-            <ApiKeyList />
-          </Suspense>
-        </main>
+        <Suspense fallback={<ApiKeyListLoading />}>
+          <ApiKeyList />
+        </Suspense>
       </div>
     </div>
   );
