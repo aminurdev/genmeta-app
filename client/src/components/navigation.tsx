@@ -40,8 +40,8 @@ export function Navigation({ user }: NavigationProps) {
         <div
           className={`mx-auto flex items-center justify-between px-4 transition-all duration-300 ease-in-out ${
             isScrolled
-              ? "h-12 md:h-12 max-w-screen-lg" // Smaller height and width when scrolled
-              : "h-20 md:h-24 max-w-screen-xl" // Larger height and width initially
+              ? "h-12 md:h-12 max-w-screen-xl" // Smaller height and width when scrolled
+              : "h-20 md:h-24 max-w-screen-2xl" // Larger height and width initially
           }`}
         >
           {/* Logo */}

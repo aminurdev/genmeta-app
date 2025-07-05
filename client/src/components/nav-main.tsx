@@ -38,7 +38,7 @@ export function NavMain({ label, items }: Props) {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
-      <Separator />
+      <Separator className="mb-2" />
       <SidebarMenu>
         {items.map((item) => {
           const hasSubItems = item.items && item.items.length > 0;
