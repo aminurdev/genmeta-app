@@ -3,8 +3,8 @@ import ApiError from "../../utils/api.error.js";
 import { executePayment } from "../bkash/bkash.service.js";
 import { User } from "../../models/user.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
-import { ApiKey } from "../../models/appApiKey.model.js";
-import { generateApiKey } from "../../controllers/appApiKey.controller.js";
+import { AppKey } from "../../models/appKey.model.js";
+import { generateAppKey } from "../../controllers/appKey.controller.js";
 import { PromoCode } from "../../models/promocode.model.js";
 import { AppPricing } from "../../models/appPricing.model.js";
 
@@ -21,11 +21,11 @@ export const fetchAppUserData = async (username) => {
       throw new ApiError(400, "Username is required");
     }
 
-    const apiKey = await ApiKey.findOne({ username }).select(
+    const appKey = await AppKey.findOne({ username }).select(
       "username key expiresAt isActive createdAt status"
     );
 
-    return apiKey;
+    return appKey;
   } catch (error) {
     throw new ApiError(
       error.response?.status || 500,
@@ -138,17 +138,17 @@ const updatePlan = async (userId, planId) => {
       expirationDate.setHours(23, 59, 59, 999);
     }
 
-    let apiKey = await ApiKey.findOne({ userId });
+    let appKey = await AppKey.findOne({ userId });
 
-    if (!apiKey) {
+    if (!appKey) {
       // Create new API key if one doesn't exist
-      const newApiKey = generateApiKey();
+      const newAppKey = generateAppKey();
       const today = new Date().toISOString().split("T")[0];
 
-      apiKey = await ApiKey.create({
+      appKey = await AppKey.create({
         userId: user._id,
         username: user.name || user.email.split("@")[0] || "User",
-        key: newApiKey,
+        key: newAppKey,
         plan: {
           type: planType,
           id: selectedPlan._id.toString(),
@@ -176,51 +176,51 @@ const updatePlan = async (userId, planId) => {
       if (planType === "subscription") {
         // If existing plan expired, set new expiration date
         // Otherwise, extend current expiration date
-        const isExpired = !apiKey.expiresAt || now > apiKey.expiresAt;
+        const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
 
         if (isExpired) {
-          apiKey.expiresAt = expirationDate;
-        } else if (apiKey.expiresAt) {
-          const newExpiresAt = new Date(apiKey.expiresAt);
+          appKey.expiresAt = expirationDate;
+        } else if (appKey.expiresAt) {
+          const newExpiresAt = new Date(appKey.expiresAt);
           newExpiresAt.setDate(
             newExpiresAt.getDate() + selectedPlan.planDuration
           );
           newExpiresAt.setHours(23, 59, 59, 999);
-          apiKey.expiresAt = newExpiresAt;
+          appKey.expiresAt = newExpiresAt;
         }
 
-        apiKey.credit = Infinity;
+        appKey.credit = Infinity;
       } else if (planType === "credit") {
         // Add credits to existing balance
-        const currentCredit = isFinite(apiKey.credit) ? apiKey.credit : 0;
-        apiKey.credit = currentCredit + (selectedPlan.credit || 0);
-        apiKey.expiresAt = undefined; // Credit plans don't expire
+        const currentCredit = isFinite(appKey.credit) ? appKey.credit : 0;
+        appKey.credit = currentCredit + (selectedPlan.credit || 0);
+        appKey.expiresAt = undefined; // Credit plans don't expire
       }
 
       // Update plan details
-      apiKey.plan = {
+      appKey.plan = {
         type: planType,
         id: selectedPlan._id.toString(),
       };
 
       // Ensure API key is active
-      apiKey.isActive = true;
-      apiKey.status = "active";
+      appKey.isActive = true;
+      appKey.status = "active";
 
       // If previously suspended, clear suspension
-      if (apiKey.suspendedAt) {
-        apiKey.suspendedAt = null;
+      if (appKey.suspendedAt) {
+        appKey.suspendedAt = null;
       }
 
-      await apiKey.save();
+      await appKey.save();
 
       logger.info("Existing API key updated with new plan", {
         userId: user._id.toString(),
         email: user.email,
         planType,
         planName: selectedPlan.name,
-        credit: apiKey.credit,
-        expiresAt: apiKey.expiresAt,
+        credit: appKey.credit,
+        expiresAt: appKey.expiresAt,
       });
     }
 

@@ -1,4 +1,4 @@
-import { ApiKey } from "../models/appApiKey.model.js";
+import { AppKey } from "../models/appKey.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -10,7 +10,7 @@ export const getOverview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   const [apiKey, user, payments] = await Promise.all([
-    ApiKey.findOne({ userId }),
+    AppKey.findOne({ userId }),
     User.findById(userId),
     AppPayment.find({ userId }).sort({ createdAt: -1 }),
   ]);
@@ -103,7 +103,7 @@ export const getProfile = asyncHandler(async (req, res) => {
 
   const [user, apiKey] = await Promise.all([
     User.findById(userId).select("-password -__v"),
-    ApiKey.findOne({ userId }),
+    AppKey.findOne({ userId }),
   ]);
 
   if (!user) {

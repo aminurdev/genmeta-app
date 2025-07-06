@@ -1,4 +1,3 @@
-import { ApiKey } from "../models/appApiKey.model.js";
 import crypto from "crypto";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -9,8 +8,9 @@ import mongoose from "mongoose";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
 import config from "../config/index.js";
+import { AppKey } from "../models/appKey.model.js";
 
-export function generateApiKey() {
+export function generateAppKey() {
   const buffer = crypto.randomBytes(32);
   const timestamp = Date.now().toString();
   const uuid = uuidv4();
@@ -22,7 +22,7 @@ export function generateApiKey() {
   return crypto.createHash("sha256").update(combined).digest("hex");
 }
 
-const createApiKey = asyncHandler(async (req, res) => {
+const createAppKey = asyncHandler(async (req, res) => {
   const { username, expiryDays = 3, plan = "free" } = req.body;
 
   if (!username) {
@@ -38,8 +38,8 @@ const createApiKey = asyncHandler(async (req, res) => {
   const userId = user._id;
 
   // Prevent duplicate API key for user
-  const existingApiKey = await ApiKey.findOne({ userId });
-  if (existingApiKey) {
+  const existingAppKey = await AppKey.findOne({ userId });
+  if (existingAppKey) {
     throw new ApiError(400, "This user already has an API key.");
   }
 
@@ -82,10 +82,10 @@ const createApiKey = asyncHandler(async (req, res) => {
   }
 
   // Create new API key document
-  const newApiKey = new ApiKey({
+  const newAppKey = new AppKey({
     userId,
     username,
-    key: generateApiKey(),
+    key: generateAppKey(),
     expiresAt,
     plan: planObject,
     credit,
@@ -95,19 +95,19 @@ const createApiKey = asyncHandler(async (req, res) => {
     dailyProcess: new Map([[today, 0]]),
   });
 
-  await newApiKey.save();
+  await newAppKey.save();
 
   return new ApiResponse(201, true, "API key created successfully.", {
-    apiKey: newApiKey.key,
-    expiresAt: newApiKey.expiresAt,
-    plan: newApiKey.plan,
+    appKey: newAppKey.key,
+    expiresAt: newAppKey.expiresAt,
+    plan: newAppKey.plan,
     username,
-    isActive: newApiKey.isActive,
-    credit: newApiKey.credit,
+    isActive: newAppKey.isActive,
+    credit: newAppKey.credit,
   }).send(res);
 });
 
-const updateApiKey = asyncHandler(async (req, res) => {
+const updateAppKey = asyncHandler(async (req, res) => {
   const { username, plan, expiryDays, credit } = req.body;
 
   if (!username) {
@@ -121,8 +121,8 @@ const updateApiKey = asyncHandler(async (req, res) => {
     );
   }
 
-  const apiKey = await ApiKey.findOne({ username });
-  if (!apiKey) {
+  const appKey = await AppKey.findOne({ username });
+  if (!appKey) {
     throw new ApiError(404, "API key not found");
   }
 
@@ -138,60 +138,60 @@ const updateApiKey = asyncHandler(async (req, res) => {
     }
 
     // Format the plan object correctly
-    apiKey.plan = typeof plan === "object" ? plan : { type: plan };
+    appKey.plan = typeof plan === "object" ? plan : { type: plan };
 
     // If downgrading to free plan, handle accordingly
-    if (apiKey.plan.type === "free") {
-      apiKey.expiresAt = undefined;
-      apiKey.credit = 10;
-      apiKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
+    if (appKey.plan.type === "free") {
+      appKey.expiresAt = undefined;
+      appKey.credit = 10;
+      appKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
     }
   }
 
   // Update expiry date if provided and not a free plan
-  if (expiryDays && apiKey.plan.type !== "free") {
+  if (expiryDays && appKey.plan.type !== "free") {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays));
     expiresAt.setHours(23, 59, 59, 999);
-    apiKey.expiresAt = expiresAt;
+    appKey.expiresAt = expiresAt;
   }
 
   // Update credit if provided
   if (credit !== undefined) {
-    apiKey.credit = parseInt(credit);
+    appKey.credit = parseInt(credit);
   }
 
-  await apiKey.save();
+  await appKey.save();
 
   return new ApiResponse(200, true, "API key updated successfully", {
-    apiKey: apiKey.key,
-    expiresAt: apiKey.expiresAt,
-    plan: apiKey.plan,
-    username: apiKey.username,
-    isActive: apiKey.isActive,
-    credit: apiKey.credit,
+    appKey: appKey.key,
+    expiresAt: appKey.expiresAt,
+    plan: appKey.plan,
+    username: appKey.username,
+    isActive: appKey.isActive,
+    credit: appKey.credit,
   }).send(res);
 });
 
-const deleteApiKey = asyncHandler(async (req, res) => {
+const deleteAppKey = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
   if (!username) {
     throw new ApiError(400, "Username is required");
   }
 
-  const apiKey = await ApiKey.findOneAndDelete({
+  const appKey = await AppKey.findOneAndDelete({
     username,
   });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found");
   }
 
   return new ApiResponse(200, true, "API key deleted successfully").send(res);
 });
 
-const getAllApiKeys = asyncHandler(async (req, res) => {
+const getAllAppKeys = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search = "" } = req.query;
 
   const query = {
@@ -203,16 +203,16 @@ const getAllApiKeys = asyncHandler(async (req, res) => {
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  const [apiKeys, total] = await Promise.all([
-    ApiKey.find(query)
+  const [appKeys, total] = await Promise.all([
+    AppKey.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit)),
-    ApiKey.countDocuments(query),
+    AppKey.countDocuments(query),
   ]);
 
   return new ApiResponse(200, true, "API keys retrieved successfully", {
-    apiKeys,
+    appKeys,
     total,
     currentPage: parseInt(page),
     totalPages: Math.ceil(total / limit),
@@ -226,50 +226,50 @@ const resetDevice = asyncHandler(async (req, res) => {
     throw new ApiError(400, "API key is required.");
   }
 
-  const apiKey = await ApiKey.findOne({ key });
+  const appKey = await AppKey.findOne({ key });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
-  apiKey.deviceId = null;
-  await apiKey.save();
+  appKey.deviceId = null;
+  await appKey.save();
 
   return new ApiResponse(200, true, "Device ID reset successfully.").send(res);
 });
 
-const updateApiKeyStatus = asyncHandler(async (req, res) => {
+const updateAppKeyStatus = asyncHandler(async (req, res) => {
   const { key, mode } = req.body;
 
   if (!key || !mode) {
     throw new ApiError(400, "API key and mode are required.");
   }
 
-  const apiKey = await ApiKey.findOne({ key });
+  const appKey = await AppKey.findOne({ key });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
   if (mode === "suspend") {
-    if (apiKey.status === "suspended") {
+    if (appKey.status === "suspended") {
       throw new ApiError(400, "API key is already suspended.");
     }
-    apiKey.status = "suspended";
-    apiKey.suspendedAt = new Date();
-    await apiKey.save();
+    appKey.status = "suspended";
+    appKey.suspendedAt = new Date();
+    await appKey.save();
     return new ApiResponse(200, true, "API key suspended successfully.").send(
       res
     );
   }
 
   if (mode === "reactivate") {
-    if (apiKey.status !== "suspended") {
+    if (appKey.status !== "suspended") {
       throw new ApiError(400, "API key is not suspended.");
     }
-    apiKey.status = "active";
-    apiKey.suspendedAt = null;
-    await apiKey.save();
+    appKey.status = "active";
+    appKey.suspendedAt = null;
+    await appKey.save();
     return new ApiResponse(200, true, "API key reactivated successfully.").send(
       res
     );
@@ -285,19 +285,19 @@ const addCredits = asyncHandler(async (req, res) => {
     throw new ApiError(400, "API key and credits are required.");
   }
 
-  const apiKey = await ApiKey.findOne({ key });
+  const appKey = await AppKey.findOne({ key });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
-  apiKey.credit += parseInt(credits);
-  await apiKey.save();
+  appKey.credit += parseInt(credits);
+  await appKey.save();
 
   return new ApiResponse(
     200,
     true,
-    `${credits} credits added successfully. New balance: ${apiKey.credit}`
+    `${credits} credits added successfully. New balance: ${appKey.credit}`
   ).send(res);
 });
 
@@ -311,10 +311,10 @@ const getStatistics = asyncHandler(async (req, res) => {
     avgProcessesPerKey,
     dailyNewKeys,
   ] = await Promise.all([
-    ApiKey.countDocuments(),
-    ApiKey.countDocuments({ isActive: true, status: "active" }),
-    ApiKey.countDocuments({ status: "suspended" }),
-    ApiKey.aggregate([
+    AppKey.countDocuments(),
+    AppKey.countDocuments({ isActive: true, status: "active" }),
+    AppKey.countDocuments({ status: "suspended" }),
+    AppKey.aggregate([
       {
         $group: {
           _id: "$plan.type",
@@ -322,7 +322,7 @@ const getStatistics = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    ApiKey.aggregate([
+    AppKey.aggregate([
       {
         $group: {
           _id: null,
@@ -330,7 +330,7 @@ const getStatistics = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    ApiKey.aggregate([
+    AppKey.aggregate([
       {
         $group: {
           _id: null,
@@ -338,7 +338,7 @@ const getStatistics = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    ApiKey.aggregate([
+    AppKey.aggregate([
       {
         $group: {
           _id: {
@@ -448,20 +448,20 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
     throw new ApiError(400, "API key is required");
   }
 
-  const apiKey = await ApiKey.findOne({ key }).populate(
+  const appKey = await AppKey.findOne({ key }).populate(
     "userId",
     "name email role createdAt"
   );
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "Invalid API key");
   }
 
   // Refresh daily credits for free plan
-  apiKey.refreshDailyCredits();
-  await apiKey.save();
+  appKey.refreshDailyCredits();
+  await appKey.save();
 
-  const user = apiKey.userId;
+  const user = appKey.userId;
 
   const payments = await AppPayment.find({ userId: user._id })
     .sort({ createdAt: -1 })
@@ -476,7 +476,7 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
   }));
 
   // Final response
-  const remainingCredit = apiKey.calculateCredit();
+  const remainingCredit = appKey.calculateCredit();
   const data = {
     user: {
       _id: user._id,
@@ -485,10 +485,10 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
       role: user.role,
       createdAt: user.createdAt,
     },
-    apiKey: {
-      ...apiKey.toObject(),
+    appKey: {
+      ...appKey.toObject(),
       credit: remainingCredit,
-      isValid: apiKey.isValid(),
+      isValid: appKey.isValid(),
     },
     payments: formattedPayments,
   };
@@ -527,22 +527,22 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
       : ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
 
   // === 2. API KEYS ===
-  const totalApiKeys = await ApiKey.countDocuments();
-  const activeApiKeys = await ApiKey.countDocuments({
+  const totalAppKeys = await AppKey.countDocuments();
+  const activeAppKeys = await AppKey.countDocuments({
     isActive: true,
     status: "active",
   });
-  const activePremiumKeys = await ApiKey.countDocuments({
+  const activePremiumKeys = await AppKey.countDocuments({
     isActive: true,
     status: "active",
     "plan.type": { $ne: "free" },
     expiresAt: { $gt: now },
   });
-  const newApiKeysThisMonth = await ApiKey.countDocuments({
+  const newAppKeysThisMonth = await AppKey.countDocuments({
     createdAt: { $gte: thisMonth },
   });
 
-  const apiKeys = await ApiKey.find({});
+  const appKeys = await AppKey.find({});
   const monthlyProcessList = {};
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -550,9 +550,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     monthlyProcessList[monthKey] = 0;
   }
 
-  apiKeys.forEach((apiKey) => {
-    if (!apiKey.monthlyProcess) return;
-    for (const [month, count] of apiKey.monthlyProcess.entries()) {
+  appKeys.forEach((appKey) => {
+    if (!appKey.monthlyProcess) return;
+    for (const [month, count] of appKey.monthlyProcess.entries()) {
       if (monthlyProcessList[month] !== undefined) {
         monthlyProcessList[month] += count;
       }
@@ -605,10 +605,10 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         growthPercentage: revenueGrowth,
         monthlyRevenueList,
       },
-      apiKeys: {
-        total: totalApiKeys,
-        newThisMonth: newApiKeysThisMonth,
-        active: activeApiKeys,
+      appKeys: {
+        total: totalAppKeys,
+        newThisMonth: newAppKeysThisMonth,
+        active: activeAppKeys,
         activePremium: activePremiumKeys,
         monthlyProcessList,
       },
@@ -625,7 +625,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
-const validateApiKey = asyncHandler(async (req, res) => {
+const validateAppKey = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
   const deviceId = req.header("x-device-id");
   const { processCount } = req.body;
@@ -647,31 +647,31 @@ const validateApiKey = asyncHandler(async (req, res) => {
     );
   }
 
-  const apiKey = await ApiKey.findOne({ key });
+  const appKey = await AppKey.findOne({ key });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
   // Check if API key is valid
-  if (!apiKey.isValid()) {
-    if (apiKey.status === "suspended") {
+  if (!appKey.isValid()) {
+    if (appKey.status === "suspended") {
       throw new ApiError(403, "Account has been suspended.");
     }
     throw new ApiError(403, "API key is not valid or active.");
   }
 
   // Set deviceId if not already set
-  if (!apiKey.deviceId) {
-    apiKey.deviceId = deviceId;
-    await apiKey.save();
-  } else if (apiKey.deviceId !== deviceId) {
+  if (!appKey.deviceId) {
+    appKey.deviceId = deviceId;
+    await appKey.save();
+  } else if (appKey.deviceId !== deviceId) {
     throw new ApiError(403, "Account is already used on another device.");
   }
 
   // Check if can process the request
-  if (!apiKey.canProcess(count)) {
-    const limit = apiKey.plan.type === "free" ? 10 : apiKey.credit;
+  if (!appKey.canProcess(count)) {
+    const limit = appKey.plan.type === "free" ? 10 : appKey.credit;
 
     throw new ApiError(
       429,
@@ -682,73 +682,73 @@ const validateApiKey = asyncHandler(async (req, res) => {
   // Calculate expiresIn only for non-free plans
   const now = new Date();
   const expiresIn =
-    apiKey.plan.type !== "free" && apiKey.expiresAt
+    appKey.plan.type !== "free" && appKey.expiresAt
       ? Math.max(
           0,
-          Math.floor((apiKey.expiresAt - now) / (1000 * 60 * 60 * 24))
+          Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
         )
       : null;
 
   const aiApiSecret =
-    apiKey.plan.type === "credit" ? config.geminiEncoderKey : null;
+    appKey.plan.type === "credit" ? config.geminiEncoderKey : null;
 
   return new ApiResponse(200, true, "API key is valid and process allowed.", {
-    username: apiKey.username,
-    plan: apiKey.plan,
-    totalProcess: apiKey.totalProcess,
-    expiresAt: apiKey.plan.type === "free" ? null : apiKey.expiresAt,
+    username: appKey.username,
+    plan: appKey.plan,
+    totalProcess: appKey.totalProcess,
+    expiresAt: appKey.plan.type === "free" ? null : appKey.expiresAt,
     expiresIn,
     aiApiSecret,
-    deviceId: apiKey.deviceId,
-    remainingCredit: apiKey.credit,
+    deviceId: appKey.deviceId,
+    remainingCredit: appKey.credit,
   }).send(res);
 });
 
-const getApiKeyStats = asyncHandler(async (req, res) => {
+const getAppKeyStats = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
 
   if (!key) {
     throw new ApiError(400, "API key is required.");
   }
 
-  const apiKey = await ApiKey.findOne({ key }).populate("userId", "name email");
+  const appKey = await AppKey.findOne({ key }).populate("userId", "name email");
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
   // Check if API key is valid and refresh daily credits if needed
-  const isValid = apiKey.isValid();
-  await apiKey.save();
+  const isValid = appKey.isValid();
+  await appKey.save();
 
   // Calculate expiresIn only for non-free plans
   const now = new Date();
   const expiresIn =
-    apiKey.plan.type !== "free" && apiKey.expiresAt
+    appKey.plan.type !== "free" && appKey.expiresAt
       ? Math.max(
           0,
-          Math.floor((apiKey.expiresAt - now) / (1000 * 60 * 60 * 24))
+          Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
         )
       : null;
   const encryptedKey = await AiAPI.findOne();
-  const aiApiKey =
-    apiKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
+  const aiAppKey =
+    appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
 
-  const remainingCredit = apiKey.calculateCredit();
+  const remainingCredit = appKey.calculateCredit();
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
-    plan: apiKey.plan,
-    username: apiKey.username,
-    status: apiKey.status,
+    plan: appKey.plan,
+    username: appKey.username,
+    status: appKey.status,
     isValid,
-    expiresAt: apiKey.plan.type === "free" ? null : apiKey.expiresAt,
+    expiresAt: appKey.plan.type === "free" ? null : appKey.expiresAt,
     expiresIn,
     credit: remainingCredit,
-    totalProcess: apiKey.totalProcess,
-    aiApiKey,
+    totalProcess: appKey.totalProcess,
+    aiAppKey,
     user: {
-      name: apiKey.userId?.name,
-      email: apiKey.userId?.email,
+      name: appKey.userId?.name,
+      email: appKey.userId?.email,
     },
   }).send(res);
 });
@@ -771,44 +771,44 @@ export const processApiUsage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Valid process count is required.");
   }
 
-  const apiKey = await ApiKey.findOne({ key });
+  const appKey = await AppKey.findOne({ key });
 
-  if (!apiKey) {
+  if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
   // Check if API key is valid before processing
-  if (!apiKey.isValid()) {
+  if (!appKey.isValid()) {
     throw new ApiError(403, "API key is not valid or active.");
   }
 
   // Try using credit and updating process stats
   try {
-    await apiKey.useCredit(count);
+    await appKey.useCredit(count);
   } catch (error) {
     throw new ApiError(429, error.message);
   }
 
   return new ApiResponse(200, true, "Credits used and processing counted.", {
-    plan: apiKey.plan,
-    remainingCredit: apiKey.calculateCredit(),
-    totalProcess: apiKey.totalProcess,
-    dailyProcess: Object.fromEntries(apiKey.dailyProcess),
-    monthlyProcess: Object.fromEntries(apiKey.monthlyProcess),
+    plan: appKey.plan,
+    remainingCredit: appKey.calculateCredit(),
+    totalProcess: appKey.totalProcess,
+    dailyProcess: Object.fromEntries(appKey.dailyProcess),
+    monthlyProcess: Object.fromEntries(appKey.monthlyProcess),
   }).send(res);
 });
 
 export {
   getAdminDashboardStats,
   getPaymentsHistory,
-  createApiKey,
-  updateApiKey,
-  deleteApiKey,
-  getAllApiKeys,
-  validateApiKey,
-  getApiKeyStats,
+  createAppKey,
+  updateAppKey,
+  deleteAppKey,
+  getAllAppKeys,
+  validateAppKey,
+  getAppKeyStats,
   resetDevice,
-  updateApiKeyStatus,
+  updateAppKeyStatus,
   getStatistics,
   getUserDetailsByKey,
   addCredits,

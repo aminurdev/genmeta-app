@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const apiKeySchema = new mongoose.Schema({
+const appKeySchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -71,7 +71,7 @@ const apiKeySchema = new mongoose.Schema({
 });
 
 // Refresh daily credits for free plan
-apiKeySchema.methods.refreshDailyCredits = function () {
+appKeySchema.methods.refreshDailyCredits = function () {
   const today = new Date().toISOString().split("T")[0];
   if (this.plan.type === "free" && this.lastCreditRefresh !== today) {
     this.credit = 10;
@@ -91,7 +91,7 @@ apiKeySchema.methods.refreshDailyCredits = function () {
 };
 
 // Check if API key is valid
-apiKeySchema.methods.isValid = function () {
+appKeySchema.methods.isValid = function () {
   if (!this.isActive || this.status !== "active") return false;
 
   // Check if subscription has expired and downgrade if needed
@@ -108,7 +108,7 @@ apiKeySchema.methods.isValid = function () {
 };
 
 // Downgrade plan
-apiKeySchema.methods.downgradeToPlan = function (newPlan) {
+appKeySchema.methods.downgradeToPlan = function (newPlan) {
   this.plan = { type: newPlan };
   if (newPlan === "free") {
     this.expiresAt = undefined;
@@ -118,7 +118,7 @@ apiKeySchema.methods.downgradeToPlan = function (newPlan) {
 };
 
 // Check if the key can process a request
-apiKeySchema.methods.canProcess = function (count = 1) {
+appKeySchema.methods.canProcess = function (count = 1) {
   if (!count || count < 1) return false;
 
   if (
@@ -141,7 +141,7 @@ apiKeySchema.methods.canProcess = function (count = 1) {
 };
 
 // Decrease credit (used in processing)
-apiKeySchema.methods.useCredit = async function (count = 1) {
+appKeySchema.methods.useCredit = async function (count = 1) {
   if (!this.canProcess(count)) {
     throw new Error("Not enough credit");
   }
@@ -157,7 +157,7 @@ apiKeySchema.methods.useCredit = async function (count = 1) {
 };
 
 // Increment process counts
-apiKeySchema.methods.incrementProcessCount = async function (count = 1) {
+appKeySchema.methods.incrementProcessCount = async function (count = 1) {
   this.totalProcess += count;
 
   const now = new Date();
@@ -197,7 +197,7 @@ apiKeySchema.methods.incrementProcessCount = async function (count = 1) {
 };
 
 // Calculate remaining credit (for credit plan)
-apiKeySchema.methods.calculateCredit = function () {
+appKeySchema.methods.calculateCredit = function () {
   if (this.plan.type === "credit") {
     return this.credit;
   } else if (this.plan.type === "subscription") {
@@ -209,4 +209,4 @@ apiKeySchema.methods.calculateCredit = function () {
   }
 };
 
-export const ApiKey = mongoose.model("ApiKey", apiKeySchema);
+export const AppKey = mongoose.model("AppKey", appKeySchema);

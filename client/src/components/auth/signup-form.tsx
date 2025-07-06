@@ -198,7 +198,7 @@ const SignUpForm = () => {
     return (
       <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-4 w-full">
         <div className="w-full max-w-lg">
-          <Card className="shadow-2xl border bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
+          <Card className="shadow-md border bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
             <CardHeader className="space-y-4 pb-8 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900/50 dark:to-indigo-900/50">
                 <Shield className="h-8 w-8 text-violet-600 dark:text-violet-400" />
@@ -306,7 +306,7 @@ const SignUpForm = () => {
   return (
     <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-4 w-full">
       <div className="w-full max-w-lg">
-        <Card className="shadow-2xl border bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
+        <Card className="shadow-md border bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
           <CardHeader className="space-y-4 pb-8">
             <div className="text-center">
               <CardTitle className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
@@ -540,7 +540,7 @@ const SignUpFormWrapper = () => (
   <Suspense
     fallback={
       <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 w-full">
-        <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
+        <Card className="w-full max-w-lg shadow-md border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
           <CardContent className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </CardContent>

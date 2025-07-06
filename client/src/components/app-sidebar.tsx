@@ -98,7 +98,7 @@ const adminSidebarData = [
   },
   {
     label: "User",
-    isForAdmin: false, // Optional; useful if you want to control visibility
+    isForAdmin: false,
     items: [
       {
         title: "User Dashboard",
@@ -115,6 +115,8 @@ export type AppSidebarProps = {
 };
 
 export function AppSidebar({ user, type }: AppSidebarProps) {
+  const sidebarData = type === "admin" ? adminSidebarData : userSidebarData;
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -123,27 +125,21 @@ export function AppSidebar({ user, type }: AppSidebarProps) {
       <Separator className="mb-2 -mt-px" />
 
       <SidebarContent>
-        {type === "user"
-          ? userSidebarData.map((section) => {
-              if (section.isForAdmin && user?.role !== "admin") return null;
-              return (
-                <NavMain
-                  key={section.label}
-                  label={section.label}
-                  items={section.items}
-                />
-              );
-            })
-          : adminSidebarData.map((section) => {
-              if (section.isForAdmin && user?.role !== "admin") return null;
-              return (
-                <NavMain
-                  key={section.label}
-                  label={section.label}
-                  items={section.items}
-                />
-              );
-            })}
+        {sidebarData.map((section) => {
+          const visibleItems = section.items.filter(() => {
+            return !section.isForAdmin || user?.role === "admin";
+          });
+
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <NavMain
+              key={section.label}
+              label={section.label}
+              items={visibleItems}
+            />
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="border-t p-2">

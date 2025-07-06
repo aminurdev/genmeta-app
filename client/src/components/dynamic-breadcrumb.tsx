@@ -12,19 +12,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-interface BreadcrumbConfig {
-  [key: string]: {
-    label: string;
-    href?: string;
-  };
-}
-
-// Configure custom labels for specific routes
-const breadcrumbConfig: BreadcrumbConfig = {
-  "/": { label: "Home" },
-  "/dashboard": { label: "Dashboard" },
-};
-
 // Helper function to format segment names
 function formatSegment(segment: string): string {
   // Remove hyphens and underscores, capitalize words
@@ -35,11 +22,6 @@ function formatSegment(segment: string): string {
 
 // Helper function to get breadcrumb label
 function getBreadcrumbLabel(path: string, segment: string): string {
-  // Check if there's a custom configuration for this path
-  if (breadcrumbConfig[path]) {
-    return breadcrumbConfig[path].label;
-  }
-
   // Check if the segment is a UUID or ID (numbers/letters combination)
   if (
     /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(

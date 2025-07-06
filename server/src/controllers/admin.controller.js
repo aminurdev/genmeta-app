@@ -1,4 +1,4 @@
-import { ApiKey } from "../models/appApiKey.model.js";
+import { AppKey } from "../models/appKey.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
@@ -30,22 +30,22 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
       : ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
 
   // === 2. API KEYS ===
-  const totalApiKeys = await ApiKey.countDocuments();
-  const activeApiKeys = await ApiKey.countDocuments({
+  const totalApiKeys = await AppKey.countDocuments();
+  const activeApiKeys = await AppKey.countDocuments({
     isActive: true,
     status: "active",
   });
-  const activePremiumKeys = await ApiKey.countDocuments({
+  const activePremiumKeys = await AppKey.countDocuments({
     isActive: true,
     status: "active",
     "plan.type": { $ne: "free" },
     expiresAt: { $gt: now },
   });
-  const newApiKeysThisMonth = await ApiKey.countDocuments({
+  const newApiKeysThisMonth = await AppKey.countDocuments({
     createdAt: { $gte: thisMonth },
   });
 
-  const apiKeys = await ApiKey.find({});
+  const appKeys = await AppKey.find({});
   const monthlyProcessList = {};
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -53,9 +53,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     monthlyProcessList[monthKey] = 0;
   }
 
-  apiKeys.forEach((apiKey) => {
-    if (!apiKey.monthlyProcess) return;
-    for (const [month, count] of apiKey.monthlyProcess.entries()) {
+  appKeys.forEach((appKey) => {
+    if (!appKey.monthlyProcess) return;
+    for (const [month, count] of appKey.monthlyProcess.entries()) {
       if (monthlyProcessList[month] !== undefined) {
         monthlyProcessList[month] += count;
       }
@@ -108,7 +108,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         growthPercentage: revenueGrowth,
         monthlyRevenueList,
       },
-      apiKeys: {
+      appKeys: {
         total: totalApiKeys,
         newThisMonth: newApiKeysThisMonth,
         active: activeApiKeys,

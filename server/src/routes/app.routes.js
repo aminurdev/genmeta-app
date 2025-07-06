@@ -1,12 +1,12 @@
 import express from "express";
 import {
-  createApiKey,
-  deleteApiKey,
-  getAllApiKeys,
-  updateApiKey,
-  validateApiKey,
-  getApiKeyStats,
-  updateApiKeyStatus,
+  createAppKey,
+  deleteAppKey,
+  getAllAppKeys,
+  updateAppKey,
+  validateAppKey,
+  getAppKeyStats,
+  updateAppKeyStatus,
   resetDevice,
   getStatistics,
   getPaymentsHistory,
@@ -14,24 +14,24 @@ import {
   getAdminDashboardStats,
   addCredits,
   processApiUsage,
-} from "../controllers/appApiKey.controller.js";
+} from "../controllers/appKey.controller.js";
 import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/apikey/get", authenticateAndVerifyAdmin, getAllApiKeys);
-router.post("/apikey/create", authenticateAndVerifyAdmin, createApiKey);
-router.put("/apikey/update", authenticateAndVerifyAdmin, updateApiKey);
+router.get("/apikey/get", authenticateAndVerifyAdmin, getAllAppKeys);
+router.post("/apikey/create", authenticateAndVerifyAdmin, createAppKey);
+router.put("/apikey/update", authenticateAndVerifyAdmin, updateAppKey);
 router.delete(
   "/apikey/delete/:username",
   authenticateAndVerifyAdmin,
-  deleteApiKey
+  deleteAppKey
 );
 router.put("/apikey/reset-device", authenticateAndVerifyAdmin, resetDevice);
 router.put(
   "/apikey/update-status",
   authenticateAndVerifyAdmin,
-  updateApiKeyStatus
+  updateAppKeyStatus
 );
 router.put("/apikey/add-credits", authenticateAndVerifyAdmin, addCredits);
 router.get("/apikey/statistics", authenticateAndVerifyAdmin, getStatistics);
@@ -51,8 +51,8 @@ router.get(
   getAdminDashboardStats
 );
 
-router.post("/apikey/validate", validateApiKey);
-router.get("/apikey/stats", getApiKeyStats);
+router.post("/apikey/validate", validateAppKey);
+router.get("/apikey/stats", getAppKeyStats);
 router.post("/apikey/uses", processApiUsage);
 
 export default router;

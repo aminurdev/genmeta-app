@@ -3,8 +3,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import ApiError from "../utils/api.error.js";
-import { ApiKey } from "../models/appApiKey.model.js";
-import { generateApiKey } from "./appApiKey.controller.js";
+import { AppKey } from "../models/appKey.model.js";
+import { generateAppKey } from "./appKey.controller.js";
 
 // Initiate Google OAuth Login
 const googleLoginAPP = asyncHandler(async (req, res, next) => {
@@ -480,7 +480,7 @@ const appUserLogin = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) throw new ApiError(401, "Invalid credentials");
 
-  const apiKeyDoc = await findOrCreateApiKey(user);
+  const appKeyDoc = await findOrCreateAppKey(user);
 
   return new ApiResponse(200, true, "Login successful", {
     user: {
@@ -489,14 +489,14 @@ const appUserLogin = asyncHandler(async (req, res) => {
       email: user.email,
       role: user.role,
     },
-    apiKey: apiKeyDoc.key,
+    appKey: appKeyDoc.key,
   }).send(res);
 });
 
 // For verifying Google user and generating key
 const verifyGoogle = asyncHandler(async (req, res) => {
   const user = req.user;
-  const apiKeyDoc = await findOrCreateApiKey(user);
+  const appKeyDoc = await findOrCreateAppKey(user);
 
   return new ApiResponse(200, true, "Login successful", {
     user: {
@@ -505,19 +505,19 @@ const verifyGoogle = asyncHandler(async (req, res) => {
       email: user.email,
       role: user.role,
     },
-    apiKey: apiKeyDoc.key,
+    appKey: appKeyDoc.key,
   }).send(res);
 });
 
 // Util to create or fetch API key
-const findOrCreateApiKey = async (user) => {
-  let apiKey = await ApiKey.findOne({ userId: user._id });
+const findOrCreateAppKey = async (user) => {
+  let appKey = await AppKey.findOne({ userId: user._id });
 
-  if (!apiKey) {
+  if (!appKey) {
     const plan = { type: "free" };
-    const key = generateApiKey();
+    const key = generateAppKey();
 
-    apiKey = await ApiKey.create({
+    appKey = await AppKey.create({
       userId: user._id,
       username: user.email,
       key,
@@ -527,7 +527,7 @@ const findOrCreateApiKey = async (user) => {
     });
   }
 
-  return apiKey;
+  return appKey;
 };
 
 export { appUserLogin, googleLoginAPP, googleCallback, verifyGoogle };
