@@ -9,6 +9,7 @@ import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
 import config from "../config/index.js";
 import { AppKey } from "../models/appKey.model.js";
+import { AppPricing } from "../models/appPricing.model.js";
 
 export function generateAppKey() {
   const buffer = crypto.randomBytes(32);
@@ -203,13 +204,28 @@ const getAllAppKeys = asyncHandler(async (req, res) => {
 
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  const [appKeys, total] = await Promise.all([
+  const [appKeysRaw, total] = await Promise.all([
     AppKey.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit)),
     AppKey.countDocuments(query),
   ]);
+
+  // Enrich each appKey with plan.name (if plan.id exists)
+  const appKeys = await Promise.all(
+    appKeysRaw.map(async (appKey) => {
+      const enrichedPlan = { ...appKey.plan };
+      if (appKey.plan?.id) {
+        const plan = await AppPricing.findById(appKey.plan.id).select("name");
+        enrichedPlan.name = plan?.name || null;
+      }
+      return {
+        ...appKey.toObject(),
+        plan: enrichedPlan,
+      };
+    })
+  );
 
   return new ApiResponse(200, true, "API keys retrieved successfully", {
     appKeys,

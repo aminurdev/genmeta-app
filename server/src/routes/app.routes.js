@@ -18,24 +18,24 @@ import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/apikey/get", authenticateAndVerifyAdmin, getAllAppKeys);
-router.post("/apikey/create", authenticateAndVerifyAdmin, createAppKey);
-router.put("/apikey/update", authenticateAndVerifyAdmin, updateAppKey);
+router.get("/appkey/get", authenticateAndVerifyAdmin, getAllAppKeys);
+router.post("/appkey/create", authenticateAndVerifyAdmin, createAppKey);
+router.put("/appkey/update", authenticateAndVerifyAdmin, updateAppKey);
 router.delete(
-  "/apikey/delete/:username",
+  "/appkey/delete/:username",
   authenticateAndVerifyAdmin,
   deleteAppKey
 );
-router.put("/apikey/reset-device", authenticateAndVerifyAdmin, resetDevice);
+router.put("/appkey/reset-device", authenticateAndVerifyAdmin, resetDevice);
 router.put(
-  "/apikey/update-status",
+  "/appkey/update-status",
   authenticateAndVerifyAdmin,
   updateAppKeyStatus
 );
-router.put("/apikey/add-credits", authenticateAndVerifyAdmin, addCredits);
-router.get("/apikey/statistics", authenticateAndVerifyAdmin, getStatistics);
+router.put("/appkey/add-credits", authenticateAndVerifyAdmin, addCredits);
+router.get("/appkey/statistics", authenticateAndVerifyAdmin, getStatistics);
 router.get(
-  "/apikey/user/details/:key",
+  "/appkey/user/details/:key",
   authenticateAndVerifyAdmin,
   getUserDetailsByKey
 );
@@ -45,8 +45,8 @@ router.get(
   getPaymentsHistory
 );
 
-router.post("/apikey/validate", validateAppKey);
-router.get("/apikey/stats", getAppKeyStats);
-router.post("/apikey/uses", processApiUsage);
+router.post("/appkey/validate", validateAppKey);
+router.get("/appkey/stats", getAppKeyStats);
+router.post("/appkey/uses", processApiUsage);
 
 export default router;

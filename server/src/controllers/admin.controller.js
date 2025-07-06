@@ -30,12 +30,12 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
       : ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
 
   // === 2. API KEYS ===
-  const totalApiKeys = await AppKey.countDocuments();
-  const activeApiKeys = await AppKey.countDocuments({
+  const totalAppKeys = await AppKey.countDocuments();
+  const activeAppKeys = await AppKey.countDocuments({
     isActive: true,
     status: "active",
   });
-  const newApiKeysThisMonth = await AppKey.countDocuments({
+  const newAppKeysThisMonth = await AppKey.countDocuments({
     createdAt: { $gte: thisMonth },
   });
 
@@ -118,9 +118,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         monthlyRevenueList,
       },
       appKeys: {
-        total: totalApiKeys,
-        newThisMonth: newApiKeysThisMonth,
-        active: activeApiKeys,
+        total: totalAppKeys,
+        newThisMonth: newAppKeysThisMonth,
+        active: activeAppKeys,
         activePremium: activePremiumCount,
         subscriptionPlanCount,
         creditPlanCount,

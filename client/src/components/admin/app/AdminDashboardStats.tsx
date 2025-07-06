@@ -38,10 +38,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  AdminOverview,
-  getAdminOverview,
-} from "@/services/admin-dashboard/intex";
+import { AdminOverview, getAdminOverview } from "@/services/admin-dashboard";
 
 export default function DashboardStats() {
   const [loading, setLoading] = useState(true);

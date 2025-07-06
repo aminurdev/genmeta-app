@@ -31,7 +31,7 @@ export default function StatisticsContent() {
       try {
         const baseApi = await getBaseApi();
         const accessToken = await getAccessToken();
-        const response = await fetch(`${baseApi}/app/apikey/statistics`, {
+        const response = await fetch(`${baseApi}/app/appkey/statistics`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${accessToken}`,

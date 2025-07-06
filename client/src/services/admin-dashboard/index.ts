@@ -51,3 +51,12 @@ export const getAdminOverview = async (): Promise<AdminOverview> => {
 
   return result;
 };
+
+export const getAppUsers = async () => {
+  const result = await apiRequest({
+    method: "GET",
+    endpoint: "/app/appkey/get",
+  });
+
+  return result;
+};

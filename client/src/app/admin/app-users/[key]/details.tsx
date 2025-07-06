@@ -157,7 +157,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const accessToken = await getAccessToken();
 
       const response = await fetch(
-        `${baseApi}/app/apikey/user/details/${key}`,
+        `${baseApi}/app/appkey/user/details/${key}`,
         {
           method: "GET",
           headers: {
@@ -271,7 +271,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         }
       }
 
-      const response = await fetch(`${baseApi}/app/apikey/update`, {
+      const response = await fetch(`${baseApi}/app/appkey/update`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -314,7 +314,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/reset-device`, {
+      const response = await fetch(`${baseApi}/app/appkey/reset-device`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -358,7 +358,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/update-status`, {
+      const response = await fetch(`${baseApi}/app/appkey/update-status`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -409,7 +409,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const accessToken = await getAccessToken();
 
       const response = await fetch(
-        `${baseApi}/app/apikey/delete/${apiKeyDetails.username}`,
+        `${baseApi}/app/appkey/delete/${apiKeyDetails.username}`,
         {
           method: "DELETE",
           headers: {
@@ -458,7 +458,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/add-credits`, {
+      const response = await fetch(`${baseApi}/app/appkey/add-credits`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,

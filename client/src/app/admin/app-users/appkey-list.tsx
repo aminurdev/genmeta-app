@@ -86,6 +86,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Link from "next/link";
+import { getAppUsers } from "@/services/admin-dashboard";
 
 interface ApiKey {
   _id: string;
@@ -99,6 +100,7 @@ interface ApiKey {
   plan: {
     type: string;
     id?: string;
+    name?: string;
   };
   credit?: number;
   totalProcess: number;
@@ -107,7 +109,7 @@ interface ApiKey {
 }
 
 interface ApiKeysResponse {
-  apiKeys: ApiKey[];
+  appKeys: ApiKey[];
   total: number;
   currentPage: number;
   totalPages: number;
@@ -123,7 +125,7 @@ export default function ApiKeyList() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   // API key states
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [appKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
@@ -163,8 +165,6 @@ export default function ApiKeyList() {
   const fetchApiKeys = useCallback(async () => {
     try {
       setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
       // Build query parameters
       const queryParams = new URLSearchParams();
@@ -183,26 +183,11 @@ export default function ApiKeyList() {
         queryParams.append("status", selectedStatusFilter);
       }
 
-      const response = await fetch(
-        `${baseApi}/app/apikey/get?${queryParams.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch API keys");
-      }
-
-      const result = await response.json();
+      const result = await getAppUsers();
 
       if (result.success) {
         const responseData: ApiKeysResponse = result.data;
-        setApiKeys(responseData.apiKeys);
+        setApiKeys(responseData.appKeys);
         setTotalPages(responseData.totalPages);
         setTotalKeys(responseData.total);
         setCurrentPage(responseData.currentPage);
@@ -247,7 +232,7 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/delete/${username}`, {
+      const response = await fetch(`${baseApi}/app/appkey/delete/${username}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -284,7 +269,7 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/reset-device`, {
+      const response = await fetch(`${baseApi}/app/appkey/reset-device`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -328,7 +313,7 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/update-status`, {
+      const response = await fetch(`${baseApi}/app/appkey/update-status`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -424,7 +409,7 @@ export default function ApiKeyList() {
         requestBody.expiryDays = Number.parseInt(updateExpiryDays);
       }
 
-      const response = await fetch(`${baseApi}/app/apikey/update`, {
+      const response = await fetch(`${baseApi}/app/appkey/update`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -486,7 +471,7 @@ export default function ApiKeyList() {
         requestBody.plan = createPlan;
       }
 
-      const response = await fetch(`${baseApi}/app/apikey/create`, {
+      const response = await fetch(`${baseApi}/app/appkey/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -571,7 +556,7 @@ export default function ApiKeyList() {
     ];
     const csvRows = [headers];
 
-    apiKeys.forEach((key) => {
+    appKeys.forEach((key) => {
       const row = [
         key.username,
         key.key,
@@ -692,7 +677,7 @@ export default function ApiKeyList() {
   };
 
   const renderApiKeyTable = () => {
-    if (loading && apiKeys.length === 0) {
+    if (loading && appKeys.length === 0) {
       return (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -704,7 +689,7 @@ export default function ApiKeyList() {
       );
     }
 
-    if (error && apiKeys.length === 0) {
+    if (error && appKeys.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <XCircle className="h-12 w-12 text-destructive mb-4" />
@@ -718,7 +703,7 @@ export default function ApiKeyList() {
       );
     }
 
-    if (apiKeys.length === 0) {
+    if (appKeys.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <KeyRound className="h-12 w-12 text-muted-foreground mb-4" />
@@ -748,14 +733,14 @@ export default function ApiKeyList() {
             <TableHead>Expires</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Processes</TableHead>
-            {apiKeys.some((key) => key.credit !== undefined) && (
+            {appKeys.some((key) => key.credit !== undefined) && (
               <TableHead>Credit</TableHead>
             )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {apiKeys.map((apiKey) => (
+          {appKeys.map((apiKey) => (
             <TableRow key={apiKey._id}>
               <TableCell className="font-medium">{apiKey.username}</TableCell>
               <TableCell>
@@ -780,7 +765,7 @@ export default function ApiKeyList() {
                   className={getPlanBadge(apiKey.plan.type)}
                 >
                   {apiKey.plan.type.replace("_", " ")}
-                  {apiKey.plan.id && ` (${apiKey.plan.id})`}
+                  {apiKey.plan.id && ` (${apiKey.plan.name})`}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -807,7 +792,7 @@ export default function ApiKeyList() {
               <TableCell>{formatDate(apiKey.expiresAt)}</TableCell>
               <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
               <TableCell>{apiKey.totalProcess}</TableCell>
-              {apiKeys.some((key) => key.credit !== undefined) && (
+              {appKeys.some((key) => key.credit !== undefined) && (
                 <TableCell>{apiKey.credit || 0}</TableCell>
               )}
               <TableCell className="text-right flex items-center justify-end">
@@ -955,7 +940,7 @@ export default function ApiKeyList() {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/apikey/add-credits`, {
+      const response = await fetch(`${baseApi}/app/appkey/add-credits`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -1106,7 +1091,7 @@ export default function ApiKeyList() {
 
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {apiKeys.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
+            Showing {appKeys.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
             {Math.min(currentPage * limit, totalKeys)} of {totalKeys} API keys
           </div>
           {totalPages > 1 && renderPagination()}

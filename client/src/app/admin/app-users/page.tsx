@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatisticsContent from "./statistics-content";
-import ApiKeyList from "./apikey-list";
+import ApiKeyList from "./appkey-list";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
