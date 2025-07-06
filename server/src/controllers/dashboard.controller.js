@@ -1,5 +1,6 @@
 import { AppKey } from "../models/appKey.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
+import { AppPricing } from "../models/appPricing.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -9,7 +10,7 @@ import dayjs from "dayjs";
 export const getOverview = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const [apiKey, user, payments] = await Promise.all([
+  const [appKey, user, payments] = await Promise.all([
     AppKey.findOne({ userId }),
     User.findById(userId),
     AppPayment.find({ userId }).sort({ createdAt: -1 }),
@@ -35,8 +36,8 @@ export const getOverview = asyncHandler(async (req, res) => {
   }));
 
   // Monthly and daily processing maps
-  const monthlyProcess = apiKey?.monthlyProcess || new Map();
-  const dailyProcess = apiKey?.dailyProcess || new Map();
+  const monthlyProcess = appKey?.monthlyProcess || new Map();
+  const dailyProcess = appKey?.dailyProcess || new Map();
 
   // Last 6 months usage
   const last6MonthProcess = Array.from({ length: 6 })
@@ -54,9 +55,9 @@ export const getOverview = asyncHandler(async (req, res) => {
     })
     .reverse();
 
-  const planType = apiKey?.plan?.type || "free";
-  const planId = apiKey?.plan?.id || null;
-  const expiresAt = apiKey?.expiresAt || null;
+  const planType = appKey?.plan?.type || "free";
+  const planId = appKey?.plan?.id || null;
+  const expiresAt = appKey?.expiresAt || null;
   const daysLeft = expiresAt
     ? Math.max(0, dayjs(expiresAt).diff(dayjs(), "day"))
     : null;
@@ -68,21 +69,21 @@ export const getOverview = asyncHandler(async (req, res) => {
       isVerified: user.isVerified,
       loginProvider: user.loginProvider,
     },
-    apiKey: {
-      exists: !!apiKey,
-      totalProcess: apiKey?.totalProcess || 0,
+    appKey: {
+      exists: !!appKey,
+      totalProcess: appKey?.totalProcess || 0,
       todayUsage: dailyProcess.get(todayStr) || 0,
       thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
       last6MonthProcess,
       last7DaysProcess,
       creditRemaining:
-        planType === "subscription" ? Infinity : apiKey?.credit || 0,
+        planType === "subscription" ? Infinity : appKey?.credit || 0,
       planType,
       planId,
       expiresAt,
       daysLeft,
-      isSuspended: apiKey?.status === "suspended" || false,
-      isManuallyDisabled: apiKey?.isActive === false || false,
+      isSuspended: appKey?.status === "suspended" || false,
+      isManuallyDisabled: appKey?.isActive === false || false,
     },
     payments: {
       totalSpent,
@@ -101,13 +102,20 @@ export const getOverview = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const [user, apiKey] = await Promise.all([
+  const [user, appKey] = await Promise.all([
     User.findById(userId).select("-password -__v"),
     AppKey.findOne({ userId }),
   ]);
 
   if (!user) {
     return res.status(404).json({ message: "User not found" });
+  }
+
+  let planName = null;
+
+  if (appKey?.plan?.id) {
+    const planData = await AppPricing.findById(appKey.plan.id).select("name");
+    planName = planData?.name || null;
   }
 
   const profile = {
@@ -119,15 +127,18 @@ export const getProfile = asyncHandler(async (req, res) => {
     isDisabled: user.isDisabled,
     createdAt: user.createdAt,
     role: user.role,
-    apiKey: apiKey
+    appKey: appKey
       ? {
-          plan: apiKey.plan,
-          totalProcess: apiKey.totalProcess,
+          plan: {
+            ...appKey.plan,
+            name: planName,
+          },
+          totalProcess: appKey.totalProcess,
           credit:
-            apiKey.plan.type === "subscription" ? Infinity : apiKey.credit,
-          isActive: apiKey.isActive,
-          status: apiKey.status,
-          expiresAt: apiKey.expiresAt,
+            appKey.plan.type === "subscription" ? Infinity : appKey.credit,
+          isActive: appKey.isActive,
+          status: appKey.status,
+          expiresAt: appKey.expiresAt,
         }
       : null,
   };

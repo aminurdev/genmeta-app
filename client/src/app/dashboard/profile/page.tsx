@@ -48,7 +48,8 @@ export default async function ProfilePage() {
       .toUpperCase();
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
     return format(new Date(dateString), "PPP");
   };
 
@@ -164,23 +165,23 @@ export default async function ProfilePage() {
             <CardDescription>Your app access and usage details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {data.apiKey ? (
+            {data.appKey ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Plan Type</span>
                   <Badge variant="outline" className="capitalize">
-                    {data.apiKey.plan.type}
+                    {data.appKey.plan.type} ({data.appKey.plan.name})
                   </Badge>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Status</span>
                   <div className="flex items-center gap-1">
-                    {data.apiKey.isActive ? (
+                    {data.appKey.isActive ? (
                       <>
                         <div className="h-2 w-2 rounded-full bg-green-500" />
                         <Badge variant="default" className="capitalize">
-                          {data.apiKey.status}
+                          {data.appKey.status}
                         </Badge>
                       </>
                     ) : (
@@ -195,14 +196,14 @@ export default async function ProfilePage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Processes</span>
                   <span className="text-sm font-medium">
-                    {data.apiKey.totalProcess.toLocaleString()}
+                    {data.appKey.totalProcess.toLocaleString()}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">API Credits</span>
                   <Badge variant="secondary">
-                    {formatCredit(data.apiKey.credit)}
+                    {formatCredit(data.appKey.credit)}
                   </Badge>
                 </div>
 
@@ -211,7 +212,7 @@ export default async function ProfilePage() {
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3 text-muted-foreground" />
                     <span className="text-sm">
-                      {formatDate(data.apiKey.expiresAt)}
+                      {formatDate(data.appKey.expiresAt)}
                     </span>
                   </div>
                 </div>

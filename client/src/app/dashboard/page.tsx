@@ -72,15 +72,16 @@ export default async function Page() {
   };
 
   const getStatusColor = () => {
-    if (data.apiKey.isSuspended || data.apiKey.isManuallyDisabled)
+    if (data.appKey.isSuspended || data.appKey.isManuallyDisabled)
       return "destructive";
-    if (data.apiKey.daysLeft <= 7) return "secondary";
+    if (data.appKey.daysLeft !== null && data.appKey.daysLeft <= 7)
+      return "secondary";
     return "default";
   };
 
   const getStatusText = () => {
-    if (data.apiKey.isSuspended) return "Suspended";
-    if (data.apiKey.isManuallyDisabled) return "Disabled";
+    if (data.appKey.isSuspended) return "Suspended";
+    if (data.appKey.isManuallyDisabled) return "Disabled";
     return "Active";
   };
 
@@ -132,7 +133,7 @@ export default async function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.apiKey.totalProcess.toLocaleString()}
+              {data.appKey.totalProcess.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">All time processes</p>
           </CardContent>
@@ -148,7 +149,7 @@ export default async function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.apiKey.todayUsage.toLocaleString()}
+              {data.appKey.todayUsage.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">Processes today</p>
           </CardContent>
@@ -164,7 +165,7 @@ export default async function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.apiKey.thisMonthUsage.toLocaleString()}
+              {data.appKey.thisMonthUsage.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">Monthly processes</p>
           </CardContent>
@@ -174,7 +175,7 @@ export default async function Page() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">App Credits</CardTitle>
             <div className="rounded-full bg-primary/10 p-1">
-              {data.apiKey.creditRemaining === null ? (
+              {data.appKey.creditRemaining === null ? (
                 <Infinity className="h-4 w-4 text-primary" />
               ) : (
                 <Zap className="h-4 w-4 text-primary" />
@@ -183,10 +184,10 @@ export default async function Page() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCredit(data.apiKey.creditRemaining)}
+              {formatCredit(data.appKey.creditRemaining)}
             </div>
             <div className="flex items-center pt-1">
-              {data.apiKey.creditRemaining === null ? (
+              {data.appKey.creditRemaining === null ? (
                 <p className="text-xs text-muted-foreground">
                   Subscription Plan (Unlimited)
                 </p>
@@ -235,7 +236,7 @@ export default async function Page() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ProcessChart
-                  data={data.apiKey.last6MonthProcess}
+                  data={data.appKey.last6MonthProcess}
                   type="monthly"
                 />
               </CardContent>
@@ -259,7 +260,7 @@ export default async function Page() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ProcessChart
-                  data={data.apiKey.last7DaysProcess}
+                  data={data.appKey.last7DaysProcess}
                   type="daily"
                 />
               </CardContent>
@@ -288,26 +289,29 @@ export default async function Page() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Plan Type</span>
               <Badge variant="outline" className="capitalize">
-                {data.apiKey.planType}
+                {data.appKey.planType}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Expires At</span>
               <span className="text-sm">
-                {data.apiKey.planType === "subscription"
-                  ? formatDate(data.apiKey.expiresAt)
+                {data.appKey.planType === "subscription"
+                  ? data.appKey.expiresAt
+                    ? formatDate(data.appKey.expiresAt)
+                    : "N/A"
                   : "N/A"}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Days Remaining</span>
               <div className="flex items-center gap-2">
-                {data.apiKey.daysLeft <= 7 &&
-                  data.apiKey.planType === "subscription" && (
+                {data.appKey.daysLeft !== null &&
+                  data.appKey.daysLeft <= 7 &&
+                  data.appKey.planType === "subscription" && (
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                   )}
                 <span className="text-sm font-medium">
-                  {data.apiKey.daysLeft ?? 365} days
+                  {data.appKey.daysLeft ?? 365} days
                 </span>
               </div>
             </div>

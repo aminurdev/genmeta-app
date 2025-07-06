@@ -7,7 +7,6 @@ const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
   mongodb_uri: process.env.MONGODB_URI + "/" + process.env.DB_NAME,
-  geminiApiKey: process.env.GEMINI_API_KEY,
   geminiEncoderKey: process.env.GEMINI_ENCODER_KEY,
 
   cors_origin: process.env.CORS_ORIGIN,
