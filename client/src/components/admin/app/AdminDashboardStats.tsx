@@ -8,8 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -40,45 +38,15 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-interface DashboardStats {
-  revenue: {
-    total: number;
-    currentMonth: number;
-    lastMonth: number;
-    growthPercentage: number;
-    monthlyRevenueList: Record<string, number>;
-  };
-  apiKeys: {
-    total: number;
-    newThisMonth: number;
-    active: number;
-    activePremium: number;
-    monthlyProcessList: Record<string, number>;
-  };
-  users: {
-    total: number;
-    newThisMonth: number;
-  };
-  payments: {
-    total: number;
-    newThisMonth: number;
-    recent: Array<{
-      amount: number;
-      createdAt: string;
-      userId: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
-  };
-}
+import {
+  AdminOverview,
+  getAdminOverview,
+} from "@/services/admin-dashboard/intex";
 
 export default function DashboardStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<AdminOverview["data"] | null>(null);
 
   useEffect(() => {
     fetchDashboardStats();
@@ -87,22 +55,8 @@ export default function DashboardStats() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/getDashboardStats/get`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard statistics");
-      }
-
-      const result = await response.json();
+      const result = await getAdminOverview();
 
       if (result.success) {
         setStats(result.data);
@@ -201,7 +155,7 @@ export default function DashboardStats() {
   }
 
   const revenueData = prepareChartData(stats.revenue.monthlyRevenueList);
-  const processData = prepareChartData(stats.apiKeys.monthlyProcessList);
+  const processData = prepareChartData(stats.appKeys.monthlyProcessList);
 
   return (
     <div className="container mx-auto space-y-6">
@@ -214,7 +168,7 @@ export default function DashboardStats() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="flex gap-4 overflow-x-auto whitespace-nowrap pb-2">
         {/* Total Revenue Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -303,9 +257,28 @@ export default function DashboardStats() {
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.apiKeys.total}</div>
+            <div className="text-2xl font-bold">{stats.appKeys.total}</div>
             <p className="text-xs text-muted-foreground">
-              +{stats.apiKeys.newThisMonth} new this month
+              +{stats.appKeys.newThisMonth} new this month
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Current Premium Users Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
+            <CardTitle className="text-sm font-medium">
+              Current Premium Users
+            </CardTitle>
+            <Key className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats.appKeys.activePremium}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.appKeys.subscriptionPlanCount} subscription and{" "}
+              {stats.appKeys.creditPlanCount} credit
             </p>
           </CardContent>
         </Card>

@@ -35,15 +35,24 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     isActive: true,
     status: "active",
   });
-  const activePremiumKeys = await AppKey.countDocuments({
-    isActive: true,
-    status: "active",
-    "plan.type": { $ne: "free" },
-    expiresAt: { $gt: now },
-  });
   const newApiKeysThisMonth = await AppKey.countDocuments({
     createdAt: { $gte: thisMonth },
   });
+
+  // 🔍 Active premium keys (not free)
+  const activePremiumKeys = await AppKey.find({
+    isActive: true,
+    status: "active",
+    "plan.type": { $ne: "free" },
+  });
+
+  const activePremiumCount = activePremiumKeys.length;
+  const subscriptionPlanCount = activePremiumKeys.filter(
+    (key) => key.plan?.type === "subscription"
+  ).length;
+  const creditPlanCount = activePremiumKeys.filter(
+    (key) => key.plan?.type === "credit"
+  ).length;
 
   const appKeys = await AppKey.find({});
   const monthlyProcessList = {};
@@ -68,7 +77,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     createdAt: { $gte: thisMonth },
   });
 
-  // === 4. MONTHLY REVENUE LIST (last 6 months) ===
+  // === 4. MONTHLY REVENUE LIST ===
   const monthlyRevenueList = {};
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -84,7 +93,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     }
   });
 
-  // === 5. RECENT 5 PAYMENTS ===
+  // === 5. RECENT PAYMENTS ===
   const recentPayments = await AppPayment.find({})
     .sort({ createdAt: -1 })
     .limit(5)
@@ -112,7 +121,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         total: totalApiKeys,
         newThisMonth: newApiKeysThisMonth,
         active: activeApiKeys,
-        activePremium: activePremiumKeys,
+        activePremium: activePremiumCount,
+        subscriptionPlanCount,
+        creditPlanCount,
         monthlyProcessList,
       },
       users: {

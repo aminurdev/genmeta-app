@@ -11,7 +11,6 @@ import {
   getStatistics,
   getPaymentsHistory,
   getUserDetailsByKey,
-  getAdminDashboardStats,
   addCredits,
   processApiUsage,
 } from "../controllers/appKey.controller.js";
@@ -44,11 +43,6 @@ router.get(
   "/paymentHistory/get",
   authenticateAndVerifyAdmin,
   getPaymentsHistory
-);
-router.get(
-  "/getDashboardStats/get",
-  authenticateAndVerifyAdmin,
-  getAdminDashboardStats
 );
 
 router.post("/apikey/validate", validateAppKey);
