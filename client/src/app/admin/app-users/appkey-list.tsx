@@ -86,34 +86,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Link from "next/link";
-import { getAppUsers } from "@/services/admin-dashboard";
-
-interface ApiKey {
-  _id: string;
-  userId: string;
-  username: string;
-  key: string;
-  expiresAt: string;
-  isActive: boolean;
-  status: string;
-  suspendedAt: string | null;
-  plan: {
-    type: string;
-    id?: string;
-    name?: string;
-  };
-  credit?: number;
-  totalProcess: number;
-  createdAt: string;
-  deviceId?: string | null;
-}
-
-interface ApiKeysResponse {
-  appKeys: ApiKey[];
-  total: number;
-  currentPage: number;
-  totalPages: number;
-}
+import {
+  AllAppKeysResponse,
+  AppKeys,
+  getAppUsers,
+} from "@/services/admin-dashboard";
 
 export default function ApiKeyList() {
   // Pagination and search states
@@ -125,7 +102,7 @@ export default function ApiKeyList() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   // API key states
-  const [appKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [appKeys, setApiKeys] = useState<AppKeys[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
@@ -183,10 +160,10 @@ export default function ApiKeyList() {
         queryParams.append("status", selectedStatusFilter);
       }
 
-      const result = await getAppUsers();
+      const result = await getAppUsers(queryParams);
 
       if (result.success) {
-        const responseData: ApiKeysResponse = result.data;
+        const responseData: AllAppKeysResponse["data"] = result.data;
         setApiKeys(responseData.appKeys);
         setTotalPages(responseData.totalPages);
         setTotalKeys(responseData.total);
@@ -524,9 +501,9 @@ export default function ApiKeyList() {
     }
   };
 
-  const openUpdateDialog = (apiKey: ApiKey) => {
-    setUpdateUsername(apiKey.username);
-    setUpdatePlan(apiKey.plan.type);
+  const openUpdateDialog = (appKey: AppKeys) => {
+    setUpdateUsername(appKey.username);
+    setUpdatePlan(appKey.plan?.type || "N/A");
     setUpdateExpiryDays("30"); // Default to 30 days
     setUpdateDialogOpen(true);
   };
@@ -538,8 +515,8 @@ export default function ApiKeyList() {
     setCreateDialogOpen(true);
   };
 
-  const isProcessing = (apiKey: string, action: string) => {
-    return processingKey === apiKey && processingAction === action;
+  const isProcessing = (appKey: string, action: string) => {
+    return processingKey === appKey && processingAction === action;
   };
 
   const exportToCSV = () => {
@@ -560,14 +537,14 @@ export default function ApiKeyList() {
       const row = [
         key.username,
         key.key,
-        key.plan.type, // Access the 'type' property of the plan
+        key.plan?.type, // Access the 'type' property of the plan
         key.status,
         key.expiresAt,
         key.createdAt,
         key.totalProcess.toString(),
         key.deviceId ? "Yes" : "No",
       ];
-      csvRows.push(row);
+      csvRows.push(row.map(value => value?.toString() ?? '')); // Convert any undefined values to empty strings
     });
 
     // Convert to CSV string
@@ -762,10 +739,10 @@ export default function ApiKeyList() {
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(apiKey.plan.type)}
+                  className={getPlanBadge(apiKey.plan?.type || "")}
                 >
-                  {apiKey.plan.type.replace("_", " ")}
-                  {apiKey.plan.id && ` (${apiKey.plan.name})`}
+                  {apiKey.plan?.type.replace("_", " ")}
+                  {apiKey.plan?.id && ` (${apiKey.plan.name})`}
                 </Badge>
               </TableCell>
               <TableCell>
@@ -789,7 +766,7 @@ export default function ApiKeyList() {
                   </div>
                 )}
               </TableCell>
-              <TableCell>{formatDate(apiKey.expiresAt)}</TableCell>
+              <TableCell>{formatDate(apiKey?.expiresAt || "")}</TableCell>
               <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
               <TableCell>{apiKey.totalProcess}</TableCell>
               {appKeys.some((key) => key.credit !== undefined) && (
@@ -823,7 +800,7 @@ export default function ApiKeyList() {
 
                     <DropdownMenuSeparator />
 
-                    {apiKey.plan.type === "credit" && (
+                    {apiKey.plan?.type === "credit" && (
                       <DropdownMenuItem
                         onClick={() => openAddCreditDialog(apiKey)}
                       >
@@ -976,7 +953,7 @@ export default function ApiKeyList() {
     }
   };
 
-  const openAddCreditDialog = (apiKey: ApiKey) => {
+  const openAddCreditDialog = (apiKey: AppKeys) => {
     setCreditApiKey(apiKey.key);
     setCreditAmount("50");
     setAddCreditDialogOpen(true);

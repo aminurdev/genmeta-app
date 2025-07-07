@@ -43,39 +43,41 @@ export interface AdminOverview {
   };
 }
 
+export interface AppKeys {
+  _id: string;
+  userId: string;
+  username: string;
+  key: string;
+  credit: number | null;
+  isActive: boolean;
+  status: "active" | "suspended";
+  suspendedAt: string | null;
+  totalProcess: number;
+  monthlyProcess: Record<string, number>;
+  dailyProcess: Record<string, number>;
+  lastCreditRefresh: string;
+  createdAt: string;
+  __v: number;
+  deviceId: string;
+  expiresAt?: string;
+  lastPlanChange: string;
+  plan: {
+    type: "free" | "credit" | "subscription";
+    id: string;
+    name: string;
+  } | null;
+  planHistory: {
+    planType: string;
+    changedAt: string;
+    reason: string;
+  }[];
+}
+
 export interface AllAppKeysResponse {
   success: boolean;
   message: string;
   data: {
-    appKeys: {
-      _id: string;
-      userId: string;
-      username: string;
-      key: string;
-      credit: number | null;
-      isActive: boolean;
-      status: "active" | "suspended";
-      suspendedAt: string | null;
-      totalProcess: number;
-      monthlyProcess: Record<string, number>;
-      dailyProcess: Record<string, number>;
-      lastCreditRefresh: string;
-      createdAt: string;
-      __v: number;
-      deviceId: string;
-      expiresAt?: string;
-      lastPlanChange: string;
-      plan: {
-        type: "free" | "credit" | "subscription";
-        id: string;
-        name: string;
-      } | null;
-      planHistory: {
-        planType: string;
-        changedAt: string;
-        reason: string;
-      }[];
-    }[];
+    appKeys: AppKeys[];
     total: number;
     currentPage: number;
     totalPages: number;
@@ -185,7 +187,7 @@ export const getAdminOverview = async (): Promise<AdminOverview> => {
 };
 
 export const getAppUsers = async (
-  queryParams: string
+  queryParams: object
 ): Promise<AllAppKeysResponse> => {
   const result = await apiRequest({
     method: "GET",
