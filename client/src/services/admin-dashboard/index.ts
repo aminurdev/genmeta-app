@@ -187,7 +187,7 @@ export const getAdminOverview = async (): Promise<AdminOverview> => {
 };
 
 export const getAppUsers = async (
-  queryParams: object
+  queryParams: string
 ): Promise<AllAppKeysResponse> => {
   const result = await apiRequest({
     method: "GET",

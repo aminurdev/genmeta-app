@@ -77,7 +77,7 @@ interface UserDetails {
   createdAt: string;
 }
 
-interface ApiKeyDetails {
+interface AppKeyDetails {
   _id: string;
   userId: string;
   username: string;
@@ -108,19 +108,19 @@ interface Payment {
   createdAt: string;
 }
 
-interface ApiKeyDetailsResponse {
+interface AppKeyDetailsResponse {
   user: UserDetails;
-  apiKey: ApiKeyDetails;
+  appKey: AppKeyDetails;
   payments: Payment[];
 }
 
-export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
+export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
-  const [apiKeyDetails, setApiKeyDetails] = useState<ApiKeyDetails | null>(
+  const [appKeyDetails, setAppKeyDetails] = useState<AppKeyDetails | null>(
     null
   );
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -142,15 +142,15 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   const [isAddingCredit, setIsAddingCredit] = useState(false);
 
   useEffect(() => {
-    if (apiKey) {
-      fetchApiKeyDetails(apiKey);
+    if (appKey) {
+      fetchAppKeyDetails(appKey);
     } else {
       setError("No API key provided");
       setLoading(false);
     }
-  }, [apiKey]);
+  }, [appKey]);
 
-  const fetchApiKeyDetails = async (key: string) => {
+  const fetchAppKeyDetails = async (key: string) => {
     try {
       setLoading(true);
       const baseApi = await getBaseApi();
@@ -174,14 +174,14 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const result = await response.json();
 
       if (result.success) {
-        const responseData: ApiKeyDetailsResponse = result.data;
+        const responseData: AppKeyDetailsResponse = result.data;
         setUserDetails(responseData.user);
-        setApiKeyDetails(responseData.apiKey);
+        setAppKeyDetails(responseData.appKey);
         setPayments(responseData.payments);
 
         // Initialize update form with current values
-        if (responseData.apiKey) {
-          setUpdatePlan(responseData.apiKey.plan.type);
+        if (responseData.appKey) {
+          setUpdatePlan(responseData.appKey.plan.type);
         }
       } else {
         throw new Error(result.message || "Failed to fetch API key details");
@@ -233,8 +233,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
     }
   };
 
-  const updateApiKey = async () => {
-    if (!apiKeyDetails) return;
+  const updateAppKey = async () => {
+    if (!appKeyDetails) return;
 
     try {
       setIsUpdating(true);
@@ -248,7 +248,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         expiryDays?: number;
         credit?: number;
       } = {
-        username: apiKeyDetails.username,
+        username: appKeyDetails.username,
       };
 
       // Only include the plan if it's set
@@ -291,8 +291,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         setUpdateDialogOpen(false);
 
         // Refresh the API key details
-        if (apiKey) {
-          fetchApiKeyDetails(apiKey);
+        if (appKey) {
+          fetchAppKeyDetails(appKey);
         }
       } else {
         throw new Error(result.message || "Failed to update API key");
@@ -307,7 +307,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   };
 
   const resetDeviceId = async () => {
-    if (!apiKeyDetails) return;
+    if (!appKeyDetails) return;
 
     try {
       setIsResetting(true);
@@ -321,7 +321,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: apiKeyDetails.key,
+          key: appKeyDetails.key,
         }),
       });
 
@@ -335,8 +335,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         toast("Device ID reset successfully");
 
         // Refresh the API key details
-        if (apiKey) {
-          fetchApiKeyDetails(apiKey);
+        if (appKey) {
+          fetchAppKeyDetails(appKey);
         }
       } else {
         throw new Error(result.message || "Failed to reset device ID");
@@ -351,7 +351,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   };
 
   const updateKeyStatus = async (mode: "suspend" | "reactivate") => {
-    if (!apiKeyDetails) return;
+    if (!appKeyDetails) return;
 
     try {
       setIsChangingStatus(true);
@@ -365,7 +365,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: apiKeyDetails.key,
+          key: appKeyDetails.key,
           mode,
         }),
       });
@@ -385,8 +385,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         );
 
         // Refresh the API key details
-        if (apiKey) {
-          fetchApiKeyDetails(apiKey);
+        if (appKey) {
+          fetchAppKeyDetails(appKey);
         }
       } else {
         throw new Error(result.message || `Failed to ${mode} API key`);
@@ -400,8 +400,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
     }
   };
 
-  const deleteApiKey = async () => {
-    if (!apiKeyDetails) return;
+  const deleteAppKey = async () => {
+    if (!appKeyDetails) return;
 
     try {
       setIsDeleting(true);
@@ -409,7 +409,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
       const accessToken = await getAccessToken();
 
       const response = await fetch(
-        `${baseApi}/app/appkey/delete/${apiKeyDetails.username}`,
+        `${baseApi}/app/appkey/delete/${appKeyDetails.username}`,
         {
           method: "DELETE",
           headers: {
@@ -443,15 +443,15 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
   };
 
   const openUpdateDialog = () => {
-    if (!apiKeyDetails) return;
+    if (!appKeyDetails) return;
 
-    setUpdatePlan(apiKeyDetails.plan.type);
+    setUpdatePlan(appKeyDetails.plan.type);
     setUpdateExpiryDays("30"); // Default to 30 days
     setUpdateDialogOpen(true);
   };
 
   const addCredits = async () => {
-    if (!apiKeyDetails) return;
+    if (!appKeyDetails) return;
 
     try {
       setIsAddingCredit(true);
@@ -465,7 +465,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: apiKeyDetails.key,
+          key: appKeyDetails.key,
           credits: parseInt(creditAmount),
         }),
       });
@@ -480,8 +480,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         toast(result.message || `${creditAmount} credits added successfully`);
 
         // Refresh the API key details
-        if (apiKey) {
-          fetchApiKeyDetails(apiKey);
+        if (appKey) {
+          fetchAppKeyDetails(appKey);
         }
 
         setAddCreditDialogOpen(false);
@@ -518,8 +518,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to API Keys
           </Button>
-          {apiKey && (
-            <Button onClick={() => fetchApiKeyDetails(apiKey)}>
+          {appKey && (
+            <Button onClick={() => fetchAppKeyDetails(appKey)}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
@@ -529,7 +529,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
     );
   }
 
-  if (!apiKeyDetails || !userDetails) {
+  if (!appKeyDetails || !userDetails) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -560,7 +560,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
           <h1 className="text-2xl font-bold">API Key Details</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchApiKeyDetails(apiKey!)}>
+          <Button variant="outline" onClick={() => fetchAppKeyDetails(appKey!)}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -653,8 +653,8 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               <div className="font-medium">API Key</div>
               <div className="col-span-2 flex items-center gap-2">
                 <span className="font-mono text-xs truncate">
-                  {apiKeyDetails.key.substring(0, 8)}...
-                  {apiKeyDetails.key.substring(apiKeyDetails.key.length - 8)}
+                  {appKeyDetails.key.substring(0, 8)}...
+                  {appKeyDetails.key.substring(appKeyDetails.key.length - 8)}
                 </span>
                 <Button
                   variant="ghost"
@@ -662,7 +662,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                   className="h-6 w-6"
                   onClick={() =>
                     copyToClipboard(
-                      apiKeyDetails.key,
+                      appKeyDetails.key,
                       "API key copied to clipboard"
                     )
                   }
@@ -676,9 +676,9 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               <div className="col-span-2">
                 <Badge
                   variant="outline"
-                  className={getStatusColor(apiKeyDetails.status)}
+                  className={getStatusColor(appKeyDetails.status)}
                 >
-                  {apiKeyDetails.status}
+                  {appKeyDetails.status}
                 </Badge>
               </div>
             </div>
@@ -687,23 +687,23 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               <div className="col-span-2">
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(apiKeyDetails.plan.type)}
+                  className={getPlanBadge(appKeyDetails.plan.type)}
                 >
-                  {apiKeyDetails.plan.type.replace("_", " ")}
-                  {apiKeyDetails.plan.id && ` (${apiKeyDetails.plan.id})`}
+                  {appKeyDetails.plan.type.replace("_", " ")}
+                  {appKeyDetails.plan.id && ` (${appKeyDetails.plan.id})`}
                 </Badge>
               </div>
             </div>
-            {apiKeyDetails.credit !== undefined && (
+            {appKeyDetails.credit !== undefined && (
               <div className="grid grid-cols-3 gap-4">
                 <div className="font-medium">Credits Remaining</div>
-                <div className="col-span-2">{apiKeyDetails.credit}</div>
+                <div className="col-span-2">{appKeyDetails.credit}</div>
               </div>
             )}
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Device Bound</div>
               <div className="col-span-2">
-                {apiKeyDetails.deviceId ? (
+                {appKeyDetails.deviceId ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
                     <span>Yes</span>
@@ -718,18 +718,18 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Total Processes</div>
-              <div className="col-span-2">{apiKeyDetails.totalProcess}</div>
+              <div className="col-span-2">{appKeyDetails.totalProcess}</div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Created</div>
               <div className="col-span-2">
-                {/* {formatDate(apiKeyDetails.createdAt)} */}
+                {/* {formatDate(appKeyDetails.createdAt)} */}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="font-medium">Expires</div>
               <div className="col-span-2">
-                {/* {formatDate(apiKeyDetails.expiresAt)} */}
+                {/* {formatDate(appKeyDetails.expiresAt)} */}
               </div>
             </div>
           </CardContent>
@@ -750,7 +750,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               )}
               {isResetting ? "Resetting..." : "Reset Device ID"}
             </Button>
-            {apiKeyDetails.status === "active" ? (
+            {appKeyDetails.status === "active" ? (
               <Button
                 variant="outline"
                 className="text-destructive"
@@ -779,7 +779,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                 {isChangingStatus ? "Reactivating..." : "Reactivate Key"}
               </Button>
             )}
-            {apiKeyDetails.plan.type === "credit" && (
+            {appKeyDetails.plan.type === "credit" && (
               <Button
                 variant="outline"
                 onClick={() => setAddCreditDialogOpen(true)}
@@ -803,7 +803,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                     This action cannot be undone. This will permanently delete
                     the API key for{" "}
                     <span className="font-semibold">
-                      {apiKeyDetails.username}
+                      {appKeyDetails.username}
                     </span>{" "}
                     and remove it from our servers.
                   </AlertDialogDescription>
@@ -811,7 +811,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={deleteApiKey}
+                    onClick={deleteAppKey}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
@@ -842,7 +842,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(apiKeyDetails.monthlyProcess || {}).map(
+            {Object.entries(appKeyDetails.monthlyProcess || {}).map(
               ([month, count]) => (
                 <Card key={month}>
                   <CardContent className="pt-6">
@@ -854,7 +854,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                 </Card>
               )
             )}
-            {Object.keys(apiKeyDetails.monthlyProcess || {}).length === 0 && (
+            {Object.keys(appKeyDetails.monthlyProcess || {}).length === 0 && (
               <div className="col-span-full py-8 text-center text-muted-foreground">
                 No monthly usage data available
               </div>
@@ -919,7 +919,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={apiKeyDetails.username}
+                value={appKeyDetails.username}
                 disabled
                 className="bg-muted"
               />
@@ -959,7 +959,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
                   type="number"
                   min="0"
                   placeholder="Credit amount"
-                  defaultValue={apiKeyDetails.credit?.toString() || "0"}
+                  defaultValue={appKeyDetails.credit?.toString() || "0"}
                 />
               </div>
             )}
@@ -971,7 +971,7 @@ export default function ApiKeyDetailsPage({ apiKey }: { apiKey: string }) {
             >
               Cancel
             </Button>
-            <Button onClick={updateApiKey} disabled={isUpdating}>
+            <Button onClick={updateAppKey} disabled={isUpdating}>
               {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

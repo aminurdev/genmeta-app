@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatisticsContent from "./statistics-content";
-import ApiKeyList from "./appkey-list";
+import AppKeyList from "./appkey-list";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -20,8 +20,8 @@ export default function StatisticsPage() {
           <StatisticsContent />
         </Suspense>
 
-        <Suspense fallback={<ApiKeyListLoading />}>
-          <ApiKeyList />
+        <Suspense fallback={<AppKeyListLoading />}>
+          <AppKeyList />
         </Suspense>
       </div>
     </div>
@@ -41,7 +41,7 @@ function StatisticsLoading() {
   );
 }
 
-function ApiKeyListLoading() {
+function AppKeyListLoading() {
   return (
     <div className="mt-6 rounded-lg border bg-card shadow-sm">
       <div className="p-4 border-b">

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import ApiKeyDetailsPage from "./details";
+import AppKeyDetailsPage from "./details";
 
 export default async function UserDetailsPage({
   params,
@@ -12,7 +12,7 @@ export default async function UserDetailsPage({
       <div className="flex flex-col">
         <main className="flex-1 px-4 sm:px-6 lg:px-8">
           <Suspense fallback={<div>Loading ...</div>}>
-            <ApiKeyDetailsPage apiKey={key} />
+            <AppKeyDetailsPage appKey={key} />
           </Suspense>
         </main>
       </div>

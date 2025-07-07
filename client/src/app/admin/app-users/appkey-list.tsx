@@ -92,7 +92,7 @@ import {
   getAppUsers,
 } from "@/services/admin-dashboard";
 
-export default function ApiKeyList() {
+export default function AppKeyList() {
   // Pagination and search states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -101,8 +101,8 @@ export default function ApiKeyList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
-  // API key states
-  const [appKeys, setApiKeys] = useState<AppKeys[]>([]);
+  // APP key states
+  const [appKeys, setAppKeys] = useState<AppKeys[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export default function ApiKeyList() {
 
   // Add credit states
   const [addCreditDialogOpen, setAddCreditDialogOpen] = useState(false);
-  const [creditApiKey, setCreditApiKey] = useState<string>("");
+  const [creditAppKey, setCreditAppKey] = useState<string>("");
   const [creditAmount, setCreditAmount] = useState<string>("50");
   const [isAddingCredit, setIsAddingCredit] = useState(false);
 
@@ -139,7 +139,7 @@ export default function ApiKeyList() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchApiKeys = useCallback(async () => {
+  const fetchAppKeys = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -160,11 +160,11 @@ export default function ApiKeyList() {
         queryParams.append("status", selectedStatusFilter);
       }
 
-      const result = await getAppUsers(queryParams);
+      const result = await getAppUsers(queryParams.toString());
 
       if (result.success) {
         const responseData: AllAppKeysResponse["data"] = result.data;
-        setApiKeys(responseData.appKeys);
+        setAppKeys(responseData.appKeys);
         setTotalPages(responseData.totalPages);
         setTotalKeys(responseData.total);
         setCurrentPage(responseData.currentPage);
@@ -188,14 +188,14 @@ export default function ApiKeyList() {
 
   // Fetch API keys when page, limit, or search term changes
   useEffect(() => {
-    fetchApiKeys();
+    fetchAppKeys();
   }, [
     currentPage,
     limit,
     debouncedSearchTerm,
     selectedPlanFilter,
     selectedStatusFilter,
-    fetchApiKeys,
+    fetchAppKeys,
   ]);
 
   const copyToClipboard = (text: string) => {
@@ -203,7 +203,7 @@ export default function ApiKeyList() {
     toast("API key has been copied to clipboard");
   };
 
-  const deleteApiKey = async (username: string) => {
+  const deleteAppKey = async (username: string) => {
     try {
       setDeletingUsername(username);
       const baseApi = await getBaseApi();
@@ -225,7 +225,7 @@ export default function ApiKeyList() {
 
       if (result.success) {
         // Refresh the API keys list
-        fetchApiKeys();
+        fetchAppKeys();
 
         toast("API key deleted successfully");
       } else {
@@ -238,9 +238,9 @@ export default function ApiKeyList() {
     }
   };
 
-  const resetDeviceId = async (apiKey: string) => {
+  const resetDeviceId = async (appKey: string) => {
     try {
-      setProcessingKey(apiKey);
+      setProcessingKey(appKey);
       setProcessingAction("reset-device");
 
       const baseApi = await getBaseApi();
@@ -253,7 +253,7 @@ export default function ApiKeyList() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: apiKey,
+          key: appKey,
         }),
       });
 
@@ -267,7 +267,7 @@ export default function ApiKeyList() {
         toast("Device ID reset successfully");
 
         // Refresh the API keys to get updated data
-        await fetchApiKeys();
+        await fetchAppKeys();
       } else {
         throw new Error(result.message || "Failed to reset device ID");
       }
@@ -280,11 +280,11 @@ export default function ApiKeyList() {
   };
 
   const updateKeyStatus = async (
-    apiKey: string,
+    appKey: string,
     mode: "suspend" | "reactivate"
   ) => {
     try {
-      setProcessingKey(apiKey);
+      setProcessingKey(appKey);
       setProcessingAction(mode);
 
       const baseApi = await getBaseApi();
@@ -297,7 +297,7 @@ export default function ApiKeyList() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: apiKey,
+          key: appKey,
           mode,
         }),
       });
@@ -317,7 +317,7 @@ export default function ApiKeyList() {
         );
 
         // Refresh the API keys list
-        await fetchApiKeys();
+        await fetchAppKeys();
       } else {
         throw new Error(result.message || `Failed to ${mode} API key`);
       }
@@ -361,7 +361,7 @@ export default function ApiKeyList() {
     }
   };
 
-  const updateApiKey = async () => {
+  const updateAppKey = async () => {
     try {
       setIsUpdating(true);
       const baseApi = await getBaseApi();
@@ -405,7 +405,7 @@ export default function ApiKeyList() {
         toast("API key updated successfully");
 
         // Refresh the API keys list
-        await fetchApiKeys();
+        await fetchAppKeys();
 
         setUpdateDialogOpen(false);
       } else {
@@ -418,7 +418,7 @@ export default function ApiKeyList() {
     }
   };
 
-  const createApiKey = async () => {
+  const createAppKey = async () => {
     try {
       setIsCreating(true);
       const baseApi = await getBaseApi();
@@ -465,7 +465,7 @@ export default function ApiKeyList() {
 
       if (result.success) {
         // Refresh the API keys list to include the new key
-        await fetchApiKeys();
+        await fetchAppKeys();
 
         toast("API key created successfully");
 
@@ -473,13 +473,13 @@ export default function ApiKeyList() {
         toast(
           <div className="mt-2 flex items-center space-x-2">
             <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
-              {result.data.apiKey}
+              {result.data.appKey}
             </code>
             <Button
               variant="outline"
               size="sm"
               className="h-8 px-2"
-              onClick={() => copyToClipboard(result.data.apiKey)}
+              onClick={() => copyToClipboard(result.data.appKey)}
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
@@ -544,7 +544,7 @@ export default function ApiKeyList() {
         key.totalProcess.toString(),
         key.deviceId ? "Yes" : "No",
       ];
-      csvRows.push(row.map(value => value?.toString() ?? '')); // Convert any undefined values to empty strings
+      csvRows.push(row.map((value) => value?.toString() ?? "")); // Convert any undefined values to empty strings
     });
 
     // Convert to CSV string
@@ -653,7 +653,7 @@ export default function ApiKeyList() {
     );
   };
 
-  const renderApiKeyTable = () => {
+  const renderAppKeyTable = () => {
     if (loading && appKeys.length === 0) {
       return (
         <div className="space-y-3">
@@ -672,7 +672,7 @@ export default function ApiKeyList() {
           <XCircle className="h-12 w-12 text-destructive mb-4" />
           <h3 className="text-lg font-medium">Error loading API keys</h3>
           <p className="text-muted-foreground mt-2 mb-4">{error}</p>
-          <Button onClick={fetchApiKeys} variant="outline">
+          <Button onClick={fetchAppKeys} variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" />
             Try Again
           </Button>
@@ -717,20 +717,20 @@ export default function ApiKeyList() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {appKeys.map((apiKey) => (
-            <TableRow key={apiKey._id}>
-              <TableCell className="font-medium">{apiKey.username}</TableCell>
+          {appKeys.map((appKey) => (
+            <TableRow key={appKey._id}>
+              <TableCell className="font-medium">{appKey.username}</TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <span className="font-mono text-xs">
-                    {apiKey.key.substring(0, 8)}...
-                    {apiKey.key.substring(apiKey.key.length - 8)}
+                    {appKey.key.substring(0, 8)}...
+                    {appKey.key.substring(appKey.key.length - 8)}
                   </span>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
-                    onClick={() => copyToClipboard(apiKey.key)}
+                    onClick={() => copyToClipboard(appKey.key)}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
@@ -739,22 +739,22 @@ export default function ApiKeyList() {
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(apiKey.plan?.type || "")}
+                  className={getPlanBadge(appKey.plan?.type || "")}
                 >
-                  {apiKey.plan?.type.replace("_", " ")}
-                  {apiKey.plan?.id && ` (${apiKey.plan.name})`}
+                  {appKey.plan?.type.replace("_", " ")}
+                  {appKey.plan?.id && ` (${appKey.plan.name})`}
                 </Badge>
               </TableCell>
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getStatusColor(apiKey.status)}
+                  className={getStatusColor(appKey.status)}
                 >
-                  {apiKey.status}
+                  {appKey.status}
                 </Badge>
               </TableCell>
               <TableCell>
-                {apiKey.deviceId ? (
+                {appKey.deviceId ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-xs text-muted-foreground">Yes</span>
@@ -766,15 +766,15 @@ export default function ApiKeyList() {
                   </div>
                 )}
               </TableCell>
-              <TableCell>{formatDate(apiKey?.expiresAt || "")}</TableCell>
-              <TableCell>{formatDate(apiKey.createdAt)}</TableCell>
-              <TableCell>{apiKey.totalProcess}</TableCell>
+              <TableCell>{formatDate(appKey?.expiresAt || "")}</TableCell>
+              <TableCell>{formatDate(appKey.createdAt)}</TableCell>
+              <TableCell>{appKey.totalProcess}</TableCell>
               {appKeys.some((key) => key.credit !== undefined) && (
-                <TableCell>{apiKey.credit || 0}</TableCell>
+                <TableCell>{appKey.credit || 0}</TableCell>
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/app/users/${apiKey.key}`}>
+                  <Link href={`/admin/users/${appKey.key}`}>
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View user details</span>
                   </Link>
@@ -788,21 +788,21 @@ export default function ApiKeyList() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onClick={() => copyToClipboard(apiKey.key)}
+                      onClick={() => copyToClipboard(appKey.key)}
                     >
                       <Copy className="mr-2 h-4 w-4" />
                       Copy API Key
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openUpdateDialog(apiKey)}>
+                    <DropdownMenuItem onClick={() => openUpdateDialog(appKey)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Edit Key
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
 
-                    {apiKey.plan?.type === "credit" && (
+                    {appKey.plan?.type === "credit" && (
                       <DropdownMenuItem
-                        onClick={() => openAddCreditDialog(apiKey)}
+                        onClick={() => openAddCreditDialog(appKey)}
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Credits
@@ -811,32 +811,32 @@ export default function ApiKeyList() {
 
                     {/* Reset Device ID option */}
                     <DropdownMenuItem
-                      onClick={() => resetDeviceId(apiKey.key)}
-                      disabled={isProcessing(apiKey.key, "reset-device")}
+                      onClick={() => resetDeviceId(appKey.key)}
+                      disabled={isProcessing(appKey.key, "reset-device")}
                     >
-                      {isProcessing(apiKey.key, "reset-device") ? (
+                      {isProcessing(appKey.key, "reset-device") ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <Smartphone className="mr-2 h-4 w-4" />
                       )}
-                      {isProcessing(apiKey.key, "reset-device")
+                      {isProcessing(appKey.key, "reset-device")
                         ? "Resetting..."
                         : "Reset Device ID"}
                     </DropdownMenuItem>
 
                     {/* Suspend/Reactivate option */}
-                    {apiKey.status === "active" ? (
+                    {appKey.status === "active" ? (
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => updateKeyStatus(apiKey.key, "suspend")}
-                        disabled={isProcessing(apiKey.key, "suspend")}
+                        onClick={() => updateKeyStatus(appKey.key, "suspend")}
+                        disabled={isProcessing(appKey.key, "suspend")}
                       >
-                        {isProcessing(apiKey.key, "suspend") ? (
+                        {isProcessing(appKey.key, "suspend") ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                           <ShieldAlert className="mr-2 h-4 w-4" />
                         )}
-                        {isProcessing(apiKey.key, "suspend")
+                        {isProcessing(appKey.key, "suspend")
                           ? "Suspending..."
                           : "Suspend Key"}
                       </DropdownMenuItem>
@@ -844,16 +844,16 @@ export default function ApiKeyList() {
                       <DropdownMenuItem
                         className="text-green-600"
                         onClick={() =>
-                          updateKeyStatus(apiKey.key, "reactivate")
+                          updateKeyStatus(appKey.key, "reactivate")
                         }
-                        disabled={isProcessing(apiKey.key, "reactivate")}
+                        disabled={isProcessing(appKey.key, "reactivate")}
                       >
-                        {isProcessing(apiKey.key, "reactivate") ? (
+                        {isProcessing(appKey.key, "reactivate") ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                           <ShieldCheck className="mr-2 h-4 w-4" />
                         )}
-                        {isProcessing(apiKey.key, "reactivate")
+                        {isProcessing(appKey.key, "reactivate")
                           ? "Reactivating..."
                           : "Reactivate Key"}
                       </DropdownMenuItem>
@@ -878,18 +878,18 @@ export default function ApiKeyList() {
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             This action cannot be undone. This will permanently
-                            delete the API key for {apiKey.username} and remove
+                            delete the API key for {appKey.username} and remove
                             it from our servers.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => deleteApiKey(apiKey.username)}
-                            disabled={deletingUsername === apiKey.username}
+                            onClick={() => deleteAppKey(appKey.username)}
+                            disabled={deletingUsername === appKey.username}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            {deletingUsername === apiKey.username ? (
+                            {deletingUsername === appKey.username ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Deleting...
@@ -924,7 +924,7 @@ export default function ApiKeyList() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          key: creditApiKey,
+          key: creditAppKey,
           credits: parseInt(creditAmount),
         }),
       });
@@ -939,7 +939,7 @@ export default function ApiKeyList() {
         toast(result.message || `${creditAmount} credits added successfully`);
 
         // Refresh the API keys list
-        await fetchApiKeys();
+        await fetchAppKeys();
 
         setAddCreditDialogOpen(false);
         setCreditAmount("50");
@@ -953,8 +953,8 @@ export default function ApiKeyList() {
     }
   };
 
-  const openAddCreditDialog = (apiKey: AppKeys) => {
-    setCreditApiKey(apiKey.key);
+  const openAddCreditDialog = (appKey: AppKeys) => {
+    setCreditAppKey(appKey.key);
     setCreditAmount("50");
     setAddCreditDialogOpen(true);
   };
@@ -971,7 +971,7 @@ export default function ApiKeyList() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={fetchApiKeys}
+            onClick={fetchAppKeys}
             className="flex items-center gap-1"
           >
             <RefreshCw className="h-4 w-4" />
@@ -1064,7 +1064,7 @@ export default function ApiKeyList() {
           </div>
         </div>
 
-        {renderApiKeyTable()}
+        {renderAppKeyTable()}
 
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
@@ -1140,7 +1140,7 @@ export default function ApiKeyList() {
             >
               Cancel
             </Button>
-            <Button onClick={updateApiKey} disabled={isUpdating}>
+            <Button onClick={updateAppKey} disabled={isUpdating}>
               {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1244,7 +1244,7 @@ export default function ApiKeyList() {
               Cancel
             </Button>
             <Button
-              onClick={createApiKey}
+              onClick={createAppKey}
               disabled={isCreating || !createUsername.trim()}
               className="flex items-center gap-1"
             >
