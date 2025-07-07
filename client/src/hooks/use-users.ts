@@ -1,5 +1,4 @@
-import { getAccessToken } from "@/services/auth-services";
-import { getBaseApi } from "@/services/image-services";
+import { AllUsersResponse, getAllUsers } from "@/services/admin-dashboard";
 import { useState, useEffect } from "react";
 
 interface CurrentPlan {
@@ -40,17 +39,6 @@ interface PaginationData {
   pageSize: number;
 }
 
-interface UsersResponse {
-  users: User[];
-  pagination: PaginationData;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
 interface UsersQueryParams {
   page?: number;
   limit?: number;
@@ -61,7 +49,7 @@ interface UsersQueryParams {
 }
 
 export function useUsers() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AllUsersResponse["data"]["users"]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [pagination, setPagination] = useState<PaginationData>({
@@ -74,8 +62,6 @@ export function useUsers() {
   const fetchUsers = async (params: UsersQueryParams = {}) => {
     try {
       setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
       const queryParams = new URLSearchParams({
         page: params.page?.toString() || "1",
@@ -86,15 +72,7 @@ export function useUsers() {
         sortOrder: params.sortOrder || "desc",
       });
 
-      const response = await fetch(
-        `${baseApi}/admin/users/all?${queryParams.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-      const result: ApiResponse<UsersResponse> = await response.json();
+      const result = await getAllUsers(queryParams.toString());
 
       if (!result.success) {
         throw new Error(result.message || "Failed to fetch users");

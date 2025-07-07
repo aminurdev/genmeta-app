@@ -58,6 +58,8 @@ export const processSuccessfulPayment = async (paymentID, res) => {
     const planId = payerReference.split("-")[1];
     const promoCode = payerReference.split("-")[2];
 
+    const planDetails = await AppPricing.findById(planId);
+
     if (promoCode) {
       await PromoCode.findByIdAndUpdate(promoCode, {
         $addToSet: { usedCount: userId },
@@ -69,7 +71,8 @@ export const processSuccessfulPayment = async (paymentID, res) => {
       paymentID,
       plan: {
         id: planId,
-        type: plan,
+        name: planDetails?.name || plan,
+        type: planDetails?.type,
       },
       amount,
       trxID,

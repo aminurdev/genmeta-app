@@ -1,26 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -29,717 +19,614 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
-  CalendarIcon,
-  Download,
-  Eye,
-  RefreshCw,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Search,
+  Download,
+  RefreshCw,
+  MoreHorizontal,
+  Calendar,
+  DollarSign,
+  Eye,
+  Copy,
+  CheckCircle,
   XCircle,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
+import { toast } from "sonner";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+  getPaymentsHistory,
+  PaymentResponse,
+} from "@/services/admin-dashboard";
 
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-interface Payment {
-  _id: string;
-  user: User;
-  paymentID: string;
-  trxID: string;
-  plan:
-    | string
-    | {
-        type: string;
-      };
-  amount: number;
-  createdAt: string;
-  transactionStatus: string;
-}
-
-interface PaymentHistoryResponse {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-  payments: Payment[];
-}
-
-export default function PaymentHistory() {
-  // Pagination and search states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalPayments, setTotalPayments] = useState(0);
-  const [limit, setLimit] = useState(20);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
-  const [userId, setUserId] = useState("");
-
-  // Date range states
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+export function PaymentHistoryPage() {
+  const [payments, setPayments] = useState<PaymentResponse["data"] | null>(
+    null
   );
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
-
-  // Payment data states
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [planTypeFilter, setPlanTypeFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // View payment details dialog
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-
-  // Handle search debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const fetchPaymentHistory = useCallback(async () => {
+  const fetchPayments = useCallback(async () => {
     try {
-      setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
+      setIsLoading(true);
+      setError(null);
+      const response = await getPaymentsHistory({
+        page: currentPage,
+        limit: pageSize,
+        search: searchTerm,
+        sortBy,
+        sortOrder,
+        status: statusFilter === "all" ? undefined : statusFilter,
+      });
 
-      // Build query parameters
-      const queryParams = new URLSearchParams();
-      queryParams.append("page", currentPage.toString());
-      queryParams.append("limit", limit.toString());
-
-      if (debouncedSearchTerm) {
-        queryParams.append("search", debouncedSearchTerm);
-      }
-
-      if (userId) {
-        queryParams.append("userId", userId);
-      }
-
-      if (startDate) {
-        queryParams.append("startDate", format(startDate, "yyyy-MM-dd"));
-      }
-
-      if (endDate) {
-        queryParams.append("endDate", format(endDate, "yyyy-MM-dd"));
-      }
-
-      const response = await fetch(
-        `${baseApi}/app/paymentHistory/get?${queryParams.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch payment history");
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        const responseData: PaymentHistoryResponse = result.data;
-        setPayments(responseData.payments);
-        setTotalPages(responseData.totalPages);
-        setTotalPayments(responseData.total);
-        setCurrentPage(responseData.page);
+      if (response.success) {
+        setPayments(response.data);
       } else {
-        throw new Error(result.message || "Failed to fetch payment history");
+        setError(response.message);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
+      setError("Failed to fetch payment history");
+      console.error("Error fetching payments:", err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, [currentPage, limit, debouncedSearchTerm, userId, startDate, endDate]);
-  // Fetch payments when page, limit, search term, or date range changes
+  }, [currentPage, pageSize, searchTerm, statusFilter, sortBy, sortOrder]);
+
   useEffect(() => {
-    fetchPaymentHistory();
-  }, [
-    currentPage,
-    limit,
-    debouncedSearchTerm,
-    userId,
-    startDate,
-    endDate,
-    fetchPaymentHistory,
-  ]);
+    fetchPayments();
+  }, [fetchPayments]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return "bg-green-500/20 text-green-700 hover:bg-green-500/20";
-      case "pending":
-        return "bg-yellow-500/20 text-yellow-700 hover:bg-yellow-500/20";
-      case "failed":
-        return "bg-red-500/20 text-red-700 hover:bg-red-500/20";
-      default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getPlanBadge = (plan: string) => {
-    return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-  };
-
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
-  };
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setDebouncedSearchTerm("");
-    setUserId("");
-    setStartDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-    setEndDate(new Date());
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  const exportToCSV = () => {
-    // Create CSV content
-    const headers = [
-      "Payment ID",
-      "Transaction ID",
-      "User Name",
-      "User Email",
-      "Plan",
-      "Amount",
-      "Date",
-      "Status",
-    ];
-    const csvRows = [headers];
-
-    payments.forEach((payment) => {
-      const row = [
-        payment.paymentID,
-        payment.trxID,
-        payment.user.name,
-        payment.user.email,
-        typeof payment.plan === "object" && payment.plan !== null
-          ? payment.plan.type
-          : payment.plan,
-        payment.amount.toString(),
-        new Date(payment.createdAt).toISOString(),
-        payment.transactionStatus,
-      ];
-      csvRows.push(row);
-    });
-
-    // Convert to CSV string
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `payment-history-export-${new Date().toISOString().split("T")[0]}.csv`
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleStatusFilter = (status: string) => {
+    setStatusFilter(status);
+    setCurrentPage(1);
   };
 
-  const openViewDialog = (payment: Payment) => {
-    setSelectedPayment(payment);
-    setViewDialogOpen(true);
+  const handlePlanTypeFilter = (type: string) => {
+    setPlanTypeFilter(type);
+    setCurrentPage(1);
   };
 
-  const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
     }
+    setCurrentPage(1);
+  };
 
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            isActive={currentPage === i}
-            onClick={() => handlePageChange(i)}
+  const handleCopyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
+  };
+
+  const handleExport = () => {
+    // Implement export functionality
+    toast.success("Export functionality will be implemented");
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "completed":
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
+          </Badge>
+        );
+      case "pending":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-100">
+            <XCircle className="w-3 h-3 mr-1" />
+            Failed
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            {status}
+          </Badge>
+        );
+    }
+  };
+
+  const getPlanTypeBadge = (type: string) => {
+    switch (type.toLowerCase()) {
+      case "subscription":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-violet-50 text-violet-700 border-violet-200"
           >
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      );
+            Subscription
+          </Badge>
+        );
+      case "credit":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
+            Credits
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="bg-gray-50 text-gray-700 border-gray-200"
+          >
+            {type}
+          </Badge>
+        );
     }
-
-    return (
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => handlePageChange(currentPage - 1)}
-              className={
-                currentPage === 1 ? "pointer-events-none opacity-50" : ""
-              }
-            />
-          </PaginationItem>
-
-          {startPage > 1 && (
-            <>
-              <PaginationItem>
-                <PaginationLink onClick={() => handlePageChange(1)}>
-                  1
-                </PaginationLink>
-              </PaginationItem>
-              {startPage > 2 && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-            </>
-          )}
-
-          {pages}
-
-          {endPage < totalPages && (
-            <>
-              {endPage < totalPages - 1 && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationLink onClick={() => handlePageChange(totalPages)}>
-                  {totalPages}
-                </PaginationLink>
-              </PaginationItem>
-            </>
-          )}
-
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => handlePageChange(currentPage + 1)}
-              className={
-                currentPage === totalPages
-                  ? "pointer-events-none opacity-50"
-                  : ""
-              }
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
   };
 
-  const renderPaymentTable = () => {
-    if (loading && payments.length === 0) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (error && payments.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <XCircle className="h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-lg font-medium">Error loading payment history</h3>
-          <p className="text-muted-foreground mt-2 mb-4">{error}</p>
-          <Button onClick={fetchPaymentHistory} variant="outline">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-
-    if (payments.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No payments found</h3>
-          <p className="text-muted-foreground mt-2 mb-4">
-            {debouncedSearchTerm || userId || startDate || endDate
-              ? "Try adjusting your filters"
-              : "No payment records available"}
-          </p>
-          {(debouncedSearchTerm || userId || startDate || endDate) && (
-            <Button onClick={clearFilters} variant="outline">
-              Clear Filters
-            </Button>
-          )}
-        </div>
-      );
-    }
-
+  if (error) {
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Payment ID</TableHead>
-            <TableHead>Transaction ID</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead>Plan</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {payments.map((payment) => (
-            <TableRow key={payment._id}>
-              <TableCell className="font-medium">{payment.paymentID}</TableCell>
-              <TableCell>{payment.trxID}</TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="font-medium">{payment.user.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {payment.user.email}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={
-                    typeof payment.plan === "object" && payment.plan !== null
-                      ? getPlanBadge(payment.plan.type)
-                      : getPlanBadge(payment.plan)
-                  }
-                >
-                  {typeof payment.plan === "object" && payment.plan !== null
-                    ? payment.plan.type.charAt(0).toUpperCase() +
-                      payment.plan.type.slice(1)
-                    : payment.plan.charAt(0).toUpperCase() +
-                      payment.plan.slice(1)}
-                </Badge>
-              </TableCell>
-              <TableCell className="font-medium">
-                {formatCurrency(payment.amount)}
-              </TableCell>
-              <TableCell>{formatDate(payment.createdAt)}</TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={getStatusColor(payment.transactionStatus)}
-                >
-                  {payment.transactionStatus}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openViewDialog(payment)}
-                >
-                  <Eye className="h-4 w-4" />
-                  <span className="sr-only">View payment details</span>
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
+        <div>
+          <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <XCircle className="h-5 w-5" />
+                <p className="font-medium">Error loading payment history</p>
+              </div>
+              <p className="text-red-600 dark:text-red-400 mt-2">{error}</p>
+              <Button
+                onClick={fetchPayments}
+                className="mt-4 bg-transparent"
+                variant="outline"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
-    <Card className="mt-6">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Payment History</CardTitle>
-          <CardDescription>
-            View and manage payment transactions
-          </CardDescription>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={fetchPaymentHistory}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            onClick={exportToCSV}
-            className="flex items-center gap-1"
-            disabled={payments.length === 0}
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-6 space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by payment ID, transaction ID, or user..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <div className="w-full sm:w-64">
-              <Input
-                placeholder="Filter by user ID (optional)"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-              />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
+      <div>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+              Payment History
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and monitor all payment transactions
+            </p>
           </div>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="grid gap-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="startDate"
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal sm:w-[200px]",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="endDate"
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal sm:w-[200px]",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="w-full sm:w-32">
-              <Select
-                value={limit.toString()}
-                onValueChange={(value) => setLimit(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Rows per page" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 rows</SelectItem>
-                  <SelectItem value="20">20 rows</SelectItem>
-                  <SelectItem value="50">50 rows</SelectItem>
-                  <SelectItem value="100">100 rows</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={clearFilters}
-              className="sm:mb-0"
-            >
-              Clear Filters
+          <div className="flex items-center gap-2">
+            <Button onClick={fetchPayments} variant="outline" size="sm">
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+            <Button onClick={handleExport} variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
             </Button>
           </div>
         </div>
 
-        {renderPaymentTable()}
-
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {payments.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
-            {Math.min(currentPage * limit, totalPayments)} of {totalPayments}{" "}
-            payments
-          </div>
-          {totalPages > 1 && renderPagination()}
-        </div>
-      </CardContent>
-
-      {/* View Payment Details Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
-            <DialogTitle>Payment Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about the payment transaction.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPayment && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Payment ID</Label>
-                <div className="col-span-3 font-medium">
-                  {selectedPayment.paymentID}
-                </div>
+        {/* Main Payment Management Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Payment Management</CardTitle>
+            <CardDescription>
+              Search, filter, and manage all payment transactions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Filters and Search Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Search className="h-5 w-5 text-violet-600" />
+                <h3 className="font-semibold text-foreground">
+                  Search & Filters
+                </h3>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Transaction ID</Label>
-                <div className="col-span-3">{selectedPayment.trxID}</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">User</Label>
-                <div className="col-span-3">
-                  <div className="font-medium">{selectedPayment.user.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {selectedPayment.user.email}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Search by user name, email, payment ID..."
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Plan</Label>
-                <div className="col-span-3">
-                  <Badge
-                    variant="outline"
-                    className={
-                      typeof selectedPayment.plan === "object" &&
-                      selectedPayment.plan !== null
-                        ? getPlanBadge(selectedPayment.plan.type)
-                        : getPlanBadge(selectedPayment.plan)
-                    }
-                  >
-                    {typeof selectedPayment.plan === "object" &&
-                    selectedPayment.plan !== null
-                      ? selectedPayment.plan.type.charAt(0).toUpperCase() +
-                        selectedPayment.plan.type.slice(1)
-                      : selectedPayment.plan.charAt(0).toUpperCase() +
-                        selectedPayment.plan.slice(1)}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Amount</Label>
-                <div className="col-span-3 font-medium">
-                  {formatCurrency(selectedPayment.amount)}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Date</Label>
-                <div className="col-span-3">
-                  {formatDate(selectedPayment.createdAt)}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Status</Label>
-                <div className="col-span-3">
-                  <Badge
-                    variant="outline"
-                    className={getStatusColor(
-                      selectedPayment.transactionStatus
-                    )}
-                  >
-                    {selectedPayment.transactionStatus}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">User ID</Label>
-                <div className="col-span-3 text-xs font-mono">
-                  {selectedPayment.user._id}
-                </div>
+                <Select value={statusFilter} onValueChange={handleStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={planTypeFilter}
+                  onValueChange={handlePlanTypeFilter}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Plans</SelectItem>
+                    <SelectItem value="subscription">Subscription</SelectItem>
+                    <SelectItem value="credit">Credits</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
+
+            <div className="border-t pt-6">
+              {/* Payment Records Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Payment Records
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {payments
+                      ? `Showing ${payments.payments.length} of ${payments.total} payments`
+                      : "Loading payment data..."}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Show</span>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => setPageSize(Number(value))}
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">
+                    per page
+                  </span>
+                </div>
+              </div>
+
+              {/* Payment Table */}
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Date
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Payment Details</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/80 transition-colors"
+                        onClick={() => handleSort("amount")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Amount
+                          <DollarSign className="h-4 w-4" />
+                        </div>
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      // Skeleton Loading Rows
+                      Array.from({ length: pageSize }, (_, index) => (
+                        <TableRow key={`skeleton-${index}`}>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="h-4 bg-muted rounded animate-pulse"></div>
+                              <div className="h-3 bg-muted/60 rounded animate-pulse w-16"></div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="h-4 bg-muted rounded animate-pulse w-24"></div>
+                              <div className="h-3 bg-muted/60 rounded animate-pulse w-32"></div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="h-6 bg-muted rounded animate-pulse w-20"></div>
+                              <div className="h-3 bg-muted/60 rounded animate-pulse w-16"></div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-6 bg-muted rounded animate-pulse w-20"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-4 bg-muted rounded animate-pulse w-16"></div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="h-6 bg-muted rounded animate-pulse w-20"></div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="h-8 w-8 bg-muted rounded animate-pulse ml-auto"></div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : payments && payments.payments.length > 0 ? (
+                      payments.payments
+                        .filter(
+                          (payment) =>
+                            planTypeFilter === "all" ||
+                            payment.plan?.type === planTypeFilter
+                        )
+                        .map((payment) => (
+                          <TableRow
+                            key={payment._id}
+                            className="hover:bg-muted/50"
+                          >
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium">
+                                  {format(
+                                    new Date(payment.createdAt),
+                                    "MMM dd, yyyy"
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {format(
+                                    new Date(payment.createdAt),
+                                    "hh:mm a"
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium">
+                                  {payment.user.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {payment.user.email}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                                  {payment.paymentID}
+                                </div>
+                                <div className="font-mono text-xs text-muted-foreground">
+                                  TRX: {payment.trxID}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getPlanTypeBadge(
+                                payment.plan?.type ??
+                                  payment.plan?.name ??
+                                  "Unknown"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-semibold">
+                                ৳{payment.amount.toLocaleString()}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(payment.transactionStatus)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleCopyToClipboard(
+                                        payment.paymentID,
+                                        "Payment ID"
+                                      )
+                                    }
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy Payment ID
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleCopyToClipboard(
+                                        payment.trxID,
+                                        "Transaction ID"
+                                      )
+                                    }
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy Transaction ID
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12">
+                          <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+                            <DollarSign className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">
+                            No payments found
+                          </h3>
+                          <p className="text-muted-foreground">
+                            {searchTerm ||
+                            statusFilter !== "all" ||
+                            planTypeFilter !== "all"
+                              ? "Try adjusting your filters or search terms"
+                              : "Payment history will appear here once transactions are made"}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {payments && payments.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {payments.totalPages} • Total{" "}
+                    {payments.total} payments
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage(Math.max(1, currentPage - 1))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from(
+                        { length: Math.min(5, payments.totalPages) },
+                        (_, i) => {
+                          const page = i + 1;
+                          return (
+                            <Button
+                              key={page}
+                              variant={
+                                currentPage === page ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          );
+                        }
+                      )}
+                      {payments.totalPages > 5 && (
+                        <>
+                          <span className="text-muted-foreground px-2">
+                            ...
+                          </span>
+                          <Button
+                            variant={
+                              currentPage === payments.totalPages
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setCurrentPage(payments.totalPages)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {payments.totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage(
+                          Math.min(payments.totalPages, currentPage + 1)
+                        )
+                      }
+                      disabled={currentPage === payments.totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+
+                  {/* <PaginationView
+                    currentPage={currentPage}
+                    handlePageChange={setCurrentPage}
+                    paginationItemsToDisplay={pageSize}
+                    totalPages={payments.totalPages}
+                  /> */}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

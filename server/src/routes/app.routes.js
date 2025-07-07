@@ -9,7 +9,6 @@ import {
   updateAppKeyStatus,
   resetDevice,
   getStatistics,
-  getPaymentsHistory,
   getUserDetailsByKey,
   addCredits,
   processApiUsage,
@@ -38,11 +37,6 @@ router.get(
   "/appkey/user/details/:key",
   authenticateAndVerifyAdmin,
   getUserDetailsByKey
-);
-router.get(
-  "/paymentHistory/get",
-  authenticateAndVerifyAdmin,
-  getPaymentsHistory
 );
 
 router.post("/appkey/validate", validateAppKey);

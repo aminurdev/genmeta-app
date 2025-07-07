@@ -7,16 +7,13 @@ import {
   MoreHorizontal,
   Search,
   UserPlus,
-  Coins,
   Calendar,
   Users,
   CheckCircle2,
   XCircle,
-  Shield,
-  User,
   RefreshCw,
   Trash2,
-  ImageIcon,
+  Coins,
 } from "lucide-react";
 import {
   Card,
@@ -63,14 +60,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { useUsers } from "@/hooks/use-users";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -81,10 +70,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getAccessToken } from "@/services/auth-services";
+import PaginationView from "@/components/pagination-view";
+import { getUserStats, UserStats } from "@/services/admin-dashboard";
+import { UserStatsCards } from "@/components/admin/user-stats-cards";
+import { LoginProviderStats } from "@/components/admin/login-provider-stats";
 
 export default function UsersPage() {
   const { users, loading, error, pagination, fetchUsers } = useUsers();
@@ -98,26 +90,29 @@ export default function UsersPage() {
     id: string;
     name: string;
   } | null>(null);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<UserStats["data"]>({
     totalUsers: 0,
+    activeUsers: 0,
     verifiedUsers: 0,
-    unverifiedUsers: 0,
-    adminUsers: 0,
-    regularUsers: 0,
-    recentUsers: 0,
+    recentRegistrations: 0,
+    roleDistribution: [
+      { _id: "user", count: 0 },
+      { _id: "admin", count: 0 },
+    ],
+    loginProviders: [
+      { _id: "google", count: 0 },
+      { _id: "email", count: 0 },
+    ],
+    appUsers: {
+      count: 0,
+      percentage: 0,
+    },
   });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const baseApi = await getBaseApi();
-        const accessToken = await getAccessToken();
-        const response = await fetch(`${baseApi}/admin/users/statistics`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        const data = await response.json();
+        const data = await getUserStats();
         if (data.success) {
           setStats(data.data);
         }
@@ -179,15 +174,7 @@ export default function UsersPage() {
 
     // Refresh stats
     try {
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/admin/users/statistics`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data = await response.json();
+      const data = await getUserStats();
       if (data.success) {
         setStats(data.data);
       }
@@ -386,122 +373,9 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <Card className="overflow-hidden border-l-4 border-l-blue-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-blue-50/50">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Platform-wide user base
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-l-4 border-l-green-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-green-50/50">
-              <CardTitle className="text-sm font-medium">
-                Verified Users
-              </CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.verifiedUsers}</div>
-              <div className="mt-2">
-                <Progress
-                  value={(stats.verifiedUsers / stats.totalUsers) * 100}
-                  className="h-1.5 bg-green-100"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((stats.verifiedUsers / stats.totalUsers) * 100).toFixed(1)}%
-                  of total users
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-l-4 border-l-yellow-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-yellow-50/50">
-              <CardTitle className="text-sm font-medium">
-                Unverified Users
-              </CardTitle>
-              <XCircle className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.unverifiedUsers}</div>
-              <div className="mt-2">
-                <Progress
-                  value={(stats.unverifiedUsers / stats.totalUsers) * 100}
-                  className="h-1.5 bg-yellow-100"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((stats.unverifiedUsers / stats.totalUsers) * 100).toFixed(
-                    1
-                  )}
-                  % of total users
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-l-4 border-l-purple-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-purple-50/50">
-              <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
-              <Shield className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.adminUsers}</div>
-              <div className="mt-2">
-                <Progress
-                  value={(stats.adminUsers / stats.totalUsers) * 100}
-                  className="h-1.5 bg-purple-100"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((stats.adminUsers / stats.totalUsers) * 100).toFixed(1)}% of
-                  total users
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-l-4 border-l-indigo-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-indigo-50/50">
-              <CardTitle className="text-sm font-medium">
-                Regular Users
-              </CardTitle>
-              <User className="h-4 w-4 text-indigo-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.regularUsers}</div>
-              <div className="mt-2">
-                <Progress
-                  value={(stats.regularUsers / stats.totalUsers) * 100}
-                  className="h-1.5 bg-indigo-100"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((stats.regularUsers / stats.totalUsers) * 100).toFixed(1)}%
-                  of total users
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-l-4 border-l-orange-500">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-orange-50/50">
-              <CardTitle className="text-sm font-medium">
-                Recent Users
-              </CardTitle>
-              <UserPlus className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-bold">{stats.recentUsers}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                New users this month
-              </p>
-            </CardContent>
-          </Card>
+        <div className="space-y-6">
+          <UserStatsCards stats={stats} />
+          <LoginProviderStats stats={stats} />
         </div>
 
         <Card className="shadow-sm">
@@ -754,42 +628,32 @@ export default function UsersPage() {
                               {user.status}
                             </Badge>
                           </TableCell>
+
                           <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <p className="font-medium text-sm">
-                                {user.currentPlan?.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Expires{" "}
-                                {format(
-                                  new Date(user.currentPlan?.expiresDate || 0),
-                                  "MMM d, yyyy"
-                                )}
-                              </p>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-sm">
+                                {user.currentPlan?.name ??
+                                  user.metadata?.hasActiveKey?.type ??
+                                  "N/A"}
+                              </span>
                             </div>
                           </TableCell>
+
                           <TableCell>
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
                                 <Coins className="h-3.5 w-3.5 text-amber-500" />
                                 <span className="text-sm">
                                   <span className="font-medium">
-                                    {user.tokens.available}
+                                    {user.usage.totalProcess}
                                   </span>
-                                  /{user.tokens.total}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
-                                <span className="text-sm">
-                                  <span className="font-medium">
-                                    {user.images.processed}
-                                  </span>
-                                  /{user.images.total}
+                                  /{user.usage.credit}
                                 </span>
                               </div>
                             </div>
                           </TableCell>
+
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -824,17 +688,6 @@ export default function UsersPage() {
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className={
-                                    user.status === "suspended"
-                                      ? "text-green-600"
-                                      : "text-red-600"
-                                  }
-                                >
-                                  {user.status === "suspended"
-                                    ? "Activate account"
-                                    : "Suspend account"}
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-red-600"
@@ -898,49 +751,12 @@ export default function UsersPage() {
                     </span>
                   )}
                 </div>
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() =>
-                          handlePageChange(Math.max(currentPage - 1, 1))
-                        }
-                        className={
-                          currentPage === 1
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-                    {Array.from(
-                      { length: pagination.totalPages },
-                      (_, i) => i + 1
-                    ).map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => handlePageChange(page)}
-                          isActive={currentPage === page}
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() =>
-                          handlePageChange(
-                            Math.min(currentPage + 1, pagination.totalPages)
-                          )
-                        }
-                        className={
-                          currentPage === pagination.totalPages
-                            ? "pointer-events-none opacity-50"
-                            : ""
-                        }
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                <PaginationView
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  paginationItemsToDisplay={5}
+                  handlePageChange={handlePageChange}
+                />
               </div>
             </div>
           </CardContent>

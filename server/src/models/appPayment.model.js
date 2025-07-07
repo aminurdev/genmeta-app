@@ -15,6 +15,7 @@ const paymentSchema = new mongoose.Schema(
     plan: {
       id: { type: String, required: true },
       type: { type: String, required: true },
+      name: { type: String, required: true },
     },
     amount: {
       type: Number,

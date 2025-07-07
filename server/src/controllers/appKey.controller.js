@@ -4,7 +4,6 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { v4 as uuidv4 } from "uuid";
-import mongoose from "mongoose";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
 import config from "../config/index.js";
@@ -384,79 +383,6 @@ const getStatistics = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const getPaymentsHistory = asyncHandler(async (req, res) => {
-  const {
-    page = 1,
-    limit = 10,
-    search = "",
-    userId,
-    startDate,
-    endDate,
-  } = req.query;
-
-  const query = {};
-
-  if (search) {
-    const userMatch = await User.find({
-      $or: [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ],
-    }).select("_id");
-
-    const matchedUserIds = userMatch.map((u) => u._id);
-
-    query.$or = [
-      { trxID: { $regex: search, $options: "i" } },
-      { paymentID: { $regex: search, $options: "i" } },
-      { userId: { $in: matchedUserIds } },
-    ];
-  }
-
-  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-    query.userId = userId;
-  }
-
-  if (startDate || endDate) {
-    query.createdAt = {};
-    if (startDate) query.createdAt.$gte = new Date(startDate);
-    if (endDate) query.createdAt.$lte = new Date(endDate);
-  }
-
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const total = await AppPayment.countDocuments(query);
-
-  const payments = await AppPayment.find(query)
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(parseInt(limit))
-    .populate("userId", "name email");
-
-  // Format response data with only key fields
-  const formattedPayments = payments.map((payment) => ({
-    _id: payment._id,
-    user: {
-      _id: payment.userId?._id,
-      name: payment.userId?.name,
-      email: payment.userId?.email,
-    },
-    paymentID: payment.paymentID,
-    trxID: payment.trxID,
-    plan: payment.plan,
-    amount: payment.amount,
-    createdAt: payment.createdAt,
-    transactionStatus: payment.paymentDetails?.transactionStatus,
-  }));
-
-  return new ApiResponse(200, true, "Payments fetched successfully", {
-    total,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    totalPages: Math.ceil(total / limit),
-    payments: formattedPayments,
-  }).send(res);
-});
-
 const getUserDetailsByKey = asyncHandler(async (req, res) => {
   const { key } = req.params;
 
@@ -691,7 +617,6 @@ export const processApiUsage = asyncHandler(async (req, res) => {
 });
 
 export {
-  getPaymentsHistory,
   createAppKey,
   updateAppKey,
   deleteAppKey,
