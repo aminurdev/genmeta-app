@@ -549,7 +549,7 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
         )
       : null;
   const encryptedKey = await AiAPI.findOne();
-  const aiAppKey =
+  const aiApiKey =
     appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
 
   const remainingCredit = appKey.calculateCredit();
@@ -563,7 +563,7 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
     expiresIn,
     credit: remainingCredit,
     totalProcess: appKey.totalProcess,
-    aiAppKey,
+    aiApiKey,
     user: {
       name: appKey.userId?.name,
       email: appKey.userId?.email,

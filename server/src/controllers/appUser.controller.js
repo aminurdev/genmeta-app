@@ -489,7 +489,7 @@ const appUserLogin = asyncHandler(async (req, res) => {
       email: user.email,
       role: user.role,
     },
-    appKey: appKeyDoc.key,
+    apiKey: appKeyDoc.key,
   }).send(res);
 });
 
@@ -505,7 +505,7 @@ const verifyGoogle = asyncHandler(async (req, res) => {
       email: user.email,
       role: user.role,
     },
-    appKey: appKeyDoc.key,
+    apiKey: appKeyDoc.key,
   }).send(res);
 });
 
