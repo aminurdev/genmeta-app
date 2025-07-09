@@ -86,7 +86,7 @@ export function Navigation({ user }: NavigationProps) {
 
             <Button
               asChild
-              className="transition-all duration-200 hover:scale-105"
+              className="hidden lg:block transition-all duration-200 hover:scale-105"
             >
               <Link className="flex items-center gap-2" href="/download">
                 <Image
@@ -101,7 +101,7 @@ export function Navigation({ user }: NavigationProps) {
 
             {/* Mobile Menu Button */}
             <Sheet>
-              <SheetTrigger className="md:hidden" aria-label="Toggle menu">
+              <SheetTrigger className="lg:hidden" aria-label="Toggle menu">
                 <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10">
                   <Menu className="h-6 w-6" />
                 </span>
