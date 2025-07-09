@@ -86,9 +86,12 @@ export function Navigation({ user }: NavigationProps) {
 
             <Button
               asChild
-              className="hidden lg:block transition-all duration-200 hover:scale-105"
+              className="transition-all duration-200 hover:scale-105"
             >
-              <Link className="flex items-center gap-2" href="/download">
+              <Link
+                className="hidden md:flex items-center gap-2"
+                href="/download"
+              >
                 <Image
                   src="/Assets/SVG/win.svg"
                   alt="Download"
