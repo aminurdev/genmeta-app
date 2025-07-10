@@ -161,7 +161,7 @@ const PricingContent = () => {
     {
       question: "How does the free plan work?",
       answer:
-        "The free plan gives you access to basic AI image processing with a limit of 5 images per month. You can process images, generate basic metadata, and export results with standard features.",
+        "The free plan gives you access to basic AI image processing with a limit of 10 images per day. You can process images, generate basic metadata, and export results with standard features.",
     },
     {
       question: "What's the difference between subscription and credit plans?",
@@ -172,16 +172,6 @@ const PricingContent = () => {
       question: "Can I upgrade from free to premium anytime?",
       answer:
         "Yes, you can upgrade from the free plan to any premium plan at any time. Your account will be upgraded immediately and you'll have access to all premium features.",
-    },
-    {
-      question: "What payment methods do you accept?",
-      answer:
-        "We accept all major credit cards, PayPal, and bank transfers for annual plans. All payments are securely processed and your information is never stored on our servers.",
-    },
-    {
-      question: "Can I cancel my subscription anytime?",
-      answer:
-        "Yes, you can cancel your subscription at any time. You'll continue to have access to premium features until the end of your current billing period, then your account will revert to the free plan.",
     },
     {
       question: "Is there a refund policy?",
@@ -207,7 +197,7 @@ const PricingContent = () => {
 
   // Free Plan Card Component
   const FreePlanCard = () => (
-    <Card className="relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg">
+    <Card className="flex flex-col relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-2xl">
           <Download className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -215,7 +205,7 @@ const PricingContent = () => {
         </CardTitle>
         <CardDescription>Perfect for getting started</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-1">
         <div className="space-y-1">
           <p className="text-4xl font-bold">৳0</p>
           <p className="text-sm text-muted-foreground">Forever free</p>
@@ -346,7 +336,7 @@ const PricingContent = () => {
 
               {/* Monthly Plan */}
               {monthlyPlan && (
-                <Card className="relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg">
+                <Card className="flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-2xl">
                       <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
@@ -359,7 +349,7 @@ const PricingContent = () => {
                       </Badge>
                     )}
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
@@ -406,7 +396,7 @@ const PricingContent = () => {
 
               {/* Yearly Plan */}
               {yearlyPlan && (
-                <Card className="relative overflow-hidden border-violet-200 dark:border-violet-800 shadow-md transition-all hover:shadow-lg">
+                <Card className="flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 shadow-md transition-all hover:shadow-lg">
                   <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
                     Best Value
                   </div>
@@ -425,7 +415,7 @@ const PricingContent = () => {
                       Best value for committed users
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
@@ -497,7 +487,7 @@ const PricingContent = () => {
 
               {/* Basic Credit Plan */}
               {basicCreditPlan && (
-                <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg">
+                <Card className="flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-2xl">
                       <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -512,7 +502,7 @@ const PricingContent = () => {
                       </Badge>
                     )}
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
@@ -572,7 +562,7 @@ const PricingContent = () => {
 
               {/* Pro Credit Plan */}
               {proCreditPlan && (
-                <Card className="relative overflow-hidden border-blue-200 dark:border-blue-800 shadow-md transition-all hover:shadow-lg">
+                <Card className="flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 shadow-md transition-all hover:shadow-lg">
                   <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
                     Best Value
                   </div>
@@ -591,7 +581,7 @@ const PricingContent = () => {
                       Best value for heavy users
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
