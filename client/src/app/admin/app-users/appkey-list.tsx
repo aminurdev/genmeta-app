@@ -774,7 +774,7 @@ export default function AppKeyList() {
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/users/${appKey.key}`}>
+                  <Link href={`/admin/app-users/${appKey.key}`}>
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View user details</span>
                   </Link>
