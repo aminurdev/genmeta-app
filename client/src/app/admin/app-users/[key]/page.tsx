@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import AppKeyDetailsPage from "./details";
-import { Loader2 } from "lucide-react";
 
 export default async function UserDetailsPage({
   params,
