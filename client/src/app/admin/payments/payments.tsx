@@ -53,13 +53,13 @@ import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
-// import {
-//   Popover,
-//   PopoverContent,
-//   PopoverTrigger,
-// } from "@/components/ui/popover";
-// import { Calendar } from "@/components/ui/calendar";
-// import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import {
   getPaymentsHistory,
   PaymentResponse,
@@ -352,7 +352,7 @@ export function PaymentHistoryPage() {
               </div>
 
               {/* Date Range */}
-              {/* <div>
+              <div>
                 <Label
                   htmlFor="dateRange"
                   className="text-sm font-medium mb-2 block"
@@ -394,7 +394,7 @@ export function PaymentHistoryPage() {
                     />
                   </PopoverContent>
                 </Popover>
-              </div> */}
+              </div>
             </div>
           </CardContent>
         </Card>
