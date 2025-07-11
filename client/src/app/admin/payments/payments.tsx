@@ -66,14 +66,10 @@ import {
 } from "@/services/admin-dashboard";
 
 export function PaymentHistoryPage() {
-  const today = new Date();
   const [payments, setPayments] = useState<PaymentResponse["data"] | null>(
     null
   );
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: today,
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,15 +83,7 @@ export function PaymentHistoryPage() {
   const hasActiveFilters =
     searchTerm !== "" ||
     planTypeFilter !== "all" ||
-    (dateRange?.from &&
-      dateRange?.to &&
-      (dateRange.from.getTime() !==
-        new Date(
-          new Date().getFullYear(),
-          new Date().getMonth(),
-          1
-        ).getTime() ||
-        dateRange.to.getTime() !== today.getTime()));
+    (dateRange?.from && dateRange?.to);
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -113,7 +101,7 @@ export function PaymentHistoryPage() {
       if (response.success) {
         setPayments(response.data);
       } else {
-        setError(response.message);
+        setError("Failed to fetch payments");
       }
     } catch (err) {
       setError("Failed to fetch payment history");
@@ -224,10 +212,7 @@ export function PaymentHistoryPage() {
   const handleClearFilters = () => {
     setSearchTerm("");
     setPlanTypeFilter("all");
-    setDateRange({
-      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      to: today,
-    });
+    setDateRange(undefined);
     setCurrentPage(1);
     toast.success("Filters cleared");
   };
@@ -293,17 +278,17 @@ export function PaymentHistoryPage() {
                 <Filter className="h-5 w-5 text-violet-600" />
                 <CardTitle className="text-lg">Filters & Search</CardTitle>
               </div>
-              {hasActiveFilters && (
-                <Button
-                  onClick={handleClearFilters}
-                  variant="outline"
-                  size="sm"
-                  className="bg-transparent"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Clear Filters
-                </Button>
-              )}
+              hasActiveFilters
+              <Button
+                onClick={handleClearFilters}
+                variant="outline"
+                disabled={!!!hasActiveFilters}
+                size="sm"
+                className="bg-transparent"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear Filters
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -351,7 +336,7 @@ export function PaymentHistoryPage() {
                 </Select>
               </div>
 
-              {/* Date Range */}
+              {/* Date Range - Updated with new logic */}
               <div>
                 <Label
                   htmlFor="dateRange"
@@ -384,7 +369,7 @@ export function PaymentHistoryPage() {
                       )}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="range"
                       selected={dateRange}
