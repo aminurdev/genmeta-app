@@ -31,7 +31,7 @@ export function NavLinks() {
     },
     {
       href: "/docs",
-      label: "Docs",
+      label: "Docs [Beta]",
       icon: <Dock className="h-5 w-5 inline-block mr-2" />,
     },
   ];

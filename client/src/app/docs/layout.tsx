@@ -47,7 +47,7 @@ import {
 import { TableOfContents } from "@/components/docs/table-of-contents";
 
 const data = {
-  versions: ["2.1.0", "2.0.0", "1.9.0", "1.8.0"],
+  versions: ["1.0.0"],
   navMain: [
     {
       title: "Getting Started",
@@ -56,74 +56,43 @@ const data = {
       items: [
         {
           title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Installation",
-          url: "#",
-        },
-        {
-          title: "Quick Start",
-          url: "#",
-        },
-        {
-          title: "Project Structure",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Components",
-      url: "#",
-      icon: Code,
-      items: [
-        {
-          title: "Button",
-          url: "#",
-        },
-        {
-          title: "Card",
-          url: "#",
+          url: "#introduction",
           isActive: true,
         },
         {
-          title: "Dialog",
-          url: "#",
+          title: "Installation",
+          url: "#installation",
         },
         {
-          title: "Form",
-          url: "#",
+          title: "Setup",
+          url: "#setup",
         },
         {
-          title: "Input",
-          url: "#",
-        },
-        {
-          title: "Table",
-          url: "#",
+          title: "Quick Start",
+          url: "#quick-start",
         },
       ],
     },
     {
-      title: "Advanced",
+      title: "Features",
       url: "#",
       icon: Zap,
       items: [
         {
-          title: "Theming",
-          url: "#",
+          title: "AI Metadata Generation",
+          url: "#ai-metadata",
         },
         {
-          title: "Dark Mode",
-          url: "#",
+          title: "Batch Processing",
+          url: "#batch-processing",
         },
         {
-          title: "Animations",
-          url: "#",
+          title: "Export Options",
+          url: "#export-options",
         },
         {
-          title: "Custom Components",
-          url: "#",
+          title: "Custom Keywords",
+          url: "#custom-keywords",
         },
       ],
     },
@@ -133,20 +102,20 @@ const data = {
       icon: FileText,
       items: [
         {
-          title: "Configuration",
-          url: "#",
+          title: "Authentication",
+          url: "#authentication",
         },
         {
-          title: "Utilities",
-          url: "#",
+          title: "Endpoints",
+          url: "#endpoints",
         },
         {
-          title: "Hooks",
-          url: "#",
+          title: "Rate Limits",
+          url: "#rate-limits",
         },
         {
-          title: "Types",
-          url: "#",
+          title: "Error Codes",
+          url: "#error-codes",
         },
       ],
     },
@@ -157,19 +126,19 @@ const data = {
       items: [
         {
           title: "FAQ",
-          url: "#",
+          url: "#faq",
         },
         {
           title: "Troubleshooting",
-          url: "#",
+          url: "#troubleshooting",
         },
         {
-          title: "Community",
-          url: "#",
+          title: "System Requirements",
+          url: "#system-requirements",
         },
         {
-          title: "Contributing",
-          url: "#",
+          title: "Contact Support",
+          url: "#contact-support",
         },
       ],
     },

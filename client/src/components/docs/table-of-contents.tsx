@@ -11,21 +11,21 @@ interface TocItem {
 }
 
 const tocItems: TocItem[] = [
-  { id: "overview", title: "Overview", level: 1 },
-  { id: "quick-example", title: "Quick Example", level: 1 },
+  { id: "introduction", title: "Introduction", level: 1 },
+  { id: "what-is-genmeta", title: "What is GenMeta?", level: 2 },
+  { id: "key-features", title: "Key Features", level: 2 },
   { id: "installation", title: "Installation", level: 1 },
-  { id: "usage", title: "Usage", level: 1 },
-  { id: "preview", title: "Preview", level: 2 },
-  { id: "code", title: "Code", level: 2 },
-  { id: "api-reference", title: "API Reference", level: 1 },
-  { id: "card", title: "Card", level: 2 },
-  { id: "card-header", title: "CardHeader", level: 2 },
-  { id: "card-title", title: "CardTitle", level: 2 },
-  { id: "card-description", title: "CardDescription", level: 2 },
-  { id: "card-content", title: "CardContent", level: 2 },
-  { id: "examples", title: "Examples", level: 1 },
-  { id: "simple-card", title: "Simple Card", level: 2 },
-  { id: "interactive-card", title: "Interactive Card", level: 2 },
+  { id: "system-requirements", title: "System Requirements", level: 2 },
+  { id: "download-install", title: "Download & Install", level: 2 },
+  { id: "setup", title: "Setup", level: 1 },
+  { id: "api-key-setup", title: "API Key Setup", level: 2 },
+  { id: "first-run", title: "First Run", level: 2 },
+  { id: "quick-start", title: "Quick Start", level: 1 },
+  { id: "single-image", title: "Single Image Processing", level: 2 },
+  { id: "batch-processing", title: "Batch Processing", level: 2 },
+  { id: "ai-metadata", title: "AI Metadata Generation", level: 1 },
+  { id: "export-options", title: "Export Options", level: 1 },
+  { id: "troubleshooting", title: "Troubleshooting", level: 1 },
 ]
 
 export function TableOfContents() {
