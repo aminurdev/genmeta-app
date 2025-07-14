@@ -180,7 +180,6 @@ export default function UserDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignTokensOpen, setAssignTokensOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeTab, setActiveTab] = useState("overview");
 
   const fetchImages = useCallback(

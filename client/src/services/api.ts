@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // api.ts
 import axios, { AxiosRequestConfig, Method } from "axios";
 import { cookies } from "next/dist/server/request/cookies";
