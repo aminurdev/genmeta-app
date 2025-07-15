@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { UserMenu } from "./user-menu";
 import Image from "next/image";
-import { Menu } from "lucide-react";
-import { NavLinks } from "./navLinks";
+import { Menu, X } from "lucide-react";
+import { NavLinks, MobileNavLinks } from "./navLinks";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { User } from "@/types/user";
 
 interface NavigationProps {
@@ -16,6 +17,8 @@ interface NavigationProps {
 
 export function Navigation({ user }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,6 +32,19 @@ export function Navigation({ user }: NavigationProps) {
     // Cleanup
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close mobile menu when pathname changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  const handleMobileMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <div className="mb-20">
@@ -103,28 +119,67 @@ export function Navigation({ user }: NavigationProps) {
             </Button>
 
             {/* Mobile Menu Button */}
-            <Sheet>
-              <SheetTrigger className="lg:hidden" aria-label="Toggle menu">
-                <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10">
-                  <Menu className="h-6 w-6" />
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger 
+                className="lg:hidden" 
+                aria-label="Toggle menu"
+                onClick={handleMobileMenuToggle}
+              >
+                <span className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground hover:scale-105 h-10 w-10">
+                  {isMobileMenuOpen ? (
+                    <X className="h-6 w-6 transition-transform duration-200" />
+                  ) : (
+                    <Menu className="h-6 w-6 transition-transform duration-200" />
+                  )}
                 </span>
               </SheetTrigger>
-              <SheetContent side="right">
-                <div className="flex flex-col items-start gap-6 py-4">
-                  <NavLinks />
-                  <div className="w-full border-t border-border my-4"></div>
-                  {user ? (
-                    <UserMenu user={user} />
-                  ) : (
-                    <div className="flex flex-col w-full gap-2">
-                      <Button variant="outline" asChild>
-                        <Link href="/login">Login</Link>
-                      </Button>
-                      <Button asChild>
-                        <Link href="/signup">Sign Up</Link>
-                      </Button>
+              <SheetContent 
+                side="right" 
+                className="w-[300px] sm:w-[350px] transition-all duration-300 ease-in-out"
+              >
+                <div className="flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-center pb-4 border-b border-border">
+                    <h2 className="text-lg font-semibold text-foreground">Menu</h2>
+                  </div>
+                  
+                  {/* Navigation Links */}
+                  <div className="flex-1 py-6">
+                    <div className="space-y-2">
+                      <MobileNavLinks onLinkClick={closeMobileMenu} />
                     </div>
-                  )}
+                  </div>
+                  
+                  {/* User Section */}
+                  <div className="border-t border-border pt-4 mt-auto">
+                    {user ? (
+                      <div className="space-y-3">
+                        <div className="px-3 py-2 rounded-lg bg-muted/50">
+                          <p className="text-sm font-medium text-foreground">{user.name}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                        <UserMenu user={user} />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <Button 
+                          variant="outline" 
+                          asChild 
+                          className="w-full transition-all duration-200 hover:scale-[0.98]"
+                          onClick={closeMobileMenu}
+                        >
+                          <Link href="/login">Login</Link>
+                        </Button>
+                        <Button 
+                          asChild 
+                          className="w-full transition-all duration-200 hover:scale-[0.98]"
+                          onClick={closeMobileMenu}
+                        >
+                          <Link href="/signup">Sign Up</Link>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
