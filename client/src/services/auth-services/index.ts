@@ -32,7 +32,10 @@ export const registerUser = async (userData: FieldValues) => {
     });
     return result;
   } catch (error: any) {
-    return Error(error.message || "Failed to register user");
+    return {
+      success: false,
+      message: error?.message || "Failed to register user",
+    };
   }
 };
 
@@ -46,7 +49,10 @@ export const resendVerificationEmail = async (email: string) => {
     });
     return result;
   } catch (error: any) {
-    return Error(error.message || "Failed to resend verification email");
+    return {
+      success: false,
+      message: error?.message || "Failed to resend verification email",
+    };
   }
 };
 
@@ -66,7 +72,10 @@ export const verifyEmail = async (otpToken: string, otp: string) => {
 
     return result;
   } catch (error: any) {
-    return Error(error.message || "Failed to verify email");
+    return {
+      success: false,
+      message: error?.message || "Failed to verify email",
+    };
   }
 };
 
@@ -90,7 +99,10 @@ export const loginUser = async (userData: FieldValues) => {
 
     return result;
   } catch (error: any) {
-    return Error(error.message || "Failed to login user");
+    return {
+      success: false,
+      message: error?.message || "Failed to login user",
+    };
   }
 };
 
@@ -115,8 +127,10 @@ export const verifyGoogleToken = async (token: string) => {
     return result;
   } catch (error: any) {
     console.error("Error in verifyGoogleToken:", error);
-    // Return a consistent object structure instead of Error object
-    return Error(error.message || "Failed to verify Google token");
+    return {
+      success: false,
+      message: error?.message || "Failed to verify Google token",
+    };
   }
 };
 
