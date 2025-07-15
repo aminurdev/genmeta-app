@@ -120,8 +120,8 @@ export function Navigation({ user }: NavigationProps) {
 
             {/* Mobile Menu Button */}
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger 
-                className="lg:hidden" 
+              <SheetTrigger
+                className="lg:hidden"
                 aria-label="Toggle menu"
                 onClick={handleMobileMenuToggle}
               >
@@ -133,45 +133,51 @@ export function Navigation({ user }: NavigationProps) {
                   )}
                 </span>
               </SheetTrigger>
-              <SheetContent 
-                side="right" 
+              <SheetContent
+                side="right"
                 className="w-[300px] sm:w-[350px] transition-all duration-300 ease-in-out"
               >
                 <div className="flex flex-col h-full">
                   {/* Header */}
                   <div className="flex items-center pb-4 border-b border-border">
-                    <h2 className="text-lg font-semibold text-foreground">Menu</h2>
+                    <h2 className="text-lg font-semibold text-foreground">
+                      Menu
+                    </h2>
                   </div>
-                  
+
                   {/* Navigation Links */}
                   <div className="flex-1 py-6">
                     <div className="space-y-2">
                       <MobileNavLinks onLinkClick={closeMobileMenu} />
                     </div>
                   </div>
-                  
+
                   {/* User Section */}
                   <div className="border-t border-border pt-4 mt-auto">
                     {user ? (
                       <div className="space-y-3">
                         <div className="px-3 py-2 rounded-lg bg-muted/50">
-                          <p className="text-sm font-medium text-foreground">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <p className="text-sm font-medium text-foreground">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.email}
+                          </p>
                         </div>
                         <UserMenu user={user} />
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <Button 
-                          variant="outline" 
-                          asChild 
+                        <Button
+                          variant="outline"
+                          asChild
                           className="w-full transition-all duration-200 hover:scale-[0.98]"
                           onClick={closeMobileMenu}
                         >
                           <Link href="/login">Login</Link>
                         </Button>
-                        <Button 
-                          asChild 
+                        <Button
+                          asChild
                           className="w-full transition-all duration-200 hover:scale-[0.98]"
                           onClick={closeMobileMenu}
                         >

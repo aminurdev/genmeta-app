@@ -5,6 +5,7 @@ export interface UserT {
   role: "user" | "admin";
   iat?: number;
   exp?: number;
+  avatar?: string;
 }
 
 export type User = UserT | null;

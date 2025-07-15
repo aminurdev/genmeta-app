@@ -1,6 +1,13 @@
 "use client";
 
-import { Dock, DollarSign, Home, Laptop, PanelLeft, ChevronRight } from "lucide-react";
+import {
+  Dock,
+  DollarSign,
+  Home,
+  Laptop,
+  PanelLeft,
+  ChevronRight,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Button } from "./ui/button";
 import Link from "next/link";
@@ -75,31 +82,31 @@ export function MobileNavLinks({ onLinkClick }: MobileNavLinksProps) {
       href: "/",
       label: "Home",
       icon: <Home className="h-5 w-5" />,
-      description: "Back to homepage"
+      description: "Back to homepage",
     },
     {
       href: "/pricing",
       label: "Pricing",
       icon: <DollarSign className="h-5 w-5" />,
-      description: "View our plans"
+      description: "View our plans",
     },
     {
       href: "/dashboard",
       label: "Dashboard",
       icon: <PanelLeft className="h-5 w-5" />,
-      description: "Manage your account"
+      description: "Manage your account",
     },
     {
       href: "/download",
       label: "Get App Free",
       icon: <Laptop className="h-5 w-5" />,
-      description: "Download desktop app"
+      description: "Download desktop app",
     },
     {
       href: "/docs",
       label: "Docs [Beta]",
       icon: <Dock className="h-5 w-5" />,
-      description: "Documentation & guides"
+      description: "Documentation & guides",
     },
   ];
 
@@ -113,7 +120,7 @@ export function MobileNavLinks({ onLinkClick }: MobileNavLinksProps) {
             className="transform transition-all duration-200 ease-in-out"
             style={{
               animationDelay: `${index * 50}ms`,
-              animation: 'slideInFromRight 0.3s ease-out forwards'
+              animation: "slideInFromRight 0.3s ease-out forwards",
             }}
           >
             <Link
@@ -126,11 +133,13 @@ export function MobileNavLinks({ onLinkClick }: MobileNavLinksProps) {
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-md transition-colors duration-200 ${
-                  isActive 
-                    ? "bg-primary/20 text-primary" 
-                    : "bg-muted group-hover:bg-muted-foreground/20"
-                }`}>
+                <div
+                  className={`p-2 rounded-md transition-colors duration-200 ${
+                    isActive
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted group-hover:bg-muted-foreground/20"
+                  }`}
+                >
                   {link.icon}
                 </div>
                 <div className="flex flex-col items-start">
@@ -138,14 +147,18 @@ export function MobileNavLinks({ onLinkClick }: MobileNavLinksProps) {
                   <span className="text-xs opacity-70">{link.description}</span>
                 </div>
               </div>
-              <ChevronRight className={`h-4 w-4 transition-all duration-200 ${
-                isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground group-hover:translate-x-1"
-              }`} />
+              <ChevronRight
+                className={`h-4 w-4 transition-all duration-200 ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground group-hover:text-foreground group-hover:translate-x-1"
+                }`}
+              />
             </Link>
           </div>
         );
       })}
-      
+
       <style jsx>{`
         @keyframes slideInFromRight {
           from {
