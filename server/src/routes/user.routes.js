@@ -28,17 +28,17 @@ const router = Router();
 // Custom rate limiter for registration: max 5 per hour
 const registerLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
-  message: "Too many registration attempts from this IP, try again in an hour.",
+  max: 20,
+  message: "Too many registration request attempts. Please try again later.",
 });
 
 const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 mins
   max: 10,
-  message: "Too many login attempts, try again soon.",
+  message: "Too many login attempts, Please try again later.",
 });
 
-const limiter = createRateLimiter({ max: 3, windowMs: 5 * 60 * 1000 });
+const limiter = createRateLimiter({ max: 10, windowMs: 5 * 60 * 1000 });
 
 router.get("/google-login", googleLogin);
 router.get("/google/callback", (req, res, next) => {
