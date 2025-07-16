@@ -86,32 +86,38 @@ export default async function Page() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pt-0 max-w-7xl mx-auto w-full">
       {/* Header with User Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
+        <div className="flex flex-col gap-1 sm:gap-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+            Overview
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Monitor your usage, credits, and payment history
           </p>
         </div>
-        <Card className="w-fit">
-          <CardContent className="flex items-center gap-3 p-4">
-            <Avatar className="h-10 w-10">
+        <Card className="w-full sm:w-fit border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardContent className="flex items-center gap-3 p-3 sm:p-4">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-primary/10">
               <AvatarImage
                 src={`https://avatar.vercel.sh/${data.user.email}`}
                 alt={data.user.name}
               />
-              <AvatarFallback>{getInitials(data.user.name)}</AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {getInitials(data.user.name)}
+              </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{data.user.name}</span>
+                <span className="font-semibold text-sm sm:text-base truncate">
+                  {data.user.name}
+                </span>
                 {data.user.isVerified && (
-                  <Shield className="h-4 w-4 text-green-500" />
+                  <Shield className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                 )}
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground truncate">
                 {data.user.email}
               </span>
             </div>
@@ -120,70 +126,70 @@ export default async function Page() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-3 md:grid-cols-5">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* Total Processes */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
               Total Processes
             </CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
-              <Activity className="h-4 w-4 text-primary" />
+            <div className="rounded-full bg-blue-500/10 p-1.5 sm:p-2">
+              <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.totalProcess.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">All time processes</p>
+            <p className="text-xs text-muted-foreground mt-1">All time processes</p>
           </CardContent>
         </Card>
 
         {/* Today Usage */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Today</CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
-              <Calendar className="h-4 w-4 text-primary" />
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Today</CardTitle>
+            <div className="rounded-full bg-emerald-500/10 p-1.5 sm:p-2">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.todayUsage.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Processes today</p>
+            <p className="text-xs text-muted-foreground mt-1">Processes today</p>
           </CardContent>
         </Card>
 
         {/* This Month Usage */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
-              <TrendingUp className="h-4 w-4 text-primary" />
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">This Month</CardTitle>
+            <div className="rounded-full bg-violet-500/10 p-1.5 sm:p-2">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-violet-600" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.thisMonthUsage.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">Monthly processes</p>
+            <p className="text-xs text-muted-foreground mt-1">Monthly processes</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">App Credits</CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">App Credits</CardTitle>
+            <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
               {data.appKey.creditRemaining === null ? (
-                <Infinity className="h-4 w-4 text-primary" />
+                <Infinity className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
               ) : (
-                <Zap className="h-4 w-4 text-primary" />
+                <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
               )}
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {formatCredit(data.appKey.creditRemaining)}
             </div>
             <div className="flex items-center pt-1">
@@ -201,40 +207,46 @@ export default async function Page() {
         </Card>
 
         {/* Total Spent */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <div className="rounded-full bg-primary/10 p-1">
-              <DollarSign className="h-4 w-4 text-primary" />
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
+            <div className="rounded-full bg-rose-500/10 p-1.5 sm:p-2">
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-rose-600" />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {formatCurrency(data.payments.totalSpent)}
             </div>
-            <p className="text-xs text-muted-foreground">Lifetime payments</p>
+            <p className="text-xs text-muted-foreground mt-1">Lifetime payments</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
       <Tabs defaultValue="monthly" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="monthly">Monthly View</TabsTrigger>
-          <TabsTrigger value="daily">Daily View</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Analytics Overview</h2>
+            <p className="text-sm text-muted-foreground">Track your processing activity and payments</p>
+          </div>
+          <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-muted/50">
+            <TabsTrigger value="monthly" className="text-xs sm:text-sm">Monthly View</TabsTrigger>
+            <TabsTrigger value="daily" className="text-xs sm:text-sm">Daily View</TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="monthly" className="space-y-4">
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <TabsContent value="monthly" className="space-y-4 sm:space-y-6">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-2">
             {/* Monthly Process Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Processing Activity</CardTitle>
-                <CardDescription>
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg font-semibold">Monthly Processing Activity</CardTitle>
+                <CardDescription className="text-sm">
                   Last 6 months processing volume
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[250px] sm:h-[300px] lg:h-[350px]">
                 <ProcessChart
                   data={data.appKey.last6MonthProcess}
                   type="monthly"
@@ -243,22 +255,24 @@ export default async function Page() {
             </Card>
 
             {/* Recent Payments */}
-            <PaymentsTable
-              payments={data.payments.last5Payments}
-              totalSpent={data.payments.totalSpent}
-            />
+            <div className="xl:min-h-0">
+              <PaymentsTable
+                payments={data.payments.last5Payments}
+                totalSpent={data.payments.totalSpent}
+              />
+            </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="daily" className="space-y-4">
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <TabsContent value="daily" className="space-y-4 sm:space-y-6">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-2">
             {/* Daily Process Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Daily Processing Activity</CardTitle>
-                <CardDescription>Last 7 days processing volume</CardDescription>
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg font-semibold">Daily Processing Activity</CardTitle>
+                <CardDescription className="text-sm">Last 7 days processing volume</CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[250px] sm:h-[300px] lg:h-[350px]">
                 <ProcessChart
                   data={data.appKey.last7DaysProcess}
                   type="daily"
@@ -267,111 +281,121 @@ export default async function Page() {
             </Card>
 
             {/* Recent Payments */}
-            <PaymentsTable
-              payments={data.payments.last5Payments}
-              totalSpent={data.payments.totalSpent}
-            />
+            <div className="xl:min-h-0">
+              <PaymentsTable
+                payments={data.payments.last5Payments}
+                totalSpent={data.payments.totalSpent}
+              />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
 
       {/* Plan Details */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {/* Plan Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Plan Details</CardTitle>
-            <CardDescription>
-              Your current subscription information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Plan Type</span>
-              <Badge variant="outline" className="capitalize">
-                {data.appKey.planType}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Expires At</span>
-              <span className="text-sm">
-                {data.appKey.planType === "subscription"
-                  ? data.appKey.expiresAt
-                    ? formatDate(data.appKey.expiresAt)
-                    : "N/A"
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Days Remaining</span>
-              <div className="flex items-center gap-2">
-                {data.appKey.daysLeft !== null &&
-                  data.appKey.daysLeft <= 7 &&
-                  data.appKey.planType === "subscription" && (
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  )}
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">Account Information</h2>
+          <p className="text-sm text-muted-foreground">Manage your subscription and account details</p>
+        </div>
+        
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+          {/* Plan Information */}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                Plan Details
+                <Badge variant={getStatusColor()} className="text-xs">
+                  {getStatusText()}
+                </Badge>
+              </CardTitle>
+              <CardDescription className="text-sm">
+                Your current subscription information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Plan Type</span>
+                <Badge variant="secondary" className="capitalize w-fit">
+                  {data.appKey.planType}
+                </Badge>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Expires At</span>
                 <span className="text-sm font-medium">
-                  {data.appKey.daysLeft ?? 365} days
+                  {data.appKey.planType === "subscription"
+                    ? data.appKey.expiresAt
+                      ? formatDate(data.appKey.expiresAt)
+                      : "N/A"
+                    : "N/A"}
                 </span>
               </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Status</span>
-              <Badge variant={getStatusColor()}>{getStatusText()}</Badge>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Days Remaining</span>
+                <div className="flex items-center gap-2">
+                  {data.appKey.daysLeft !== null &&
+                    data.appKey.daysLeft <= 7 &&
+                    data.appKey.planType === "subscription" && (
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    )}
+                  <span className="text-sm font-medium">
+                    {data.appKey.daysLeft ?? 365} days
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Account Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Summary</CardTitle>
-            <CardDescription>Quick overview of your account</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Total Spent</span>
-              <span className="text-sm font-bold">
-                {formatCurrency(data.payments.totalSpent)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Login Methods</span>
-              <div className="flex gap-1">
-                {data.user.loginProvider.map((provider: string) => (
-                  <Badge
-                    key={provider}
-                    variant="outline"
-                    className="text-xs capitalize"
-                  >
-                    {provider}
-                  </Badge>
-                ))}
+          {/* Account Summary */}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base sm:text-lg font-semibold">Account Summary</CardTitle>
+              <CardDescription className="text-sm">Quick overview of your account</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Total Spent</span>
+                <span className="text-sm font-bold text-foreground">
+                  {formatCurrency(data.payments.totalSpent)}
+                </span>
               </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Account Verified</span>
-              <div className="flex items-center gap-1">
-                {data.user.isVerified ? (
-                  <>
-                    <Shield className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-600">Verified</span>
-                  </>
-                ) : (
-                  <span className="text-sm text-amber-600">Unverified</span>
-                )}
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Login Methods</span>
+                <div className="flex flex-wrap gap-1">
+                  {data.user.loginProvider.map((provider: string) => (
+                    <Badge
+                      key={provider}
+                      variant="outline"
+                      className="text-xs capitalize"
+                    >
+                      {provider}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Last Payment</span>
-              <span className="text-sm">
-                {data.payments.last5Payments.length > 0
-                  ? formatCurrency(data.payments.last5Payments[0].amount)
-                  : "No payments yet"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Account Verified</span>
+                <div className="flex items-center gap-1">
+                  {data.user.isVerified ? (
+                    <>
+                      <Shield className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-600 font-medium">Verified</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-amber-600 font-medium">Unverified</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Last Payment</span>
+                <span className="text-sm font-medium">
+                  {data.payments.last5Payments.length > 0
+                    ? formatCurrency(data.payments.last5Payments[0].amount)
+                    : "No payments yet"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
