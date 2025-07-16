@@ -15,10 +15,13 @@ export default function StatisticsPage() {
               App Users
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Monitor application usage, API keys, and user statistics
+              Monitor application usage, app users, and access statistics
             </p>
           </div>
-          <Button variant="outline" className="h-9 sm:h-10 px-3 sm:px-4 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200">
+          <Button
+            variant="outline"
+            className="h-9 sm:h-10 px-3 sm:px-4 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200"
+          >
             <RefreshCw className="mr-1 sm:mr-2 h-4 w-4" />
             <span className="hidden sm:inline">Refresh</span>
             <span className="sm:hidden">Refresh</span>
@@ -42,7 +45,10 @@ function StatisticsLoading() {
   return (
     <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="rounded-lg border-0 bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div
+          key={i}
+          className="rounded-lg border-0 bg-card p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200"
+        >
           <Skeleton className="h-3 sm:h-4 w-1/2 mb-2" />
           <Skeleton className="h-6 sm:h-8 w-1/3" />
         </div>
@@ -62,7 +68,10 @@ function AppKeyListLoading() {
         <Skeleton className="h-9 sm:h-10 w-full mb-3 sm:mb-4" />
         <div className="space-y-2 sm:space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg bg-muted/30">
+            <div
+              key={i}
+              className="flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg bg-muted/30"
+            >
               <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full flex-shrink-0" />
               <div className="flex-1 space-y-1 sm:space-y-2">
                 <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />

@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { changePassword, getCurrentUser } from "@/services/auth-services";
 
 export function PasswordChangeForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -37,44 +38,35 @@ export function PasswordChangeForm() {
       return;
     }
 
-    if (formData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long.");
+    if (formData.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.success("Your password has been successfully changed.");
-
-      // Reset form
-      setFormData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch {
-      toast.error("Failed to update password. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    setIsLoading(true);
-
-    try {
-      // Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      toast.success(
-        "A password reset link has been sent to your email address."
+      const result = await changePassword(
+        formData.currentPassword,
+        formData.newPassword,
+        formData.confirmPassword
       );
-    } catch {
-      toast.error("Failed to send reset email. Please try again.");
+
+      if (result.success) {
+        toast.success("Your password has been successfully changed.");
+        // Reset form
+        setFormData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+      } else {
+        toast.error(
+          result.message || "Failed to update password. Please try again."
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to update password. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -187,31 +179,6 @@ export function PasswordChangeForm() {
             )}
           </Button>
         </form>
-      </div>
-
-      <Separator />
-
-      {/* Reset Password Option */}
-      <div>
-        <h4 className="text-lg font-medium mb-2">Forgot Your Password?</h4>
-        <p className="text-sm text-muted-foreground mb-4">
-          If you can&apos;t remember your current password, you can reset it by
-          receiving a reset link via email.
-        </p>
-        <Button
-          variant="outline"
-          onClick={handleResetPassword}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending Reset Email...
-            </>
-          ) : (
-            "Send Password Reset Email"
-          )}
-        </Button>
       </div>
     </div>
   );

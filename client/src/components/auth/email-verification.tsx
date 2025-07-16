@@ -16,6 +16,7 @@ import { ArrowLeft, Mail, Lock, EyeOff, Eye } from "lucide-react";
 import { getBaseApi } from "@/services/image-services";
 import { FormError } from "@/components/auth/form-error";
 import { FormSuccess } from "@/components/auth/form-success";
+import { requestPasswordReset, verifyOTP, resetPassword } from "@/services/auth-services";
 
 export default function EmailVerification() {
   const router = useRouter();
@@ -71,21 +72,14 @@ export default function EmailVerification() {
     setIsLoading(true);
 
     try {
-      const baseAPI = await getBaseApi();
-      const res = await fetch(`${baseAPI}/users/request-password-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
+      const result = await requestPasswordReset(email);
 
-      const data = await res.json();
-
-      if (data.success) {
-        setOtpToken(data.data.otpToken);
+      if (result.success) {
+        setOtpToken(result.data.otpToken);
         setSuccess("OTP sent to your email address");
         setStep(2);
       } else {
-        setError(data.message || "Failed to send OTP. Please try again.");
+        setError(result.message || "Failed to send OTP. Please try again.");
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");
@@ -106,21 +100,14 @@ export default function EmailVerification() {
     setIsLoading(true);
 
     try {
-      const baseAPI = await getBaseApi();
-      const res = await fetch(`${baseAPI}/users/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp, otpToken }),
-      });
+      const result = await verifyOTP(otp, otpToken);
 
-      const data = await res.json();
-
-      if (data.success) {
-        setTempToken(data.data.tempToken);
+      if (result.success) {
+        setTempToken(result.data.tempToken);
         setSuccess("OTP verified successfully");
         setStep(3);
       } else {
-        setError(data.message || "Invalid OTP. Please try again.");
+        setError(result.message || "Invalid OTP. Please try again.");
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");
@@ -151,20 +138,13 @@ export default function EmailVerification() {
     setIsLoading(true);
 
     try {
-      const baseAPI = await getBaseApi();
-      const res = await fetch(`${baseAPI}/users/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword, confirmNewPassword, tempToken }),
-      });
+      const result = await resetPassword(newPassword, confirmNewPassword, tempToken);
 
-      const data = await res.json();
-
-      if (data.success) {
+      if (result.success) {
         setSuccess("Password reset successful");
         setStep(4); // Move to success screen
       } else {
-        setError(data.message || "Failed to reset password. Please try again.");
+        setError(result.message || "Failed to reset password. Please try again.");
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");

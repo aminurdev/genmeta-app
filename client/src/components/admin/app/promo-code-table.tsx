@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -140,19 +140,20 @@ export function PromoCodeTable({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Discount</TableHead>
-            <TableHead>Applies To</TableHead>
-            <TableHead>Valid Period</TableHead>
-            <TableHead>Usage</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <div className="p-6">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b">
+              <TableHead className="font-semibold text-gray-900">Code</TableHead>
+              <TableHead className="font-semibold text-gray-900">Discount</TableHead>
+              <TableHead className="font-semibold text-gray-900">Applies To</TableHead>
+              <TableHead className="font-semibold text-gray-900">Valid Period</TableHead>
+              <TableHead className="font-semibold text-gray-900">Usage</TableHead>
+              <TableHead className="font-semibold text-gray-900">Status</TableHead>
+              <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
           {promoCodes.map((promoCode) => (
             <TableRow key={promoCode._id}>
               <TableCell className="font-medium">{promoCode.code}</TableCell>
@@ -202,14 +203,15 @@ export function PromoCodeTable({
               </TableCell>
             </TableRow>
           ))}
-        </TableBody>
-      </Table>
+          </TableBody>
+        </Table>
+      </div>
 
-      <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Edit Promo Code</SheetTitle>
-          </SheetHeader>
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Promo Code</DialogTitle>
+          </DialogHeader>
           {editingPromoCode && (
             <EditPromoCodeForm
               promoCode={editingPromoCode}
@@ -219,8 +221,8 @@ export function PromoCodeTable({
               }}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={isDeleteDialogOpen}

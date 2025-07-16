@@ -169,7 +169,7 @@ export default function AppKeyList() {
         setTotalKeys(responseData.total);
         setCurrentPage(responseData.currentPage);
       } else {
-        throw new Error(result.message || "Failed to fetch API keys");
+        throw new Error(result.message || "Failed to fetch app users");
       }
     } catch (err) {
       setError(
@@ -372,18 +372,29 @@ export default function AppKeyList() {
         username: string;
         plan?: string;
         expiryDays?: number;
+        credit?: number;
       } = {
         username: updateUsername,
       };
 
       // Only include the plan if it's set
-      if (updatePlan) {
+      if (updatePlan && updatePlan !== "N/A") {
         requestBody.plan = updatePlan;
       }
 
       // Only include expiryDays if it's set and valid
       if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
         requestBody.expiryDays = Number.parseInt(updateExpiryDays);
+      }
+
+      // Include credit if credit plan and value set
+      if (updatePlan === "credit") {
+        const creditInput = document.getElementById(
+          "credit"
+        ) as HTMLInputElement;
+        if (creditInput && creditInput.value) {
+          requestBody.credit = Number.parseInt(creditInput.value);
+        }
       }
 
       const response = await fetch(`${baseApi}/app/appkey/update`, {
@@ -395,21 +406,21 @@ export default function AppKeyList() {
         body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update API key");
-      }
-
       const result = await response.json();
 
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update app user");
+      }
+
       if (result.success) {
-        toast("API key updated successfully");
+        toast("App user updated successfully");
 
         // Refresh the API keys list
         await fetchAppKeys();
 
         setUpdateDialogOpen(false);
       } else {
-        throw new Error(result.message || "Failed to update API key");
+        throw new Error(result.message || "Failed to update app user");
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : "An unknown error occurred");
@@ -438,7 +449,13 @@ export default function AppKeyList() {
       // Handle different plan types
       if (createPlan === "credit") {
         requestBody.plan = "credit";
-        requestBody.initialCredit = 100; // Default value, could be made configurable
+        // Get initial credit from input field
+        const initialCreditInput = document.getElementById(
+          "initialCredit"
+        ) as HTMLInputElement;
+        requestBody.initialCredit = initialCreditInput
+          ? Number.parseInt(initialCreditInput.value) || 100
+          : 100;
       } else if (createPlan === "subscription") {
         requestBody.plan = {
           type: "subscription",
@@ -460,14 +477,14 @@ export default function AppKeyList() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to create API key");
+        throw new Error(result.message || "Failed to create app user");
       }
 
       if (result.success) {
         // Refresh the API keys list to include the new key
         await fetchAppKeys();
 
-        toast("API key created successfully");
+        toast("App user created successfully");
 
         // Show the new API key in a toast for easy copying
         toast(
@@ -492,7 +509,7 @@ export default function AppKeyList() {
         setCreatePlan("free");
         setCreateExpiryDays("7");
       } else {
-        throw new Error(result.message || "Failed to create API key");
+        throw new Error(result.message || "Failed to create app user");
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : "An unknown error occurred");
@@ -523,7 +540,7 @@ export default function AppKeyList() {
     // Create CSV content
     const headers = [
       "Username",
-      "API Key",
+      "Access Key",
       "Plan",
       "Status",
       "Expires At",
@@ -557,7 +574,7 @@ export default function AppKeyList() {
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `api-keys-export-${new Date().toISOString().split("T")[0]}.csv`
+      `app-users-export-${new Date().toISOString().split("T")[0]}.csv`
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -878,8 +895,8 @@ export default function AppKeyList() {
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             This action cannot be undone. This will permanently
-                            delete the API key for {appKey.username} and remove
-                            it from our servers.
+                            delete the app user access for {appKey.username} and
+                            remove it from our servers.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -963,9 +980,9 @@ export default function AppKeyList() {
     <Card className="mt-6">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>API Keys</CardTitle>
+          <CardTitle>App Users</CardTitle>
           <CardDescription>
-            Manage your API keys and their permissions
+            Manage app users and their access permissions
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -990,7 +1007,7 @@ export default function AppKeyList() {
             className="flex items-center gap-1"
           >
             <Plus className="h-4 w-4" />
-            Create API Key
+            Create App User
           </Button>
         </div>
       </CardHeader>
@@ -1075,13 +1092,13 @@ export default function AppKeyList() {
         </div>
       </CardContent>
 
-      {/* Update API Key Dialog */}
+      {/* Update App User Dialog */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update API Key</DialogTitle>
+            <DialogTitle>Update App User</DialogTitle>
             <DialogDescription>
-              Update the plan, expiry days, or credit for the API key.
+              Update the plan and expiry settings for this app user.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1147,21 +1164,21 @@ export default function AppKeyList() {
                   Updating...
                 </>
               ) : (
-                "Update Key"
+                "Update User"
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create API Key Dialog */}
+      {/* Create App User Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New API Key</DialogTitle>
+            <DialogTitle>Create New App User</DialogTitle>
             <DialogDescription>
-              Create a new API key for a user. The username must match an
-              existing user&apos;s email in the database.
+              Create a new app user access. The username must match an existing
+              user&apos;s email in the database.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1256,7 +1273,7 @@ export default function AppKeyList() {
               ) : (
                 <>
                   <KeyRound className="h-4 w-4 mr-2" />
-                  Create Key
+                  Create User
                 </>
               )}
             </Button>
@@ -1270,7 +1287,7 @@ export default function AppKeyList() {
           <DialogHeader>
             <DialogTitle>Add Credits</DialogTitle>
             <DialogDescription>
-              Add additional credits to this API key.
+              Add additional credits to this app user.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

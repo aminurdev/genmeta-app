@@ -281,21 +281,21 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update API key");
+        throw new Error("Failed to update app user");
       }
 
       const result = await response.json();
 
       if (result.success) {
-        toast("API key updated successfully");
+        toast("App user updated successfully");
         setUpdateDialogOpen(false);
 
-        // Refresh the API key details
+        // Refresh the app user details
         if (appKey) {
           fetchAppKeyDetails(appKey);
         }
       } else {
-        throw new Error(result.message || "Failed to update API key");
+        throw new Error(result.message || "Failed to update app user");
       }
     } catch (err) {
       toast.error(

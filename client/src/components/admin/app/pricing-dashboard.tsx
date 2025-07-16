@@ -11,12 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CreatePricingForm } from "./create-pricing-form";
 import { PricingTable } from "./pricing-table";
@@ -104,84 +104,105 @@ export function PricingDashboard() {
   const creditPlans = plans.filter((plan) => plan.type === "credit");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Tabs
         defaultValue="subscription"
         value={activeTab}
         onValueChange={setActiveTab}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="subscription">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="credit">Credit Plans</TabsTrigger>
-          <TabsTrigger value="promocodes">Promo Codes</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsTrigger value="subscription" className="text-sm font-medium">
+            Subscription Plans
+          </TabsTrigger>
+          <TabsTrigger value="credit" className="text-sm font-medium">
+            Credit Plans
+          </TabsTrigger>
+          <TabsTrigger value="promocodes" className="text-sm font-medium">
+            Promo Codes
+          </TabsTrigger>
         </TabsList>
 
-        <div className="flex justify-between items-center mt-6 mb-4">
-          <h2 className="text-xl font-semibold">
-            {activeTab === "promocodes"
-              ? "Manage Promo Codes"
-              : activeTab === "subscription"
-              ? "Manage Subscription Plans"
-              : "Manage Credit Plans"}
-          </h2>
+        <div className="flex justify-between items-center mt-8 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {activeTab === "promocodes"
+                ? "Manage Promo Codes"
+                : activeTab === "subscription"
+                ? "Manage Subscription Plans"
+                : "Manage Credit Plans"}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {activeTab === "promocodes"
+                ? "Create and manage promotional discount codes"
+                : activeTab === "subscription"
+                ? "Configure subscription-based pricing plans"
+                : "Set up credit-based pricing options"}
+            </p>
+          </div>
 
           {activeTab === "promocodes" ? (
-            <Sheet open={promoOpen} onOpenChange={setPromoOpen}>
-              <SheetTrigger asChild>
-                <Button>
+            <Dialog open={promoOpen} onOpenChange={setPromoOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add New Promo Code
                 </Button>
-              </SheetTrigger>
-              <SheetContent className="sm:max-w-md overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Create New Promo Code</SheetTitle>
-                </SheetHeader>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Promo Code</DialogTitle>
+                </DialogHeader>
                 <CreatePromoCodeForm onSuccess={handlePromoCodeCreated} />
-              </SheetContent>
-            </Sheet>
+              </DialogContent>
+            </Dialog>
           ) : (
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add New Plan
                 </Button>
-              </SheetTrigger>
-              <SheetContent className="sm:max-w-md overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Create New Pricing Plan</SheetTitle>
-                </SheetHeader>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Pricing Plan</DialogTitle>
+                </DialogHeader>
                 <CreatePricingForm onSuccess={handlePlanCreated} />
-              </SheetContent>
-            </Sheet>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
 
-        <TabsContent value="subscription">
-          <PricingTable
-            plans={subscriptionPlans}
-            loading={loading}
-            onPlanUpdated={handlePlanUpdated}
-            onPlanDeleted={handlePlanDeleted}
-          />
+        <TabsContent value="subscription" className="mt-6">
+          <div className="bg-white rounded-lg border shadow-sm">
+            <PricingTable
+              plans={subscriptionPlans}
+              loading={loading}
+              onPlanUpdated={handlePlanUpdated}
+              onPlanDeleted={handlePlanDeleted}
+            />
+          </div>
         </TabsContent>
-        <TabsContent value="credit">
-          <PricingTable
-            plans={creditPlans}
-            loading={loading}
-            onPlanUpdated={handlePlanUpdated}
-            onPlanDeleted={handlePlanDeleted}
-          />
+        <TabsContent value="credit" className="mt-6">
+          <div className="bg-white rounded-lg border shadow-sm">
+            <PricingTable
+              plans={creditPlans}
+              loading={loading}
+              onPlanUpdated={handlePlanUpdated}
+              onPlanDeleted={handlePlanDeleted}
+            />
+          </div>
         </TabsContent>
-        <TabsContent value="promocodes">
-          <PromoCodeTable
-            promoCodes={promoCodes}
-            loading={promoLoading}
-            onPromoCodeUpdated={handlePromoCodeUpdated}
-            onPromoCodeDeleted={handlePromoCodeDeleted}
-          />
+        <TabsContent value="promocodes" className="mt-6">
+          <div className="bg-white rounded-lg border shadow-sm">
+            <PromoCodeTable
+              promoCodes={promoCodes}
+              loading={promoLoading}
+              onPromoCodeUpdated={handlePromoCodeUpdated}
+              onPromoCodeDeleted={handlePromoCodeDeleted}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
