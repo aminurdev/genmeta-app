@@ -6,6 +6,10 @@ import { useEffect } from "react";
 export function Analytics() {
   const pathname = usePathname();
   const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID;
+  console.log(
+    "gtm url: ",
+    `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
+  );
 
   useEffect(() => {
     if (!(window as any).gtag) return;

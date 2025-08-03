@@ -3,8 +3,8 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/main/theme-provider";
-import Script from "next/script";
 import { Analytics } from "./analytics";
+import { GaConnect } from "./ga-connect";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,35 +26,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID;
-
   return (
     <html
       lang="en"
       className={`${inter.variable} ${plusJakartaSans.variable} h-full scroll-smooth antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        {/* GA Script Tag */}
-        <Script
-          strategy="afterInteractive"
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-        />
-        <Script
-          id="gtag-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}', {
-                page_path: window.location.pathname,
-              });
-            `,
-          }}
-        />
-      </head>
+      <GaConnect />
       <body className="flex min-h-full flex-col bg-secondary-50">
         <ThemeProvider
           attribute="class"
