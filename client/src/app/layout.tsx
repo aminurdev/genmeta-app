@@ -34,8 +34,10 @@ export default function RootLayout({
       className={`${inter.variable} ${plusJakartaSans.variable} h-full scroll-smooth antialiased`}
       suppressHydrationWarning
     >
-      <GTMConnect />
-      <GtagAnalytics />
+      <head>
+        <GTMConnect />
+        <GtagAnalytics />
+      </head>
       <body className="flex min-h-full flex-col bg-secondary-50">
         <GTMNoScript />
         <ThemeProvider

@@ -6,15 +6,15 @@ import React from "react";
  * This component implements the direct Google Analytics gtag.js script
  * as requested by the user.
  */
-export const GtagAnalytics = () => {
-  const GA_MEASUREMENT_ID = "G-N3959EPWZY";
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
+export const GtagAnalytics = () => {
   return (
     <>
       {/* Google tag (gtag.js) */}
       <Script
         strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${GTM_ID}`}
       />
       <Script
         id="gtag-config"
@@ -24,7 +24,7 @@ export const GtagAnalytics = () => {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${GA_MEASUREMENT_ID}');
+            gtag('config', '${GTM_ID}');
           `,
         }}
       />
@@ -37,14 +37,14 @@ export const GtagAnalytics = () => {
  */
 export const useGtagAnalytics = () => {
   const trackEvent = (eventName: string, parameters?: Record<string, any>) => {
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', eventName, parameters);
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("event", eventName, parameters);
     }
   };
 
   const trackPageView = (pagePath: string) => {
-    if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('config', 'G-N3959EPWZY', {
+    if (typeof window !== "undefined" && window.gtag) {
+      window.gtag("config", GTM_ID, {
         page_path: pagePath,
       });
     }
