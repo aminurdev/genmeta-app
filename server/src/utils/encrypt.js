@@ -1,7 +1,11 @@
 import crypto from "crypto";
 import config from "../config/index.js";
 
-const secret = config.geminiEncoderKey;
+const secret = config.encoderKey;
+
+if (typeof secret !== "string") {
+  throw new Error("Missing or invalid config.encoderKey");
+}
 
 const key = crypto.createHash("sha256").update(secret).digest(); // 32 bytes
 const algorithm = "aes-256-cbc";
