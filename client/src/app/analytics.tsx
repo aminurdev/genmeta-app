@@ -2,21 +2,53 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import gtm, { trackPageView, trackEvent } from "@/lib/gtm";
 
-export function Analytics() {
+// GTM Analytics Hook
+export function useGTMAnalytics() {
   const pathname = usePathname();
-  const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID;
-  console.log(
-    "gtm url: ",
-    `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
-  );
 
   useEffect(() => {
-    if (!(window as any).gtag) return;
-    (window as any).gtag("config", GA_MEASUREMENT_ID, {
-      page_path: pathname,
-    });
-  }, [pathname, GA_MEASUREMENT_ID]);
+    // Track page view on route change
+    trackPageView(pathname);
+  }, [pathname]);
 
+  // Return GTM utility functions
+  return {
+    trackEvent,
+    trackPageView: (pagePath?: string) => trackPageView(pagePath || pathname),
+    gtm, // Expose full GTM manager for advanced usage
+  };
+}
+
+// Analytics Component
+export function Analytics() {
+  useGTMAnalytics();
   return null;
+}
+
+// GTM NoScript fallback component
+export function GTMNoScript() {
+  const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+  
+  if (!GTM_ID) return null;
+
+  return (
+    <noscript>
+      <iframe
+        src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+        height="0"
+        width="0"
+        style={{ display: 'none', visibility: 'hidden' }}
+      />
+    </noscript>
+  );
+}
+
+// Extend Window interface for TypeScript
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+  }
 }

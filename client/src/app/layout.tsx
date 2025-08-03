@@ -3,8 +3,10 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/main/theme-provider";
-import { Analytics } from "./analytics";
-import { GaConnect } from "./ga-connect";
+import { Analytics, GTMNoScript } from "./analytics";
+import { GTMConnect } from "./ga-connect";
+import { GtagAnalytics } from "./gtag-analytics";
+import { GtagPageTracker } from "./gtag-page-tracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,8 +34,10 @@ export default function RootLayout({
       className={`${inter.variable} ${plusJakartaSans.variable} h-full scroll-smooth antialiased`}
       suppressHydrationWarning
     >
-      <GaConnect />
+      <GTMConnect />
+      <GtagAnalytics />
       <body className="flex min-h-full flex-col bg-secondary-50">
+        <GTMNoScript />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -42,6 +46,7 @@ export default function RootLayout({
         >
           {children}
           <Analytics />
+          <GtagPageTracker />
           <Toaster richColors />
         </ThemeProvider>
       </body>

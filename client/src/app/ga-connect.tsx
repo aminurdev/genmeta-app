@@ -1,34 +1,46 @@
 import Script from "next/script";
 import React from "react";
 
-export const GaConnect = () => {
-  const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID;
-  console.log(
-    "gtm url: ",
-    `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`
-  );
+export const GTMConnect = () => {
+  const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
+  
+  // Don't render if GTM_ID is not provided
+  if (!GTM_ID) {
+    console.warn('GTM_ID not found in environment variables');
+    return null;
+  }
 
   return (
-    <head>
-      {/* GA Script Tag */}
+    <>
+      {/* Google Tag Manager */}
       <Script
-        strategy="afterInteractive"
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-      />
-      <Script
-        id="gtag-init"
+        id="gtm-script"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}', {
-                page_path: window.location.pathname,
-              });
-            `,
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','${GTM_ID}');
+          `,
         }}
       />
-    </head>
+      
+      {/* Initialize dataLayer */}
+      <Script
+        id="gtm-datalayer"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+          `,
+        }}
+      />
+    </>
   );
 };
+
+// Legacy export for backward compatibility
+export const GaConnect = GTMConnect;
