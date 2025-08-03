@@ -30,6 +30,7 @@ import promoCodeRoutes from "./routes/promoCode.routes.js";
 import aiApiKeyRoutes from "./routes/aiApiKey.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import schedulerRoutes from "./routes/scheduler.routes.js";
 
 app.use("/api/v1/users/dashboard", dashboardRoutes);
 app.use("/api/v1/admin", adminRoutes);
@@ -37,6 +38,7 @@ app.use("/api/v1/app", appRoutes);
 
 app.use("/api/v1/aiApi", aiApiKeyRoutes);
 app.use("/api/v1/payment", paymentRoutes);
+app.use("/api/v1/scheduler", schedulerRoutes);
 
 app.use("/api/v1/pricing", pricingRoutes);
 app.use("/api/v1/promo-codes", promoCodeRoutes);

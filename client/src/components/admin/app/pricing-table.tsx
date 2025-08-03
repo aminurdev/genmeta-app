@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { PricingPlan } from "@/lib/actions";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
@@ -118,38 +118,48 @@ export function PricingTable({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Base Price</TableHead>
-            <TableHead>Discount</TableHead>
-            <TableHead>Final Price</TableHead>
-            <TableHead>
-              {plans[0]?.type === "subscription"
-                ? "Duration (days)"
-                : "Credits"}
-            </TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+      <div className="p-6">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b">
+              <TableHead className="font-semibold text-gray-900">Name</TableHead>
+              <TableHead className="font-semibold text-gray-900">Base Price</TableHead>
+              <TableHead className="font-semibold text-gray-900">Discount</TableHead>
+              <TableHead className="font-semibold text-gray-900">Final Price</TableHead>
+              <TableHead className="font-semibold text-gray-900">
+                {plans[0]?.type === "subscription"
+                  ? "Duration (days)"
+                  : "Credits"}
+              </TableHead>
+              <TableHead className="font-semibold text-gray-900">Status</TableHead>
+              <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {plans.map((plan) => (
-            <TableRow key={plan._id}>
-              <TableCell className="font-medium">{plan.name}</TableCell>
-              <TableCell>{formatCurrency(plan.basePrice)}</TableCell>
-              <TableCell>{plan.discountPercent}%</TableCell>
-              <TableCell>
+            <TableRow key={plan._id} className="hover:bg-gray-50 transition-colors">
+              <TableCell className="font-medium text-gray-900">{plan.name}</TableCell>
+              <TableCell className="text-gray-700">{formatCurrency(plan.basePrice)}</TableCell>
+              <TableCell className="text-gray-700">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                  {plan.discountPercent}%
+                </span>
+              </TableCell>
+              <TableCell className="font-semibold text-green-600">
                 {formatCurrency(
                   calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
                 )}
               </TableCell>
-              <TableCell>
-                {plan.type === "subscription" ? plan.planDuration : plan.credit}
+              <TableCell className="text-gray-700">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {plan.type === "subscription" ? `${plan.planDuration} days` : `${plan.credit} credits`}
+                </span>
               </TableCell>
               <TableCell>
-                <Badge variant={plan.isActive ? "default" : "secondary"}>
+                <Badge 
+                  variant={plan.isActive ? "default" : "secondary"}
+                  className={plan.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-gray-100 text-gray-800"}
+                >
                   {plan.isActive ? "Active" : "Inactive"}
                 </Badge>
               </TableCell>
@@ -179,13 +189,14 @@ export function PricingTable({
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
 
-      <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Edit Pricing Plan</SheetTitle>
-          </SheetHeader>
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Pricing Plan</DialogTitle>
+          </DialogHeader>
           {editingPlan && (
             <EditPricingForm
               plan={editingPlan}
@@ -195,8 +206,8 @@ export function PricingTable({
               }}
             />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={isDeleteDialogOpen}

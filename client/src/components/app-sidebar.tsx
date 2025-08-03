@@ -18,6 +18,7 @@ import {
   Palette,
   UserIcon,
   Users,
+  Clock,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -93,6 +94,11 @@ const adminSidebarData = [
         title: "Manage Pricing",
         url: "/admin/manage-pricing",
         icon: Package,
+      },
+      {
+        title: "Scheduler",
+        url: "/admin/scheduler",
+        icon: Clock,
       },
     ],
   },

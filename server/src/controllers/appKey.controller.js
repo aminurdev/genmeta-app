@@ -23,7 +23,7 @@ export function generateAppKey() {
 }
 
 const createAppKey = asyncHandler(async (req, res) => {
-  const { username, expiryDays = 3, plan = "free" } = req.body;
+  const { username, expiryDays = 3, plan = "free", initialCredit } = req.body;
 
   if (!username) {
     throw new ApiError(400, "Username (email) is required.");
@@ -63,18 +63,19 @@ const createAppKey = asyncHandler(async (req, res) => {
   if (planType === "free") {
     credit = 10;
   } else if (planType === "credit") {
-    // For credit plan, we need to set initial credit amount
-    credit = parseInt(req.body.initialCredit) || 0;
+    // For credit plan, use provided initial credit or default to 100
+    credit = initialCredit ? parseInt(initialCredit) : 100;
 
     // Only set expiry for credit plan if specified
-    if (expiryDays) {
+    if (expiryDays && parseInt(expiryDays) > 0) {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
       expiryDate.setHours(23, 59, 59, 999);
       expiresAt = expiryDate;
     }
   } else if (planType === "subscription") {
-    // For subscription plan, always set expiry
+    // For subscription plan, set unlimited credit and always set expiry
+    credit = 999999; // Unlimited for subscription
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
     expiryDate.setHours(23, 59, 59, 999);
@@ -97,7 +98,7 @@ const createAppKey = asyncHandler(async (req, res) => {
 
   await newAppKey.save();
 
-  return new ApiResponse(201, true, "API key created successfully.", {
+  return new ApiResponse(201, true, "App user created successfully.", {
     appKey: newAppKey.key,
     expiresAt: newAppKey.expiresAt,
     plan: newAppKey.plan,
@@ -123,7 +124,7 @@ const updateAppKey = asyncHandler(async (req, res) => {
 
   const appKey = await AppKey.findOne({ username });
   if (!appKey) {
-    throw new ApiError(404, "API key not found");
+    throw new ApiError(404, "App user not found");
   }
 
   // Update plan if provided
@@ -138,13 +139,26 @@ const updateAppKey = asyncHandler(async (req, res) => {
     }
 
     // Format the plan object correctly
-    appKey.plan = typeof plan === "object" ? plan : { type: plan };
+    const newPlan = typeof plan === "object" ? plan : { type: plan };
+    const oldPlanType = appKey.plan.type;
+    appKey.plan = newPlan;
 
-    // If downgrading to free plan, handle accordingly
-    if (appKey.plan.type === "free") {
+    // Handle plan-specific logic
+    if (newPlan.type === "free") {
       appKey.expiresAt = undefined;
       appKey.credit = 10;
       appKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
+    } else if (
+      newPlan.type === "subscription" &&
+      oldPlanType !== "subscription"
+    ) {
+      // When upgrading to subscription, set unlimited credit
+      appKey.credit = 999999;
+    } else if (newPlan.type === "credit" && oldPlanType !== "credit") {
+      // When changing to credit plan, set default credit if not specified
+      if (credit === undefined) {
+        appKey.credit = 100;
+      }
     }
   }
 
@@ -156,14 +170,14 @@ const updateAppKey = asyncHandler(async (req, res) => {
     appKey.expiresAt = expiresAt;
   }
 
-  // Update credit if provided
-  if (credit !== undefined) {
+  // Update credit if provided (and not subscription plan)
+  if (credit !== undefined && appKey.plan.type !== "subscription") {
     appKey.credit = parseInt(credit);
   }
 
   await appKey.save();
 
-  return new ApiResponse(200, true, "API key updated successfully", {
+  return new ApiResponse(200, true, "App user updated successfully", {
     appKey: appKey.key,
     expiresAt: appKey.expiresAt,
     plan: appKey.plan,

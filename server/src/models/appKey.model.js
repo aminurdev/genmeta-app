@@ -103,6 +103,75 @@ appKeySchema.methods.refreshDailyCredits = function () {
   }
 };
 
+// Static method for automatic daily maintenance at 12 AM
+appKeySchema.statics.performDailyMaintenance = async function () {
+  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+
+  try {
+    // 1. Refresh credits for all free plan users
+    const freeUsers = await this.find({
+      "plan.type": "free",
+      isActive: true,
+      status: "active",
+      lastCreditRefresh: { $ne: today },
+    });
+
+    for (const appKey of freeUsers) {
+      appKey.refreshDailyCredits();
+      await appKey.save();
+    }
+
+    // 2. Downgrade expired subscription plans
+    const expiredSubscriptions = await this.find({
+      "plan.type": "subscription",
+      isActive: true,
+      status: "active",
+      expiresAt: { $lte: now },
+    });
+
+    for (const appKey of expiredSubscriptions) {
+      appKey.downgradeToPlan("free", "expired_auto");
+      await appKey.save();
+    }
+
+    // 3. Downgrade zero credit plans
+    const zeroCreditPlans = await this.find({
+      "plan.type": "credit",
+      isActive: true,
+      status: "active",
+      credit: { $lte: 0 },
+    });
+
+    for (const appKey of zeroCreditPlans) {
+      appKey.downgradeToPlan("free", "zero_credit_auto");
+      await appKey.save();
+    }
+
+    console.log(`Daily maintenance completed at ${now.toISOString()}:`);
+    console.log(`- Refreshed ${freeUsers.length} free plan credits`);
+    console.log(
+      `- Downgraded ${expiredSubscriptions.length} expired subscriptions`
+    );
+    console.log(`- Downgraded ${zeroCreditPlans.length} zero credit plans`);
+
+    return {
+      success: true,
+      freeUsersRefreshed: freeUsers.length,
+      expiredSubscriptionsDowngraded: expiredSubscriptions.length,
+      zeroCreditPlansDowngraded: zeroCreditPlans.length,
+      timestamp: now.toISOString(),
+    };
+  } catch (error) {
+    console.error("Daily maintenance failed:", error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: now.toISOString(),
+    };
+  }
+};
+
 // Enhanced validity check with auto-management
 appKeySchema.methods.isValid = function () {
   if (!this.isActive || this.status !== "active") return false;

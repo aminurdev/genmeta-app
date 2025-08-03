@@ -236,3 +236,79 @@ export const logout = async () => {
     return { success: false, message: "An unexpected error occurred." };
   }
 };
+
+export const requestPasswordReset = async (email: string) => {
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/request-password-reset",
+      useAuth: false,
+      data: { email },
+    });
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Failed to send password reset email",
+    };
+  }
+};
+
+export const verifyOTP = async (otp: string, otpToken: string) => {
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/verify-otp",
+      useAuth: false,
+      data: { otp, otpToken },
+    });
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Failed to verify OTP",
+    };
+  }
+};
+
+export const resetPassword = async (
+  newPassword: string,
+  confirmNewPassword: string,
+  tempToken: string
+) => {
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/reset-password",
+      useAuth: false,
+      data: { newPassword, confirmNewPassword, tempToken },
+    });
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Failed to reset password",
+    };
+  }
+};
+
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string,
+  confirmPassword: string
+) => {
+  try {
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/change-password",
+      useAuth: true,
+      data: { currentPassword, newPassword, confirmPassword },
+    });
+    return result;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Failed to change password",
+    };
+  }
+};

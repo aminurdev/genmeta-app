@@ -289,26 +289,27 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col ">
-      <div className="flex-1 space-y-6 p-6 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="flex-1 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
               User Management
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Manage and monitor your platform users
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    size="icon"
+                    size="sm"
                     onClick={refreshData}
                     disabled={isRefreshing}
+                    className="h-9 w-9 sm:h-10 sm:w-10 border-0 shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <RefreshCw
                       className={`h-4 w-4 ${
@@ -325,9 +326,10 @@ export default function UsersPage() {
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add User
+                <Button className="h-9 sm:h-10 px-3 sm:px-4 text-sm shadow-sm hover:shadow-md transition-all duration-200">
+                  <UserPlus className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add User</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -373,43 +375,44 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <UserStatsCards stats={stats} />
           <LoginProviderStats stats={stats} />
         </div>
 
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="pb-3 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
-                <CardTitle>Users</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl font-semibold">Users</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground mt-1">
                   Manage your platform users, their roles, and permissions.
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export Users
+              <Button variant="outline" size="sm" className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200">
+                <Download className="mr-1 sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Export Users</span>
+                <span className="sm:hidden">Export</span>
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="relative flex-1 md:max-w-sm">
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <div className="flex flex-col gap-4 sm:gap-6">
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
+                  <div className="relative flex-1 lg:max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="search"
                       placeholder="Search users by name or email..."
-                      className="pl-8"
+                      className="pl-8 h-9 text-sm border-0 shadow-sm focus:shadow-md transition-shadow duration-200"
                       value={searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
                     />
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Select value={roleFilter} onValueChange={handleRoleFilter}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[140px] lg:w-[160px] h-9 text-sm border-0 shadow-sm">
                         <SelectValue placeholder="Filter by role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -422,7 +425,7 @@ export default function UsersPage() {
                       value={statusFilter}
                       onValueChange={handleStatusFilter}
                     >
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[140px] lg:w-[160px] h-9 text-sm border-0 shadow-sm">
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -438,6 +441,7 @@ export default function UsersPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200"
                         onClick={() => {
                           setSearchTerm("");
                           setRoleFilter("all");
@@ -445,7 +449,7 @@ export default function UsersPage() {
                           fetchUsers();
                         }}
                       >
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                        <RefreshCw className="mr-1 sm:mr-2 h-4 w-4" />
                         Reset filters
                       </Button>
                     )}
