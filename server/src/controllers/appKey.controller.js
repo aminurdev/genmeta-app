@@ -522,7 +522,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
       : null;
 
   const aiApiSecret =
-    appKey.plan.type === "credit" ? config.geminiEncoderKey : null;
+    appKey.plan.type === "credit" ? config.encoderKey : null;
 
   return new ApiResponse(200, true, "API key is valid and process allowed.", {
     username: appKey.username,
