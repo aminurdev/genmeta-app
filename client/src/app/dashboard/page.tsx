@@ -86,7 +86,7 @@ export default async function Page() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pt-0 max-w-7xl mx-auto w-full">
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pt-0 w-full">
       {/* Header with User Info */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
         <div className="flex flex-col gap-1 sm:gap-2">
@@ -141,14 +141,18 @@ export default async function Page() {
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.totalProcess.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">All time processes</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              All time processes
+            </p>
           </CardContent>
         </Card>
 
         {/* Today Usage */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Today</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Today
+            </CardTitle>
             <div className="rounded-full bg-emerald-500/10 p-1.5 sm:p-2">
               <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
             </div>
@@ -157,14 +161,18 @@ export default async function Page() {
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.todayUsage.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Processes today</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Processes today
+            </p>
           </CardContent>
         </Card>
 
         {/* This Month Usage */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">This Month</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              This Month
+            </CardTitle>
             <div className="rounded-full bg-violet-500/10 p-1.5 sm:p-2">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-violet-600" />
             </div>
@@ -173,13 +181,17 @@ export default async function Page() {
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {data.appKey.thisMonthUsage.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Monthly processes</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Monthly processes
+            </p>
           </CardContent>
         </Card>
 
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">App Credits</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              App Credits
+            </CardTitle>
             <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
               {data.appKey.creditRemaining === null ? (
                 <Infinity className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
@@ -209,7 +221,9 @@ export default async function Page() {
         {/* Total Spent */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Total Spent
+            </CardTitle>
             <div className="rounded-full bg-rose-500/10 p-1.5 sm:p-2">
               <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-rose-600" />
             </div>
@@ -218,7 +232,9 @@ export default async function Page() {
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
               {formatCurrency(data.payments.totalSpent)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Lifetime payments</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Lifetime payments
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -227,12 +243,20 @@ export default async function Page() {
       <Tabs defaultValue="monthly" className="w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Analytics Overview</h2>
-            <p className="text-sm text-muted-foreground">Track your processing activity and payments</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">
+              Analytics Overview
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Track your processing activity and payments
+            </p>
           </div>
           <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-muted/50">
-            <TabsTrigger value="monthly" className="text-xs sm:text-sm">Monthly View</TabsTrigger>
-            <TabsTrigger value="daily" className="text-xs sm:text-sm">Daily View</TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs sm:text-sm">
+              Monthly View
+            </TabsTrigger>
+            <TabsTrigger value="daily" className="text-xs sm:text-sm">
+              Daily View
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -241,7 +265,9 @@ export default async function Page() {
             {/* Monthly Process Chart */}
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg font-semibold">Monthly Processing Activity</CardTitle>
+                <CardTitle className="text-base sm:text-lg font-semibold">
+                  Monthly Processing Activity
+                </CardTitle>
                 <CardDescription className="text-sm">
                   Last 6 months processing volume
                 </CardDescription>
@@ -269,8 +295,12 @@ export default async function Page() {
             {/* Daily Process Chart */}
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg font-semibold">Daily Processing Activity</CardTitle>
-                <CardDescription className="text-sm">Last 7 days processing volume</CardDescription>
+                <CardTitle className="text-base sm:text-lg font-semibold">
+                  Daily Processing Activity
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  Last 7 days processing volume
+                </CardDescription>
               </CardHeader>
               <CardContent className="h-[250px] sm:h-[300px] lg:h-[350px]">
                 <ProcessChart
@@ -294,10 +324,14 @@ export default async function Page() {
       {/* Plan Details */}
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">Account Information</h2>
-          <p className="text-sm text-muted-foreground">Manage your subscription and account details</p>
+          <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">
+            Account Information
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Manage your subscription and account details
+          </p>
         </div>
-        
+
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Plan Information */}
           <Card className="border-border/50 shadow-sm">
@@ -314,13 +348,17 @@ export default async function Page() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Plan Type</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Plan Type
+                </span>
                 <Badge variant="secondary" className="capitalize w-fit">
                   {data.appKey.planType}
                 </Badge>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Expires At</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Expires At
+                </span>
                 <span className="text-sm font-medium">
                   {data.appKey.planType === "subscription"
                     ? data.appKey.expiresAt
@@ -330,7 +368,9 @@ export default async function Page() {
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Days Remaining</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Days Remaining
+                </span>
                 <div className="flex items-center gap-2">
                   {data.appKey.daysLeft !== null &&
                     data.appKey.daysLeft <= 7 &&
@@ -348,18 +388,26 @@ export default async function Page() {
           {/* Account Summary */}
           <Card className="border-border/50 shadow-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="text-base sm:text-lg font-semibold">Account Summary</CardTitle>
-              <CardDescription className="text-sm">Quick overview of your account</CardDescription>
+              <CardTitle className="text-base sm:text-lg font-semibold">
+                Account Summary
+              </CardTitle>
+              <CardDescription className="text-sm">
+                Quick overview of your account
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Total Spent</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total Spent
+                </span>
                 <span className="text-sm font-bold text-foreground">
                   {formatCurrency(data.payments.totalSpent)}
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Login Methods</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Login Methods
+                </span>
                 <div className="flex flex-wrap gap-1">
                   {data.user.loginProvider.map((provider: string) => (
                     <Badge
@@ -373,20 +421,28 @@ export default async function Page() {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Account Verified</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Account Verified
+                </span>
                 <div className="flex items-center gap-1">
                   {data.user.isVerified ? (
                     <>
                       <Shield className="h-4 w-4 text-emerald-500" />
-                      <span className="text-sm text-emerald-600 font-medium">Verified</span>
+                      <span className="text-sm text-emerald-600 font-medium">
+                        Verified
+                      </span>
                     </>
                   ) : (
-                    <span className="text-sm text-amber-600 font-medium">Unverified</span>
+                    <span className="text-sm text-amber-600 font-medium">
+                      Unverified
+                    </span>
                   )}
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Last Payment</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Last Payment
+                </span>
                 <span className="text-sm font-medium">
                   {data.payments.last5Payments.length > 0
                     ? formatCurrency(data.payments.last5Payments[0].amount)

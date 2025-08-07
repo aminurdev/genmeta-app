@@ -220,7 +220,7 @@ export function PaymentHistoryPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
-        <div className="max-w-7xl mx-auto">
+        <div>
           <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 text-red-600 dark:text-red-400">

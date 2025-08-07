@@ -6,7 +6,7 @@ import DashboardStats from "@/components/admin/app/AdminDashboardStats";
 export default async function StatsPage() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="flex flex-col p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto w-full">
+      <div className="flex flex-col p-3 sm:p-4 lg:p-6 w-full">
         <div className="mb-4 sm:mb-6">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent mb-2">
             Admin Dashboard
@@ -29,7 +29,10 @@ function DashboardSkeleton() {
       {/* Summary Cards Skeleton */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card
+            key={i}
+            className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4 sm:p-6">
               <Skeleton className="h-3 sm:h-4 w-16 sm:w-20" />
               <Skeleton className="h-4 w-4 rounded" />
@@ -45,7 +48,10 @@ function DashboardSkeleton() {
       {/* Charts Skeleton */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <Card
+            key={i}
+            className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
             <CardHeader className="p-4 sm:p-6">
               <Skeleton className="h-5 sm:h-6 w-28 sm:w-32" />
               <Skeleton className="h-3 sm:h-4 w-40 sm:w-48" />
@@ -77,7 +83,10 @@ function DashboardSkeleton() {
         <CardContent className="p-4 sm:p-6 pt-0">
           <div className="space-y-3 sm:space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg bg-muted/30">
+              <div
+                key={i}
+                className="flex items-center space-x-3 sm:space-x-4 p-2 sm:p-3 rounded-lg bg-muted/30"
+              >
                 <Skeleton className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex-shrink-0" />
                 <div className="flex-1 space-y-1 sm:space-y-2 min-w-0">
                   <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />

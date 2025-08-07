@@ -290,7 +290,7 @@ export default function UsersPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="flex-1 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
@@ -384,12 +384,18 @@ export default function UsersPage() {
           <CardHeader className="pb-3 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
-                <CardTitle className="text-lg sm:text-xl font-semibold">Users</CardTitle>
+                <CardTitle className="text-lg sm:text-xl font-semibold">
+                  Users
+                </CardTitle>
                 <CardDescription className="text-sm text-muted-foreground mt-1">
                   Manage your platform users, their roles, and permissions.
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200"
+              >
                 <Download className="mr-1 sm:mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Export Users</span>
                 <span className="sm:hidden">Export</span>

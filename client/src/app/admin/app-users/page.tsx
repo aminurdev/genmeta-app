@@ -8,7 +8,7 @@ import { RefreshCw } from "lucide-react";
 export default function StatisticsPage() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="flex flex-col p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto w-full">
+      <div className="flex flex-col p-3 sm:p-4 lg:p-6 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">

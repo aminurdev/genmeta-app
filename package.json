@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "add--all": "cd client && yarn install && cd ../server && yarn install",
+    "add--all": " yarn install && cd client && yarn install && cd ../server && yarn install",
     "client": "cd client && yarn run dev",
     "server": "cd server && yarn run dev",
     "client:start": "cd client && yarn start",
