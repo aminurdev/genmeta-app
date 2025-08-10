@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/accordion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 import { Banner } from "@/components/main/banner";
 
 interface SubscriptionPlan {
@@ -108,7 +108,7 @@ const PricingContent = () => {
     const fetchPricingData = async () => {
       try {
         setIsLoading(true);
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const response = await fetch(`${baseApi}/pricing/plans`);
         const result = (await response.json()) as PlansResponse;
 

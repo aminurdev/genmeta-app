@@ -5,7 +5,7 @@ import { Activity, Key, KeyRound, Layers, Zap } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 import { getAccessToken } from "@/services/auth-services";
 
 interface StatisticsData {
@@ -29,7 +29,7 @@ export default function StatisticsContent() {
   useEffect(() => {
     const fetchStatistics = async () => {
       try {
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const accessToken = await getAccessToken();
         const response = await fetch(`${baseApi}/app/appkey/statistics`, {
           method: "GET",

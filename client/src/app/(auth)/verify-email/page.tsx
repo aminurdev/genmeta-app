@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 
 interface VerifyEmailPageProps {
   searchParams: Promise<{ token: string }>;
@@ -29,7 +29,7 @@ export default function VerifyEmailPage({
 
     const verifyEmail = async () => {
       try {
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const res = await fetch(`${baseApi}/users/verify-email?token=${token}`);
         const data = await res.json();
 
