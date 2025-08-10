@@ -80,7 +80,7 @@ export default function StatisticsContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total API Keys
+              Total APP Users
             </CardTitle>
             <KeyRound className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -95,7 +95,7 @@ export default function StatisticsContent() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Keys</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -104,7 +104,7 @@ export default function StatisticsContent() {
               {((statistics.activeKeys / statistics.totalKeys) * 100).toFixed(
                 1
               )}
-              % of total keys
+              % of total Users
             </p>
           </CardContent>
         </Card>
@@ -112,7 +112,7 @@ export default function StatisticsContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Suspended Keys
+              Suspended Users
             </CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -123,7 +123,7 @@ export default function StatisticsContent() {
                 (statistics.suspendedKeys / statistics.totalKeys) *
                 100
               ).toFixed(1)}
-              % of total keys
+              % of total Users
             </p>
           </CardContent>
         </Card>
@@ -131,7 +131,7 @@ export default function StatisticsContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              New Keys (Last Day)
+              New Users (Last Day)
             </CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -170,7 +170,7 @@ export default function StatisticsContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Avg Processes Per Key
+              Avg Processes Per User
             </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -188,14 +188,14 @@ export default function StatisticsContent() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>API Key Status</CardTitle>
+            <CardTitle>APP Users Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 rounded-full bg-primary"></div>
-                  <span>Active Keys</span>
+                  <span>Active Users</span>
                 </div>
                 <span className="font-medium">{statistics.activeKeys}</span>
               </div>
@@ -207,7 +207,7 @@ export default function StatisticsContent() {
                 {((statistics.activeKeys / statistics.totalKeys) * 100).toFixed(
                   1
                 )}
-                % of total keys
+                % of total users
               </p>
             </div>
 
@@ -215,7 +215,7 @@ export default function StatisticsContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 rounded-full bg-destructive/70"></div>
-                  <span>Suspended Keys</span>
+                  <span>Suspended Users</span>
                 </div>
                 <span className="font-medium">{statistics.suspendedKeys}</span>
               </div>
@@ -228,7 +228,7 @@ export default function StatisticsContent() {
                   (statistics.suspendedKeys / statistics.totalKeys) *
                   100
                 ).toFixed(1)}
-                % of total keys
+                % of total users
               </p>
             </div>
           </CardContent>

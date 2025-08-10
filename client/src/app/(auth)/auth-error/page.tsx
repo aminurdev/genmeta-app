@@ -44,7 +44,7 @@ const AuthErrorCard = async ({
               Back to Login
             </Button>
           </Link>
-          <a href="mailto:helpgenmeta@gmail.com" className="w-full sm:w-auto">
+          <a href="mailto:support@genmeta.app" className="w-full sm:w-auto">
             <Button variant="outline" className="w-full">
               Contact Support
             </Button>

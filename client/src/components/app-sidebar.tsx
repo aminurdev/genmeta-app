@@ -19,6 +19,8 @@ import {
   UserIcon,
   Users,
   Clock,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -43,6 +45,22 @@ const userSidebarData = [
         title: "Appearance",
         url: "/dashboard/appearance",
         icon: Palette,
+      },
+    ],
+  },
+  {
+    label: "Contact",
+    isForAdmin: false,
+    items: [
+      {
+        title: "Mail",
+        url: "mailto:support@genmeta.app",
+        icon: Mail,
+      },
+      {
+        title: "Whatsapp",
+        url: "https://wa.me/+8801817710493",
+        icon: Phone,
       },
     ],
   },
