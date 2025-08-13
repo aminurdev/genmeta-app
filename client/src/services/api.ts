@@ -1,13 +1,13 @@
 // api.ts
 import axios, { AxiosRequestConfig, Method } from "axios";
-import { cookies } from "next/dist/server/request/cookies";
+import { getAccessToken } from "./auth-services";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
-// Token getter utility
+// Token getter utility with refresh logic
 const getToken = async (): Promise<string | null> => {
-  const accessToken = (await cookies()).get("accessToken")?.value;
-  return accessToken || null;
+  const token = await getAccessToken();
+  return token === undefined ? null : token;
 };
 
 // API request options interface
@@ -48,6 +48,17 @@ export const apiRequest = async <T = any>({
     const response = await axios(config);
     return response.data;
   } catch (error: any) {
+    // Handle 401 errors by clearing cookies and redirecting to login
+    if (error?.response?.status === 401 && useAuth) {
+      const { logout } = await import("./auth-services");
+      await logout();
+
+      // Only redirect if we're in a browser environment
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
+
     console.error("API Error:", error?.response?.data || error.message);
     throw error?.response?.data || error;
   }
