@@ -26,7 +26,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { getAccessToken, getCurrentUser } from "@/services/auth-services";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 
 type Package = {
   _id: string;
@@ -86,7 +86,7 @@ const PricingTabs = () => {
   const fetchDashboardData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const baseApi = await getBaseApi();
+      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
 
       if (!baseApi) {
         throw new Error("Authentication failed. Please log in again.");
@@ -140,7 +140,7 @@ const PricingTabs = () => {
 
     try {
       setPurchasingId(packageId);
-      const baseApi = await getBaseApi();
+      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const accessToken = await getAccessToken();
       const user = await getCurrentUser();
 

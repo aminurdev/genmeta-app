@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 
 const Social = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +15,7 @@ const Social = () => {
     try {
       setIsLoading(true);
 
-      const baseApi = await getBaseApi();
+      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const statePayload = {
         redirectPath,
         path: pathname,

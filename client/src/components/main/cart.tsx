@@ -27,7 +27,7 @@ import {
   Info,
 } from "lucide-react";
 import Link from "next/link";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 import { getAccessToken, getCurrentUser } from "@/services/auth-services";
 import { useRouter } from "next/navigation";
 
@@ -88,7 +88,7 @@ export function Cart({ id, type }: { id: string; type: string }) {
     const fetchItemDetails = async () => {
       try {
         setIsLoading(true);
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const response = await fetch(`${baseApi}/plans/pricing-data`);
         const result = await response.json();
 
@@ -165,7 +165,7 @@ export function Cart({ id, type }: { id: string; type: string }) {
       setIsApplyingPromo(true);
       setPromoCodeError(null);
 
-      const baseApi = await getBaseApi();
+      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(
         `${baseApi}/promo-codes/validate/${promoCode}`
       );
@@ -219,7 +219,7 @@ export function Cart({ id, type }: { id: string; type: string }) {
       const user = await getCurrentUser();
 
       if (user) {
-        const baseAPI = await getBaseApi();
+        const baseAPI = process.env.NEXT_PUBLIC_API_BASE_URL;
         const accessToken = await getAccessToken();
         const response = await fetch(`${baseAPI}/payment/create-app-payment`, {
           method: "POST",

@@ -46,7 +46,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getBaseApi } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 
 // Define types for better type safety
 type BillingCycle = "monthly" | "yearly" | "quarterly";
@@ -159,7 +159,7 @@ const PricingContent = () => {
     const fetchPricingData = async () => {
       try {
         setIsLoading(true);
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const response = await fetch(`${baseApi}/plans/pricing-data`);
         const result = (await response.json()) as PricingResponse;
 

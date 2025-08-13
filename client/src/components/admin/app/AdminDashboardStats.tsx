@@ -74,7 +74,7 @@ export default function DashboardStats() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "BDT",
       maximumFractionDigits: 2,
     }).format(amount);
   };

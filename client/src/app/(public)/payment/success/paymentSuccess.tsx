@@ -12,7 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getBaseApi, getAccessToken } from "@/services/image-services";
+import { getAccessToken } from "@/services/image-services";
+// Removed getBaseApi import to prevent server component errors
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -48,7 +49,7 @@ export default function PaymentSuccess({ orderId }: { orderId: string }) {
       }
 
       try {
-        const baseApi = await getBaseApi();
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
         const accessToken = await getAccessToken();
 
         if (!accessToken) {

@@ -97,19 +97,19 @@ export function PromoCodeTable({
     switch (appliesTo) {
       case "subscription":
         return (
-          <Badge variant="outline" className="bg-blue-50">
+          <Badge variant="outline" className="bg-accent">
             Subscription
           </Badge>
         );
       case "credit":
         return (
-          <Badge variant="outline" className="bg-green-50">
+          <Badge variant="outline" className="bg-secondary">
             Credit
           </Badge>
         );
       case "both":
         return (
-          <Badge variant="outline" className="bg-purple-50">
+          <Badge variant="outline" className="bg-muted">
             Both
           </Badge>
         );
@@ -144,13 +144,13 @@ export function PromoCodeTable({
         <Table>
           <TableHeader>
             <TableRow className="border-b">
-              <TableHead className="font-semibold text-gray-900">Code</TableHead>
-              <TableHead className="font-semibold text-gray-900">Discount</TableHead>
-              <TableHead className="font-semibold text-gray-900">Applies To</TableHead>
-              <TableHead className="font-semibold text-gray-900">Valid Period</TableHead>
-              <TableHead className="font-semibold text-gray-900">Usage</TableHead>
-              <TableHead className="font-semibold text-gray-900">Status</TableHead>
-              <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+              <TableHead className="font-semibold text-foreground">Code</TableHead>
+              <TableHead className="font-semibold text-foreground">Discount</TableHead>
+              <TableHead className="font-semibold text-foreground">Applies To</TableHead>
+              <TableHead className="font-semibold text-foreground">Valid Period</TableHead>
+              <TableHead className="font-semibold text-foreground">Usage</TableHead>
+              <TableHead className="font-semibold text-foreground">Status</TableHead>
+              <TableHead className="text-right font-semibold text-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

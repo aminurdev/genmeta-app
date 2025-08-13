@@ -893,10 +893,10 @@ export const Footer = () => {
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
                 <a
-                  href="mailto:helpgenmeta@gmail.com"
+                  href="mailto:support@genmeta.app"
                   className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
                 >
-                  helpgenmeta@gmail.com
+                  support@genmeta.app
                 </a>
               </li>
               <li className="flex items-center group">

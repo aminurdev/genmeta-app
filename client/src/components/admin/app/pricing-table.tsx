@@ -85,7 +85,7 @@ export function PricingTable({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "BDT",
     }).format(amount);
   };
 
@@ -122,73 +122,94 @@ export function PricingTable({
         <Table>
           <TableHeader>
             <TableRow className="border-b">
-              <TableHead className="font-semibold text-gray-900">Name</TableHead>
-              <TableHead className="font-semibold text-gray-900">Base Price</TableHead>
-              <TableHead className="font-semibold text-gray-900">Discount</TableHead>
-              <TableHead className="font-semibold text-gray-900">Final Price</TableHead>
-              <TableHead className="font-semibold text-gray-900">
+              <TableHead className="font-semibold text-foreground">
+                Name
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Base Price
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Discount
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Final Price
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
                 {plans[0]?.type === "subscription"
                   ? "Duration (days)"
                   : "Credits"}
               </TableHead>
-              <TableHead className="font-semibold text-gray-900">Status</TableHead>
-              <TableHead className="text-right font-semibold text-gray-900">Actions</TableHead>
+              <TableHead className="font-semibold text-foreground">
+                Status
+              </TableHead>
+              <TableHead className="text-right font-semibold text-foreground">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
-        <TableBody>
-          {plans.map((plan) => (
-            <TableRow key={plan._id} className="hover:bg-gray-50 transition-colors">
-              <TableCell className="font-medium text-gray-900">{plan.name}</TableCell>
-              <TableCell className="text-gray-700">{formatCurrency(plan.basePrice)}</TableCell>
-              <TableCell className="text-gray-700">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  {plan.discountPercent}%
-                </span>
-              </TableCell>
-              <TableCell className="font-semibold text-green-600">
-                {formatCurrency(
-                  calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
-                )}
-              </TableCell>
-              <TableCell className="text-gray-700">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  {plan.type === "subscription" ? `${plan.planDuration} days` : `${plan.credit} credits`}
-                </span>
-              </TableCell>
-              <TableCell>
-                <Badge 
-                  variant={plan.isActive ? "default" : "secondary"}
-                  className={plan.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-gray-100 text-gray-800"}
-                >
-                  {plan.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEdit(plan)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleDelete(plan._id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
+          <TableBody>
+            {plans.map((plan) => (
+              <TableRow
+                key={plan._id}
+                className="hover:bg-muted/50 transition-colors"
+              >
+                <TableCell className="font-medium text-foreground">
+                  {plan.name}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatCurrency(plan.basePrice)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
+                    {plan.discountPercent}%
+                  </span>
+                </TableCell>
+                <TableCell className="font-semibold text-primary">
+                  {formatCurrency(
+                    calculateDiscountedPrice(
+                      plan.basePrice,
+                      plan.discountPercent
+                    )
+                  )}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+                    {plan.type === "subscription"
+                      ? `${plan.planDuration} days`
+                      : `${plan.credit} credits`}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={plan.isActive ? "default" : "secondary"}>
+                    {plan.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(plan)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDelete(plan._id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
       </div>
 

@@ -125,14 +125,14 @@ export function PricingDashboard() {
 
         <div className="flex justify-between items-center mt-8 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-foreground">
               {activeTab === "promocodes"
                 ? "Manage Promo Codes"
                 : activeTab === "subscription"
                 ? "Manage Subscription Plans"
                 : "Manage Credit Plans"}
             </h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {activeTab === "promocodes"
                 ? "Create and manage promotional discount codes"
                 : activeTab === "subscription"
@@ -144,7 +144,7 @@ export function PricingDashboard() {
           {activeTab === "promocodes" ? (
             <Dialog open={promoOpen} onOpenChange={setPromoOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg">
+                <Button className="bg-primary hover:bg-primary/90 shadow-lg">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add New Promo Code
                 </Button>
@@ -159,7 +159,7 @@ export function PricingDashboard() {
           ) : (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg">
+                <Button className="bg-primary hover:bg-primary/90 shadow-lg">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add New Plan
                 </Button>
@@ -175,7 +175,7 @@ export function PricingDashboard() {
         </div>
 
         <TabsContent value="subscription" className="mt-6">
-          <div className="bg-white rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-sm">
             <PricingTable
               plans={subscriptionPlans}
               loading={loading}
@@ -185,7 +185,7 @@ export function PricingDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="credit" className="mt-6">
-          <div className="bg-white rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-sm">
             <PricingTable
               plans={creditPlans}
               loading={loading}
@@ -195,7 +195,7 @@ export function PricingDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="promocodes" className="mt-6">
-          <div className="bg-white rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-sm">
             <PromoCodeTable
               promoCodes={promoCodes}
               loading={promoLoading}

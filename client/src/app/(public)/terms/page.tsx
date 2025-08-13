@@ -147,10 +147,10 @@ export default function TermsAndConditions() {
             For questions or concerns regarding these Terms and Conditions,
             please contact us at{" "}
             <a
-              href="mailto:helpgenmeta@gmail.com"
+              href="mailto:support@genmeta.app"
               className="text-blue-600 hover:underline"
             >
-              helpgenmeta@gmail.com
+              support@genmeta.app
             </a>
           </p>
         </section>

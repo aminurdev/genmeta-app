@@ -127,10 +127,10 @@ export default function PrivacyPolicy() {
             <li>
               <strong>Email:</strong>{" "}
               <a
-                href="mailto:helpgenmeta@gmail.com"
+                href="mailto:support@genmeta.app"
                 className="text-blue-600 hover:underline"
               >
-                helpgenmeta@gmail.com
+                support@genmeta.app
               </a>
             </li>
             <li>

@@ -22,7 +22,6 @@ import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import {
   fetchPricingPlanById,
   type PricingPlan,
-  validatePromoCode,
 } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -147,7 +146,23 @@ export default function Cart({ planId }: { planId: string }) {
     setPromoError(null);
     setIsApplyingPromo(true);
     try {
-      const promoResult = await validatePromoCode(promoCode.trim());
+      // Use direct fetch instead of server action to avoid server component errors
+      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${baseApi}/promo-codes/validate/${promoCode.trim()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Invalid promo code");
+      }
+
+      const responseData = await response.json();
+      const promoResult = responseData.data.promoCode;
+      
       // Check if promo code applies to the selected plan type
       if (
         promoResult.appliesTo !== "both" &&

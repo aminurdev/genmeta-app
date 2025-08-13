@@ -720,7 +720,7 @@ export default function AppKeyList() {
         <TableHeader>
           <TableRow>
             <TableHead>Username</TableHead>
-            <TableHead>API Key</TableHead>
+            <TableHead>APP Key</TableHead>
             <TableHead>Plan</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Device Bound</TableHead>
@@ -1086,7 +1086,7 @@ export default function AppKeyList() {
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             Showing {appKeys.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
-            {Math.min(currentPage * limit, totalKeys)} of {totalKeys} API keys
+            {Math.min(currentPage * limit, totalKeys)} of {totalKeys} APP Users
           </div>
           {totalPages > 1 && renderPagination()}
         </div>
