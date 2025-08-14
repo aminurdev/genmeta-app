@@ -1,12 +1,12 @@
 // api.ts
 import axios, { AxiosRequestConfig, Method } from "axios";
-import { getAccessToken } from "./auth-services";
+import { cookies } from "next/headers";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
 // Token getter utility with refresh logic
 const getToken = async (): Promise<string | null> => {
-  const token = await getAccessToken();
+  const token = (await cookies()).get("accessToken")?.value;
   return token === undefined ? null : token;
 };
 

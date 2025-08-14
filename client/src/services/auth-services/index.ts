@@ -66,8 +66,21 @@ export const verifyEmail = async (otpToken: string, otp: string) => {
     });
 
     if (result.success) {
-      (await cookies()).set("accessToken", result.data.accessToken);
-      (await cookies()).set("refreshToken", result.data.refreshToken);
+      const cookieStore = await cookies();
+      cookieStore.set("accessToken", result.data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/"
+      });
+      cookieStore.set("refreshToken", result.data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: "/"
+      });
     }
 
     return result;
@@ -93,8 +106,21 @@ export const loginUser = async (userData: FieldValues) => {
     });
 
     if (result.success) {
-      (await cookies()).set("accessToken", result.data.accessToken);
-      (await cookies()).set("refreshToken", result.data.refreshToken);
+      const cookieStore = await cookies();
+      cookieStore.set("accessToken", result.data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/"
+      });
+      cookieStore.set("refreshToken", result.data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: "/"
+      });
     }
 
     return result;
@@ -117,8 +143,21 @@ export const verifyGoogleToken = async (token: string) => {
 
     if (result.success) {
       try {
-        (await cookies()).set("accessToken", result.data.accessToken);
-        (await cookies()).set("refreshToken", result.data.refreshToken);
+        const cookieStore = await cookies();
+        cookieStore.set("accessToken", result.data.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+          path: "/"
+        });
+        cookieStore.set("refreshToken", result.data.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 30, // 30 days
+          path: "/"
+        });
       } catch (cookieError) {
         console.error("Error setting cookies:", cookieError);
       }
@@ -153,8 +192,21 @@ export const refreshAccessToken = async () => {
     const result = await res.json();
 
     if (result.success) {
-      (await cookies()).set("accessToken", result.data.accessToken);
-      (await cookies()).set("refreshToken", result.data.refreshToken);
+      const cookieStore = await cookies();
+      cookieStore.set("accessToken", result.data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/"
+      });
+      cookieStore.set("refreshToken", result.data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: "/"
+      });
     }
 
     return result;
@@ -169,23 +221,8 @@ export const refreshAccessToken = async () => {
 export const getAccessToken = async () => {
   let accessToken = (await cookies()).get("accessToken")?.value;
 
-  const isTokenExpired = (token: string): boolean => {
-    try {
-      const decoded = jwtDecode<User>(token);
-      return decoded.exp * 1000 < Date.now();
-    } catch {
-      return true;
-    }
-  };
-
-  if (!accessToken || isTokenExpired(accessToken)) {
-    const refreshResult = await refreshAccessToken();
-
-    if (refreshResult.success) {
-      accessToken = refreshResult.data.accessToken;
-    } else {
-      return null;
-    }
+  if (!accessToken) {
+    return null;
   }
 
   return accessToken;
