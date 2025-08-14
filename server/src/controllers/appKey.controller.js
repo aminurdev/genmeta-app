@@ -75,7 +75,7 @@ const createAppKey = asyncHandler(async (req, res) => {
     }
   } else if (planType === "subscription") {
     // For subscription plan, set unlimited credit and always set expiry
-    credit = 999999; // Unlimited for subscription
+    credit = 0; // Unlimited for subscription
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
     expiryDate.setHours(23, 59, 59, 999);
@@ -153,7 +153,7 @@ const updateAppKey = asyncHandler(async (req, res) => {
       oldPlanType !== "subscription"
     ) {
       // When upgrading to subscription, set unlimited credit
-      appKey.credit = 999999;
+      appKey.credit = 0;
     } else if (newPlan.type === "credit" && oldPlanType !== "credit") {
       // When changing to credit plan, set default credit if not specified
       if (credit === undefined) {
@@ -521,8 +521,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
         )
       : null;
 
-  const aiApiSecret =
-    appKey.plan.type === "credit" ? config.encoderKey : null;
+  const aiApiSecret = appKey.plan.type === "credit" ? config.encoderKey : null;
 
   return new ApiResponse(200, true, "API key is valid and process allowed.", {
     username: appKey.username,
