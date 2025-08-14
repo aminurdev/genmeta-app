@@ -45,6 +45,27 @@ app.use("/api/v1/promo-codes", promoCodeRoutes);
 
 app.use("/api/v1/users", userRoutes);
 
+// Welcome route
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Welcome to GenMeta API",
+    version: "1.1.1",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is healthy",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
 // 404 route handler
 app.use("*", (req) => {
   throw new ApiError(404, `cant't find ${req.originalUrl} on this server.`);
