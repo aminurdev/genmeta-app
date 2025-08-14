@@ -19,10 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
-import {
-  fetchPricingPlanById,
-  type PricingPlan,
-} from "@/lib/actions";
+import { fetchPricingPlanById, type PricingPlan } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,10 +32,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getBaseApi, getAccessToken } from "@/services/image-services";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser } from "@/services/auth-services";
+import {
+  getAccessToken,
+  getCurrentUser,
+  getBaseApi,
+} from "@/services/auth-services";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -148,12 +148,15 @@ export default function Cart({ planId }: { planId: string }) {
     try {
       // Use direct fetch instead of server action to avoid server component errors
       const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(`${baseApi}/promo-codes/validate/${promoCode.trim()}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `${baseApi}/promo-codes/validate/${promoCode.trim()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -162,7 +165,7 @@ export default function Cart({ planId }: { planId: string }) {
 
       const responseData = await response.json();
       const promoResult = responseData.data.promoCode;
-      
+
       // Check if promo code applies to the selected plan type
       if (
         promoResult.appliesTo !== "both" &&

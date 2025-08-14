@@ -13,10 +13,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ArrowLeft, Mail, Lock, EyeOff, Eye } from "lucide-react";
-import { getBaseApi } from "@/services/image-services";
 import { FormError } from "@/components/auth/form-error";
 import { FormSuccess } from "@/components/auth/form-success";
-import { requestPasswordReset, verifyOTP, resetPassword } from "@/services/auth-services";
+import {
+  requestPasswordReset,
+  verifyOTP,
+  resetPassword,
+} from "@/services/auth-services";
 
 export default function EmailVerification() {
   const router = useRouter();
@@ -138,13 +141,19 @@ export default function EmailVerification() {
     setIsLoading(true);
 
     try {
-      const result = await resetPassword(newPassword, confirmNewPassword, tempToken);
+      const result = await resetPassword(
+        newPassword,
+        confirmNewPassword,
+        tempToken
+      );
 
       if (result.success) {
         setSuccess("Password reset successful");
         setStep(4); // Move to success screen
       } else {
-        setError(result.message || "Failed to reset password. Please try again.");
+        setError(
+          result.message || "Failed to reset password. Please try again."
+        );
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");

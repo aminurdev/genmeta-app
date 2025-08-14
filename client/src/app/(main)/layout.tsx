@@ -10,7 +10,7 @@ export default async function RootLayout({
   const user = await getCurrentUser();
   return (
     <>
-      <Navigation user={user} />
+      <Navigation propUser={user} />
       <main className="flex-1">{children}</main>
       <Footer />
     </>

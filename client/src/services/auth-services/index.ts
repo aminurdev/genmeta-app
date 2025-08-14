@@ -15,8 +15,52 @@ export interface User {
 }
 
 const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL as string;
+export const getBaseApi = async () => {
+  return baseApi;
+};
 
-export const handleGoogleSignIn = async () => {};
+// Common token management utilities
+const getTokenCookieOptions = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge,
+  path: "/",
+});
+
+export const getTokenFromCookie = async (
+  tokenType: "accessToken" | "refreshToken"
+): Promise<string | null> => {
+  const token = (await cookies()).get(tokenType)?.value;
+  return token || null;
+};
+
+export const setTokens = async (
+  accessToken: string,
+  refreshToken: string
+): Promise<void> => {
+  const cookieStore = await cookies();
+  cookieStore.set(
+    "accessToken",
+    accessToken,
+    getTokenCookieOptions(
+      60 * 60 * 24 * Number(process.env.ACCESS_TOKEN_EXPIRY)
+    )
+  );
+  cookieStore.set(
+    "refreshToken",
+    refreshToken,
+    getTokenCookieOptions(
+      60 * 60 * 24 * Number(process.env.REFRESH_TOKEN_EXPIRY)
+    )
+  );
+};
+
+export const deleteTokens = async (): Promise<void> => {
+  const cookieStore = await cookies();
+  cookieStore.delete("accessToken");
+  cookieStore.delete("refreshToken");
+};
 
 export const registerUser = async (userData: FieldValues) => {
   try {
@@ -66,21 +110,7 @@ export const verifyEmail = async (otpToken: string, otp: string) => {
     });
 
     if (result.success) {
-      const cookieStore = await cookies();
-      cookieStore.set("accessToken", result.data.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: "/"
-      });
-      cookieStore.set("refreshToken", result.data.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: "/"
-      });
+      await setTokens(result.data.accessToken, result.data.refreshToken);
     }
 
     return result;
@@ -106,21 +136,7 @@ export const loginUser = async (userData: FieldValues) => {
     });
 
     if (result.success) {
-      const cookieStore = await cookies();
-      cookieStore.set("accessToken", result.data.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: "/"
-      });
-      cookieStore.set("refreshToken", result.data.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: "/"
-      });
+      await setTokens(result.data.accessToken, result.data.refreshToken);
     }
 
     return result;
@@ -143,21 +159,7 @@ export const verifyGoogleToken = async (token: string) => {
 
     if (result.success) {
       try {
-        const cookieStore = await cookies();
-        cookieStore.set("accessToken", result.data.accessToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-          path: "/"
-        });
-        cookieStore.set("refreshToken", result.data.refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 30, // 30 days
-          path: "/"
-        });
+        await setTokens(result.data.accessToken, result.data.refreshToken);
       } catch (cookieError) {
         console.error("Error setting cookies:", cookieError);
       }
@@ -175,38 +177,21 @@ export const verifyGoogleToken = async (token: string) => {
 
 export const refreshAccessToken = async () => {
   try {
-    const refreshToken = (await cookies()).get("refreshToken");
+    const refreshToken = await getTokenFromCookie("refreshToken");
 
     if (!refreshToken) {
       return { success: false, message: "No refresh token found" };
     }
 
-    const res = await fetch(`${baseApi}/users/refresh-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refreshToken: refreshToken.value }),
+    const result = await apiRequest({
+      method: "post",
+      endpoint: "/users/refresh-token",
+      useAuth: false,
+      data: { refreshToken },
     });
 
-    const result = await res.json();
-
     if (result.success) {
-      const cookieStore = await cookies();
-      cookieStore.set("accessToken", result.data.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: "/"
-      });
-      cookieStore.set("refreshToken", result.data.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: "/"
-      });
+      await setTokens(result.data.accessToken, result.data.refreshToken);
     }
 
     return result;
@@ -218,43 +203,74 @@ export const refreshAccessToken = async () => {
   }
 };
 
-export const getAccessToken = async () => {
-  let accessToken = (await cookies()).get("accessToken")?.value;
+const getAccessTokenOrRefreshAccessToken = async () => {
+  let accessToken = await getTokenFromCookie("accessToken");
 
   if (!accessToken) {
-    return null;
-  }
-
-  return accessToken;
-};
-
-export const getCurrentUser = async () => {
-  let accessToken = (await cookies()).get("accessToken")?.value;
-  let decodedData: User | null = null;
-
-  const isTokenExpired = (token: string): boolean => {
-    try {
-      const decoded = jwtDecode<User>(token);
-      return decoded.exp * 1000 < Date.now();
-    } catch {
-      return true;
-    }
-  };
-
-  if (!accessToken || isTokenExpired(accessToken)) {
+    // No access token found, try to refresh
     const refreshResult = await refreshAccessToken();
 
     if (refreshResult.success) {
       accessToken = refreshResult.data.accessToken;
     } else {
-      return null; // Refresh failed, redirect to login if needed
+      return null;
+    }
+  } else {
+    // Check if token is expired
+    const isTokenExpired = (token: string): boolean => {
+      try {
+        const decoded = jwtDecode<User>(token);
+        const currentTime = Date.now() / 1000;
+        return decoded.exp < currentTime;
+      } catch {
+        return true;
+      }
+    };
+
+    if (isTokenExpired(accessToken)) {
+      const refreshResult = await refreshAccessToken();
+
+      if (refreshResult.success) {
+        accessToken = refreshResult.data.accessToken;
+      } else {
+        return null;
+      }
     }
   }
 
+  return accessToken;
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  const token = await getTokenFromCookie("accessToken");
+  return token;
+};
+
+export const getCurrentUser = async () => {
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    return null;
+  }
+
   try {
-    if (accessToken) {
-      decodedData = jwtDecode<User>(accessToken);
-    }
+    const decodedData = jwtDecode<User>(accessToken);
+    return decodedData;
+  } catch (error: any) {
+    console.log(error.message);
+    return null;
+  }
+};
+
+export const getCurrentUserWithRefresh = async () => {
+  const accessToken = await getAccessTokenOrRefreshAccessToken();
+
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const decodedData = jwtDecode<User>(accessToken);
     return decodedData;
   } catch (error: any) {
     console.log(error.message);
@@ -264,9 +280,7 @@ export const getCurrentUser = async () => {
 
 export const logout = async () => {
   try {
-    const userCookies = await cookies();
-    userCookies.delete("accessToken");
-    userCookies.delete("refreshToken");
+    await deleteTokens();
     return { success: true, message: "SuccessFully logout." };
   } catch (error) {
     console.error("Error during logout:", error);

@@ -1,7 +1,6 @@
 "use server";
 
-import { getAccessToken } from "@/services/auth-services";
-import { getBaseApi } from "@/services/image-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 
 // Type definitions
 export type PricingPlanType = "subscription" | "credit";

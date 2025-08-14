@@ -134,7 +134,7 @@ const adminSidebarData = [
 ];
 
 export type AppSidebarProps = {
-  user?: User;
+  user: User | null;
   type: "user" | "admin";
 };
 

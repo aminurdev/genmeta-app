@@ -12,10 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAccessToken } from "@/services/image-services";
 // Removed getBaseApi import to prevent server component errors
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getAccessToken } from "@/services/auth-services";
 
 interface OrderDetails {
   orderId: string;

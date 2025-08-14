@@ -49,8 +49,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import {
   ArrowLeft,
   Calendar,

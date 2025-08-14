@@ -17,8 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
