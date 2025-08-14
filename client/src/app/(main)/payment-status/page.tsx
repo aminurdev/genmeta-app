@@ -74,7 +74,7 @@ export default async function PaymentStatus({
             </Link>
           </Button>
           <Button asChild className="gap-2">
-            <Link href="/get-app" aria-label="Get the App">
+            <Link href="/download" aria-label="Get the App">
               <Laptop className="h-4 w-4" />
               Get App
             </Link>

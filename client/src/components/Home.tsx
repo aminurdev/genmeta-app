@@ -6,20 +6,12 @@ import {
   SparklesIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
-  CpuChipIcon,
   ArrowPathIcon,
   Cog6ToothIcon,
-  FolderIcon,
   ListBulletIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
-import {
-  ArrowRight,
-  CheckCircle,
-  Download,
-  MousePointerClick,
-  Crown,
-} from "lucide-react";
+import { ArrowRight, CheckCircle, Download, Crown, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -80,11 +72,12 @@ export default function HomePage({ releaseInfo }: Props) {
                 : "translate-y-12 opacity-0"
             }`}
           >
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 tracking-tight">
-              Supercharge Your Images with{" "}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight max-w-6xl">
+              Boost Your{" "}
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 animate-gradient-x">
-                AI Metadata
-              </span>
+                Microstock Sales
+              </span>{" "}
+              with AI Powered Metadata
             </h1>
           </div>
 
@@ -93,10 +86,12 @@ export default function HomePage({ releaseInfo }: Props) {
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-              Powerful desktop application that automatically generates accurate
-              titles, descriptions, and keywords for your images using advanced
-              AI technology.
+            <p className="text-muted-foreground mb-10 max-w-3xl mx-auto ">
+              Generate SEO-optimized titles, descriptions, and keywords for
+              Adobe Stock, Shutterstock, Freepik, and other microstock
+              platforms. Increase your visibility and sales with AI-powered
+              metadata
+              <br /> that buyers actually search for.
             </p>
           </div>
 
@@ -143,7 +138,8 @@ export default function HomePage({ releaseInfo }: Props) {
             }`}
           >
             <p className="text-sm text-muted-foreground mb-8">
-              Compatible with Windows 10/11 (64-bit) • Free version available
+              Compatible with Windows 10/11 (64-bit) • Optimized for Adobe
+              Stock, Shutterstock & Freepik • Free version available
             </p>
             <Banner />
           </div>
@@ -162,49 +158,49 @@ export default function HomePage({ releaseInfo }: Props) {
                 Features
               </Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Powerful Desktop AI Tools
+                Maximize Your Microstock Revenue
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Everything you need to enhance your image metadata with our
-                desktop application
+                Professional tools designed specifically for stock photographers
+                to increase discoverability and sales on major platforms
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
-                  title: "AI-Powered Analysis",
+                  title: "Microstock-Optimized AI",
                   description:
-                    "Generate accurate titles, descriptions, and SEO-optimized keywords using Gemini AI technology directly on your desktop.",
+                    "Generate titles, descriptions, and keywords specifically optimized for Adobe Stock, Shutterstock, and Freepik algorithms to maximize your sales potential.",
                   icon: SparklesIcon,
                 },
                 {
-                  title: "Bulk Processing",
+                  title: "Bulk Files Processing",
                   description:
-                    "Process entire directories of images at once with customizable metadata settings and batch operations.",
+                    "Process thousands of stock images at once with platform-specific metadata templates. Perfect for large files uploads and files optimization.",
                   icon: ArrowPathIcon,
                 },
                 {
-                  title: "Local Processing",
+                  title: "Secure & Private",
                   description:
-                    "All processing happens on your desktop with secure API connections. Your images never leave your computer.",
+                    "Your valuable stock images never leave your computer. All AI processing happens locally with secure API connections, protecting your intellectual property.",
                   icon: ShieldCheckIcon,
                 },
                 {
-                  title: "Smart Keywords",
+                  title: "High-Converting Keywords",
                   description:
-                    "Get relevant, SEO-optimized keywords that improve discoverability across platforms and search engines.",
+                    "Generate trending keywords that buyers actually search for on microstock platforms. Increase your image visibility and download rates.",
                   icon: ListBulletIcon,
                 },
                 {
-                  title: "Customizable Settings",
+                  title: "Platform-Specific Settings",
                   description:
-                    "Tailor the output to your specific needs with adjustable title length, description depth, and keyword count.",
+                    "Customize metadata output for different platforms with Adobe Stock's 50-keyword limit, Shutterstock's requirements, and Freepik's optimization needs.",
                   icon: Cog6ToothIcon,
                 },
                 {
-                  title: "Export Options",
+                  title: "Professional Export",
                   description:
-                    "Export metadata to CSV or save directly to processed images with embedded metadata for seamless workflow.",
+                    "Export ready-to-upload CSV files or embed metadata directly into images. Streamline your microstock submission workflow.",
                   icon: DocumentTextIcon,
                 },
               ].map((feature, index) => (
@@ -221,67 +217,221 @@ export default function HomePage({ releaseInfo }: Props) {
         </section>
       </AnimatedSection>
 
-      {/* How It Works Section */}
-      <AnimatedSection delay={1200}>
-        <section className="py-24 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-16">
+      {/* Quick Setup Guide Section */}
+      <AnimatedSection delay={1300}>
+        <section className="py-24 bg-gradient-to-b from-background to-violet-50/30 dark:to-violet-950/10">
+          <div className="max-w-5xl mx-auto px-4">
+            <div className="text-center mb-20">
               <Badge
                 variant="outline"
-                className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
+                className="mb-6 px-4 py-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 animate-fade-in-up"
               >
-                Quick Start
+                <SparklesIcon className="w-4 h-4 mr-2 text-violet-600 dark:text-violet-400" />
+                Quick Setup Guide
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Four Simple Steps to Get Started
+              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 animate-fade-in-up">
+                Start Generating Professional Metadata in{" "}
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400">
+                  5 Minutes
+                </span>
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Begin enhancing your images in minutes with our intuitive
-                desktop application
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in-up">
+                Transform your microstock workflow with our streamlined setup
+                process. From installation to your first AI-generated metadata
+                in just a few clicks.
               </p>
             </div>
-            <div className="relative">
-              <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-violet-200 via-indigo-300 to-violet-200 dark:from-violet-900 dark:via-indigo-800 dark:to-violet-900 transform -translate-y-1/2 z-0 animate-draw-line"></div>
-              <div className="grid md:grid-cols-4 gap-8 relative z-10">
-                {[
-                  {
-                    number: "1",
-                    title: "Install & Configure",
-                    description:
-                      "Download and install GenMeta, then set up your API key in Settings",
-                    icon: Cog6ToothIcon,
-                  },
-                  {
-                    number: "2",
-                    title: "Select Images",
-                    description:
-                      "Choose your images directory using the Browse button",
-                    icon: FolderIcon,
-                  },
-                  {
-                    number: "3",
-                    title: "Generate Metadata",
-                    description: "Start AI processing with just a single click",
-                    icon: CpuChipIcon,
-                  },
-                  {
-                    number: "4",
-                    title: "Export Results",
-                    description:
-                      "View results and export processed images with metadata",
-                    icon: MousePointerClick,
-                  },
-                ].map((step, index) => (
-                  <StepCard
-                    key={step.number}
-                    number={step.number}
-                    title={step.title}
-                    description={step.description}
-                    icon={step.icon}
-                    delay={index * 150}
-                  />
-                ))}
+
+            <div className="space-y-8">
+              {[
+                {
+                  step: "01",
+                  title: "Download & Install GenMeta",
+                  description:
+                    "Download GenMeta-Setup-5.3.2.exe and run the installer. Windows Defender may show a security warning - click 'Run anyway' to proceed with the installation.",
+                  details: [
+                    "Windows security bypass",
+                    "One-click installer",
+                    "Desktop shortcut created",
+                  ],
+                  icon: Download,
+                  color: "from-blue-500 to-cyan-500",
+                  image: "/Assets/quick-setup/2.png",
+                },
+                {
+                  step: "02",
+                  title: "Configure API Settings",
+                  description:
+                    "Open GenMeta and navigate to Settings > System Configuration. Enter your Gemini API key in the API Configuration section to enable AI metadata generation.",
+                  details: [
+                    "Secure API integration",
+                    "Up to 5 API keys supported",
+                    "Automatic quota rotation",
+                  ],
+                  icon: Cog6ToothIcon,
+                  color: "from-violet-500 to-purple-500",
+                  image: "/Assets/quick-setup/3.png",
+                },
+                {
+                  step: "03",
+                  title: "Install Ghostscript (Optional)",
+                  description:
+                    "For EPS file processing, install Ghostscript by clicking the 'Install Ghostscript' button in the settings. This enables full support for vector graphics and EPS files.",
+                  details: [
+                    "EPS file support",
+                    "Vector graphics processing",
+                    "Automatic detection",
+                  ],
+                  icon: ShieldCheckIcon,
+                  color: "from-emerald-500 to-teal-500",
+                  image: "/Assets/quick-setup/3.png",
+                },
+                {
+                  step: "04",
+                  title: "Select Your Image Files",
+                  description:
+                    "Click 'Select Files' or 'Select Folder' to choose your images. GenMeta supports EPS, PNG, JPG and other formats. Select multiple files for batch processing.",
+                  details: [
+                    "Multiple format support",
+                    "Batch file selection",
+                    "Folder processing",
+                  ],
+                  icon: SparklesIcon,
+                  color: "from-orange-500 to-red-500",
+                  image: "/Assets/quick-setup/4.png",
+                },
+                {
+                  step: "05",
+                  title: "Generate & Review Metadata",
+                  description:
+                    "Click 'Generate Metadata' and watch AI create optimized titles, descriptions, and keywords. Review results, make edits, and export for Adobe Stock, Shutterstock, and other platforms.",
+                  details: [
+                    "AI-powered generation",
+                    "Editable results",
+                    "Multi-platform export",
+                  ],
+                  icon: DocumentTextIcon,
+                  color: "from-pink-500 to-rose-500",
+                  image: "/Assets/quick-setup/5.png",
+                },
+              ].map((item, index) => (
+                <div
+                  key={item.step}
+                  className={`group relative transform transition-all duration-700 ease-out ${
+                    index % 2 === 0
+                      ? "animate-fade-in-left"
+                      : "animate-fade-in-right"
+                  }`}
+                  style={{ animationDelay: `${index * 200}ms` }}
+                >
+                  <div className="relative bg-white dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    {/* Step number gradient background */}
+                    <div
+                      className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${item.color}`}
+                    ></div>
+
+                    <div className="p-8 md:p-10">
+                      <div className="flex flex-col lg:flex-row lg:items-start gap-8">
+                        {/* Content Section */}
+                        <div className="flex-1 space-y-6">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r ${item.color} shadow-lg`}
+                            >
+                              <item.icon className="w-8 h-8 text-white" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">
+                                Step {item.step}
+                              </div>
+                              <h3 className="text-2xl md:text-3xl font-bold text-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                                {item.title}
+                              </h3>
+                            </div>
+                          </div>
+
+                          <p className="text-lg text-muted-foreground leading-relaxed">
+                            {item.description}
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {item.details.map((detail, detailIndex) => (
+                              <div
+                                key={detailIndex}
+                                className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2"
+                              >
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                <span>{detail}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="lg:w-96 xl:w-[500px]">
+                          <div className="relative rounded-xl overflow-hidden shadow-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
+                            <img
+                              src={item.image || "/placeholder.svg"}
+                              alt={`Step ${item.step}: ${item.title}`}
+                              className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02] bg-white dark:bg-gray-900"
+                              style={{ minHeight: "280px" }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connection line for desktop */}
+                  {index < 4 && (
+                    <div className="hidden lg:block absolute left-8 -bottom-4 w-0.5 h-8 bg-gradient-to-b from-gray-300 to-transparent dark:from-gray-600"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-16 text-center">
+              <div className="bg-gradient-to-r from-violet-600/10 to-indigo-600/10 dark:from-violet-400/10 dark:to-indigo-400/10 rounded-2xl p-8 border border-violet-200 dark:border-violet-800">
+                <h3 className="text-2xl font-bold text-foreground mb-4">
+                  Ready to Transform Your Microstock Business?
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                  Join thousands of stock photographers who have increased their
+                  earnings with AI-powered metadata optimization.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 transform hover:scale-105 transition-all duration-300"
+                    asChild
+                  >
+                    <a
+                      href={downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      Download GenMeta Now
+                      <Badge
+                        variant="outline"
+                        className="ml-2 bg-white/20 border-white/30 text-white"
+                      >
+                        Free
+                      </Badge>
+                    </a>
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 transform hover:scale-105 transition-all duration-300 bg-transparent"
+                    asChild
+                  >
+                    <Link href="/pricing">
+                      <Crown className="w-5 h-5 mr-2" />
+                      View Pro Features
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -409,30 +559,31 @@ export default function HomePage({ releaseInfo }: Props) {
                 Desktop Power
               </Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Professional Desktop Features
+                Scale Your Microstock Business
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Powerful batch processing capabilities built for professionals
+                Professional portfolio management tools designed for serious
+                stock photographers and content creators
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
-                  title: "Unlimited Processing",
+                  title: "Unlimited Files Processing",
                   description:
-                    "Process unlimited images with no restrictions. Perfect for large photo libraries and professional workflows.",
+                    "Process your entire stock files with no image limits. Scale from hundreds to hundreds of thousands of images for maximum earning potential.",
                   icon: ArrowPathIcon,
                 },
                 {
-                  title: "Multiple Export Formats",
+                  title: "Multi-Platform Export",
                   description:
-                    "Export processed images with embedded metadata or download all metadata organized in CSV format.",
+                    "Export optimized metadata for Adobe Stock, Shutterstock, Freepik, and other platforms simultaneously. Save hours of manual work.",
                   icon: DocumentTextIcon,
                 },
                 {
-                  title: "Custom Keywords",
+                  title: "Trending Keywords Database",
                   description:
-                    "Add and arrange custom keywords across all images to maintain consistent and optimized tagging.",
+                    "Access AI-curated trending keywords and add your own high-performing terms to boost discoverability across all platforms.",
                   icon: ListBulletIcon,
                 },
               ].map((feature, index) => (
@@ -461,32 +612,32 @@ export default function HomePage({ releaseInfo }: Props) {
                 Testimonials
               </Badge>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                What Our Users Say
+                Real Results from Stock Photographers
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Join thousands of satisfied users who have transformed their
-                image workflow
+                Join thousands of successful contributors who have boosted their
+                microstock earnings with AI-powered metadata
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
                   quote:
-                    "GenMeta desktop app has saved me countless hours of manual metadata entry. The AI is surprisingly accurate!",
+                    "My Adobe Stock earnings increased by 45% in just 3 months! GenMeta's AI generates keywords that buyers actually search for. It's like having a microstock expert on my team.",
                   author: "Sarah J.",
-                  role: "Professional Photographer",
+                  role: "Adobe Stock Contributor",
                 },
                 {
                   quote:
-                    "My stock photo sales increased by 30% after I started using GenMeta for all my image metadata.",
+                    "I went from 200 to 2,000 downloads per month on Shutterstock after using GenMeta. The platform-specific optimization really works - my images now rank higher in search results.",
                   author: "Michael T.",
-                  role: "Stock Photographer",
+                  role: "Professional Stock Photographer",
                 },
                 {
                   quote:
-                    "The bulk processing feature is a game-changer for managing large image libraries on my desktop.",
+                    "Processing 5,000+ images for my Freepik portfolio used to take weeks. Now it takes hours, and my acceptance rate improved from 60% to 95%. This tool pays for itself!",
                   author: "Elena R.",
-                  role: "Digital Marketing Manager",
+                  role: "Digital Content Creator",
                 },
               ].map((testimonial, index) => (
                 <TestimonialCard
@@ -515,11 +666,12 @@ export default function HomePage({ releaseInfo }: Props) {
               Get Started Today
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground animate-fade-in-up">
-              Ready to Transform Your Images?
+              Ready to Boost Your Microstock Revenue?
             </h2>
             <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in-up">
-              Download our powerful desktop application and start enhancing your
-              images with AI-powered metadata generation.
+              Join thousands of successful stock photographers earning more with
+              AI-optimized metadata. Start your free trial and see results in
+              your first week.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
               <Button
@@ -529,7 +681,7 @@ export default function HomePage({ releaseInfo }: Props) {
               >
                 <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
                   <Download className="w-5 h-5 mr-2" />
-                  Download Desktop App
+                  Start Earning More Today
                 </a>
               </Button>
               <Button
@@ -733,6 +885,105 @@ function TestimonialCard({
   );
 }
 
+function QuickSetupCard({
+  step,
+  title,
+  description,
+  image,
+  delay = 0,
+  isReversed = false,
+}: {
+  step: string;
+  title: string;
+  description: string;
+  image: string;
+  delay?: number;
+  isReversed?: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col ${
+        isReversed ? "lg:flex-row-reverse" : "lg:flex-row"
+      } items-center gap-8 lg:gap-12 animate-fade-in-up`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex-1 space-y-6">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold shadow-lg shadow-violet-500/20 transform hover:scale-110 transition-all duration-300">
+            {step}
+          </div>
+          <h3 className="text-3xl font-bold text-foreground">{title}</h3>
+        </div>
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          {description}
+        </p>
+      </div>
+      <div className="flex-1 max-w-2xl">
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 transform group-hover:scale-110"></div>
+          <div className="relative bg-card rounded-3xl border border-violet-100 dark:border-violet-900 overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
+            <Image
+              src={image || "/placeholder.svg"}
+              alt={`Step ${step}: ${title}`}
+              width={800}
+              height={500}
+              className="w-full h-auto object-cover"
+              priority={step === "1"}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickSetupMobileCard({
+  step,
+  title,
+  description,
+  image,
+  delay = 0,
+}: {
+  step: string;
+  title: string;
+  description: string;
+  image: string;
+  delay?: number;
+}) {
+  return (
+    <div
+      className="flex-shrink-0 w-80 snap-center animate-fade-in-up"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <Card className="h-full overflow-hidden border-violet-100 dark:border-violet-900 shadow-lg hover:shadow-xl transition-all duration-500">
+        <div className="relative">
+          <div className="absolute top-4 left-4 z-10">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+              {step}
+            </div>
+          </div>
+          <div className="aspect-video overflow-hidden">
+            <Image
+              src={image || "/placeholder.svg"}
+              alt={`Step ${step}: ${title}`}
+              width={400}
+              height={250}
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+              priority={step === "1"}
+            />
+          </div>
+        </div>
+        <CardContent className="p-6 space-y-3">
+          <h3 className="text-lg font-bold text-foreground">{title}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {description}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export const Footer = () => {
   return (
     <footer className="bg-background text-card-foreground py-16 border-t border-violet-100 dark:border-violet-900">
@@ -854,7 +1105,7 @@ export const Footer = () => {
               {[
                 { href: "/terms", label: "Terms & Conditions" },
                 { href: "/privacy", label: "Privacy Policy" },
-                { href: "/get-app", label: "Get APP" },
+                { href: "/download", label: "Get APP" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -876,6 +1127,17 @@ export const Footer = () => {
               Contact
             </h4>
             <ul className="space-y-3 text-muted-foreground">
+              {" "}
+              <li className="flex items-center group">
+                <Phone className="w-4 h-4 mr-2 text-violet-500 group-hover:scale-110 transition-transform" />
+
+                <a
+                  href="https://wa.me/+8801817710493"
+                  className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
+                >
+                  WhatsApp
+                </a>
+              </li>
               <li className="flex items-center group">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -915,7 +1177,7 @@ export const Footer = () => {
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                Nilphamari, Rangpur, Bangladesh
+                Rangpur, Dhaka, Bangladesh
               </li>
             </ul>
           </div>
