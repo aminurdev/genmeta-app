@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 
 interface KeyMetrics {
   totalUsers: {

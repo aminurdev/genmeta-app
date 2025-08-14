@@ -1,5 +1,4 @@
-import { getAccessToken } from "@/services/auth-services";
-import { getBaseApi } from "@/services/image-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import { useState, useEffect } from "react";
 
 export interface Payment {

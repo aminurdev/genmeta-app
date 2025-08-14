@@ -1,14 +1,8 @@
 // api.ts
 import axios, { AxiosRequestConfig, Method } from "axios";
-import { cookies } from "next/headers";
+import { getAccessToken, getTokenFromCookie } from "./auth-services";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
-
-// Token getter utility with refresh logic
-const getToken = async (): Promise<string | null> => {
-  const token = (await cookies()).get("accessToken")?.value;
-  return token === undefined ? null : token;
-};
 
 // API request options interface
 interface ApiRequestOptions {
@@ -29,7 +23,7 @@ export const apiRequest = async <T = any>({
   useAuth = true,
   customHeaders = {},
 }: ApiRequestOptions): Promise<T> => {
-  const token = useAuth ? await getToken() : null;
+  const token = useAuth ? await getAccessToken() : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(useAuth && token ? { Authorization: `Bearer ${token}` } : {}),

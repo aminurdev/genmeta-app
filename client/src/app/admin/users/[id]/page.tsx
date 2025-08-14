@@ -34,7 +34,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { getBaseApi } from "@/services/image-services";
 import Link from "next/link";
 import {
   Table,
@@ -75,7 +74,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 
 interface UserDetails {
   user: {

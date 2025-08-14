@@ -57,8 +57,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { getBaseApi } from "@/services/image-services";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 
 interface SchedulerStatus {
   isRunning: boolean;
@@ -90,8 +89,10 @@ interface MaintenanceStats {
 }
 
 export function SchedulerDashboard() {
-  const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatus | null>(null);
-  const [maintenanceStats, setMaintenanceStats] = useState<MaintenanceStats | null>(null);
+  const [schedulerStatus, setSchedulerStatus] =
+    useState<SchedulerStatus | null>(null);
+  const [maintenanceStats, setMaintenanceStats] =
+    useState<MaintenanceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
@@ -170,7 +171,9 @@ export function SchedulerDashboard() {
         throw new Error(data.message || `Failed to ${action} scheduler`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : `Failed to ${action} scheduler`);
+      toast.error(
+        error instanceof Error ? error.message : `Failed to ${action} scheduler`
+      );
     } finally {
       setActionLoading(null);
     }
@@ -197,7 +200,9 @@ export function SchedulerDashboard() {
         throw new Error(data.message || "Failed to trigger maintenance");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to trigger maintenance");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to trigger maintenance"
+      );
     } finally {
       setActionLoading(null);
     }
@@ -232,7 +237,11 @@ export function SchedulerDashboard() {
         throw new Error(data.message || "Failed to schedule maintenance");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to schedule maintenance");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to schedule maintenance"
+      );
     } finally {
       setActionLoading(null);
     }
@@ -258,7 +267,10 @@ export function SchedulerDashboard() {
       credit: "bg-blue-100 text-blue-800 border-blue-200",
       subscription: "bg-purple-100 text-purple-800 border-purple-200",
     };
-    return colors[planType as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200";
+    return (
+      colors[planType as keyof typeof colors] ||
+      "bg-gray-100 text-gray-800 border-gray-200"
+    );
   };
 
   if (loading) {
@@ -277,7 +289,9 @@ export function SchedulerDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Scheduler Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Scheduler Management
+          </h1>
           <p className="text-muted-foreground">
             Monitor and control the automated maintenance scheduler
           </p>
@@ -292,7 +306,9 @@ export function SchedulerDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Scheduler Status</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Scheduler Status
+            </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -301,7 +317,10 @@ export function SchedulerDashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               {schedulerStatus?.nextRun
-                ? `Next run: ${format(new Date(schedulerStatus.nextRun), "PPp")}`
+                ? `Next run: ${format(
+                    new Date(schedulerStatus.nextRun),
+                    "PPp"
+                  )}`
                 : "No scheduled runs"}
             </p>
           </CardContent>
@@ -313,7 +332,9 @@ export function SchedulerDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{schedulerStatus?.stats.totalRuns || 0}</div>
+            <div className="text-2xl font-bold">
+              {schedulerStatus?.stats.totalRuns || 0}
+            </div>
             <p className="text-xs text-muted-foreground">
               {schedulerStatus?.stats.successfulRuns || 0} successful,{" "}
               {schedulerStatus?.stats.failedRuns || 0} failed
@@ -333,21 +354,27 @@ export function SchedulerDashboard() {
                 : "Never"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {schedulerStatus?.stats.lastResult?.success ? "Successful" : "Failed"}
+              {schedulerStatus?.stats.lastResult?.success
+                ? "Successful"
+                : "Failed"}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Maintenance Needed</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Maintenance Needed
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {maintenanceStats?.maintenanceNeeded.total || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Users requiring maintenance</p>
+            <p className="text-xs text-muted-foreground">
+              Users requiring maintenance
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -406,9 +433,10 @@ export function SchedulerDashboard() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Trigger Maintenance Now</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will immediately run the daily maintenance process. This action
-                    will refresh free plan credits, downgrade expired subscriptions, and
-                    handle zero credit plans. Are you sure you want to continue?
+                    This will immediately run the daily maintenance process.
+                    This action will refresh free plan credits, downgrade
+                    expired subscriptions, and handle zero credit plans. Are you
+                    sure you want to continue?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -420,7 +448,10 @@ export function SchedulerDashboard() {
               </AlertDialogContent>
             </AlertDialog>
 
-            <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+            <Dialog
+              open={scheduleDialogOpen}
+              onOpenChange={setScheduleDialogOpen}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <Clock className="mr-2 h-4 w-4" />
@@ -431,7 +462,8 @@ export function SchedulerDashboard() {
                 <DialogHeader>
                   <DialogTitle>Schedule One-time Maintenance</DialogTitle>
                   <DialogDescription>
-                    Schedule a one-time maintenance run at a specific date and time.
+                    Schedule a one-time maintenance run at a specific date and
+                    time.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -479,7 +511,10 @@ export function SchedulerDashboard() {
           <CardContent>
             <div className="space-y-4">
               {maintenanceStats?.planDistribution.map((plan) => (
-                <div key={plan._id} className="flex items-center justify-between">
+                <div
+                  key={plan._id}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex items-center space-x-2">
                     <Badge className={getPlanBadge(plan._id)}>
                       {plan._id.charAt(0).toUpperCase() + plan._id.slice(1)}
@@ -518,7 +553,8 @@ export function SchedulerDashboard() {
                   <span className="text-sm">Free users needing refresh</span>
                 </div>
                 <Badge variant="outline">
-                  {maintenanceStats?.maintenanceNeeded.freeUsersNeedingRefresh || 0}
+                  {maintenanceStats?.maintenanceNeeded
+                    .freeUsersNeedingRefresh || 0}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
@@ -527,7 +563,8 @@ export function SchedulerDashboard() {
                   <span className="text-sm">Expired subscriptions</span>
                 </div>
                 <Badge variant="outline">
-                  {maintenanceStats?.maintenanceNeeded.expiredSubscriptions || 0}
+                  {maintenanceStats?.maintenanceNeeded.expiredSubscriptions ||
+                    0}
                 </Badge>
               </div>
               <div className="flex items-center justify-between">
@@ -572,7 +609,11 @@ export function SchedulerDashboard() {
               {schedulerStatus.stats.lastResult.details && (
                 <div className="text-sm text-muted-foreground">
                   <pre className="whitespace-pre-wrap">
-                    {JSON.stringify(schedulerStatus.stats.lastResult.details, null, 2)}
+                    {JSON.stringify(
+                      schedulerStatus.stats.lastResult.details,
+                      null,
+                      2
+                    )}
                   </pre>
                 </div>
               )}

@@ -63,7 +63,6 @@ import { Label } from "@/components/ui/label";
 import { useUsers } from "@/hooks/use-users";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { getBaseApi } from "@/services/image-services";
 import {
   Tooltip,
   TooltipContent,
@@ -72,7 +71,7 @@ import {
 } from "@/components/ui/tooltip";
 import Link from "next/link";
 import { toast } from "sonner";
-import { getAccessToken } from "@/services/auth-services";
+import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import PaginationView from "@/components/pagination-view";
 import { getUserStats, UserStats } from "@/services/admin-dashboard";
 import { UserStatsCards } from "@/components/admin/user-stats-cards";
