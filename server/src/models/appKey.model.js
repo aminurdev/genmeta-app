@@ -148,13 +148,6 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       await appKey.save();
     }
 
-    console.log(`Daily maintenance completed at ${now.toISOString()}:`);
-    console.log(`- Refreshed ${freeUsers.length} free plan credits`);
-    console.log(
-      `- Downgraded ${expiredSubscriptions.length} expired subscriptions`
-    );
-    console.log(`- Downgraded ${zeroCreditPlans.length} zero credit plans`);
-
     return {
       success: true,
       freeUsersRefreshed: freeUsers.length,

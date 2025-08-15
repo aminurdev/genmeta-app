@@ -46,9 +46,6 @@ class SchedulerService {
     );
 
     this.isRunning = true;
-    console.log(
-      "Daily maintenance scheduler started - will run every day at 12:00 AM UTC"
-    );
 
     // Optional: Run maintenance immediately on startup if it hasn't run today
     this.checkAndRunIfNeeded();
@@ -80,7 +77,6 @@ class SchedulerService {
 
       if (result.success) {
         this.stats.successfulRuns++;
-        console.log("Daily maintenance completed successfully:", result);
       } else {
         this.stats.failedRuns++;
         console.error("Daily maintenance failed:", result);
@@ -115,7 +111,6 @@ class SchedulerService {
       : null;
 
     if (lastRunDate !== today) {
-      console.log("Daily maintenance has not run today, executing now...");
       await this.runDailyMaintenance();
     }
   }
@@ -125,15 +120,15 @@ class SchedulerService {
    */
   getStatus() {
     let nextRun = null;
-    
+
     if (this.isRunning && this.cronExpression) {
       try {
         const interval = CronExpressionParser.parse(this.cronExpression, {
-          tz: 'UTC'
+          tz: "UTC",
         });
         nextRun = interval.next().toISOString();
       } catch (error) {
-        console.error('Error calculating next run time:', error);
+        console.error("Error calculating next run time:", error);
       }
     }
 
@@ -143,7 +138,7 @@ class SchedulerService {
       nextRun: nextRun,
       cronExpression: this.cronExpression || "0 0 * * *",
       timezone: "UTC",
-      stats: this.stats
+      stats: this.stats,
     };
   }
 

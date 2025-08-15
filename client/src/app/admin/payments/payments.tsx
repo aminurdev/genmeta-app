@@ -61,9 +61,16 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import {
+  downloadPaymentHistory,
   getPaymentsHistory,
   PaymentResponse,
 } from "@/services/admin-dashboard";
+import {
+  buildQueryParams,
+  convertToCSV,
+  downloadCSVFile,
+  generateFilename,
+} from "./export";
 
 export function PaymentHistoryPage() {
   const [payments, setPayments] = useState<PaymentResponse["data"] | null>(
@@ -140,8 +147,37 @@ export function PaymentHistoryPage() {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const handleExport = () => {
-    toast.success("Export functionality will be implemented");
+  const handleExport = async (
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<void> => {
+    try {
+      // Build query parameters
+      const queryParams = buildQueryParams(startDate, endDate);
+
+      // Fetch data from API
+      const result = await downloadPaymentHistory(queryParams);
+
+      // Validate API response
+      if (!result.success) {
+        throw new Error(result.message || "Failed to fetch payment history");
+      }
+
+      if (!result.data || result.data.length === 0) {
+        return;
+      }
+
+      // Convert to CSV
+      const csvContent = convertToCSV(result.data);
+
+      // Generate filename
+      const filename = generateFilename(startDate, endDate);
+
+      // Download file
+      downloadCSVFile(csvContent, filename);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -263,7 +299,11 @@ export function PaymentHistoryPage() {
               />
               Refresh
             </Button>
-            <Button onClick={handleExport} variant="outline" size="sm">
+            <Button
+              onClick={() => handleExport(dateRange?.from, dateRange?.to)}
+              variant="outline"
+              size="sm"
+            >
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
