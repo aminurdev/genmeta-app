@@ -177,6 +177,21 @@ export interface PaymentResponse {
   };
 }
 
+export interface DownloadPaymentHistory {
+  success: boolean;
+  message: string;
+  data: {
+    name: string;
+    email: string;
+    paymentNumber: string;
+    paymentCreatedAt: string;
+    paymentExecuteTime: string;
+    amount: string;
+    trxID: string;
+    paymentID: string;
+  }[];
+}
+
 export const getAdminOverview = async (): Promise<AdminOverview> => {
   const result = await apiRequest({
     method: "GET",
@@ -247,6 +262,17 @@ export const getPaymentsHistory = async ({
     }&status=${status ?? ""}&startDate=${startDate ?? ""}&endDate=${
       endDate ?? ""
     }`,
+  });
+
+  return result;
+};
+
+export const downloadPaymentHistory = async (
+  queryParams?: string
+): Promise<DownloadPaymentHistory> => {
+  const result = await apiRequest({
+    method: "GET",
+    endpoint: `/admin/paymentHistory/download?${queryParams}`,
   });
 
   return result;

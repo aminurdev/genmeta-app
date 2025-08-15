@@ -586,9 +586,90 @@ const getPaymentsHistory = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
+const downloadPaymentsHistory = asyncHandler(async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  let filter = {};
+
+  if (startDate && endDate) {
+    filter.createdAt = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  } else {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59
+    );
+
+    filter.createdAt = { $gte: firstDay, $lte: lastDay };
+  }
+
+  const payments = await AppPayment.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    { $unwind: "$user" },
+    {
+      $project: {
+        _id: 0,
+        name: "$user.name",
+        email: "$user.email",
+        paymentNumber: "$paymentDetails.customerMsisdn",
+        paymentCreatedAt: "$createdAt",
+        paymentExecuteTime: "$paymentDetails.paymentExecuteTime",
+        amount: "$paymentDetails.amount",
+        trxID: "$paymentDetails.trxID",
+        paymentID: "$paymentDetails.paymentID",
+      },
+    },
+    { $sort: { createdAt: -1 } },
+  ]);
+
+  // Format the paymentCreatedAt to readable format
+  const formattedPayments = payments.map((payment) => {
+    if (payment.paymentCreatedAt) {
+      const date = new Date(payment.paymentCreatedAt);
+
+      // Format to "Aug 01, 2025 04:56 PM"
+      const options = {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      };
+
+      payment.paymentCreatedAt = date.toLocaleDateString("en-US", options);
+    }
+    return payment;
+  });
+
+  return new ApiResponse(
+    200,
+    true,
+    "Payments history downloaded successfully",
+    formattedPayments
+  ).send(res);
+});
+
 export {
   getAllUsers,
   getUserStats,
   getAdminDashboardStats,
   getPaymentsHistory,
+  downloadPaymentsHistory,
 };

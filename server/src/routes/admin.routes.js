@@ -1,6 +1,7 @@
 import express from "express";
 
 import {
+  downloadPaymentsHistory,
   getAdminDashboardStats,
   getAllUsers,
   getPaymentsHistory,
@@ -22,5 +23,6 @@ router.get(
   authenticateAndVerifyAdmin,
   getPaymentsHistory
 );
+router.get("/paymentHistory/download", downloadPaymentsHistory);
 
 export default router;
