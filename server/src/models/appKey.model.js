@@ -114,6 +114,7 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       "plan.type": "free",
       isActive: true,
       status: "active",
+      credit: { $lte: 10 },
       lastCreditRefresh: { $ne: today },
     });
 

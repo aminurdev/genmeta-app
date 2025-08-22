@@ -522,7 +522,7 @@ const findOrCreateAppKey = async (user) => {
       username: user.email,
       key,
       plan,
-      credit: 10,
+      credit: 100,
       lastCreditRefresh: new Date().toISOString().split("T")[0],
     });
   }
