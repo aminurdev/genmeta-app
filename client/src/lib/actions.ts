@@ -132,28 +132,21 @@ export async function fetchPricingPlans(params?: {
  * Fetches a single pricing plan by ID
  */
 export async function fetchPricingPlanById(id: string): Promise<PricingPlan> {
-  try {
-    if (!id) {
-      throw new Error("Pricing plan ID is required");
-    }
-
-    const baseApi = await getBaseApi();
-
-    const response = await fetch(`${baseApi}/pricing/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    return await handleApiResponse<PricingPlan>(response);
-  } catch (error) {
-    console.error("Error fetching pricing plan:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to fetch pricing plan"
-    );
+  if (!id) {
+    throw new Error("Pricing plan ID is required");
   }
+
+  const baseApi = await getBaseApi();
+
+  const response = await fetch(`${baseApi}/pricing/${id}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  return await handleApiResponse<PricingPlan>(response);
 }
 
 /**
@@ -168,45 +161,36 @@ export async function createPricingPlan(data: {
   planDuration?: number;
   credit?: number;
 }): Promise<PricingPlan> {
-  try {
-    // Validate required fields based on type
-    if (!data.name || !data.type || data.basePrice === undefined) {
-      throw new Error("Name, type, and basePrice are required");
-    }
-
-    if (data.type === "credit" && !data.credit) {
-      throw new Error("Credit is required for credit type pricing");
-    }
-
-    if (data.type === "subscription" && !data.planDuration) {
-      throw new Error(
-        "Plan duration is required for subscription type pricing"
-      );
-    }
-
-    const baseApi = await getBaseApi();
-    const accessToken = await getAccessToken();
-
-    if (!accessToken) {
-      throw new Error("Authentication required");
-    }
-
-    const response = await fetch(`${baseApi}/pricing`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    return await handleApiResponse<PricingPlan>(response);
-  } catch (error) {
-    console.error("Error creating pricing plan:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to create pricing plan"
-    );
+  // Validate required fields based on type
+  if (!data.name || !data.type || data.basePrice === undefined) {
+    throw new Error("Name, type, and basePrice are required");
   }
+
+  if (data.type === "credit" && !data.credit) {
+    throw new Error("Credit is required for credit type pricing");
+  }
+
+  if (data.type === "subscription" && !data.planDuration) {
+    throw new Error("Plan duration is required for subscription type pricing");
+  }
+
+  const baseApi = await getBaseApi();
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error("Authentication required");
+  }
+
+  const response = await fetch(`${baseApi}/pricing`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  return await handleApiResponse<PricingPlan>(response);
 }
 
 /**
