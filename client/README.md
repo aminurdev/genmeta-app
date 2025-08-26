@@ -94,11 +94,24 @@ npm start
 
 ### Client Environment Variables
 
-Create a `.env` file in the client directory with:
+Create a `.env.local` file in the client directory with:
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
+# API Configuration
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+
+# Facebook Meta Pixel (optional)
+NEXT_PUBLIC_FACEBOOK_PIXEL_ID=your_facebook_pixel_id
+
+# Google Tag Manager (optional)
+NEXT_PUBLIC_GTM_ID=your_gtm_id
+
+# Token Expiry Configuration
+ACCESS_TOKEN_EXPIRY=1
+REFRESH_TOKEN_EXPIRY=7
 ```
+
+**Note:** Copy `.env.example` to `.env.local` and update with your actual values. The `.env.local` file is ignored by git for security.
 
 ### Server Environment Variables
 
