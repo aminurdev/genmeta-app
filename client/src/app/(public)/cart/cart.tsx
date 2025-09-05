@@ -17,6 +17,8 @@ import {
   Star,
   Gift,
   Check,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import { fetchPricingPlanById, type PricingPlan } from "@/lib/actions";
@@ -41,6 +43,14 @@ import {
 } from "@/services/auth-services";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PromoCode {
   code: string;
@@ -91,6 +101,16 @@ export default function Cart({ planId }: { planId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Plan customization states
+  const [allPlans, setAllPlans] = useState<{
+    subscriptionPlans: PricingPlan[];
+    creditPlans: PricingPlan[];
+  }>({ subscriptionPlans: [], creditPlans: [] });
+  const [selectedPlanType, setSelectedPlanType] = useState<
+    "subscription" | "credit"
+  >("subscription");
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+
   // Payment method state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("bkash");
 
@@ -102,27 +122,44 @@ export default function Cart({ planId }: { planId: string }) {
   const [isPromoExpanded, setIsPromoExpanded] = useState(false);
 
   useEffect(() => {
-    const fetchPlanDetails = async () => {
-      if (!planId) {
-        setError(
-          "No plan selected. Please choose a plan from the pricing page."
-        );
-        setIsLoading(false);
-        return;
-      }
+    const fetchAllPlans = async () => {
       try {
         setIsLoading(true);
-        const planData = await fetchPricingPlanById(planId);
-        setPlan(planData);
+        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const response = await fetch(`${baseApi}/pricing/plans`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const { subscriptionPlans, creditPlans } = result.data;
+          setAllPlans({ subscriptionPlans, creditPlans });
+
+          // Set initial plan if planId is provided
+          if (planId) {
+            const foundPlan = [...subscriptionPlans, ...creditPlans].find(
+              (p) => p._id === planId
+            );
+            if (foundPlan) {
+              setPlan(foundPlan);
+              setSelectedPlanType(foundPlan.type as "subscription" | "credit");
+              setSelectedPlanId(foundPlan._id);
+            }
+          } else {
+            // Default to first subscription plan
+            if (subscriptionPlans.length > 0) {
+              setPlan(subscriptionPlans[0]);
+              setSelectedPlanId(subscriptionPlans[0]._id);
+            }
+          }
+        }
       } catch (error) {
-        console.error("Error fetching plan:", error);
+        console.error("Error fetching plans:", error);
         setError("Failed to load plan details. Please try again.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPlanDetails();
+    fetchAllPlans();
   }, [planId]);
 
   const handleBackToPricing = () => {
@@ -205,6 +242,39 @@ export default function Cart({ planId }: { planId: string }) {
     setPromoCode("");
     setValidPromo(null);
     setPromoError(null);
+  };
+
+  const handlePlanChange = (planId: string) => {
+    const allPlansList = [
+      ...allPlans.subscriptionPlans,
+      ...allPlans.creditPlans,
+    ];
+    const selectedPlan = allPlansList.find((p) => p._id === planId);
+    if (selectedPlan) {
+      setPlan(selectedPlan);
+      setSelectedPlanId(planId);
+      // Clear promo code when changing plans
+      setValidPromo(null);
+      setPromoCode("");
+      setPromoError(null);
+    }
+  };
+
+  const handlePlanTypeChange = (value: string) => {
+    const type = value as "subscription" | "credit";
+    setSelectedPlanType(type);
+    const plans =
+      type === "subscription"
+        ? allPlans.subscriptionPlans
+        : allPlans.creditPlans;
+    if (plans.length > 0) {
+      setPlan(plans[0]);
+      setSelectedPlanId(plans[0]._id);
+      // Clear promo code when changing plan type
+      setValidPromo(null);
+      setPromoCode("");
+      setPromoError(null);
+    }
   };
 
   const handleCheckout = async (
@@ -360,7 +430,95 @@ export default function Cart({ planId }: { planId: string }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Main Content - Left Side */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-7 space-y-6">
+            {/* Plan Customization */}
+            <Card className="shadow-sm border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-bold text-foreground mb-2">
+                  Customize Your Plan
+                </CardTitle>
+                <CardDescription className="text-base">
+                  Choose the perfect plan for your needs
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Plan Type Tabs */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">
+                    Plan Type
+                  </Label>
+                  <Tabs
+                    value={selectedPlanType}
+                    onValueChange={handlePlanTypeChange}
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger
+                        value="subscription"
+                        className="flex items-center gap-2"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Subscription
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="credit"
+                        className="flex items-center gap-2"
+                      >
+                        <Zap className="h-4 w-4" />
+                        Credits
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {/* Plan Selection */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">
+                    Select Plan
+                  </Label>
+                  <Select
+                    value={selectedPlanId}
+                    onValueChange={handlePlanChange}
+                  >
+                    <SelectTrigger className="w-full h-12">
+                      <SelectValue placeholder="Choose a plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(selectedPlanType === "subscription"
+                        ? allPlans.subscriptionPlans
+                        : allPlans.creditPlans
+                      ).map((planOption) => (
+                        <SelectItem key={planOption._id} value={planOption._id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">
+                              {planOption.name}
+                            </span>
+                            <span className="text-sm text-muted-foreground ml-4">
+                              ৳
+                              {planOption.discountPercent > 0
+                                ? (
+                                    (planOption.basePrice *
+                                      (100 - planOption.discountPercent)) /
+                                    100
+                                  ).toFixed(0)
+                                : planOption.basePrice.toFixed(0)}
+                              {selectedPlanType === "subscription" &&
+                                planOption.planDuration === 365 &&
+                                "/year"}
+                              {selectedPlanType === "subscription" &&
+                                planOption.planDuration === 30 &&
+                                "/month"}
+                              {selectedPlanType === "credit" &&
+                                ` (${planOption.credit} credits)`}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Plan Details */}
             <Card className="shadow-sm border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm">
               <CardHeader className="pb-6">
@@ -388,6 +546,47 @@ export default function Cart({ planId }: { planId: string }) {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Plan Features */}
+                <div className="space-y-4 mb-6">
+                  <h3 className="font-semibold text-foreground">
+                    What's included:
+                  </h3>
+                  <div className="grid gap-3">
+                    {plan.type === "subscription"
+                      ? [
+                          "Unlimited — Batch Processing",
+                          "Use Own API key — Gemini API Integration",
+                          "Powerful Metadata Editor — Bulk Edits",
+                          "JPG, JPEG, PNG, EPS — Supported Formats",
+                          "Priority customer support",
+                          "Unlimited Results",
+                        ]
+                      : [
+                          "Faster processing — Batch Processing",
+                          "Powerful Metadata Editor — Bulk Edits",
+                          "No API required — Built-in API Access",
+                          "JPG, JPEG, PNG, EPS — Supported Formats",
+                          "1 credit token per image — Results Generation",
+                          "Priority customer support",
+                          "No monthly commitment",
+                        ].map((feature, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <Check
+                              className={`h-4 w-4 flex-shrink-0 ${
+                                plan.type === "subscription"
+                                  ? "text-violet-500"
+                                  : "text-blue-500"
+                              }`}
+                            />
+                            <span className="text-sm">{feature}</span>
+                          </div>
+                        ))}
+                  </div>
+                </div>
+
+                <Separator className="my-6" />
+
+                {/* Additional Features */}
                 <div className="grid md:grid-cols-3 gap-6">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">

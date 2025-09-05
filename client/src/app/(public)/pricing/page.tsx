@@ -652,52 +652,6 @@ const PricingContent = () => {
         </Tabs>
       </div>
 
-      {/* Statistics Section */}
-      <div className="bg-gradient-to-b from-background to-violet-50 dark:from-background dark:to-violet-950/20 py-16">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-4xl text-center">
-            <h2 className="mb-4 text-3xl font-bold">
-              Trusted by Professionals Worldwide
-            </h2>
-            <p className="mb-12 text-lg text-muted-foreground">
-              Join thousands of creators who have transformed their workflow
-            </p>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <Users className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  10K+
-                </div>
-                <div className="text-muted-foreground">Active Users</div>
-              </div>
-
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  1M+
-                </div>
-                <div className="text-muted-foreground">Images Processed</div>
-              </div>
-
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <Clock className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  99.9%
-                </div>
-                <div className="text-muted-foreground">Uptime</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* App Screenshot */}
       <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
         <div className="container mx-auto px-4">

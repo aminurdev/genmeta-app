@@ -42,6 +42,11 @@ const userSidebarData = [
         icon: UserIcon,
       },
       {
+        title: "Referral",
+        url: "/dashboard/referral",
+        icon: Users, // Referral: using Users icon
+      },
+      {
         title: "Appearance",
         url: "/dashboard/appearance",
         icon: Palette,
@@ -71,7 +76,7 @@ const userSidebarData = [
       {
         title: "Admin",
         url: "/admin",
-        icon: Package,
+        icon: LayoutDashboard,
       },
     ],
   },
