@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ReferralData } from "@/services/referral";
+import { useBaseUrl } from "@/hooks/use-baseUrl";
 
 interface ReferralDashboardProps {
   referralData: ReferralData;
@@ -94,7 +95,8 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
     toast("Withdrawal request submitted successfully!");
   };
 
-  const referralUrl = `https://genmeta.app/signup?ref=${referralData.referralCode}`;
+  const baseUrl = useBaseUrl();
+  const referralUrl = `${baseUrl}/signup?ref=${referralData.referralCode}`;
 
   const [copied, setCopied] = React.useState(false);
 
