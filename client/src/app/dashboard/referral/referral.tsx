@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -18,88 +18,68 @@ import {
   Wallet,
   TrendingUp,
   ExternalLink,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ReferralData } from "@/services/referral";
 
-export function ReferralDashboard() {
-  const [referralCode, setReferralCode] = useState<string>("");
+interface ReferralDashboardProps {
+  referralData: ReferralData;
+}
 
-  useEffect(() => {
-    const storedCode = localStorage.getItem("referralCode");
-    if (storedCode) {
-      setReferralCode(storedCode);
-    } else {
-      const newCode =
-        "REF" + Math.random().toString(36).substr(2, 6).toUpperCase();
-      setReferralCode(newCode);
-      localStorage.setItem("referralCode", newCode);
-    }
-  }, []);
+export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
+  // Helper function to calculate this month's earnings
+  const calculateThisMonthEarnings = (): number => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
-  const earnings = {
-    total: 2450.5,
-    thisMonth: 680.25,
-    availableBalance: 1850.75,
+    return (referralData.earnedHistory || []).reduce((sum, earning) => {
+      const earningDate = new Date(earning.createdAt);
+      if (
+        earningDate.getMonth() === currentMonth &&
+        earningDate.getFullYear() === currentYear
+      ) {
+        return sum + earning.amount;
+      }
+      return sum;
+    }, 0);
   };
 
-  const withdrawHistory = [
-    {
-      id: 1,
-      amount: 500.0,
-      status: "Complete" as const,
-      requestDate: "2024-01-15",
-      completedDate: "2024-01-17",
-    },
-    {
-      id: 2,
-      amount: 99.75,
-      status: "Complete" as const,
-      requestDate: "2024-02-01",
-      completedDate: "2024-02-03",
-    },
-    {
-      id: 3,
-      amount: 200.0,
-      status: "Pending" as const,
-      requestDate: "2024-02-15",
-      completedDate: null,
-    },
-  ];
+  // Transform earnedHistory to referredUsers format
+  const referredUsers = (referralData.earnedHistory || []).map(
+    (earning, index) => ({
+      id: index + 1,
+      name: earning.user.name,
+      email: earning.user.email,
+      status: "Active", // All users in earnedHistory are active
+      joinDate: new Date(earning.createdAt).toISOString().split("T")[0],
+      earnings: earning.amount,
+    })
+  );
 
-  const referredUsers = [
-    {
-      id: 1,
-      name: "Alice Johnson",
-      email: "alice@example.com",
-      status: "Active",
-      joinDate: "2024-01-15",
-      earnings: 50.0,
-    },
-    {
-      id: 2,
-      name: "Bob Smith",
-      email: "bob@example.com",
-      status: "Active",
-      joinDate: "2024-01-20",
-      earnings: 50.0,
-    },
-    {
-      id: 3,
-      name: "Carol Davis",
-      email: "carol@example.com",
-      status: "Pending",
-      joinDate: "2024-01-25",
-      earnings: 0.0,
-    },
-    {
-      id: 4,
-      name: "David Wilson",
-      email: "david@example.com",
-      status: "Active",
-      joinDate: "2024-02-01",
-      earnings: 50.0,
-    },
-  ];
+  // Transform withdrawHistory to match UI format
+  const withdrawHistory = (referralData.withdrawHistory || []).map(
+    (withdrawal, index) => ({
+      id: index + 1,
+      amount: withdrawal.amount,
+      status:
+        withdrawal.status === "completed"
+          ? ("Complete" as const)
+          : withdrawal.status === "pending"
+          ? ("Pending" as const)
+          : ("Rejected" as const),
+      requestDate: new Date(withdrawal.createdAt).toISOString().split("T")[0],
+      completedDate: withdrawal.issuedAt
+        ? new Date(withdrawal.issuedAt).toISOString().split("T")[0]
+        : null,
+    })
+  );
+
+  const earnings = {
+    total: referralData.totalEarned,
+    thisMonth: calculateThisMonthEarnings(),
+    availableBalance: referralData.availableBalance,
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -114,7 +94,9 @@ export function ReferralDashboard() {
     toast("Withdrawal request submitted successfully!");
   };
 
-  const referralUrl = `https://app.example.com/signup?ref=${referralCode}`;
+  const referralUrl = `https://genmeta.app/signup?ref=${referralData.referralCode}`;
+
+  const [copied, setCopied] = React.useState(false);
 
   return (
     <div className="p-4 space-y-6">
@@ -183,7 +165,9 @@ export function ReferralDashboard() {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Referrals
                 </p>
-                <p className="text-xl font-bold mt-1">{referredUsers.length}</p>
+                <p className="text-xl font-bold mt-1">
+                  {referralData.referralCount}
+                </p>
               </div>
               <Users className="h-5 w-5 text-purple-500" />
             </div>
@@ -210,17 +194,25 @@ export function ReferralDashboard() {
                 />
                 <Button
                   size="sm"
-                  onClick={() => copyToClipboard(referralUrl)}
+                  onClick={() => {
+                    copyToClipboard(referralUrl);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 3000);
+                  }}
                   className="shrink-0"
                 >
-                  <Copy className="h-4 w-4" />
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   Code:{" "}
                   <code className="font-mono bg-muted px-1 py-0.5 rounded">
-                    {referralCode}
+                    {referralData.referralCode}
                   </code>
                 </span>
                 <Button
