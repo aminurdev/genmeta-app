@@ -142,6 +142,14 @@ const SignUpForm = () => {
     },
   });
 
+  let referral = searchParams?.get("ref");
+
+  useEffect(() => {
+    if (referral) {
+      localStorage.setItem("referralCode", referral);
+    }
+  }, [referral]);
+
   const handlePasswordChange = (value: string) => {
     form.setValue("password", value);
     if (value) {
@@ -174,7 +182,9 @@ const SignUpForm = () => {
     setSuccess("");
     setTransition(async () => {
       try {
-        const result = await registerUser(values);
+        referral = localStorage.getItem("referralCode");
+
+        const result = await registerUser(values, referral);
         if (result?.success) {
           setUserEmail(values.email);
           setShowEmailVerification(true);

@@ -1,38 +1,61 @@
 import { Referral } from "../models/referral.model.js";
+import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const getReferralDetails = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
-  let referral = await Referral.findOne({ referrer: userId })
-    .populate("referredUsers", "name email")
-    .populate("earnedHistory.user", "name email");
+  // Get user with referral reference
+  const user = await User.findById(userId).populate({
+    path: "referral",
+    populate: [
+      {
+        path: "referredUsers",
+        select: "name email isVerified loginProvider",
+      },
+      { path: "earnedHistory.user", select: "name email" },
+    ],
+  });
 
-  // 🔹 If no referral record exists → create one
+  let referral = user?.referral;
+
+  // If no referral exists, create one and link to user
   if (!referral) {
     referral = new Referral({ referrer: userId });
     referral.generateReferralCode();
     await referral.save();
+
+    user.referral = referral._id;
+    await user.save();
   }
 
-  // 🔹 Calculate total earned
+  // ✅ Filter referred users: skip unverified email-only users
+  const validReferredUsers = referral.referredUsers.filter(
+    (u) =>
+      u.isVerified ||
+      (u.loginProvider &&
+        u.loginProvider.length > 0 &&
+        !u.loginProvider.includes("email"))
+  );
+
+  // Calculate total earned
   const totalEarned = referral.earnedHistory.reduce(
     (sum, e) => sum + (e.amount || 0),
     0
   );
 
-  // 🔹 Available balance
+  // Available balance
   const availableBalance = referral.availableBalance;
 
-  // 🔹 Total withdrawn
+  // Total withdrawn
   const totalWithdrawn = referral.withdrawHistory
     .filter((w) => w.status === "completed")
     .reduce((sum, w) => sum + (w.amount || 0), 0);
 
   return new ApiResponse(200, true, "Referral data retrieved", {
     referralCode: referral.referralCode,
-    referralCount: referral.referredUsers.length,
+    referralCount: validReferredUsers.length,
     totalEarned,
     availableBalance,
     totalWithdrawn,

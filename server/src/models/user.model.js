@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String, default: null },
   isVerified: { type: Boolean, default: false },
   isDisabled: { type: Boolean, default: false },
-  referralId: { type: String },
+  referral: { type: mongoose.Schema.Types.ObjectId, ref: "Referral" },
   ipAddress: { type: String },
   verificationToken: { type: String },
   loginProvider: {

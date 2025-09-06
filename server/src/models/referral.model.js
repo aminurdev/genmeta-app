@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { v4 as uuidv4 } from "uuid";
+import { generateCode } from "../utils/index.js";
 
 const referralSchema = new mongoose.Schema(
   {
@@ -68,8 +68,7 @@ const referralSchema = new mongoose.Schema(
 
 // 🔹 Method to generate referral code
 referralSchema.methods.generateReferralCode = function () {
-  const rawUuid = uuidv4();
-  const code = rawUuid.replace(/-/g, "").substring(0, 6).toUpperCase();
+  const code = generateCode();
   this.referralCode = code;
   return this.referralCode;
 };

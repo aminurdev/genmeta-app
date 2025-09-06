@@ -9,7 +9,8 @@ import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { generateAccessAndRefreshTokens } from "../utils/generate-token.utils.js";
+import { generateAccessAndRefreshTokens } from "../utils/index.js";
+import { Referral } from "../models/referral.model.js";
 
 const token_secret = config.email_verify_token_secret;
 
@@ -91,7 +92,7 @@ const verifyGoogleToken = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, referralCode } = req.body;
 
   const userIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
@@ -103,46 +104,64 @@ const registerUser = asyncHandler(async (req, res) => {
     "yahoo.com",
     "icloud.com",
   ];
+  const emailDomain = email?.split("@")[1]?.toLowerCase();
 
-  // Extract domain from email
-  const emailDomain = email.split("@")[1]?.toLowerCase();
-
-  // Check if domain is in allowed list
   if (!emailDomain || !allowedDomains.includes(emailDomain)) {
-    throw new ApiError(400, "Please use a valid email.");
+    throw new ApiError(400, "Please use a valid email provider.");
   }
 
+  // Check if user already exists
   let user = await User.findOne({ email });
 
   if (user && user.isVerified) {
-    throw new ApiError(409, "Email already exists");
+    throw new ApiError(409, "Email already exists.");
+  }
+
+  //  Find referral if code is provided
+  let referralDoc = null;
+  if (referralCode) {
+    referralDoc = await Referral.findOne({ referralCode });
   }
 
   if (user) {
     user.name = name || user.name;
     user.password = password;
+    if (referralDoc) {
+      user.referral = referralDoc._id;
+    }
   } else {
-    user = await User.create({
+    // Create new user
+    user = new User({
       name,
       email,
       password,
       loginProvider: ["email"],
       ipAddress: userIp,
+      referral: referralDoc ? referralDoc._id : null,
     });
   }
 
   await user.save();
 
+  //  Link user to referral if provided
+  if (referralDoc) {
+    if (!referralDoc.referredUsers.includes(user._id)) {
+      referralDoc.referredUsers.push(user._id);
+      await referralDoc.save();
+    }
+  }
+
   const { otp, otpToken } = generateOtpAndOtpToken(user._id);
+  console.log({ otp });
 
-  await sendVerificationEmail(email, name, otp);
+  // Send verification email in production
+  if (config.NODE_ENV === "production") {
+    await sendVerificationEmail(email, name, otp);
+  }
 
-  return new ApiResponse(
-    201,
-    true,
-    "Registration successful! Check your email to verify and login.",
-    { otpToken }
-  ).send(res);
+  return new ApiResponse(201, true, "OTP sent! Check your email to verify.", {
+    otpToken,
+  }).send(res);
 });
 
 const resendVerificationEmail = asyncHandler(async (req, res) => {
@@ -228,7 +247,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user.loginProvider.includes("email")) {
     throw new ApiError(
       403,
-      "This account is registered with a different login provider"
+      "This email is registered with google login provider, try 'Continue with Google'"
     );
   }
 

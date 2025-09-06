@@ -63,11 +63,16 @@ export const deleteTokens = async (): Promise<void> => {
   cookieStore.delete("refreshToken");
 };
 
-export const registerUser = async (userData: FieldValues) => {
+export const registerUser = async (
+  userData: FieldValues,
+  referral: string | null
+) => {
   try {
     if (!userData.email || !userData.password) {
       return { success: false, message: "Email and password are required" };
     }
+
+    if (referral) userData.referralCode = referral;
 
     const result = await apiRequest({
       method: "post",

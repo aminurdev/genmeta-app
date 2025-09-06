@@ -175,10 +175,10 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="space-y-5">
         {/* Left Column - Actions */}
-        <div className="lg:col-span-1 space-y-6">
-          <Card>
+        <div className="grid md:grid-cols-2 gap-5">
+          <Card className="md:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Share & Earn</CardTitle>
               <CardDescription className="text-sm">
@@ -227,7 +227,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="md:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Withdraw Funds</CardTitle>
               <CardDescription className="text-sm">
@@ -259,7 +259,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
         </div>
 
         {/* Right Column - Data Tables */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-5">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Your Referrals</CardTitle>

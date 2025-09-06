@@ -4,7 +4,7 @@ import { getReferralDetails } from "@/services/referral";
 
 const page = async () => {
   const data = await getReferralDetails();
-  console.log(data);
+
   return (
     <div>
       <ReferralDashboard referralData={data.data} />

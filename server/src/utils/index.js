@@ -17,3 +17,24 @@ export const generateAccessAndRefreshTokens = async (userId) => {
     throw new ApiError(500, "Something went wrong while generating tokens");
   }
 };
+
+export const generateCode = (length = 6, letterRatio = 0.7) => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+
+  let code = "";
+
+  // First character must be a letter
+  code += letters[Math.floor(Math.random() * letters.length)];
+
+  // Generate remaining characters
+  for (let i = 1; i < length; i++) {
+    if (Math.random() < letterRatio) {
+      code += letters[Math.floor(Math.random() * letters.length)];
+    } else {
+      code += numbers[Math.floor(Math.random() * numbers.length)];
+    }
+  }
+
+  return code;
+};
