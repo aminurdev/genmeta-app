@@ -114,10 +114,15 @@ const SignUpForm = () => {
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
-  const [showEmailVerification, setShowEmailVerification] =
-    useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [otpToken, setOtpToken] = useState<string>("");
+  const [showEmailVerification, setShowEmailVerification] = useState<boolean>(
+    searchParams?.get("step") === "verify"
+  );
+  const [userEmail, setUserEmail] = useState<string>(
+    searchParams?.get("email") || ""
+  );
+  const [otpToken, setOtpToken] = useState<string>(
+    searchParams?.get("token") || ""
+  );
   const [otp, setOtp] = useState<string>("");
   const [otpError, setOtpError] = useState<string>("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
@@ -130,17 +135,6 @@ const SignUpForm = () => {
     strength: "weak" | "medium" | "strong";
     checks: Record<string, boolean>;
   } | null>(null);
-
-  const redirect = searchParams?.get("redirectPath");
-
-  const form = useForm<z.infer<typeof signUpSchema>>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      name: "",
-    },
-  });
 
   let referral = searchParams?.get("ref");
 
@@ -177,6 +171,37 @@ const SignUpForm = () => {
     }
   }, [showEmailVerification]);
 
+  const form = useForm<z.infer<typeof signUpSchema>>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      name: "",
+    },
+  });
+
+  const updateUrlForVerification = (email: string, token: string) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("step", "verify");
+    params.set("email", email);
+    params.set("token", token);
+    if (referral) {
+      params.set("ref", referral);
+    }
+    if (searchParams?.get("redirectPath")) {
+      params.set("redirectPath", searchParams?.get("redirectPath") || "");
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
+  const clearVerificationFromUrl = () => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.delete("step");
+    params.delete("email");
+    params.delete("token");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     setError("");
     setSuccess("");
@@ -190,6 +215,7 @@ const SignUpForm = () => {
           setShowEmailVerification(true);
           setOtpToken(result.data?.otpToken);
           setResendTimer(60); // Start 60 second timer for resend
+          updateUrlForVerification(values.email, result.data?.otpToken);
         } else {
           setError(result?.message);
         }
@@ -219,10 +245,10 @@ const SignUpForm = () => {
       if (result.success) {
         // Registration complete and user is logged in
         setSuccess("Email verified successfully! Welcome!");
-        // Redirect after a short delay to show success message
+        clearVerificationFromUrl();
         setTimeout(() => {
-          if (redirect) {
-            router.push(redirect);
+          if (searchParams?.get("redirectPath")) {
+            router.push(searchParams?.get("redirectPath") || "/");
           } else {
             router.push("/"); // or wherever you want to redirect after login
           }
@@ -249,6 +275,7 @@ const SignUpForm = () => {
         setResendTimer(60); // Reset timer
         setOtp(""); // Clear current OTP
         setOtpToken(result.data?.otpToken); // Update OTP token
+        updateUrlForVerification(userEmail, result.data?.otpToken);
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setOtpError(result.message || "Failed to resend code");
@@ -267,6 +294,7 @@ const SignUpForm = () => {
     setOtp("");
     setOtpError("");
     setResendTimer(0);
+    clearVerificationFromUrl();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -496,7 +524,7 @@ const SignUpForm = () => {
                             />
                             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -671,7 +699,13 @@ const SignUpForm = () => {
               <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link
-                  href={redirect ? `/login?redirectPath=${redirect}` : "/login"}
+                  href={
+                    searchParams?.get("redirectPath")
+                      ? `/login?redirectPath=${searchParams?.get(
+                          "redirectPath"
+                        )}`
+                      : "/login"
+                  }
                   className="text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium hover:underline transition-colors"
                 >
                   Sign in

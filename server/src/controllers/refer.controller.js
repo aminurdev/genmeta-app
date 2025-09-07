@@ -6,9 +6,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const getReferralDetails = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
-  // Get user with referral reference
+  // Get user with referred reference
   const user = await User.findById(userId).populate({
-    path: "referral",
+    path: "referred",
     populate: [
       {
         path: "referredUsers",
@@ -18,7 +18,7 @@ const getReferralDetails = asyncHandler(async (req, res) => {
     ],
   });
 
-  let referral = user?.referral;
+  let referral = user?.referred;
 
   // If no referral exists, create one and link to user
   if (!referral) {
@@ -26,7 +26,8 @@ const getReferralDetails = asyncHandler(async (req, res) => {
     referral.generateReferralCode();
     await referral.save();
 
-    user.referral = referral._id;
+    // Update user's referred field
+    user.referred = referral._id;
     await user.save();
   }
 

@@ -154,13 +154,16 @@ export const loginUser = async (userData: FieldValues) => {
   }
 };
 
-export const verifyGoogleToken = async (token: string) => {
+export const verifyGoogleToken = async (
+  token: string,
+  referral: string | null
+) => {
   try {
     const result = await apiRequest({
       method: "post",
       endpoint: "/users/verify-google",
       useAuth: false,
-      data: { token },
+      data: { token, referralCode: referral },
     });
 
     if (result.success) {

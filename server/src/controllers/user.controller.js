@@ -28,7 +28,7 @@ const googleLoginCallback = asyncHandler(async (req, res, next) => {
   const { state, error } = req.query;
 
   const parsedState = state ? JSON.parse(JSON.parse(state).state) : {};
-  const { redirectPath = "", path = "login" } = parsedState;
+  const { redirectPath = "", path = "login", referralCode } = parsedState;
 
   // If Google OAuth returned an error
   if (error) {
@@ -41,6 +41,26 @@ const googleLoginCallback = asyncHandler(async (req, res, next) => {
   passport.authenticate("google", { session: false }, async (err, user) => {
     if (err || !user) {
       return res.redirect(`${config.cors_origin}/${path}?error=auth_failed`);
+    }
+
+    if (referralCode && !user?.referred) {
+      const createdAt = new Date(user.createdAt);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (createdAt >= today) {
+        // Only query referral if the user is new today
+        const referralDoc = await Referral.findOne({ referralCode });
+        if (referralDoc) {
+          user.referred = referralDoc._id;
+          await user.save();
+
+          if (!referralDoc.referredUsers.includes(user._id)) {
+            referralDoc.referredUsers.push(user._id);
+            await referralDoc.save();
+          }
+        }
+      }
     }
 
     try {
@@ -127,7 +147,7 @@ const registerUser = asyncHandler(async (req, res) => {
     user.name = name || user.name;
     user.password = password;
     if (referralDoc) {
-      user.referral = referralDoc._id;
+      user.referred = referralDoc._id;
     }
   } else {
     // Create new user
@@ -137,7 +157,7 @@ const registerUser = asyncHandler(async (req, res) => {
       password,
       loginProvider: ["email"],
       ipAddress: userIp,
-      referral: referralDoc ? referralDoc._id : null,
+      referred: referralDoc ? referralDoc._id : null,
     });
   }
 

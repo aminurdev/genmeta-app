@@ -37,7 +37,6 @@ const configureGoogleStrategy = () => {
               isVerified: true,
               avatar: profile.photos?.[0]?.value || null,
             });
-            console.log(`New Google user created: ${email}`);
           } else {
             // Update existing user if needed
             let needsUpdate = false;

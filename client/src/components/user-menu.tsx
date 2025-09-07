@@ -1,7 +1,5 @@
 "use client";
-import { useState } from "react";
 import {
-  LifeBuoy,
   LogOut,
   UserCircle,
   Loader2,
@@ -10,7 +8,6 @@ import {
   Phone,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,28 +20,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { User } from "@/types/user";
-import { logout } from "@/services/auth-services";
 
-export function UserMenu({ user }: { user: User }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleLogout = async () => {
-    setIsLoading(true);
-
-    const result = await logout();
-    setIsLoading(false);
-
-    if (result.success) {
-      if (pathname !== "/") {
-        router.push("/login");
-      }
-    } else {
-      console.error(result.message);
-    }
-  };
-
+export function UserMenu({
+  user,
+  isLoading,
+  handleLogout,
+}: {
+  user: User;
+  isLoading: boolean;
+  handleLogout: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
