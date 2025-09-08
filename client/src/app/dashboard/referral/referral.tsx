@@ -52,6 +52,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
       id: index + 1,
       name: earning.user.name,
       email: earning.user.email,
+      term: earning.term,
       status: "Active", // All users in earnedHistory are active
       joinDate: new Date(earning.createdAt).toISOString().split("T")[0],
       earnings: earning.amount,
@@ -178,7 +179,6 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
       </div>
 
       <div className="space-y-5">
-        {/* Left Column - Actions */}
         <div className="grid md:grid-cols-2 gap-5">
           <Card className="md:col-span-1">
             <CardHeader className="pb-3">
@@ -260,17 +260,10 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
           </Card>
         </div>
 
-        {/* Right Column - Data Tables */}
         <div className="space-y-5">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Your Referrals</CardTitle>
-              <CardDescription className="text-sm">
-                {referredUsers.filter((u) => u.status === "Active").length}{" "}
-                active •{" "}
-                {referredUsers.filter((u) => u.status === "Pending").length}{" "}
-                pending
-              </CardDescription>
+              <CardTitle className="text-lg">Earning History</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -286,14 +279,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                           {user.email}
                         </span>
                       </div>
-                      <Badge
-                        variant={
-                          user.status === "Active" ? "default" : "secondary"
-                        }
-                        className="text-xs"
-                      >
-                        {user.status}
-                      </Badge>
+                      <Badge className="text-xs">{user.term}</Badge>
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-medium">

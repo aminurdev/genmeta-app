@@ -38,6 +38,8 @@ export const fetchAppUserData = async (username) => {
 export const processSuccessfulPayment = async (paymentID, res) => {
   const paymentDetails = await executePayment(paymentID);
 
+  console.log(paymentDetails);
+
   if (!paymentDetails) {
     logger.error("Failed to retrieve payment details", { paymentID });
     return redirectToPricing(res, "Payment failed", "verification_failed");
