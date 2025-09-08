@@ -7,6 +7,7 @@ import { AppKey } from "../../models/appKey.model.js";
 import { generateAppKey } from "../../controllers/appKey.controller.js";
 import { PromoCode } from "../../models/promocode.model.js";
 import { AppPricing } from "../../models/appPricing.model.js";
+import { Referral } from "../../models/referral.model.js";
 
 // Logger Utility
 export const logger = {
@@ -36,8 +37,6 @@ export const fetchAppUserData = async (username) => {
 
 export const processSuccessfulPayment = async (paymentID, res) => {
   const paymentDetails = await executePayment(paymentID);
-
-  console.log(paymentDetails);
 
   if (!paymentDetails) {
     logger.error("Failed to retrieve payment details", { paymentID });
@@ -98,6 +97,58 @@ export const processSuccessfulPayment = async (paymentID, res) => {
         logger.warn("Plan update failed after retries", {
           paymentID,
           payerReference,
+        });
+      }
+
+      // Inside processSuccessfulPayment -> after updatePlan(userId, planId)
+      try {
+        const payingUser = await User.findById(userId).populate("referred");
+
+        // 🔹 Skip if no referral
+        if (!payingUser?.referred) {
+          logger.info("No referral found for this payment", { userId });
+        } else {
+          const referralDoc = await Referral.findById(payingUser.referred);
+
+          if (referralDoc) {
+            // Count how many times this specific user already gave earnings
+            const userEarnCount = referralDoc.earnedHistory.filter(
+              (e) => e.user.toString() === payingUser._id.toString()
+            ).length;
+
+            if (userEarnCount >= 3) {
+              logger.info("Referral limit reached for this user", {
+                referrer: referralDoc.referrer.toString(),
+                referredUser: payingUser._id.toString(),
+              });
+            } else {
+              // Determine the term (1st, 2nd, 3rd)
+              const termMap = ["1st", "2nd", "3rd"];
+              const term = termMap[userEarnCount];
+
+              referralDoc.availableBalance += 50;
+              referralDoc.earnedHistory.push({
+                user: payingUser._id,
+                term,
+                amount: 50,
+                createdAt: new Date(),
+              });
+
+              await referralDoc.save();
+
+              logger.info("Referral earning added", {
+                referrer: referralDoc.referrer.toString(),
+                referredUser: payingUser._id.toString(),
+                term,
+                amount: 50,
+              });
+            }
+          }
+        }
+      } catch (referralError) {
+        logger.error("Failed to update referral earnings", {
+          error: referralError.message,
+          userId,
         });
       }
 
