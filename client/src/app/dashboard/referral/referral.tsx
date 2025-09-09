@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -11,6 +11,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Copy,
   DollarSign,
@@ -19,9 +37,11 @@ import {
   TrendingUp,
   ExternalLink,
   Check,
+  Phone,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ReferralData } from "@/services/referral";
+import { type ReferralData, requestWithdraw } from "@/services/referral";
 import { useBaseUrl } from "@/hooks/use-baseUrl";
 
 interface ReferralDashboardProps {
@@ -29,6 +49,10 @@ interface ReferralDashboardProps {
 }
 
 export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Helper function to calculate this month's earnings
   const calculateThisMonthEarnings = (): number => {
     const currentMonth = new Date().getMonth();
@@ -74,6 +98,8 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
       completedDate: withdrawal.issuedAt
         ? new Date(withdrawal.issuedAt).toISOString().split("T")[0]
         : null,
+      trx: withdrawal.trx,
+      account: withdrawal.withdrawAccount,
     })
   );
 
@@ -88,12 +114,39 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
     toast("Copied to clipboard!");
   };
 
-  const handleWithdrawRequest = () => {
-    if (earnings.availableBalance < 50) {
-      toast("Minimum withdrawal amount is $50");
+  const handleWithdrawRequest = async () => {
+    const amount = earnings.availableBalance;
+
+    if (!mobileNumber.trim()) {
+      toast.error("Please enter your mobile number");
       return;
     }
-    toast("Withdrawal request submitted successfully!");
+
+    if (amount < 100) {
+      toast.error("Minimum withdrawal amount is ৳100");
+      return;
+    }
+
+    if (amount > earnings.availableBalance) {
+      toast.error("Insufficient balance");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await requestWithdraw({
+        withdrawAccount: mobileNumber,
+        amount: amount,
+      });
+      toast.success("Withdrawal request submitted successfully!");
+      setIsWithdrawModalOpen(false);
+      setMobileNumber("");
+    } catch {
+      toast.error("Failed to submit withdrawal request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const baseUrl = useBaseUrl();
@@ -121,7 +174,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                   Total Earned
                 </p>
                 <p className="text-xl font-bold mt-1">
-                  ${earnings.total.toFixed(2)}
+                  ৳{earnings.total.toFixed(2)}
                 </p>
               </div>
               <DollarSign className="h-5 w-5 text-blue-500" />
@@ -137,7 +190,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                   This Month
                 </p>
                 <p className="text-xl font-bold mt-1">
-                  ${earnings.thisMonth.toFixed(2)}
+                  ৳{earnings.thisMonth.toFixed(2)}
                 </p>
               </div>
               <TrendingUp className="h-5 w-5 text-green-500" />
@@ -153,7 +206,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                   Available
                 </p>
                 <p className="text-xl font-bold mt-1 text-emerald-600">
-                  ${earnings.availableBalance.toFixed(2)}
+                  ৳{earnings.availableBalance.toFixed(2)}
                 </p>
               </div>
               <Wallet className="h-5 w-5 text-emerald-500" />
@@ -233,7 +286,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Withdraw Funds</CardTitle>
               <CardDescription className="text-sm">
-                Minimum withdrawal: $50
+                Minimum withdrawal: ৳100
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -242,19 +295,84 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                   <div>
                     <p className="text-sm font-medium">Available Balance</p>
                     <p className="text-lg font-bold text-emerald-600">
-                      ${earnings.availableBalance.toFixed(2)}
+                      ৳{earnings.availableBalance.toFixed(2)}
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={handleWithdrawRequest}
-                  disabled={earnings.availableBalance < 50}
-                  className="w-full"
-                  size="sm"
+                <Dialog
+                  open={isWithdrawModalOpen}
+                  onOpenChange={setIsWithdrawModalOpen}
                 >
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Request Withdrawal
-                </Button>
+                  <DialogTrigger asChild>
+                    <Button
+                      disabled={earnings.availableBalance < 100}
+                      className="w-full"
+                      size="sm"
+                    >
+                      <Wallet className="h-4 w-4 mr-2" />
+                      Request Withdrawal
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5" />
+                        Withdrawal Request
+                      </DialogTitle>
+                      <DialogDescription>
+                        Submit your withdrawal request. Payment will be
+                        processed within 1-3 business days.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="mobile">Mobile Account Number</Label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="mobile"
+                            placeholder="Enter your mobile number"
+                            value={mobileNumber}
+                            onChange={(e) => setMobileNumber(e.target.value)}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="amount">Withdrawal Amount (BDT)</Label>
+                        <Input
+                          id="amount"
+                          type="text"
+                          value={`Withdrawal Amount: ${earnings.availableBalance}`}
+                          disabled
+                        />
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <AlertCircle className="h-3 w-3" />
+                          Available: ৳{earnings.availableBalance.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsWithdrawModalOpen(false)}
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleWithdrawRequest}
+                        disabled={isSubmitting || !mobileNumber.trim()}
+                        className="min-w-[100px]"
+                      >
+                        {isSubmitting ? "Processing..." : "Submit Request"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
@@ -264,73 +382,139 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Earning History</CardTitle>
+              <CardDescription>
+                Track your referral earnings and commissions
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {referredUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between py-2 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {user.email}
-                        </span>
-                      </div>
-                      <Badge className="text-xs">{user.term}</Badge>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        ${user.earnings.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.joinDate}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {referredUsers.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>Term</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Earnings</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {referredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.name}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {user.email}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {user.term}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(user.joinDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-green-600">
+                            ৳{user.earnings.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>
+                    No earnings yet. Start referring users to earn commissions!
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Recent Withdrawals</CardTitle>
+              <CardTitle className="text-lg">Withdrawal History</CardTitle>
+              <CardDescription>
+                Track your withdrawal requests and payments
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {withdrawHistory.slice(0, 3).map((withdrawal) => (
-                  <div
-                    key={withdrawal.id}
-                    className="flex items-center justify-between py-2 border-b last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-medium">
-                        ${withdrawal.amount.toFixed(2)}
-                      </div>
-                      <Badge
-                        variant={
-                          withdrawal.status === "Complete"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className={`text-xs ${
-                          withdrawal.status === "Complete"
-                            ? "bg-green-100 text-green-800 hover:bg-green-100"
-                            : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                        }`}
-                      >
-                        {withdrawal.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {withdrawal.requestDate}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {withdrawHistory.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Request Date</TableHead>
+                        <TableHead>Issued Date</TableHead>
+                        <TableHead>Account</TableHead>
+                        <TableHead className="text-right">TRX</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {withdrawHistory.map((withdrawal) => (
+                        <TableRow key={withdrawal.id}>
+                          <TableCell className="font-medium">
+                            ৳{withdrawal.amount.toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                withdrawal.status === "Complete"
+                                  ? "default"
+                                  : withdrawal.status === "Pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                              className={`text-xs ${
+                                withdrawal.status === "Complete"
+                                  ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                  : withdrawal.status === "Pending"
+                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                  : "bg-red-100 text-red-800 hover:bg-red-100"
+                              }`}
+                            >
+                              {withdrawal.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(
+                              withdrawal.requestDate
+                            ).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {withdrawal.completedDate
+                              ? new Date(
+                                  withdrawal.completedDate
+                                ).toLocaleDateString()
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {withdrawal.account ? withdrawal.account : "-"}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground text-right">
+                            {withdrawal.trx ? withdrawal.trx : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>
+                    No withdrawal requests yet. Request your first withdrawal
+                    above!
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

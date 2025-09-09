@@ -18,6 +18,8 @@ export interface WithdrawHistoryItem {
   status: "pending" | "completed" | "rejected";
   createdAt: string;
   issuedAt: string | null;
+  trx: string | null;
+  withdrawAccount?: string;
 }
 
 // Referral response data
@@ -29,6 +31,13 @@ export interface ReferralData {
   totalWithdrawn: number;
   earnedHistory?: EarnedHistoryItem[];
   withdrawHistory?: WithdrawHistoryItem[];
+}
+
+export interface RequestWithdrawRes {
+  amount: number;
+  withdrawAccount: string;
+  status: string;
+  requestedAt: Date;
 }
 
 // Generic API response wrapper
@@ -45,6 +54,23 @@ export const getReferralDetails = async (): Promise<
   const result = await apiRequest({
     method: "GET",
     endpoint: "/referral/getDetails",
+  });
+
+  return result;
+};
+
+interface RequestWithdraw {
+  withdrawAccount: string;
+  amount: number;
+}
+
+export const requestWithdraw = async (
+  data: RequestWithdraw
+): Promise<ApiResponse<RequestWithdrawRes>> => {
+  const result = await apiRequest({
+    method: "post",
+    endpoint: "/referral/request-withdraw",
+    data: data,
   });
 
   return result;

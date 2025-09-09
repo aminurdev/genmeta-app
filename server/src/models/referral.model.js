@@ -8,7 +8,7 @@ const referralSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-
+    withdrawAccount: { type: String, default: null },
     referralCode: {
       type: String,
       unique: true,
@@ -52,10 +52,12 @@ const referralSchema = new mongoose.Schema(
           enum: ["pending", "completed", "rejected"],
           default: "pending",
         },
+        withdrawAccount: { type: String },
         createdAt: {
           type: Date,
           default: Date.now,
         },
+        trx: { type: String, default: null },
         issuedAt: {
           type: Date,
           default: null,
