@@ -6,6 +6,7 @@ import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppPricing } from "../models/appPricing.model.js";
+import { Referral } from "../models/referral.model.js";
 
 const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const now = new Date();
@@ -666,10 +667,131 @@ const downloadPaymentsHistory = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
+const getAllReferrals = asyncHandler(async (req, res) => {
+  const referrals = await Referral.find()
+    .populate("referrer", "name email") // get user info
+    .lean();
+
+  const data = referrals.map((ref) => {
+    const totalEarned = ref.earnedHistory.reduce(
+      (sum, e) => sum + (e.amount || 0),
+      0
+    );
+
+    const pendingWithdrawals = ref.withdrawHistory.filter(
+      (w) => w.status === "pending"
+    ).length;
+
+    return {
+      referrer: ref.referrer,
+      referralCode: ref.referralCode,
+      referredCount: ref.referredUsers?.length || 0,
+      totalEarned,
+      availableBalance: ref.availableBalance,
+      withdrawAccount: ref.withdrawAccount,
+      pendingWithdrawals,
+    };
+  });
+
+  return new ApiResponse(
+    200,
+    true,
+    "All referral records retrieved",
+    data
+  ).send(res);
+});
+
+const getReferralByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const referral = await Referral.findOne({ referrer: userId })
+    .populate("referrer", "name email")
+    .populate("referredUsers", "name email")
+    .populate("earnedHistory.user", "name email")
+    .lean();
+
+  if (!referral) {
+    throw new ApiError(404, "Referral record not found for this user");
+  }
+
+  // Total earned
+  const totalEarned = referral.earnedHistory.reduce(
+    (sum, e) => sum + (e.amount || 0),
+    0
+  );
+
+  const data = {
+    referrer: referral.referrer,
+    referralCode: referral.referralCode,
+    availableBalance: referral.availableBalance,
+    withdrawAccount: referral.withdrawAccount,
+    referralCount: referral.referredUsers?.length || 0,
+    totalEarned,
+    referredUsers: referral.referredUsers,
+    earnedHistory: referral.earnedHistory,
+    withdrawHistory: referral.withdrawHistory,
+  };
+
+  return new ApiResponse(200, true, "Referral details retrieved", data).send(
+    res
+  );
+});
+
+const updateWithdrawal = asyncHandler(async (req, res) => {
+  const { userId, withdrawalId } = req.params;
+  const { status, trx } = req.body;
+
+  if (!["completed", "rejected"].includes(status)) {
+    throw new ApiError(
+      400,
+      "Invalid status. Must be 'completed' or 'rejected'"
+    );
+  }
+
+  // Find referral record
+  const referral = await Referral.findOne({ referrer: userId });
+  if (!referral) {
+    throw new ApiError(404, "Referral record not found");
+  }
+
+  // Find withdrawal entry
+  const withdrawal = referral.withdrawHistory.id(withdrawalId);
+  if (!withdrawal) {
+    throw new ApiError(404, "Withdrawal request not found");
+  }
+
+  if (withdrawal.status !== "pending") {
+    throw new ApiError(400, "This withdrawal has already been processed");
+  }
+
+  // Update withdrawal status
+  withdrawal.status = status;
+  if (status === "completed") {
+    withdrawal.trx = trx || null; // save transaction ID if provided
+    withdrawal.issuedAt = new Date();
+  } else if (status === "rejected") {
+    // Refund balance to user
+    referral.availableBalance += withdrawal.amount;
+    withdrawal.issuedAt = new Date();
+  }
+
+  await referral.save();
+
+  return new ApiResponse(
+    200,
+    true,
+    `Withdrawal ${status} successfully`,
+    withdrawal
+  ).send(res);
+});
+
 export {
   getAllUsers,
   getUserStats,
   getAdminDashboardStats,
   getPaymentsHistory,
   downloadPaymentsHistory,
+  getAllReferrals,
+  getReferralByUserId,
+  updateWithdrawal,
 };

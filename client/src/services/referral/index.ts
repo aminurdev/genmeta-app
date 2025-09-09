@@ -68,7 +68,7 @@ export const requestWithdraw = async (
   data: RequestWithdraw
 ): Promise<ApiResponse<RequestWithdrawRes>> => {
   const result = await apiRequest({
-    method: "post",
+    method: "POST",
     endpoint: "/referral/request-withdraw",
     data: data,
   });
