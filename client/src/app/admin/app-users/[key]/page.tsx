@@ -7,8 +7,7 @@ interface PageProps {
 }
 
 export default async function UserDetailsPage({ params }: PageProps) {
-  const resolvedParams = await params;
-  const key = resolvedParams.key;
+  const key = (await params).key;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
