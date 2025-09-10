@@ -102,7 +102,7 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
   }
 
   // Check balance
-  if (referral.availableBalance <= amount) {
+  if (referral.availableBalance < amount) {
     throw new ApiError(400, "Insufficient balance for withdrawal");
   }
 
