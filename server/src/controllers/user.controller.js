@@ -172,7 +172,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const { otp, otpToken } = generateOtpAndOtpToken(user._id);
-  console.log({ otp });
+  console.log({ email: user.email, otp });
 
   // Send verification email in production
   if (config.NODE_ENV === "production") {

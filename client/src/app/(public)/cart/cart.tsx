@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -383,12 +384,13 @@ export default function Cart({ planId }: { planId: string }) {
   }
 
   // Calculate the price with plan discount
-  const priceAfterPlanDiscount =
-    plan.discountPercent > 0
-      ? Number.parseFloat(
-          calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
-        )
-      : plan.basePrice;
+  const priceAfterPlanDiscount = plan.discountPrice
+    ? plan.discountPrice
+    : plan.discountPercent > 0
+    ? Number.parseFloat(
+        calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
+      )
+    : plan.basePrice;
 
   // Apply promo code discount if valid
   const finalPrice = validPromo
@@ -499,7 +501,9 @@ export default function Cart({ planId }: { planId: string }) {
                             </span>
                             <span className="text-sm text-muted-foreground ml-4 font-semibold">
                               ৳
-                              {planOption.discountPercent > 0
+                              {planOption.discountPrice
+                                ? planOption.discountPrice
+                                : planOption.discountPercent > 0
                                 ? (
                                     (planOption.basePrice *
                                       (100 - planOption.discountPercent)) /
@@ -508,10 +512,16 @@ export default function Cart({ planId }: { planId: string }) {
                                 : planOption.basePrice.toFixed(0)}
                               {selectedPlanType === "subscription" &&
                                 planOption.planDuration === 365 &&
-                                "/year"}
+                                "/yearly"}{" "}
+                              {selectedPlanType === "subscription" &&
+                                planOption.planDuration === 182 &&
+                                "/half-yearly"}
+                              {selectedPlanType === "subscription" &&
+                                planOption.planDuration === 91 &&
+                                "/quarterly"}
                               {selectedPlanType === "subscription" &&
                                 planOption.planDuration === 30 &&
-                                "/month"}
+                                "/monthly"}
                               {selectedPlanType === "credit" &&
                                 ` (${planOption.credit} credits)`}
                             </span>
