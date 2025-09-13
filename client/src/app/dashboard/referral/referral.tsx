@@ -76,7 +76,6 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
       id: index + 1,
       name: earning.user.name,
       email: earning.user.email,
-      term: earning.term,
       status: "Active", // All users in earnedHistory are active
       joinDate: new Date(earning.createdAt).toISOString().split("T")[0],
       earnings: earning.amount,
@@ -393,7 +392,6 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                     <TableHeader>
                       <TableRow>
                         <TableHead>User</TableHead>
-                        <TableHead>Term</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead className="text-right">Earnings</TableHead>
                       </TableRow>
@@ -409,11 +407,7 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {user.term}
-                            </Badge>
-                          </TableCell>
+
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(user.joinDate).toLocaleDateString()}
                           </TableCell>

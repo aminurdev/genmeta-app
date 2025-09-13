@@ -89,18 +89,6 @@ export default function AdminUserReferralDashboard({
     return variants[status as keyof typeof variants] || variants.pending;
   };
 
-  const getTermBadge = (term: string) => {
-    const variants = {
-      "1st":
-        "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
-      "2nd":
-        "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800",
-      "3rd":
-        "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800",
-    };
-    return variants[term as keyof typeof variants] || variants["1st"];
-  };
-
   const handleWithdrawalAction = async () => {
     if (!selectedWithdrawal || !actionType) return;
 
@@ -342,7 +330,6 @@ export default function AdminUserReferralDashboard({
                   <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
-                      <TableHead>Term</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
                     </TableRow>
@@ -357,11 +344,6 @@ export default function AdminUserReferralDashboard({
                               {earning.user.email}
                             </p>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getTermBadge(earning.term)}>
-                            {earning.term} Level
-                          </Badge>
                         </TableCell>
                         <TableCell className="font-semibold text-green-600 dark:text-green-400">
                           {formatCurrency(earning.amount)}
@@ -469,9 +451,6 @@ export default function AdminUserReferralDashboard({
                       <div>
                         <p className="text-sm font-medium">
                           {earning.user.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {earning.term} level earning
                         </p>
                       </div>
                       <span className="text-sm font-semibold text-green-600 dark:text-green-400">

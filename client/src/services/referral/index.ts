@@ -7,7 +7,6 @@ export interface EarnedHistoryItem {
     name: string;
     email: string;
   };
-  term: "1st" | "2nd" | "3rd";
   amount: number;
   createdAt: string;
 }

@@ -29,10 +29,6 @@ const referralSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
         },
-        term: {
-          type: String,
-          enum: ["1st", "2nd", "all"],
-        },
         amount: {
           type: Number,
           default: 0,

@@ -115,11 +115,7 @@ export const processSuccessfulPayment = async (paymentID, res) => {
               (e) => e.user.toString() === payingUser._id.toString()
             );
 
-            // ✅ If already got 100 OR already got 2×50 → stop completely
-            const got100 = userHistory.some((e) => e.amount === 100);
-            const gotTwo50 = userHistory.length >= 2;
-
-            if (got100 || gotTwo50) {
+            if (userHistory.length >= 1) {
               logger.info(
                 "Referral earnings skipped (already rewarded fully)",
                 {
@@ -130,27 +126,12 @@ export const processSuccessfulPayment = async (paymentID, res) => {
               return; // ⛔ stop here
             }
 
-            let rewardAmount = 0;
-            let term = null;
+            const rewardAmount = 100;
 
-            if (planDetails?.discountPrice > 300) {
-              // Big plan → 100 once
-              if (!got100) {
-                rewardAmount = 100;
-                term = "all";
-              }
-            } else {
-              // Small plan → 50 for 1st and 2nd
-              const termMap = ["1st", "2nd"];
-              rewardAmount = 50;
-              term = termMap[userHistory.length]; // 0 -> 1st, 1 -> 2nd
-            }
-
-            if (rewardAmount > 0 && term) {
+            if (rewardAmount > 0) {
               referralDoc.availableBalance += rewardAmount;
               referralDoc.earnedHistory.push({
                 user: payingUser._id,
-                term,
                 amount: rewardAmount,
                 createdAt: new Date(),
               });
@@ -160,7 +141,6 @@ export const processSuccessfulPayment = async (paymentID, res) => {
               logger.info("Referral earning added", {
                 referrer: referralDoc.referrer.toString(),
                 referredUser: payingUser._id.toString(),
-                term,
                 amount: rewardAmount,
               });
             }
