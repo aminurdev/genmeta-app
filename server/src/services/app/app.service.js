@@ -102,37 +102,56 @@ export const processSuccessfulPayment = async (paymentID, res) => {
         });
       }
 
-      // Inside processSuccessfulPayment -> after updatePlan(userId, planId)
       try {
         const payingUser = await User.findById(userId).populate("referred");
 
-        // 🔹 Skip if no referral
         if (!payingUser?.referred) {
           logger.info("No referral found for this payment", { userId });
         } else {
           const referralDoc = await Referral.findById(payingUser.referred);
 
           if (referralDoc) {
-            // Count how many times this specific user already gave earnings
-            const userEarnCount = referralDoc.earnedHistory.filter(
+            const userHistory = referralDoc.earnedHistory.filter(
               (e) => e.user.toString() === payingUser._id.toString()
-            ).length;
+            );
 
-            if (userEarnCount >= 3) {
-              logger.info("Referral limit reached for this user", {
-                referrer: referralDoc.referrer.toString(),
-                referredUser: payingUser._id.toString(),
-              });
+            // ✅ If already got 100 OR already got 2×50 → stop completely
+            const got100 = userHistory.some((e) => e.amount === 100);
+            const gotTwo50 = userHistory.length >= 2;
+
+            if (got100 || gotTwo50) {
+              logger.info(
+                "Referral earnings skipped (already rewarded fully)",
+                {
+                  referrer: referralDoc.referrer.toString(),
+                  referredUser: payingUser._id.toString(),
+                }
+              );
+              return; // ⛔ stop here
+            }
+
+            let rewardAmount = 0;
+            let term = null;
+
+            if (planDetails?.discountPrice > 300) {
+              // Big plan → 100 once
+              if (!got100) {
+                rewardAmount = 100;
+                term = "all";
+              }
             } else {
-              // Determine the term (1st, 2nd, 3rd)
-              const termMap = ["1st", "2nd", "3rd"];
-              const term = termMap[userEarnCount];
+              // Small plan → 50 for 1st and 2nd
+              const termMap = ["1st", "2nd"];
+              rewardAmount = 50;
+              term = termMap[userHistory.length]; // 0 -> 1st, 1 -> 2nd
+            }
 
-              referralDoc.availableBalance += 50;
+            if (rewardAmount > 0 && term) {
+              referralDoc.availableBalance += rewardAmount;
               referralDoc.earnedHistory.push({
                 user: payingUser._id,
                 term,
-                amount: 50,
+                amount: rewardAmount,
                 createdAt: new Date(),
               });
 
@@ -142,7 +161,7 @@ export const processSuccessfulPayment = async (paymentID, res) => {
                 referrer: referralDoc.referrer.toString(),
                 referredUser: payingUser._id.toString(),
                 term,
-                amount: 50,
+                amount: rewardAmount,
               });
             }
           }

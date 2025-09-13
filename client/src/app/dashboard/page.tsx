@@ -22,7 +22,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProcessChart } from "@/components/dashboard/process-chart";
 import { PaymentsTable } from "@/components/dashboard/payments-table";
 
-export default async function Page() {
+interface Props {
+  searchParams: Promise<{ status?: string; amount?: number; trxID?: string }>;
+}
+
+export default async function Page({ searchParams }: Props) {
+  const { amount, status, trxID } = await searchParams;
+
+  console.log(amount, status, trxID);
+
   const overview = await getOverview();
 
   if (!overview.success) {

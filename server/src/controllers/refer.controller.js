@@ -1,35 +1,30 @@
 import { Referral } from "../models/referral.model.js";
-import { User } from "../models/user.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { generateCode } from "../utils/index.js";
 
 const getReferralDetails = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
-  // Get user with referred reference
-  const user = await User.findById(userId).populate({
-    path: "referred",
-    populate: [
-      {
-        path: "referredUsers",
-        select: "name email isVerified loginProvider",
-      },
-      { path: "earnedHistory.user", select: "name email" },
-    ],
-  });
+  // Try to find referral
+  let referral = await Referral.findOne({ referrer: userId })
+    .populate({
+      path: "referredUsers",
+      select: "name email isVerified loginProvider",
+    })
+    .populate({
+      path: "earnedHistory.user",
+      select: "name email",
+    });
 
-  let referral = user?.referred;
-
-  // If no referral exists, create one and link to user
+  // If no referral, create one safely
   if (!referral) {
-    referral = new Referral({ referrer: userId });
-    referral.generateReferralCode();
-    await referral.save();
-
-    // Update user's referred field
-    user.referred = referral._id;
-    await user.save();
+    referral = await Referral.findOneAndUpdate(
+      { referrer: userId },
+      { $setOnInsert: { referrer: userId, referralCode: generateCode() } },
+      { upsert: true, new: true } // atomic upsert
+    );
   }
 
   // ✅ Filter referred users: skip unverified email-only users
@@ -41,16 +36,14 @@ const getReferralDetails = asyncHandler(async (req, res) => {
         !u.loginProvider.includes("email"))
   );
 
-  // Calculate total earned
+  // Calculate totals
   const totalEarned = referral.earnedHistory.reduce(
     (sum, e) => sum + (e.amount || 0),
     0
   );
 
-  // Available balance
   const availableBalance = referral.availableBalance;
 
-  // Total withdrawn
   const totalWithdrawn = referral.withdrawHistory
     .filter((w) => w.status === "completed")
     .reduce((sum, w) => sum + (w.amount || 0), 0);

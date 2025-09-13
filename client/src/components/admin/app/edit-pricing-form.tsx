@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -26,26 +26,36 @@ interface EditPricingFormProps {
   onSuccess: () => void;
 }
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  type: z.enum(["subscription", "credit"], {
-    required_error: "You need to select a plan type.",
-  }),
-  basePrice: z.coerce.number().positive({
-    message: "Base price must be a positive number.",
-  }),
-  discountPercent: z.coerce.number().min(0).max(100, {
-    message: "Discount must be between 0 and 100.",
-  }),
-  isActive: z.boolean().default(true),
-  planDuration: z.coerce.number().optional(),
-  credit: z.coerce.number().optional(),
-});
+const formSchema = z
+  .object({
+    name: z.string().min(2, {
+      message: "Name must be at least 2 characters.",
+    }),
+    type: z.enum(["subscription", "credit"], {
+      required_error: "You need to select a plan type.",
+    }),
+    basePrice: z.coerce.number().positive({
+      message: "Regular price must be a positive number.",
+    }),
+    discountPrice: z.coerce.number().min(0, {
+      message: "Discount price must be a positive number.",
+    }),
+    isActive: z.boolean().default(true),
+    planDuration: z.coerce.number().optional(),
+    credit: z.coerce.number().optional(),
+  })
+  .refine((data) => data.discountPrice <= data.basePrice, {
+    message: "Discount price cannot be higher than regular price.",
+    path: ["discountPrice"],
+  });
 
 export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(0);
+
+  const initialDiscountPrice = plan.discountPrice
+    ? plan.discountPrice
+    : plan.basePrice * (1 - (plan.discountPercent ?? 0) / 100);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,7 +63,7 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
       name: plan.name,
       type: plan.type,
       basePrice: plan.basePrice,
-      discountPercent: plan.discountPercent,
+      discountPrice: initialDiscountPrice,
       isActive: plan.isActive,
       planDuration: plan.planDuration || undefined,
       credit: plan.credit || undefined,
@@ -61,6 +71,15 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
   });
 
   const planType = form.watch("type");
+  const basePrice = form.watch("basePrice");
+  const discountPrice = form.watch("discountPrice");
+
+  useEffect(() => {
+    if (basePrice > 0 && discountPrice >= 0) {
+      const calculatedPercent = ((basePrice - discountPrice) / basePrice) * 100;
+      setDiscountPercent(Math.round(calculatedPercent * 100) / 100);
+    }
+  }, [basePrice, discountPrice]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -143,9 +162,9 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
           name="basePrice"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Base Price ($)</FormLabel>
+              <FormLabel>Regular Price ($)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" min="0" {...field} />
+                <Input type="number" step="1" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -154,15 +173,16 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
 
         <FormField
           control={form.control}
-          name="discountPercent"
+          name="discountPrice"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Discount (%)</FormLabel>
+              <FormLabel>Discount Price ($)</FormLabel>
               <FormControl>
-                <Input type="number" min="0" max="100" {...field} />
+                <Input type="number" step="1" min="0" {...field} />
               </FormControl>
               <FormDescription>
-                Percentage discount to apply to the base price
+                Final price after discount. Discount:{" "}
+                {discountPercent.toFixed(2)}%
               </FormDescription>
               <FormMessage />
             </FormItem>

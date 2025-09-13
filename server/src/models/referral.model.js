@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { generateCode } from "../utils/index.js";
 
 const referralSchema = new mongoose.Schema(
   {
@@ -7,6 +6,7 @@ const referralSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      unique: true,
     },
     withdrawAccount: { type: String, default: null },
     referralCode: {
@@ -31,7 +31,7 @@ const referralSchema = new mongoose.Schema(
         },
         term: {
           type: String,
-          enum: ["1st", "2nd", "3rd"],
+          enum: ["1st", "2nd", "all"],
         },
         amount: {
           type: Number,
@@ -67,12 +67,5 @@ const referralSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// 🔹 Method to generate referral code
-referralSchema.methods.generateReferralCode = function () {
-  const code = generateCode();
-  this.referralCode = code;
-  return this.referralCode;
-};
 
 export const Referral = mongoose.model("Referral", referralSchema);
