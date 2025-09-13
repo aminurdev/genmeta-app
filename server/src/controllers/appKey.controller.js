@@ -404,47 +404,72 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
     throw new ApiError(400, "API key is required");
   }
 
-  const appKey = await AppKey.findOne({ key }).populate(
-    "userId",
-    "name email role createdAt"
-  );
+  // Fetch AppKey and user details
+  const appKey = await AppKey.findOne({ key })
+    .populate("userId", "name email role createdAt")
+    .exec();
 
   if (!appKey) {
     throw new ApiError(404, "Invalid API key");
   }
 
-  // Refresh daily credits for free plan
-  appKey.refreshDailyCredits();
-  await appKey.save();
-
   const user = appKey.userId;
 
-  const payments = await AppPayment.find({ userId: user._id })
-    .sort({ createdAt: -1 })
-    .select("trxID plan amount createdAt");
+  // Fetch payments in parallel
+  const [payments] = await Promise.all([
+    AppPayment.find({ userId: user._id })
+      .sort({ createdAt: -1 })
+      .select("trxID plan amount createdAt")
+      .lean(),
+  ]);
 
+  // Format payments
   const formattedPayments = payments.map((payment) => ({
-    _id: payment._id,
+    id: payment._id,
     trxID: payment.trxID,
     plan: payment.plan,
     amount: payment.amount,
     createdAt: payment.createdAt,
   }));
 
-  // Final response
-  const remainingCredit = appKey.calculateCredit();
+  // Calculate remaining credit & validity
+  const remainingCredit =
+    typeof appKey.calculateCredit === "function"
+      ? appKey.calculateCredit()
+      : appKey.credit;
+
+  const isValid =
+    typeof appKey.isValid === "function" ? appKey.isValid() : appKey.isActive;
+
+  // ✅ Format monthly usage from Map → plain object
+  const monthlyUsage = {};
+  if (appKey.monthlyProcess && appKey.monthlyProcess.size > 0) {
+    appKey.monthlyProcess.forEach((count, month) => {
+      monthlyUsage[month] = count; // e.g. { "2025-09": 120, "2025-08": 90 }
+    });
+  }
+
+  // Final response payload
   const data = {
     user: {
-      _id: user._id,
+      id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
     },
     appKey: {
-      ...appKey.toObject(),
+      id: appKey._id,
+      key: appKey.key,
+      plan: appKey.plan,
+      status: appKey.status,
       credit: remainingCredit,
-      isValid: appKey.isValid(),
+      isValid,
+      createdAt: appKey.createdAt,
+      expiresAt: appKey.expiresAt,
+      totalProcess: appKey.totalProcess,
+      lastPlanChange: appKey.lastPlanChange,
+      monthlyUsage, // 👈 added here
     },
     payments: formattedPayments,
   };

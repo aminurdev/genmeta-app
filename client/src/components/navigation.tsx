@@ -8,8 +8,8 @@ import Image from "next/image";
 import { LoaderCircle, Menu, X } from "lucide-react";
 import { NavLinks, MobileNavLinks } from "./navLinks";
 import { useState, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
-import { getCurrentUserWithRefresh } from "@/services/auth-services";
+import { usePathname, useRouter } from "next/navigation";
+import { getCurrentUserWithRefresh, logout } from "@/services/auth-services";
 import type { User } from "@/types/user";
 
 interface NavigationProps {
@@ -29,14 +29,16 @@ export function Navigation({ propUser }: NavigationProps) {
         setLoading(true);
         const currentUser = await getCurrentUserWithRefresh();
         setUser(currentUser);
-      } catch (err) {
+      } catch {
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    user ? () => {} : fetchUser();
+    if (!user) {
+      fetchUser();
+    }
   }, []);
 
   useEffect(() => {
@@ -69,6 +71,25 @@ export function Navigation({ propUser }: NavigationProps) {
   const closeMobileMenu = useCallback(() => {
     setIsMobileMenuOpen(false);
   }, []);
+
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoading(true);
+
+    const result = await logout();
+    setIsLoading(false);
+
+    if (result.success) {
+      setUser(null);
+      if (pathname !== "/") {
+        router.push("/login");
+      }
+    } else {
+      console.error(result.message);
+    }
+  };
 
   return (
     <div className="mb-20">
@@ -115,7 +136,11 @@ export function Navigation({ propUser }: NavigationProps) {
                 <LoaderCircle className="animate-spin" />
               </Button>
             ) : user ? (
-              <UserMenu user={user} />
+              <UserMenu
+                user={user}
+                handleLogout={handleLogout}
+                isLoading={isLoading}
+              />
             ) : (
               <span className="hidden lg:flex items-center gap-4">
                 <Button
@@ -197,7 +222,11 @@ export function Navigation({ propUser }: NavigationProps) {
                             {user.email}
                           </p>
                         </div>
-                        <UserMenu user={user} />
+                        <UserMenu
+                          user={user}
+                          handleLogout={handleLogout}
+                          isLoading={isLoading}
+                        />
                       </div>
                     ) : (
                       <div className="space-y-3">

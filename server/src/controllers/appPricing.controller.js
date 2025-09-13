@@ -30,18 +30,16 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     name,
     type,
     basePrice,
-    discountPercent,
+    discountPrice,
     isActive,
     credit,
     planDuration,
   } = req.body;
 
-  // Validate required fields
   if (!name || !type || basePrice === undefined) {
     throw new ApiError(400, "Name, type, and basePrice are required");
   }
 
-  // Validate type-specific required fields
   if (type === "credit" && !credit) {
     throw new ApiError(400, "Credit is required for credit type pricing");
   }
@@ -53,12 +51,25 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     );
   }
 
-  // Create new pricing plan
+  // Ensure discountPrice is valid
+  let finalDiscountPrice =
+    discountPrice !== undefined ? discountPrice : basePrice;
+
+  if (finalDiscountPrice > basePrice) {
+    throw new ApiError(400, "Discount price cannot exceed base price");
+  }
+
+  // Calculate discountPercent automatically
+  const finalDiscountPercent = Math.round(
+    ((basePrice - finalDiscountPrice) / basePrice) * 100
+  );
+
   const pricingPlan = await AppPricing.create({
     name,
     type,
     basePrice,
-    discountPercent: discountPercent || 0,
+    discountPrice: finalDiscountPrice,
+    discountPercent: finalDiscountPercent,
     isActive: isActive !== undefined ? isActive : true,
     credit: type === "credit" ? credit : undefined,
     planDuration: type === "subscription" ? planDuration : undefined,
@@ -157,7 +168,7 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
     name,
     type,
     basePrice,
-    discountPercent,
+    discountPrice,
     isActive,
     credit,
     planDuration,
@@ -167,14 +178,11 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Pricing plan ID is required");
   }
 
-  // Find existing plan
   const existingPlan = await AppPricing.findById(id);
-
   if (!existingPlan) {
     throw new ApiError(404, "Pricing plan not found");
   }
 
-  // If type is changing, validate type-specific fields
   const newType = type || existingPlan.type;
 
   if (
@@ -199,17 +207,33 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
     );
   }
 
-  // Update fields
+  // Figure out base price first
+  const effectiveBasePrice =
+    basePrice !== undefined ? basePrice : existingPlan.basePrice;
+
+  // Ensure discountPrice is valid
+  let finalDiscountPrice =
+    discountPrice !== undefined
+      ? discountPrice
+      : existingPlan.discountPrice || effectiveBasePrice;
+
+  if (finalDiscountPrice > effectiveBasePrice) {
+    throw new ApiError(400, "Discount price cannot exceed base price");
+  }
+
+  // Calculate discountPercent automatically
+  const finalDiscountPercent = Math.round(
+    ((effectiveBasePrice - finalDiscountPrice) / effectiveBasePrice) * 100
+  );
+
   const updatedPlan = await AppPricing.findByIdAndUpdate(
     id,
     {
       name: name !== undefined ? name : existingPlan.name,
       type: newType,
-      basePrice: basePrice !== undefined ? basePrice : existingPlan.basePrice,
-      discountPercent:
-        discountPercent !== undefined
-          ? discountPercent
-          : existingPlan.discountPercent,
+      basePrice: effectiveBasePrice,
+      discountPrice: finalDiscountPrice,
+      discountPercent: finalDiscountPercent,
       isActive: isActive !== undefined ? isActive : existingPlan.isActive,
       credit:
         newType === "credit"
@@ -241,6 +265,10 @@ const deletePricingPlan = asyncHandler(async (req, res) => {
 
   if (!id) {
     throw new ApiError(400, "Pricing plan ID is required");
+  }
+
+  if (id) {
+    throw new ApiError(404, "Delete not available");
   }
 
   const deletedPlan = await AppPricing.findByIdAndDelete(id);

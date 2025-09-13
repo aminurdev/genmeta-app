@@ -38,6 +38,9 @@ import {
   ArrowRight,
   CheckCircle,
   AlertCircle,
+  Check,
+  X,
+  Zap,
 } from "lucide-react";
 import Social from "@/components/auth/social";
 import { signUpSchema } from "@/schemas";
@@ -48,18 +51,78 @@ import {
 } from "@/services/auth-services";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const calculatePasswordStrength = (password: string) => {
+  let score = 0;
+  const checks = {
+    length: password.length >= 6,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    numbers: /\d/.test(password),
+    symbols: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+  };
+
+  // Calculate score
+  if (checks.length) score += 20;
+  if (checks.lowercase) score += 20;
+  if (checks.uppercase) score += 20;
+  if (checks.numbers) score += 20;
+  if (checks.symbols) score += 20;
+
+  // Bonus for longer passwords
+  if (password.length >= 8) score += 10;
+  if (password.length >= 12) score += 10;
+
+  let strength: "weak" | "medium" | "strong";
+  if (score < 40) strength = "weak";
+  else if (score < 80) strength = "medium";
+  else strength = "strong";
+
+  return { score, strength, checks };
+};
+
+const generateSecurePassword = () => {
+  const lowercase = "abcdefghijklmnopqrstuvwxyz";
+  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+  let password = "";
+
+  // Ensure at least one character from each category
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += symbols[Math.floor(Math.random() * symbols.length)];
+
+  // Fill the rest randomly (12 characters total)
+  const allChars = lowercase + uppercase + numbers + symbols;
+  for (let i = 4; i < 12; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Shuffle the password
+  return password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+};
+
 const SignUpForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
-  const [isShowConfirm, setIsShowConfirm] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
-  const [showEmailVerification, setShowEmailVerification] =
-    useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [otpToken, setOtpToken] = useState<string>("");
+  const [showEmailVerification, setShowEmailVerification] = useState<boolean>(
+    searchParams?.get("step") === "verify"
+  );
+  const [userEmail, setUserEmail] = useState<string>(
+    searchParams?.get("email") || ""
+  );
+  const [otpToken, setOtpToken] = useState<string>(
+    searchParams?.get("token") || ""
+  );
   const [otp, setOtp] = useState<string>("");
   const [otpError, setOtpError] = useState<string>("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
@@ -67,17 +130,28 @@ const SignUpForm = () => {
   const [resendTimer, setResendTimer] = useState<number>(0);
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  const redirect = searchParams?.get("redirectPath");
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    strength: "weak" | "medium" | "strong";
+    checks: Record<string, boolean>;
+  } | null>(null);
 
-  const form = useForm<z.infer<typeof signUpSchema>>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-      name: "",
-    },
-  });
+  let referral = searchParams?.get("ref");
+
+  useEffect(() => {
+    if (referral) {
+      localStorage.setItem("referralCode", referral);
+    }
+  }, [referral]);
+
+  const handlePasswordChange = (value: string) => {
+    form.setValue("password", value);
+    if (value) {
+      setPasswordStrength(calculatePasswordStrength(value));
+    } else {
+      setPasswordStrength(null);
+    }
+  };
 
   // Timer for resend OTP
   useEffect(() => {
@@ -97,17 +171,51 @@ const SignUpForm = () => {
     }
   }, [showEmailVerification]);
 
+  const form = useForm<z.infer<typeof signUpSchema>>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      name: "",
+    },
+  });
+
+  const updateUrlForVerification = (email: string, token: string) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("step", "verify");
+    params.set("email", email);
+    params.set("token", token);
+    if (referral) {
+      params.set("ref", referral);
+    }
+    if (searchParams?.get("redirectPath")) {
+      params.set("redirectPath", searchParams?.get("redirectPath") || "");
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
+  const clearVerificationFromUrl = () => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.delete("step");
+    params.delete("email");
+    params.delete("token");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
   const onSubmit = async (values: z.infer<typeof signUpSchema>) => {
     setError("");
     setSuccess("");
     setTransition(async () => {
       try {
-        const result = await registerUser(values);
+        referral = localStorage.getItem("referralCode");
+
+        const result = await registerUser(values, referral);
         if (result?.success) {
           setUserEmail(values.email);
           setShowEmailVerification(true);
           setOtpToken(result.data?.otpToken);
           setResendTimer(60); // Start 60 second timer for resend
+          updateUrlForVerification(values.email, result.data?.otpToken);
         } else {
           setError(result?.message);
         }
@@ -137,10 +245,10 @@ const SignUpForm = () => {
       if (result.success) {
         // Registration complete and user is logged in
         setSuccess("Email verified successfully! Welcome!");
-        // Redirect after a short delay to show success message
+        clearVerificationFromUrl();
         setTimeout(() => {
-          if (redirect) {
-            router.push(redirect);
+          if (searchParams?.get("redirectPath")) {
+            router.push(searchParams?.get("redirectPath") || "/");
           } else {
             router.push("/"); // or wherever you want to redirect after login
           }
@@ -167,6 +275,7 @@ const SignUpForm = () => {
         setResendTimer(60); // Reset timer
         setOtp(""); // Clear current OTP
         setOtpToken(result.data?.otpToken); // Update OTP token
+        updateUrlForVerification(userEmail, result.data?.otpToken);
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setOtpError(result.message || "Failed to resend code");
@@ -185,6 +294,7 @@ const SignUpForm = () => {
     setOtp("");
     setOtpError("");
     setResendTimer(0);
+    clearVerificationFromUrl();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -399,74 +509,161 @@ const SignUpForm = () => {
                         Password
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            type={isShow ? "text" : "password"}
-                            placeholder="Create a password"
-                            className="pl-11 pr-11 h-12 border-muted-foreground/20 focus:border-violet-500 focus:ring-violet-500/20 transition-all duration-200 focus-visible:ring-0"
-                          />
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
-                            onClick={() => setIsShow((prev) => !prev)}
-                          >
-                            {isShow ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            )}
-                            <span className="sr-only">
-                              {isShow ? "Hide password" : "Show password"}
-                            </span>
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              disabled={isPending}
+                              type={isShow ? "text" : "password"}
+                              placeholder="Create a password"
+                              onChange={(e) => {
+                                field.onChange(e);
+                                handlePasswordChange(e.target.value);
+                              }}
+                              className="pl-11 pr-20 h-12 border-muted-foreground/20 focus:border-violet-500 focus:ring-violet-500/20 transition-all duration-200 focus-visible:ring-0"
+                            />
+                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
-                <FormField
-                  name="confirmPassword"
-                  control={form.control}
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-sm font-medium text-foreground">
-                        Confirm Password
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            type={isShowConfirm ? "text" : "password"}
-                            placeholder="Confirm your password"
-                            className="pl-11 pr-11 h-12 border-muted-foreground/20 focus:border-violet-500 focus:ring-violet-500/20 transition-all duration-200 focus-visible:ring-0"
-                          />
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
-                            onClick={() => setIsShowConfirm((prev) => !prev)}
-                          >
-                            {isShowConfirm ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            )}
-                            <span className="sr-only">
-                              {isShowConfirm
-                                ? "Hide password"
-                                : "Show password"}
-                            </span>
-                          </Button>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 hover:bg-transparent"
+                                onClick={() => setIsShow((prev) => !prev)}
+                              >
+                                {isShow ? (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+                                )}
+                                <span className="sr-only">
+                                  {isShow ? "Hide password" : "Show password"}
+                                </span>
+                              </Button>{" "}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const newPassword = generateSecurePassword();
+                                  handlePasswordChange(newPassword);
+                                  setIsShow(true); // Show password so user can see it
+                                }}
+                                className="h-12 px-3 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                              >
+                                <Zap className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Password Strength Indicator */}
+                          {passwordStrength && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${
+                                      passwordStrength.strength === "weak"
+                                        ? "bg-red-500 w-1/3"
+                                        : passwordStrength.strength === "medium"
+                                        ? "bg-yellow-500 w-2/3"
+                                        : "bg-green-500 w-full"
+                                    }`}
+                                  />
+                                </div>
+                                <span
+                                  className={`text-xs font-medium ${
+                                    passwordStrength.strength === "weak"
+                                      ? "text-red-600 dark:text-red-400"
+                                      : passwordStrength.strength === "medium"
+                                      ? "text-yellow-600 dark:text-yellow-400"
+                                      : "text-green-600 dark:text-green-400"
+                                  }`}
+                                >
+                                  {passwordStrength.strength === "weak"
+                                    ? "Weak"
+                                    : passwordStrength.strength === "medium"
+                                    ? "Medium"
+                                    : "Strong"}
+                                </span>
+                              </div>
+
+                              {/* Password Requirements */}
+                              <div className="grid grid-cols-2 gap-1 text-xs">
+                                <div
+                                  className={`flex items-center gap-1 ${
+                                    passwordStrength.checks.length
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {passwordStrength.checks.length ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  6+ characters
+                                </div>
+                                <div
+                                  className={`flex items-center gap-1 ${
+                                    passwordStrength.checks.uppercase
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {passwordStrength.checks.uppercase ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  Uppercase
+                                </div>
+                                <div
+                                  className={`flex items-center gap-1 ${
+                                    passwordStrength.checks.lowercase
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {passwordStrength.checks.lowercase ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  Lowercase
+                                </div>
+                                <div
+                                  className={`flex items-center gap-1 ${
+                                    passwordStrength.checks.numbers
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {passwordStrength.checks.numbers ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  Numbers
+                                </div>
+                                <div
+                                  className={`flex items-center gap-1 ${
+                                    passwordStrength.checks.symbols
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {passwordStrength.checks.symbols ? (
+                                    <Check className="h-3 w-3" />
+                                  ) : (
+                                    <X className="h-3 w-3" />
+                                  )}
+                                  Symbols
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -496,13 +693,19 @@ const SignUpForm = () => {
                 </Button>
               </form>
             </Form>
-          </CardContent>{" "}
+          </CardContent>
           <CardFooter className="flex flex-col space-y-4 pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link
-                  href={redirect ? `/login?redirectPath=${redirect}` : "/login"}
+                  href={
+                    searchParams?.get("redirectPath")
+                      ? `/login?redirectPath=${searchParams?.get(
+                          "redirectPath"
+                        )}`
+                      : "/login"
+                  }
                   className="text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium hover:underline transition-colors"
                 >
                   Sign in

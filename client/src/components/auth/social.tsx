@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-// Removed getBaseApi import to prevent server component errors
 
 const Social = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,14 +11,24 @@ const Social = () => {
   const pathname = usePathname();
   const redirectPath = searchParams?.get("redirectPath") || "/";
 
+  let referral = searchParams?.get("ref");
+
+  useEffect(() => {
+    if (referral) {
+      localStorage.setItem("referralCode", referral);
+    }
+  }, [referral]);
+
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
 
+      referral = localStorage.getItem("referralCode");
       const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const statePayload = {
         redirectPath,
         path: pathname,
+        referralCode: referral,
       };
 
       const state = encodeURIComponent(JSON.stringify(statePayload));

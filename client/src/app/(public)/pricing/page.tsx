@@ -7,7 +7,6 @@ import {
   Sparkles,
   Shield,
   Zap,
-  Laptop,
   AlertCircle,
   XCircle,
   ArrowRight,
@@ -15,9 +14,6 @@ import {
   Star,
   BarChart3,
   HelpCircle,
-  TrendingUp,
-  Users,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +43,7 @@ interface SubscriptionPlan {
   name: string;
   type: string;
   basePrice: number;
+  discountPrice?: number;
   discountPercent: number;
   isActive: boolean;
   planDuration: number;
@@ -59,6 +56,7 @@ interface CreditPlan {
   name: string;
   type: string;
   basePrice: number;
+  discountPrice?: number;
   discountPercent: number;
   isActive: boolean;
   credit: number;
@@ -358,10 +356,12 @@ const PricingContent = () => {
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
                           ৳
-                          {calculateDiscountedPrice(
-                            monthlyPlan.basePrice,
-                            monthlyPlan.discountPercent
-                          )}
+                          {monthlyPlan.discountPrice
+                            ? monthlyPlan.discountPrice
+                            : calculateDiscountedPrice(
+                                monthlyPlan.basePrice,
+                                monthlyPlan.discountPercent
+                              )}
                         </p>
                         {monthlyPlan.discountPercent > 0 && (
                           <p className="text-sm text-muted-foreground line-through">
@@ -425,10 +425,12 @@ const PricingContent = () => {
                         <p className="text-4xl font-bold text-foreground">
                           ৳
                           {Math.round(
-                            calculateDiscountedPrice(
-                              yearlyPlan.basePrice,
-                              yearlyPlan.discountPercent
-                            ) / 12
+                            yearlyPlan.discountPrice
+                              ? yearlyPlan.discountPrice / 12
+                              : calculateDiscountedPrice(
+                                  yearlyPlan.basePrice,
+                                  yearlyPlan.discountPercent
+                                ) / 12
                           )}
                         </p>
                         {yearlyPlan.discountPercent > 0 && (
@@ -442,11 +444,13 @@ const PricingContent = () => {
                       </p>
                       <p className="text-xs font-medium text-green-500">
                         Save ৳
-                        {yearlyPlan.basePrice -
-                          calculateDiscountedPrice(
-                            yearlyPlan.basePrice,
-                            yearlyPlan.discountPercent
-                          )}{" "}
+                        {yearlyPlan.discountPrice
+                          ? yearlyPlan.basePrice - yearlyPlan.discountPrice
+                          : yearlyPlan.basePrice -
+                            calculateDiscountedPrice(
+                              yearlyPlan.basePrice,
+                              yearlyPlan.discountPercent
+                            )}{" "}
                         per year
                       </p>
                     </div>
@@ -472,10 +476,12 @@ const PricingContent = () => {
                     >
                       <Star className="mr-2 h-4 w-4" />
                       Get Yearly - ৳
-                      {calculateDiscountedPrice(
-                        yearlyPlan.basePrice,
-                        yearlyPlan.discountPercent
-                      )}
+                      {yearlyPlan.discountPrice
+                        ? yearlyPlan.discountPrice
+                        : calculateDiscountedPrice(
+                            yearlyPlan.basePrice,
+                            yearlyPlan.discountPercent
+                          )}
                       /year
                     </Button>
                   </CardFooter>
@@ -514,10 +520,12 @@ const PricingContent = () => {
                         <div className="flex items-center gap-2">
                           <p className="text-4xl font-bold text-foreground">
                             ৳
-                            {calculateDiscountedPrice(
-                              basicCreditPlan.basePrice,
-                              basicCreditPlan.discountPercent
-                            )}
+                            {basicCreditPlan.discountPrice
+                              ? basicCreditPlan.discountPrice
+                              : calculateDiscountedPrice(
+                                  basicCreditPlan.basePrice,
+                                  basicCreditPlan.discountPercent
+                                )}
                           </p>
                           {basicCreditPlan.discountPercent > 0 && (
                             <p className="text-sm text-muted-foreground line-through">
@@ -595,10 +603,12 @@ const PricingContent = () => {
                         <div className="flex items-center gap-2">
                           <p className="text-4xl font-bold text-foreground">
                             ৳
-                            {calculateDiscountedPrice(
-                              proCreditPlan.basePrice,
-                              proCreditPlan.discountPercent
-                            )}
+                            {proCreditPlan.discountPrice
+                              ? proCreditPlan.discountPrice
+                              : calculateDiscountedPrice(
+                                  proCreditPlan.basePrice,
+                                  proCreditPlan.discountPercent
+                                )}
                           </p>
                           {proCreditPlan.discountPercent > 0 && (
                             <p className="text-sm text-muted-foreground line-through">
@@ -650,52 +660,6 @@ const PricingContent = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </div>
-
-      {/* Statistics Section */}
-      <div className="bg-gradient-to-b from-background to-violet-50 dark:from-background dark:to-violet-950/20 py-16">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-4xl text-center">
-            <h2 className="mb-4 text-3xl font-bold">
-              Trusted by Professionals Worldwide
-            </h2>
-            <p className="mb-12 text-lg text-muted-foreground">
-              Join thousands of creators who have transformed their workflow
-            </p>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <Users className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  10K+
-                </div>
-                <div className="text-muted-foreground">Active Users</div>
-              </div>
-
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  1M+
-                </div>
-                <div className="text-muted-foreground">Images Processed</div>
-              </div>
-
-              <div className="group">
-                <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-4 w-fit mx-auto group-hover:scale-110 transition-transform duration-300">
-                  <Clock className="h-8 w-8 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div className="text-4xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                  99.9%
-                </div>
-                <div className="text-muted-foreground">Uptime</div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* App Screenshot */}

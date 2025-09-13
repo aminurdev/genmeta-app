@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { jwtDecode } from "jwt-decode";
@@ -62,11 +63,16 @@ export const deleteTokens = async (): Promise<void> => {
   cookieStore.delete("refreshToken");
 };
 
-export const registerUser = async (userData: FieldValues) => {
+export const registerUser = async (
+  userData: FieldValues,
+  referral: string | null
+) => {
   try {
     if (!userData.email || !userData.password) {
       return { success: false, message: "Email and password are required" };
     }
+
+    if (referral) userData.referralCode = referral;
 
     const result = await apiRequest({
       method: "post",
@@ -148,13 +154,16 @@ export const loginUser = async (userData: FieldValues) => {
   }
 };
 
-export const verifyGoogleToken = async (token: string) => {
+export const verifyGoogleToken = async (
+  token: string,
+  referral: string | null
+) => {
   try {
     const result = await apiRequest({
       method: "post",
       endpoint: "/users/verify-google",
       useAuth: false,
-      data: { token },
+      data: { token, referralCode: referral },
     });
 
     if (result.success) {

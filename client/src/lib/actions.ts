@@ -10,6 +10,7 @@ export interface PricingPlan {
   name: string;
   type: PricingPlanType;
   basePrice: number;
+  discountPrice?: number;
   discountPercent: number;
   isActive: boolean;
   planDuration?: number | null;
@@ -156,7 +157,7 @@ export async function createPricingPlan(data: {
   name: string;
   type: PricingPlanType;
   basePrice: number;
-  discountPercent?: number;
+  discountPrice?: number;
   isActive?: boolean;
   planDuration?: number;
   credit?: number;
@@ -202,6 +203,7 @@ export async function updatePricingPlan(
     name: string;
     type: PricingPlanType;
     basePrice: number;
+    discountPrice?: number;
     discountPercent: number;
     isActive: boolean;
     planDuration?: number;
@@ -402,7 +404,7 @@ export async function updatePromoCode(
   data: Partial<{
     code?: string;
     description?: string;
-    discountPercent?: number;
+    discountPercent: number;
     isActive?: boolean;
     appliesTo?: "subscription" | "credit" | "both";
     usageLimit?: number | null;

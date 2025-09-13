@@ -7,6 +7,7 @@ import { AppKey } from "../../models/appKey.model.js";
 import { generateAppKey } from "../../controllers/appKey.controller.js";
 import { PromoCode } from "../../models/promocode.model.js";
 import { AppPricing } from "../../models/appPricing.model.js";
+import { Referral } from "../../models/referral.model.js";
 
 // Logger Utility
 export const logger = {
@@ -98,6 +99,57 @@ export const processSuccessfulPayment = async (paymentID, res) => {
         logger.warn("Plan update failed after retries", {
           paymentID,
           payerReference,
+        });
+      }
+
+      try {
+        const payingUser = await User.findById(userId).populate("referred");
+
+        if (!payingUser?.referred) {
+          logger.info("No referral found for this payment", { userId });
+        } else {
+          const referralDoc = await Referral.findById(payingUser.referred);
+
+          if (referralDoc) {
+            const userHistory = referralDoc.earnedHistory.filter(
+              (e) => e.user.toString() === payingUser._id.toString()
+            );
+
+            if (userHistory.length >= 1) {
+              logger.info(
+                "Referral earnings skipped (already rewarded fully)",
+                {
+                  referrer: referralDoc.referrer.toString(),
+                  referredUser: payingUser._id.toString(),
+                }
+              );
+              return; // ⛔ stop here
+            }
+
+            const rewardAmount = 100;
+
+            if (rewardAmount > 0) {
+              referralDoc.availableBalance += rewardAmount;
+              referralDoc.earnedHistory.push({
+                user: payingUser._id,
+                amount: rewardAmount,
+                createdAt: new Date(),
+              });
+
+              await referralDoc.save();
+
+              logger.info("Referral earning added", {
+                referrer: referralDoc.referrer.toString(),
+                referredUser: payingUser._id.toString(),
+                amount: rewardAmount,
+              });
+            }
+          }
+        }
+      } catch (referralError) {
+        logger.error("Failed to update referral earnings", {
+          error: referralError.message,
+          userId,
         });
       }
 

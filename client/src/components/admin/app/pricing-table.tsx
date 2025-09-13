@@ -165,12 +165,14 @@ export function PricingTable({
                   </span>
                 </TableCell>
                 <TableCell className="font-semibold text-primary">
-                  {formatCurrency(
-                    calculateDiscountedPrice(
-                      plan.basePrice,
-                      plan.discountPercent
-                    )
-                  )}
+                  {plan.discountPrice
+                    ? formatCurrency(plan.discountPrice)
+                    : formatCurrency(
+                        calculateDiscountedPrice(
+                          plan.basePrice,
+                          plan.discountPercent ?? 0
+                        )
+                      )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">

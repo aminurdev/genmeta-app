@@ -8,6 +8,7 @@ const appPricing = new Schema(
     type: { type: String, enum: ["subscription", "credit"], required: true },
     basePrice: { type: Number, required: true, min: 0 },
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    discountPrice: { type: Number },
     isActive: { type: Boolean, default: true },
     credit: {
       type: Number,

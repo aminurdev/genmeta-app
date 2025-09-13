@@ -73,7 +73,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import PaginationView from "@/components/pagination-view";
-import { getUserStats, UserStats } from "@/services/admin-dashboard";
+import { getUserStats, type UserStats } from "@/services/admin-dashboard";
 import { UserStatsCards } from "@/components/admin/user-stats-cards";
 import { LoginProviderStats } from "@/components/admin/login-provider-stats";
 
@@ -187,24 +187,24 @@ export default function UsersPage() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "active":
-        return "bg-green-50 text-green-700 border-green-200";
+        return "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800";
       case "inactive":
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
       case "suspended":
-        return "bg-red-50 text-red-700 border-red-200";
+        return "bg-destructive/10 text-destructive border-destructive/20";
       default:
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-primary/10 text-primary border-primary/20";
     }
   };
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case "admin":
-        return "bg-purple-50 text-purple-700 border-purple-200";
+        return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800";
       case "user":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-primary/10 text-primary border-primary/20";
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -212,7 +212,7 @@ export default function UsersPage() {
     return isVerified ? (
       <Badge
         variant="outline"
-        className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1"
+        className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 flex items-center gap-1 transition-colors"
       >
         <CheckCircle2 className="h-3 w-3" />
         Verified
@@ -220,7 +220,7 @@ export default function UsersPage() {
     ) : (
       <Badge
         variant="outline"
-        className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center gap-1"
+        className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800 flex items-center gap-1 transition-colors"
       >
         <XCircle className="h-3 w-3" />
         Unverified
@@ -269,10 +269,10 @@ export default function UsersPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-lg">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-red-500">
+            <CardTitle className="text-2xl font-bold text-destructive">
               Error Loading Users
             </CardTitle>
           </CardHeader>
@@ -280,7 +280,12 @@ export default function UsersPage() {
             <p className="text-muted-foreground text-center">{error.message}</p>
           </CardContent>
           <CardFooter className="flex justify-center">
-            <Button onClick={() => fetchUsers()}>Try Again</Button>
+            <Button
+              onClick={() => fetchUsers()}
+              className="transition-all hover:scale-105"
+            >
+              Try Again
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -288,30 +293,30 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="flex-1 space-y-4 sm:space-y-6 p-3 sm:p-4 lg:p-6 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+    <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex-1 space-y-6 p-4 lg:p-6 w-full">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
               User Management
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            <p className="text-muted-foreground">
               Manage and monitor your platform users
             </p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={refreshData}
                     disabled={isRefreshing}
-                    className="h-9 w-9 sm:h-10 sm:w-10 border-0 shadow-sm hover:shadow-md transition-all duration-200"
+                    className="transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
                   >
                     <RefreshCw
-                      className={`h-4 w-4 ${
+                      className={`h-4 w-4 transition-transform duration-200 ${
                         isRefreshing ? "animate-spin" : ""
                       }`}
                     />
@@ -325,8 +330,8 @@ export default function UsersPage() {
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="h-9 sm:h-10 px-3 sm:px-4 text-sm shadow-sm hover:shadow-md transition-all duration-200">
-                  <UserPlus className="mr-1 sm:mr-2 h-4 w-4" />
+                <Button className="transition-all duration-200 hover:scale-105 hover:shadow-md">
+                  <UserPlus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add User</span>
                   <span className="sm:hidden">Add</span>
                 </Button>
@@ -374,399 +379,421 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-6">
           <UserStatsCards stats={stats} />
           <LoginProviderStats stats={stats} />
         </div>
 
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-3 p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div>
-                <CardTitle className="text-lg sm:text-xl font-semibold">
-                  Users
-                </CardTitle>
-                <CardDescription className="text-sm text-muted-foreground mt-1">
+        <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="space-y-1">
+                <CardTitle className="text-xl font-semibold">Users</CardTitle>
+                <CardDescription>
                   Manage your platform users, their roles, and permissions.
                 </CardDescription>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200"
+                className="transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
               >
-                <Download className="mr-1 sm:mr-2 h-4 w-4" />
+                <Download className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Export Users</span>
                 <span className="sm:hidden">Export</span>
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <div className="flex flex-col gap-4 sm:gap-6">
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
-                  <div className="relative flex-1 lg:max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search users by name or email..."
-                      className="pl-8 h-9 text-sm border-0 shadow-sm focus:shadow-md transition-shadow duration-200"
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <Select value={roleFilter} onValueChange={handleRoleFilter}>
-                      <SelectTrigger className="w-full sm:w-[140px] lg:w-[160px] h-9 text-sm border-0 shadow-sm">
-                        <SelectValue placeholder="Filter by role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Roles</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={statusFilter}
-                      onValueChange={handleStatusFilter}
+          <CardContent className="space-y-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                <div className="relative flex-1 lg:max-w-sm">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground transform -translate-y-1/2" />
+                  <Input
+                    type="search"
+                    placeholder="Search users by name or email..."
+                    className="pl-9 transition-all duration-200 focus:shadow-md"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select value={roleFilter} onValueChange={handleRoleFilter}>
+                    <SelectTrigger className="w-full sm:w-[160px] transition-all duration-200 focus:shadow-md">
+                      <SelectValue placeholder="Filter by role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={handleStatusFilter}
+                  >
+                    <SelectTrigger className="w-full sm:w-[160px] transition-all duration-200 focus:shadow-md">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(searchTerm ||
+                    roleFilter !== "all" ||
+                    statusFilter !== "all") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="transition-all duration-200 hover:scale-105 bg-transparent"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setRoleFilter("all");
+                        setStatusFilter("all");
+                        fetchUsers();
+                      }}
                     >
-                      <SelectTrigger className="w-full sm:w-[140px] lg:w-[160px] h-9 text-sm border-0 shadow-sm">
-                        <SelectValue placeholder="Filter by status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {(searchTerm ||
-                      roleFilter !== "all" ||
-                      statusFilter !== "all") && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 px-3 text-sm border-0 shadow-sm hover:shadow-md transition-all duration-200"
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reset filters
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {(searchTerm ||
+                roleFilter !== "all" ||
+                statusFilter !== "all") && (
+                <div className="flex flex-wrap gap-2">
+                  {searchTerm && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 transition-all hover:scale-105"
+                    >
+                      Search: {searchTerm}
+                      <XCircle
+                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
                         onClick={() => {
                           setSearchTerm("");
-                          setRoleFilter("all");
-                          setStatusFilter("all");
-                          fetchUsers();
+                          fetchUsers({
+                            page: 1,
+                            role: roleFilter === "all" ? undefined : roleFilter,
+                          });
                         }}
-                      >
-                        <RefreshCw className="mr-1 sm:mr-2 h-4 w-4" />
-                        Reset filters
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {(searchTerm ||
-                  roleFilter !== "all" ||
-                  statusFilter !== "all") && (
-                  <div className="flex flex-wrap gap-2">
-                    {searchTerm && (
-                      <Badge variant="secondary" className="gap-1">
-                        Search: {searchTerm}
-                        <XCircle
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => {
-                            setSearchTerm("");
-                            fetchUsers({
-                              page: 1,
-                              role:
-                                roleFilter === "all" ? undefined : roleFilter,
-                            });
-                          }}
-                        />
-                      </Badge>
-                    )}
-                    {roleFilter !== "all" && (
-                      <Badge variant="secondary" className="gap-1">
-                        Role: {roleFilter}
-                        <XCircle
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => {
-                            setRoleFilter("all");
-                            fetchUsers({
-                              page: 1,
-                              search: searchTerm,
-                            });
-                          }}
-                        />
-                      </Badge>
-                    )}
-                    {statusFilter !== "all" && (
-                      <Badge variant="secondary" className="gap-1">
-                        Status: {statusFilter}
-                        <XCircle
-                          className="h-3 w-3 cursor-pointer"
-                          onClick={() => {
-                            setStatusFilter("all");
-                            fetchUsers({
-                              page: 1,
-                              search: searchTerm,
-                              role:
-                                roleFilter === "all" ? undefined : roleFilter,
-                            });
-                          }}
-                        />
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-md border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="w-[80px]">Avatar</TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-1">
-                          User
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="ml-1 h-8 p-0"
-                          >
-                            <ArrowUpDown className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Verify Status</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Usage</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <>
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <Skeleton className="h-8 w-8 rounded-full" />
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-[120px]" />
-                                <Skeleton className="h-3 w-[160px]" />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-6 w-[60px] rounded-full" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-6 w-[80px] rounded-full" />
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-6 w-[80px] rounded-full" />
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-[100px]" />
-                                <Skeleton className="h-3 w-[80px]" />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-[80px]" />
-                                <Skeleton className="h-3 w-[60px]" />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Skeleton className="h-4 w-[80px]" />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex justify-end">
-                                <Skeleton className="h-8 w-8 rounded-full" />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </>
-                    ) : users.length > 0 ? (
-                      users.map((user) => (
-                        <TableRow
-                          key={user.email}
-                          className="hover:bg-muted/50"
-                        >
-                          <TableCell>
-                            <Avatar className="h-9 w-9 border">
-                              <AvatarImage
-                                src={`https://avatar.vercel.sh/${user.email}`}
-                                alt={user.name}
-                              />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {user.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <p className="font-medium">{user.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {user.email}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={`capitalize ${getRoleColor(
-                                user.role
-                              )}`}
-                            >
-                              {user.role}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {getVerificationBadge(user.isVerified)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={`${getStatusColor(user.status)}`}
-                            >
-                              {user.status}
-                            </Badge>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm">
-                                {user.currentPlan?.name ??
-                                  user.metadata?.hasActiveKey?.type ??
-                                  "N/A"}
-                              </span>
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-1">
-                                <Coins className="h-3.5 w-3.5 text-amber-500" />
-                                <span className="text-sm">
-                                  <span className="font-medium">
-                                    {user.usage.totalProcess}
-                                  </span>
-                                  /{user.usage.credit}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="text-sm">
-                                {format(
-                                  new Date(user.createdAt),
-                                  "MMM d, yyyy"
-                                )}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Open menu</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-[160px]"
-                              >
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/users/${user._id}`}>
-                                    View details
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-red-600"
-                                  onClick={() =>
-                                    setUserToDelete({
-                                      id: user._id,
-                                      name: user.name,
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete user
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={9} className="h-24 text-center">
-                          <div className="flex flex-col items-center justify-center gap-2">
-                            <Users className="h-8 w-8 text-muted-foreground/60" />
-                            <p className="text-muted-foreground">
-                              No users found.
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSearchTerm("");
-                                setRoleFilter("all");
-                                setStatusFilter("all");
-                                fetchUsers();
-                              }}
-                            >
-                              Reset filters
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="text-sm text-muted-foreground">
-                  Showing <strong>{users.length}</strong> of{" "}
-                  <strong>{pagination.totalUsers}</strong> users
-                  {searchTerm && (
-                    <span>
-                      {" "}
-                      matching &quot;<strong>{searchTerm}</strong>&quot;
-                    </span>
+                      />
+                    </Badge>
                   )}
                   {roleFilter !== "all" && (
-                    <span>
-                      {" "}
-                      with role &quot;<strong>{roleFilter}</strong>&quot;
-                    </span>
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 transition-all hover:scale-105"
+                    >
+                      Role: {roleFilter}
+                      <XCircle
+                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                        onClick={() => {
+                          setRoleFilter("all");
+                          fetchUsers({
+                            page: 1,
+                            search: searchTerm,
+                          });
+                        }}
+                      />
+                    </Badge>
+                  )}
+                  {statusFilter !== "all" && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 transition-all hover:scale-105"
+                    >
+                      Status: {statusFilter}
+                      <XCircle
+                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                        onClick={() => {
+                          setStatusFilter("all");
+                          fetchUsers({
+                            page: 1,
+                            search: searchTerm,
+                            role: roleFilter === "all" ? undefined : roleFilter,
+                          });
+                        }}
+                      />
+                    </Badge>
                   )}
                 </div>
-                <PaginationView
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  paginationItemsToDisplay={5}
-                  handlePageChange={handlePageChange}
-                />
+              )}
+            </div>
+
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-muted/70 transition-colors">
+                    <TableHead className="w-[80px]">Avatar</TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-1">
+                        User
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-1 h-8 p-0 hover:bg-muted transition-colors"
+                        >
+                          <ArrowUpDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Verify Status</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Usage</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <>
+                      {Array.from({ length: 8 }).map((_, index) => (
+                        <TableRow key={index} className="animate-pulse">
+                          <TableCell>
+                            <Skeleton className="h-9 w-9 rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-[140px]" />
+                              <Skeleton className="h-3 w-[180px]" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-[70px] rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-[90px] rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-[80px] rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-[100px]" />
+                              <Skeleton className="h-3 w-[80px]" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-[90px]" />
+                              <Skeleton className="h-3 w-[70px]" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-[90px]" />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <Skeleton className="h-8 w-8 rounded" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  ) : users.length > 0 ? (
+                    users.map((user) => (
+                      <TableRow
+                        key={user.email}
+                        className="hover:bg-muted/50 transition-colors duration-200"
+                      >
+                        <TableCell>
+                          <Avatar className="h-9 w-9 border transition-all hover:scale-110">
+                            <AvatarImage
+                              src={`https://avatar.vercel.sh/${user.email}`}
+                              alt={user.name}
+                            />
+                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                              {user.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <p className="font-medium text-foreground">
+                              {user.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {user.email}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`capitalize transition-colors ${getRoleColor(
+                              user.role
+                            )}`}
+                          >
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {getVerificationBadge(user.isVerified)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`transition-colors ${getStatusColor(
+                              user.status
+                            )}`}
+                          >
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span className="text-sm">
+                              {user.currentPlan?.name ??
+                                user.metadata?.hasActiveKey?.type ??
+                                "N/A"}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <Coins className="h-3.5 w-3.5 text-amber-500" />
+                              <span className="text-sm">
+                                <span className="font-medium text-foreground">
+                                  {user.usage.totalProcess}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  /{user.usage.credit}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span className="text-sm">
+                              {format(new Date(user.createdAt), "MMM d, yyyy")}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 transition-all hover:scale-110"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[160px]"
+                            >
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/admin/users/${user._id}`}
+                                  className="cursor-pointer"
+                                >
+                                  View details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                                onClick={() =>
+                                  setUserToDelete({
+                                    id: user._id,
+                                    name: user.name,
+                                  })
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete user
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <Users className="h-12 w-12 text-muted-foreground/60" />
+                          <div className="space-y-1">
+                            <p className="text-muted-foreground font-medium">
+                              No users found.
+                            </p>
+                            <p className="text-sm text-muted-foreground/80">
+                              Try adjusting your search or filter criteria.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="transition-all hover:scale-105 bg-transparent"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setRoleFilter("all");
+                              setStatusFilter("all");
+                              fetchUsers();
+                            }}
+                          >
+                            Reset filters
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
+              <div className="text-sm text-muted-foreground">
+                Showing{" "}
+                <strong className="text-foreground">{users.length}</strong> of{" "}
+                <strong className="text-foreground">
+                  {pagination.totalUsers}
+                </strong>{" "}
+                users
+                {searchTerm && (
+                  <span>
+                    {" "}
+                    matching &quot;
+                    <strong className="text-foreground">{searchTerm}</strong>
+                    &quot;
+                  </span>
+                )}
+                {roleFilter !== "all" && (
+                  <span>
+                    {" "}
+                    with role &quot;
+                    <strong className="text-foreground">{roleFilter}</strong>
+                    &quot;
+                  </span>
+                )}
               </div>
+              <PaginationView
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                paginationItemsToDisplay={5}
+                handlePageChange={handlePageChange}
+              />
             </div>
           </CardContent>
         </Card>
@@ -776,32 +803,40 @@ export default function UsersPage() {
         open={!!userToDelete}
         onOpenChange={(open) => !open && setUserToDelete(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
+            <DialogTitle className="text-destructive">Delete User</DialogTitle>
             <DialogDescription className="pt-4">
               <div className="space-y-4">
-                <p className="text-red-500 font-medium">
-                  Warning: This action cannot be undone. This will permanently
-                  delete:
-                </p>
-                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-destructive font-medium mb-2">
+                    ⚠️ Warning: This action cannot be undone
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    This will permanently delete all associated data.
+                  </p>
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground pl-4">
                   <li>User account and profile</li>
                   <li>All associated images and data</li>
                   <li>Usage history and statistics</li>
                 </ul>
-                <p className="font-medium">
+                <p className="font-medium text-foreground">
                   Are you sure you want to delete user{" "}
-                  <span className="text-primary">{userToDelete?.name}</span>?
+                  <span className="text-primary font-semibold">
+                    {userToDelete?.name}
+                  </span>
+                  ?
                 </p>
               </div>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setUserToDelete(null)}
               disabled={isDeleting}
+              className="transition-all hover:scale-105"
             >
               Cancel
             </Button>
@@ -809,6 +844,7 @@ export default function UsersPage() {
               variant="destructive"
               onClick={handleDeleteUser}
               disabled={isDeleting}
+              className="transition-all hover:scale-105"
             >
               {isDeleting ? (
                 <>

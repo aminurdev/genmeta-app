@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -52,24 +51,30 @@ import { toast } from "sonner";
 import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import {
   ArrowLeft,
-  Calendar,
-  CheckCircle2,
   Copy,
   Edit,
-  KeyRound,
   Loader2,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
   Smartphone,
   Trash2,
-  User,
   XCircle,
   Plus,
+  BarChart3,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface UserDetails {
-  _id: string;
+  id: string;
   name: string;
   email: string;
   role: string;
@@ -77,7 +82,7 @@ interface UserDetails {
 }
 
 interface AppKeyDetails {
-  _id: string;
+  id: string;
   userId: string;
   username: string;
   key: string;
@@ -88,23 +93,25 @@ interface AppKeyDetails {
   plan: {
     type: string;
     id?: string;
+    name?: string;
   };
-  credit?: number;
+  credit?: number | null;
   totalProcess: number;
   createdAt: string;
   deviceId?: string | null;
-  monthlyProcess: Record<string, number>;
+  monthlyUsage: Record<string, number>;
   isValid: boolean;
 }
 
 interface Payment {
-  _id: string;
   trxID: string;
   plan: {
     type: string;
+    name?: string;
   };
   amount: number;
   createdAt: string;
+  id: string;
 }
 
 interface AppKeyDetailsResponse {
@@ -206,30 +213,53 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     }).format(amount);
   };
 
+  const formatDate = (dateString: string) => {
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(dateString));
+  };
+
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case "active":
-        return "bg-green-500/20 text-green-700 hover:bg-green-500/20";
+        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
       case "suspended":
-        return "bg-red-500/20 text-red-700 hover:bg-red-500/20";
+        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
       default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
     }
   };
 
   const getPlanBadge = (plan: string) => {
     switch (plan?.toLowerCase()) {
       case "free":
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
       case "free_trial":
-        return "bg-blue-500/20 text-blue-700 hover:bg-blue-500/20";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
       case "credit":
-        return "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20";
+        return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400";
       case "subscription":
-        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400";
       default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
     }
+  };
+
+  const getChartData = () => {
+    if (!appKeyDetails?.monthlyUsage) return [];
+
+    return Object.entries(appKeyDetails.monthlyUsage)
+      .map(([month, count]) => ({
+        month,
+        usage: count,
+      }))
+      .sort(
+        (a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()
+      );
   };
 
   const updateAppKey = async () => {
@@ -240,7 +270,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       const baseApi = await getBaseApi();
       const accessToken = await getAccessToken();
 
-      // Create the request body with only the necessary fields
       const requestBody: {
         username: string;
         plan?: string;
@@ -250,17 +279,14 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         username: appKeyDetails.username,
       };
 
-      // Only include the plan if it's set
       if (updatePlan) {
         requestBody.plan = updatePlan;
       }
 
-      // Only include expiryDays if it's set and valid
       if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
         requestBody.expiryDays = Number.parseInt(updateExpiryDays);
       }
 
-      // Include credit if credit plan and value set
       if (updatePlan === "credit") {
         const creditInput = document.getElementById(
           "credit"
@@ -289,7 +315,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         toast("App user updated successfully");
         setUpdateDialogOpen(false);
 
-        // Refresh the app user details
         if (appKey) {
           fetchAppKeyDetails(appKey);
         }
@@ -333,7 +358,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       if (result.success) {
         toast("Device ID reset successfully");
 
-        // Refresh the API key details
         if (appKey) {
           fetchAppKeyDetails(appKey);
         }
@@ -383,7 +407,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             } successfully`
         );
 
-        // Refresh the API key details
         if (appKey) {
           fetchAppKeyDetails(appKey);
         }
@@ -426,8 +449,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
       if (result.success) {
         toast("API key deleted successfully");
-
-        // Navigate back to the API keys list
         router.push("/api-keys");
       } else {
         throw new Error(result.message || "Failed to delete API key");
@@ -445,7 +466,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     if (!appKeyDetails) return;
 
     setUpdatePlan(appKeyDetails.plan.type);
-    setUpdateExpiryDays("30"); // Default to 30 days
+    setUpdateExpiryDays("30");
     setUpdateDialogOpen(true);
   };
 
@@ -465,7 +486,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         },
         body: JSON.stringify({
           key: appKeyDetails.key,
-          credits: parseInt(creditAmount),
+          credits: Number.parseInt(creditAmount),
         }),
       });
 
@@ -478,7 +499,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);
 
-        // Refresh the API key details
         if (appKey) {
           fetchAppKeyDetails(appKey);
         }
@@ -545,194 +565,176 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className=" py-6 space-y-6 ">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             onClick={() => router.push("/api-keys")}
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
           </Button>
-          <h1 className="text-2xl font-bold">API Key Details</h1>
+          <div>
+            <h1 className="text-2xl font-semibold">API Key Details</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage and monitor API key usage
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchAppKeyDetails(appKey!)}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => fetchAppKeyDetails(appKey!)}
+          size="sm"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* User Information Card */}
+        {/* User Information */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              User Information
-            </CardTitle>
-            <CardDescription>
-              Details about the user associated with this API key
-            </CardDescription>
+            <CardTitle className="text-lg">User Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Name</div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="font-medium text-muted-foreground">Name</div>
               <div className="col-span-2">{userDetails.name}</div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Email</div>
+
+              <div className="font-medium text-muted-foreground">Email</div>
               <div className="col-span-2 flex items-center gap-2">
-                {userDetails.email}
+                <span className="truncate">{userDetails.email}</span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() =>
-                    copyToClipboard(
-                      userDetails.email,
-                      "Email copied to clipboard"
-                    )
-                  }
+                  onClick={() => copyToClipboard(userDetails.email)}
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  <Copy className="h-3 w-3" />
                 </Button>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Role</div>
-              <div className="col-span-2 capitalize">{userDetails.role}</div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">User ID</div>
-              <div className="col-span-2 flex items-center gap-2">
-                <span className="text-xs font-mono truncate">
-                  {userDetails._id}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() =>
-                    copyToClipboard(
-                      userDetails._id,
-                      "User ID copied to clipboard"
-                    )
-                  }
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Registered</div>
+
+              <div className="font-medium text-muted-foreground">Role</div>
               <div className="col-span-2">
-                {/* {formatDate(userDetails.createdAt)} */}
+                <Badge variant="secondary" className="text-xs">
+                  {userDetails.role}
+                </Badge>
+              </div>
+
+              <div className="font-medium text-muted-foreground">User ID</div>
+              <div className="col-span-2 flex items-center gap-2">
+                <code className="text-xs bg-muted px-2 py-1 rounded">
+                  {userDetails.id.substring(0, 8)}...
+                  {userDetails.id.substring(userDetails.id.length - 8)}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => copyToClipboard(userDetails.id)}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+
+              <div className="font-medium text-muted-foreground">
+                Registered
+              </div>
+              <div className="col-span-2 text-sm">
+                {formatDate(userDetails.createdAt)}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* API Key Details Card */}
+        {/* API Key Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5" />
-              API Key Details
-            </CardTitle>
-            <CardDescription>
-              Information about the API key and its usage
-            </CardDescription>
+            <CardTitle className="text-lg">API Key Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">API Key</div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="font-medium text-muted-foreground">API Key</div>
               <div className="col-span-2 flex items-center gap-2">
-                <span className="font-mono text-xs truncate">
+                <code className="text-xs bg-muted px-2 py-1 rounded">
                   {appKeyDetails.key.substring(0, 8)}...
                   {appKeyDetails.key.substring(appKeyDetails.key.length - 8)}
-                </span>
+                </code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() =>
-                    copyToClipboard(
-                      appKeyDetails.key,
-                      "API key copied to clipboard"
-                    )
-                  }
+                  onClick={() => copyToClipboard(appKeyDetails.key)}
                 >
-                  <Copy className="h-3.5 w-3.5" />
+                  <Copy className="h-3 w-3" />
                 </Button>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Status</div>
+
+              <div className="font-medium text-muted-foreground">Status</div>
               <div className="col-span-2">
-                <Badge
-                  variant="outline"
-                  className={getStatusColor(appKeyDetails.status)}
-                >
+                <Badge className={getStatusColor(appKeyDetails.status)}>
                   {appKeyDetails.status}
                 </Badge>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Plan</div>
+
+              <div className="font-medium text-muted-foreground">Plan</div>
               <div className="col-span-2">
-                <Badge
-                  variant="outline"
-                  className={getPlanBadge(appKeyDetails.plan.type)}
-                >
+                <Badge className={getPlanBadge(appKeyDetails.plan.type)}>
                   {appKeyDetails.plan.type.replace("_", " ")}
-                  {appKeyDetails.plan.id && ` (${appKeyDetails.plan.id})`}
                 </Badge>
               </div>
-            </div>
-            {appKeyDetails.credit !== undefined && (
-              <div className="grid grid-cols-3 gap-4">
-                <div className="font-medium">Credits Remaining</div>
-                <div className="col-span-2">{appKeyDetails.credit}</div>
+
+              {appKeyDetails.plan.type === "credit" &&
+                appKeyDetails.credit !== null && (
+                  <>
+                    <div className="font-medium text-muted-foreground">
+                      Credits
+                    </div>
+                    <div className="col-span-2 text-lg font-semibold text-green-600">
+                      {appKeyDetails.credit}
+                    </div>
+                  </>
+                )}
+
+              <div className="font-medium text-muted-foreground">
+                Device Bound
               </div>
-            )}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Device Bound</div>
               <div className="col-span-2">
                 {appKeyDetails.deviceId ? (
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
-                    <span>Yes</span>
-                  </div>
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                    Yes
+                  </Badge>
                 ) : (
-                  <div className="flex items-center">
-                    <XCircle className="h-4 w-4 text-muted-foreground mr-1" />
-                    <span>No</span>
-                  </div>
+                  <Badge variant="secondary">No</Badge>
                 )}
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Total Processes</div>
-              <div className="col-span-2">{appKeyDetails.totalProcess}</div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Created</div>
-              <div className="col-span-2">
-                {/* {formatDate(appKeyDetails.createdAt)} */}
+
+              <div className="font-medium text-muted-foreground">
+                Total Usage
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-medium">Expires</div>
-              <div className="col-span-2">
-                {/* {formatDate(appKeyDetails.expiresAt)} */}
+              <div className="col-span-2 text-lg font-semibold">
+                {appKeyDetails.totalProcess.toLocaleString()}
+              </div>
+
+              <div className="font-medium text-muted-foreground">Created</div>
+              <div className="col-span-2 text-sm">
+                {formatDate(appKeyDetails.createdAt)}
+              </div>
+
+              <div className="font-medium text-muted-foreground">Expires</div>
+              <div className="col-span-2 text-sm">
+                {formatDate(appKeyDetails.expiresAt)}
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-wrap gap-2">
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={openUpdateDialog}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
@@ -740,19 +742,18 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             <Button
               variant="outline"
               onClick={resetDeviceId}
-              disabled={isResetting}
+              disabled={isResetting || !appKeyDetails.deviceId}
             >
               {isResetting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Smartphone className="mr-2 h-4 w-4" />
               )}
-              {isResetting ? "Resetting..." : "Reset Device ID"}
+              Reset Device
             </Button>
             {appKeyDetails.status === "active" ? (
               <Button
                 variant="outline"
-                className="text-destructive"
                 onClick={() => updateKeyStatus("suspend")}
                 disabled={isChangingStatus}
               >
@@ -761,12 +762,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 ) : (
                   <ShieldAlert className="mr-2 h-4 w-4" />
                 )}
-                {isChangingStatus ? "Suspending..." : "Suspend Key"}
+                Suspend
               </Button>
             ) : (
               <Button
                 variant="outline"
-                className="text-green-600"
                 onClick={() => updateKeyStatus("reactivate")}
                 disabled={isChangingStatus}
               >
@@ -775,14 +775,13 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 ) : (
                   <ShieldCheck className="mr-2 h-4 w-4" />
                 )}
-                {isChangingStatus ? "Reactivating..." : "Reactivate Key"}
+                Reactivate
               </Button>
             )}
             {appKeyDetails.plan.type === "credit" && (
               <Button
                 variant="outline"
                 onClick={() => setAddCreditDialogOpen(true)}
-                className="flex items-center gap-1"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Credits
@@ -792,19 +791,16 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Key
+                  Delete
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle>Delete API Key</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete
-                    the API key for{" "}
-                    <span className="font-semibold">
-                      {appKeyDetails.username}
-                    </span>{" "}
-                    and remove it from our servers.
+                    This will permanently delete the API key for{" "}
+                    <span className="font-semibold">{userDetails.name}</span>.
+                    This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -826,87 +822,145 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </CardFooter>
-        </Card>
-      </div>
-
-      {/* Monthly Usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Monthly Usage
-          </CardTitle>
-          <CardDescription>API usage statistics by month</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(appKeyDetails.monthlyProcess || {}).map(
-              ([month, count]) => (
-                <Card key={month}>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{count}</div>
-                    <p className="text-sm text-muted-foreground">
-                      Processes in {month}
-                    </p>
-                  </CardContent>
-                </Card>
-              )
-            )}
-            {Object.keys(appKeyDetails.monthlyProcess || {}).length === 0 && (
-              <div className="col-span-full py-8 text-center text-muted-foreground">
-                No monthly usage data available
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Payment History */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment History</CardTitle>
-          <CardDescription>Recent payments made by this user</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Monthly Usage Statistics
+          </CardTitle>
+          <CardDescription>API usage breakdown by month</CardDescription>
         </CardHeader>
-        <CardContent>
-          {payments.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Transaction ID</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((payment) => (
-                  <TableRow key={payment._id}>
-                    <TableCell className="font-medium">
-                      {payment.trxID}
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {payment.plan.type}
-                    </TableCell>
-                    <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>
-                      {/* {formatDate(payment.createdAt)} */}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <CardContent className="space-y-6">
+          {getChartData().length > 0 ? (
+            <div>
+              {/* Chart */}
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={getChartData()}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      className="stroke-muted"
+                    />
+                    <XAxis
+                      dataKey="month"
+                      className="text-xs fill-muted-foreground"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis
+                      className="text-xs fill-muted-foreground"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="usage"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      dot={{
+                        fill: "hsl(var(--primary))",
+                        strokeWidth: 2,
+                        r: 4,
+                      }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Table */}
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead className="text-right">API Calls</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getChartData().map((item) => (
+                      <TableRow key={item.month}>
+                        <TableCell className="font-medium">
+                          {item.month}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {item.usage.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           ) : (
-            <div className="py-8 text-center text-muted-foreground">
-              No payment history available
+            <div className="py-12 text-center text-muted-foreground">
+              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No usage data available</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Update API Key Dialog */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment History</CardTitle>
+          <CardDescription>Recent transactions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {payments.length > 0 ? (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Transaction ID</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {payment.trxID}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {payment.plan.name || payment.plan.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {formatCurrency(payment.amount)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(payment.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <p>No payment history available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialogs remain the same */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Update API Key</DialogTitle>
             <DialogDescription>
@@ -918,7 +972,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={appKeyDetails.username}
+                value={userDetails.name}
                 disabled
                 className="bg-muted"
               />
@@ -931,7 +985,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="free">Free Plan</SelectItem>
-                  <SelectItem value="free_trial">Free Trial</SelectItem>
                   <SelectItem value="credit">Credit Plan</SelectItem>
                   <SelectItem value="subscription">
                     Subscription Plan
@@ -984,9 +1037,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         </DialogContent>
       </Dialog>
 
-      {/* Add Credits Dialog */}
       <Dialog open={addCreditDialogOpen} onOpenChange={setAddCreditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Credits</DialogTitle>
             <DialogDescription>

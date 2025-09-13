@@ -15,15 +15,23 @@ const VerifyGoogleContent = () => {
   const redirectPath = searchParams.get("redirectPath");
 
   useEffect(() => {
+    const referral = searchParams?.get("ref");
+    if (referral) {
+      localStorage.setItem("referralCode", referral);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const verifyToken = async () => {
       if (!token) {
         setError("Invalid or missing token");
         setIsVerifying(false);
         return;
       }
+      const referral = localStorage.getItem("referralCode");
 
       try {
-        const result = await verifyGoogleToken(token);
+        const result = await verifyGoogleToken(token, referral);
 
         if (result.success) {
           router.push(redirectPath || "/");
