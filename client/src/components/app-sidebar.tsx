@@ -109,6 +109,11 @@ const adminSidebarData = [
         icon: Users,
       },
       {
+        title: "Referral",
+        url: "/admin/referral",
+        icon: Users, // Referral: using Users icon
+      },
+      {
         title: "Payments",
         url: "/admin/payments",
         icon: CreditCard,

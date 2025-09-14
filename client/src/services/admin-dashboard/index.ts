@@ -31,7 +31,7 @@ export interface AdminOverview {
       newThisMonth: number;
       recent: {
         _id: string;
-        userId: {
+        userId?: {
           _id: string;
           name: string;
           email: string;

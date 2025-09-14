@@ -118,6 +118,7 @@ export default function DashboardStats() {
       </div>
     );
   }
+  console.log(stats);
 
   if (error) {
     return (
@@ -461,25 +462,25 @@ export default function DashboardStats() {
             <TableBody>
               {stats.payments.recent.map((payment, index) => (
                 <TableRow
-                  key={`${payment.userId._id}-${payment.createdAt}-${index}`}
+                  key={`${payment.userId?._id}-${payment.createdAt}-${index}`}
                 >
                   <TableCell>
                     <div className="flex gap-4">
                       <Avatar className="h-9 w-9">
                         <AvatarImage
-                          src={`https://avatar.vercel.sh/${payment.userId.email}`}
-                          alt={payment.userId.name}
+                          src={`https://avatar.vercel.sh/${payment.userId?.email}`}
+                          alt={payment.userId?.name}
                         />
                         <AvatarFallback>
-                          {getInitials(payment.userId.name)}
+                          {getInitials(payment.userId?.name ?? "")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="font-medium">
-                          {payment.userId.name}
+                          {payment.userId?.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {payment.userId.email}
+                          {payment.userId?.email}
                         </span>
                       </div>
                     </div>
