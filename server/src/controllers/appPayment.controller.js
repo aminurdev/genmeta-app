@@ -27,7 +27,9 @@ export const createAppPayment = asyncHandler(async (req, res) => {
 
   // Calculate base price with built-in discount
   let finalPrice = plan.basePrice;
-  if (plan.discountPercent > 0) {
+  if (plan?.discountPrice) {
+    finalPrice = plan.discountPrice;
+  } else if (plan.discountPercent > 0) {
     finalPrice = finalPrice * (1 - plan.discountPercent / 100);
   }
 

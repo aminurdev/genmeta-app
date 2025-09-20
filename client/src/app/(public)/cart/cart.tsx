@@ -332,20 +332,16 @@ export default function Cart({ planId }: { planId: string }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-background dark:to-blue-950/20">
+      <div className="min-h-screen bg-background">
         <MaxWidthWrapper className="py-24">
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="relative mb-8">
-              <div className="w-20 h-20 border-4 border-blue-100 dark:border-blue-900 rounded-full animate-spin border-t-blue-600 dark:border-t-blue-400"></div>
-              <div className="absolute inset-2 w-16 h-16 border-4 border-transparent rounded-full animate-ping border-t-blue-400/60"></div>
-            </div>
-            <div className="text-center space-y-3">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Preparing Your Cart
+            <div className="w-16 h-16 border-4 border-muted rounded-full animate-spin border-t-primary mb-8"></div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">
+                Loading your cart
               </h2>
-              <p className="text-muted-foreground max-w-md">
-                We&apos;re loading your selected plan and preparing everything
-                for checkout
+              <p className="text-muted-foreground">
+                Please wait while we prepare your order
               </p>
             </div>
           </div>
@@ -356,24 +352,19 @@ export default function Cart({ planId }: { planId: string }) {
 
   if (error || !plan) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-background dark:to-blue-950/20">
+      <div className="min-h-screen bg-background">
         <MaxWidthWrapper className="py-24">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-              <X className="h-8 w-8 text-red-600 dark:text-red-400" />
+          <div className="max-w-md mx-auto text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-destructive/10 flex items-center justify-center">
+              <X className="h-8 w-8 text-destructive" />
             </div>
-            <h2 className="text-2xl font-semibold text-foreground mb-4">
-              Oops! Something went wrong
+            <h2 className="text-xl font-semibold text-foreground mb-4">
+              Something went wrong
             </h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              {error ||
-                "We couldn't load your plan details. Please try again or contact our support team."}
+            <p className="text-muted-foreground mb-8">
+              {error || "We couldn't load your plan details. Please try again."}
             </p>
-            <Button
-              onClick={handleBackToPricing}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 h-auto"
-              size="lg"
-            >
+            <Button onClick={handleBackToPricing} variant="outline">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Pricing
             </Button>
@@ -405,44 +396,36 @@ export default function Cart({ planId }: { planId: string }) {
   const totalSavings = plan.basePrice - finalPrice;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-background dark:to-blue-950/20">
+    <div className="min-h-screen bg-background">
       <MaxWidthWrapper className="py-8 lg:py-12">
         {/* Header */}
-        <div className="mb-8 lg:mb-12">
-          <Button
-            variant="ghost"
-            onClick={handleBackToPricing}
-            className="mb-6 text-muted-foreground hover:text-foreground transition-colors group"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Back to Pricing
-          </Button>
+        <div className="mb-12">
           <div className="text-center space-y-4">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold text-foreground">
               Complete Your Purchase
             </h1>
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               You&apos;re just one step away from unlocking the full power of
               GenMeta
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Main Content - Left Side */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-8">
             {/* Plan Customization */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-card/90 backdrop-blur-sm">
-              <CardHeader className="pb-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-white" />
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold text-foreground">
+                    <CardTitle className="text-xl">
                       Customize Your Plan
                     </CardTitle>
-                    <CardDescription className="text-base mt-1">
+                    <CardDescription>
                       Choose the perfect plan for your needs
                     </CardDescription>
                   </div>
@@ -451,14 +434,14 @@ export default function Cart({ planId }: { planId: string }) {
               <CardContent className="space-y-6">
                 {/* Plan Type Tabs */}
                 <div>
-                  <Label className="text-sm font-semibold mb-4 block text-foreground">
+                  <Label className="text-sm font-medium mb-3 block">
                     Plan Type
                   </Label>
                   <Tabs
                     value={selectedPlanType}
                     onValueChange={handlePlanTypeChange}
                   >
-                    <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50">
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger
                         value="subscription"
                         className="flex items-center gap-2"
@@ -479,14 +462,14 @@ export default function Cart({ planId }: { planId: string }) {
 
                 {/* Plan Selection */}
                 <div>
-                  <Label className="text-sm font-semibold mb-4 block text-foreground">
+                  <Label className="text-sm font-medium mb-3 block">
                     Select Plan
                   </Label>
                   <Select
                     value={selectedPlanId}
                     onValueChange={handlePlanChange}
                   >
-                    <SelectTrigger className="w-full h-14 bg-muted/30 border-2 hover:border-blue-300 focus:border-blue-500 transition-colors">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose a plan" />
                     </SelectTrigger>
                     <SelectContent>
@@ -499,7 +482,7 @@ export default function Cart({ planId }: { planId: string }) {
                             <span className="font-medium">
                               {planOption.name}
                             </span>
-                            <span className="text-sm text-muted-foreground ml-4 font-semibold">
+                            <span className="text-sm text-muted-foreground ml-4 font-medium">
                               ৳
                               {planOption.discountPrice
                                 ? planOption.discountPrice
@@ -535,39 +518,30 @@ export default function Cart({ planId }: { planId: string }) {
             </Card>
 
             {/* Plan Details */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-card/90 backdrop-blur-sm">
-              <CardHeader className="pb-6">
+            <Card>
+              <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-2xl font-bold text-foreground mb-3">
-                      {plan.name}
-                    </CardTitle>
-                    <CardDescription className="text-base leading-relaxed">
+                    <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
+                    <CardDescription className="text-base">
                       {plan.type === "subscription"
                         ? `${plan.planDuration} days of unlimited access to all premium features`
                         : `${plan.credit} AI-powered metadata generations with priority processing`}
                     </CardDescription>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={`px-4 py-2 font-semibold text-sm ${
-                      plan.type === "subscription"
-                        ? "bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 border-purple-200 dark:from-purple-900/20 dark:to-blue-900/20 dark:text-purple-300"
-                        : "bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-700 border-blue-200 dark:from-blue-900/20 dark:to-cyan-900/20 dark:text-blue-300"
-                    }`}
-                  >
-                    {plan.type === "subscription" ? "Subscription" : "Credits"}
+                  <Badge variant="secondary" className="capitalize">
+                    {plan.type}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 {/* Plan Features */}
                 <div className="space-y-6 mb-8">
-                  <h3 className="font-semibold text-foreground text-lg flex items-center gap-2">
-                    <Star className="h-5 w-5 text-amber-500" />
+                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                    <Star className="h-5 w-5 text-primary" />
                     What&apos;s included:
                   </h3>
-                  <div className="grid gap-4">
+                  <div className="grid gap-3">
                     {(plan.type === "subscription"
                       ? [
                           "Unlimited — Batch Processing",
@@ -589,24 +563,12 @@ export default function Cart({ planId }: { planId: string }) {
                     ).map((feature, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
                       >
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            plan.type === "subscription"
-                              ? "bg-purple-100 dark:bg-purple-900/50"
-                              : "bg-blue-100 dark:bg-blue-900/50"
-                          }`}
-                        >
-                          <Check
-                            className={`h-4 w-4 ${
-                              plan.type === "subscription"
-                                ? "text-purple-600 dark:text-purple-400"
-                                : "text-blue-600 dark:text-blue-400"
-                            }`}
-                          />
+                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Check className="h-3 w-3 text-primary" />
                         </div>
-                        <span className="text-sm font-medium">{feature}</span>
+                        <span className="text-sm">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -615,41 +577,35 @@ export default function Cart({ planId }: { planId: string }) {
                 <Separator className="my-8" />
 
                 {/* Additional Features */}
-                <div className="grid md:grid-cols-3 gap-6">
-                  <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200/50 dark:border-amber-800/50">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center shadow-lg">
-                      <Star className="h-6 w-6 text-white" />
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Star className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">
-                        Premium Features
-                      </p>
+                      <p className="font-medium">Premium Features</p>
                       <p className="text-sm text-muted-foreground">
                         Full access included
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200/50 dark:border-green-800/50">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
-                      <Shield className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">
-                        Secure Payment
-                      </p>
+                      <p className="font-medium">Secure Payment</p>
                       <p className="text-sm text-muted-foreground">
                         256-bit encryption
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200/50 dark:border-blue-800/50">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                      <Clock className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">
-                        Instant Access
-                      </p>
+                      <p className="font-medium">Instant Access</p>
                       <p className="text-sm text-muted-foreground">
                         Available immediately
                       </p>
@@ -663,19 +619,19 @@ export default function Cart({ planId }: { planId: string }) {
           {/* Sidebar - Right Side */}
           <div className="lg:col-span-5 space-y-6">
             {/* Promo Code Section */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-card/90 backdrop-blur-sm">
+            <Card>
               <CardHeader className="pb-4">
                 <Button
                   variant="ghost"
                   onClick={() => setIsPromoExpanded(!isPromoExpanded)}
-                  className="w-full justify-between p-0 h-auto hover:bg-transparent group"
+                  className="w-full justify-between p-0 h-auto hover:bg-transparent"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 flex items-center justify-center shadow-lg">
-                      <Gift className="h-5 w-5 text-white" />
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Gift className="h-5 w-5 text-primary" />
                     </div>
                     <div className="text-left">
-                      <CardTitle className="text-lg font-semibold">
+                      <CardTitle className="text-lg">
                         Have a Promo Code?
                       </CardTitle>
                       <CardDescription className="text-sm mt-1">
@@ -685,28 +641,22 @@ export default function Cart({ planId }: { planId: string }) {
                       </CardDescription>
                     </div>
                   </div>
-                  <div
-                    className={`transition-transform duration-200 ${
+                  <ChevronDown
+                    className={`h-5 w-5 text-muted-foreground transition-transform ${
                       isPromoExpanded ? "rotate-180" : ""
                     }`}
-                  >
-                    <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
-                  </div>
+                  />
                 </Button>
               </CardHeader>
               {isPromoExpanded && (
                 <CardContent className="pt-0">
                   {validPromo ? (
-                    <div className="flex items-center justify-between p-4 border-2 border-green-200 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 dark:border-green-800">
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        </div>
+                        <CheckCircle className="h-5 w-5 text-green-600" />
                         <div>
-                          <p className="font-bold text-green-800 dark:text-green-300">
-                            {validPromo.code}
-                          </p>
-                          <p className="text-sm text-green-600 dark:text-green-400">
+                          <p className="font-medium">{validPromo.code}</p>
+                          <p className="text-sm text-muted-foreground">
                             {validPromo.discountPercent}% discount applied
                           </p>
                         </div>
@@ -715,7 +665,7 @@ export default function Cart({ planId }: { planId: string }) {
                         variant="ghost"
                         size="sm"
                         onClick={handleClearPromoCode}
-                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-100 rounded-lg"
+                        className="h-8 w-8 p-0"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -729,21 +679,18 @@ export default function Cart({ planId }: { planId: string }) {
                         }}
                         className="flex gap-3"
                       >
-                        <div className="flex-1">
-                          <Input
-                            placeholder="Enter promo code"
-                            value={promoCode}
-                            onChange={(e) => {
-                              setPromoCode(e.target.value.toUpperCase());
-                              if (promoError) setPromoError(null);
-                            }}
-                            className="h-12 bg-muted/30 border-2 focus:border-blue-500 focus:ring-blue-500/20 focus-visible:ring-0 font-mono tracking-wider"
-                          />
-                        </div>
+                        <Input
+                          placeholder="Enter promo code"
+                          value={promoCode}
+                          onChange={(e) => {
+                            setPromoCode(e.target.value.toUpperCase());
+                            if (promoError) setPromoError(null);
+                          }}
+                          className="font-mono"
+                        />
                         <Button
                           type="submit"
                           disabled={isApplyingPromo || !promoCode.trim()}
-                          className="h-12 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
                         >
                           {isApplyingPromo ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -753,11 +700,9 @@ export default function Cart({ planId }: { planId: string }) {
                         </Button>
                       </form>
                       {promoError && (
-                        <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/20 dark:to-pink-950/20 border border-red-200 dark:border-red-800">
-                          <X className="h-5 w-5 text-red-500 flex-shrink-0" />
-                          <p className="text-red-600 dark:text-red-400 text-sm font-medium">
-                            {promoError}
-                          </p>
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive">
+                          <X className="h-4 w-4 flex-shrink-0" />
+                          <p className="text-sm">{promoError}</p>
                         </div>
                       )}
                     </div>
@@ -767,17 +712,15 @@ export default function Cart({ planId }: { planId: string }) {
             </Card>
 
             {/* Order Summary */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-card/90 backdrop-blur-sm sticky top-6">
-              <CardHeader className="pb-6">
+            <Card className="sticky top-6">
+              <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                    <CreditCard className="h-5 w-5 text-white" />
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-bold">
-                      Order Summary
-                    </CardTitle>
-                    <CardDescription className="mt-1">
+                    <CardTitle className="text-xl">Order Summary</CardTitle>
+                    <CardDescription>
                       Review your purchase details
                     </CardDescription>
                   </div>
@@ -785,11 +728,9 @@ export default function Cart({ planId }: { planId: string }) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="flex justify-between items-start p-4 rounded-xl bg-muted/30">
+                  <div className="flex justify-between items-start p-4 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-semibold text-foreground text-lg">
-                        {plan.name}
-                      </p>
+                      <p className="font-medium text-lg">{plan.name}</p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {plan.type === "subscription"
                           ? `${plan.planDuration} days subscription`
@@ -797,10 +738,10 @@ export default function Cart({ planId }: { planId: string }) {
                       </p>
                     </div>
                     <p
-                      className={`font-semibold text-lg ${
+                      className={`font-medium text-lg ${
                         plan.discountPercent > 0
                           ? "line-through text-muted-foreground"
-                          : "text-foreground"
+                          : ""
                       }`}
                     >
                       ৳{plan.basePrice.toFixed(2)}
@@ -808,28 +749,28 @@ export default function Cart({ planId }: { planId: string }) {
                   </div>
 
                   {plan.discountPercent > 0 && (
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                        <Percent className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
                           Plan Discount ({plan.discountPercent}%)
                         </span>
                       </div>
-                      <span className="text-green-600 font-semibold">
+                      <span className="text-primary font-medium">
                         -৳{(plan.basePrice - priceAfterPlanDiscount).toFixed(2)}
                       </span>
                     </div>
                   )}
 
                   {validPromo && (
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                        <Gift className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
                           Promo Discount ({validPromo.discountPercent}%)
                         </span>
                       </div>
-                      <span className="text-purple-600 font-semibold">
+                      <span className="text-primary font-medium">
                         -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
                       </span>
                     </div>
@@ -843,14 +784,11 @@ export default function Cart({ planId }: { planId: string }) {
                     <span className="text-xl font-bold">Total</span>
                     <div className="text-right">
                       {totalSavings > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-50 text-green-700 border-green-200 px-3 py-1 mb-2 block"
-                        >
+                        <Badge variant="secondary" className="mb-2 block">
                           You save ৳{totalSavings.toFixed(2)}
                         </Badge>
                       )}
-                      <span className="text-3xl font-bold text-foreground">
+                      <span className="text-3xl font-bold">
                         ৳{finalPrice.toFixed(2)}
                       </span>
                     </div>
@@ -862,12 +800,10 @@ export default function Cart({ planId }: { planId: string }) {
               <CardContent className="pt-0">
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center">
-                      <CreditCard className="h-4 w-4 text-white" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <CreditCard className="h-4 w-4 text-primary" />
                     </div>
-                    <h3 className="font-semibold text-foreground text-lg">
-                      Payment Method
-                    </h3>
+                    <h3 className="font-medium text-lg">Payment Method</h3>
                   </div>
                   <RadioGroup
                     value={selectedPaymentMethod}
@@ -876,10 +812,10 @@ export default function Cart({ planId }: { planId: string }) {
                     {paymentMethods.map((method) => (
                       <div key={method.id} className="relative">
                         <div
-                          className={`flex items-center space-x-4 p-4 rounded-xl border-2 transition-all duration-200 ${
+                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
                             selectedPaymentMethod === method.id
-                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20 shadow-md"
-                              : "border-muted-foreground/20 hover:border-muted-foreground/40 hover:bg-muted/20"
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/40"
                           } ${
                             !method.available
                               ? "opacity-50 cursor-not-allowed"
@@ -890,7 +826,6 @@ export default function Cart({ planId }: { planId: string }) {
                             value={method.id}
                             id={method.id}
                             disabled={!method.available}
-                            className="data-[state=checked]:border-blue-500 data-[state=checked]:text-blue-500"
                           />
                           <Label
                             htmlFor={method.id}
@@ -900,11 +835,11 @@ export default function Cart({ planId }: { planId: string }) {
                                 : "cursor-pointer"
                             }`}
                           >
-                            <div className="w-14 h-14 rounded-xl bg-white dark:bg-background shadow-sm flex items-center justify-center border">
+                            <div className="w-12 h-12 rounded-lg bg-background border flex items-center justify-center">
                               <img
                                 src={method.logo || "/placeholder.svg"}
                                 alt={method.name}
-                                className="w-10 h-10 object-contain"
+                                className="w-8 h-8 object-contain"
                                 onError={(e) => {
                                   e.currentTarget.src =
                                     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e91e63' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'%3E%3Crect width='20' height='14' x='2' y='5' rx='2'/%3E%3Cline x1='2' x2='22' y1='10' y2='10'/%3E%3C/svg%3E";
@@ -913,9 +848,7 @@ export default function Cart({ planId }: { planId: string }) {
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <p className="font-semibold text-foreground text-lg">
-                                  {method.name}
-                                </p>
+                                <p className="font-medium">{method.name}</p>
                                 {method.comingSoon && (
                                   <Badge
                                     variant="secondary"
@@ -931,7 +864,7 @@ export default function Cart({ planId }: { planId: string }) {
                             </div>
                             {selectedPaymentMethod === method.id &&
                               method.available && (
-                                <Check className="h-6 w-6 text-blue-600" />
+                                <Check className="h-5 w-5 text-primary" />
                               )}
                           </Label>
                         </div>
@@ -943,7 +876,7 @@ export default function Cart({ planId }: { planId: string }) {
 
               <CardFooter className="pt-6">
                 <Button
-                  className="w-full h-14 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 hover:from-blue-700 hover:via-purple-700 hover:to-blue-800 text-white font-semibold shadow-xl shadow-blue-500/25 transition-all duration-300 group text-lg"
+                  className="w-full h-12 font-medium"
                   onClick={() =>
                     handleCheckout(plan._id, plan.type, validPromo?.code)
                   }
@@ -956,19 +889,19 @@ export default function Cart({ planId }: { planId: string }) {
                 >
                   {isProcessing ? (
                     <>
-                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Processing Payment...
                     </>
                   ) : (
                     <>
-                      <CreditCard className="mr-3 h-5 w-5" />
+                      <CreditCard className="mr-2 h-4 w-4" />
                       Pay with{" "}
                       {
                         paymentMethods.find(
                           (m) => m.id === selectedPaymentMethod
                         )?.name
                       }
-                      <ChevronRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight className="ml-2 h-4 w-4" />
                     </>
                   )}
                 </Button>

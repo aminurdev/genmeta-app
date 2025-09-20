@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/accordion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// Removed getBaseApi import to prevent server component errors
 import { Banner } from "@/components/main/banner";
 
 interface SubscriptionPlan {
@@ -154,7 +153,7 @@ const PricingContent = () => {
     "JPG, JPEG, PNG, EPS — Supported Formats",
     "1 credit token per image — Results Generation",
     "Priority customer support",
-    "No monthly commitment",
+    "No monthly expiry — Credits never expire",
   ];
 
   // FAQ data
