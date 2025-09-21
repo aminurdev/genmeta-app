@@ -155,6 +155,23 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
 
   return (
     <div className="p-4 space-y-6">
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <DollarSign className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-green-800">
+              Earn ৳100 BDT Commission
+            </h3>
+            <p className="text-sm text-green-700">
+              Every single user you refer will earn you ৳100 BDT commission when
+              they join our platform!
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="border-b pb-4">
         <h1 className="text-2xl font-semibold text-balance">
           Referral Program
