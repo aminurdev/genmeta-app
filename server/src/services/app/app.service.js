@@ -123,10 +123,10 @@ export const processSuccessfulPayment = async (paymentID, res) => {
                   referredUser: payingUser._id.toString(),
                 }
               );
-              return; // ⛔ stop here
+              return;
             }
 
-            const rewardAmount = 100;
+            const rewardAmount = 50;
 
             if (rewardAmount > 0) {
               referralDoc.availableBalance += rewardAmount;
