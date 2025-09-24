@@ -162,10 +162,10 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-green-800">
-              Earn ৳100 BDT Commission
+              Earn ৳50 BDT Commission
             </h3>
             <p className="text-sm text-green-700">
-              Every single user you refer will earn you ৳100 BDT commission when
+              Every single user you refer will earn you ৳50 BDT commission when
               they join our platform!
             </p>
           </div>
