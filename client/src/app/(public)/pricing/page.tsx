@@ -129,7 +129,8 @@ const PricingContent = () => {
 
   // Plan features
   const freeFeatures = [
-    "Limited (10 Images day) — Batch Processing",
+    "instant Get 100 credits upon signup",
+    "Limited (10 Files day) — Batch Processing",
     "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
     "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
