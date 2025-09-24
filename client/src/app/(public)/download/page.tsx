@@ -171,7 +171,7 @@ export default async function DownloadPage() {
               included={true}
             />
             <FeatureCard
-              title="Batch Processing (Daily 10 Files)"
+              title="Batch Processing (First 100 then Daily 10 Files)"
               description="Process multiple images at once with bulk operations"
               included={true}
             />

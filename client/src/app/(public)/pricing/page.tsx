@@ -129,10 +129,11 @@ const PricingContent = () => {
 
   // Plan features
   const freeFeatures = [
-    "Limited (10 Images day) — Batch Processing",
+    "instant Get 100 credits upon signup",
+    "Limited (10 Files day) — Batch Processing",
     "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Basic export options",
     "Limited Results",
   ];
@@ -141,7 +142,7 @@ const PricingContent = () => {
     "Unlimited — Batch Processing",
     "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Priority customer support",
     "Unlimited Results",
   ];
@@ -150,7 +151,7 @@ const PricingContent = () => {
     "Faster processing — Batch Processing",
     "Powerful Metadata Editor — Bulk Edits",
     "No API required — Built-in API Access",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "1 credit token per image — Results Generation",
     "Priority customer support",
     "No monthly expiry — Credits never expire",
@@ -186,7 +187,7 @@ const PricingContent = () => {
     {
       question: "What file formats are supported?",
       answer:
-        "We support JPG, JPEG, PNG, and EPS formats. Our AI can process images of various sizes and generate comprehensive metadata including titles, descriptions, keywords, and alt text for better SEO and accessibility.",
+        "We support JPG, JPEG, PNG, EPS, MP4, and MOV formats. Our AI can process images of various sizes and generate comprehensive metadata including titles, descriptions, keywords, and alt text for better SEO and accessibility.",
     },
   ];
 
@@ -206,8 +207,10 @@ const PricingContent = () => {
   };
 
   // Free Plan Card Component
-  const FreePlanCard = () => (
-    <Card className="flex flex-col relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg">
+  const FreePlanCard = ({ className }: { className?: string }) => (
+    <Card
+      className={`flex flex-col relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg ${className}`}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-2xl">
           <Download className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -323,7 +326,7 @@ const PricingContent = () => {
       )}
 
       {/* Pricing Cards */}
-      <div className="container mx-auto px-4 -mt-10">
+      <div className="container mx-auto px-4 -mt-10 mb-10" id="premium">
         <Tabs
           value={activeTab}
           onValueChange={(value) =>
@@ -338,17 +341,19 @@ const PricingContent = () => {
               {/* Monthly Plan */}
               {monthlyPlan && (
                 <Card className="flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg">
-                  <CardHeader className="pb-2">
+                  {monthlyPlan.discountPercent > 0 && (
+                    <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
+                      {monthlyPlan.discountPercent}% OFF
+                    </Badge>
+                  )}
+                  <CardHeader className="pb-2 mt-6">
                     <CardTitle className="flex items-center gap-2 text-2xl">
                       <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                       Monthly Premium
                     </CardTitle>
-                    <CardDescription>Perfect for regular use</CardDescription>
-                    {monthlyPlan.discountPercent > 0 && (
-                      <Badge className="absolute right-4 top-4 bg-green-500 hover:bg-green-600">
-                        {monthlyPlan.discountPercent}% OFF
-                      </Badge>
-                    )}
+                    <CardDescription>
+                      Perfect for getting experience
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
@@ -415,33 +420,23 @@ const PricingContent = () => {
                       Yearly Premium
                     </CardTitle>
                     <CardDescription>
-                      Best value for committed users
+                      Best value for professional users
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 flex-1">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="text-4xl font-bold text-foreground">
-                          ৳
-                          {Math.round(
-                            yearlyPlan.discountPrice
-                              ? yearlyPlan.discountPrice / 12
-                              : calculateDiscountedPrice(
-                                  yearlyPlan.basePrice,
-                                  yearlyPlan.discountPercent
-                                ) / 12
-                          )}
+                          ৳{yearlyPlan.discountPrice}
                         </p>
                         {yearlyPlan.discountPercent > 0 && (
                           <p className="text-sm text-muted-foreground line-through">
-                            ৳{Math.round(yearlyPlan.basePrice / 12)}
+                            ৳{yearlyPlan.basePrice}
                           </p>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        per month, billed annually
-                      </p>
-                      <p className="text-xs font-medium text-green-500">
+                      <p className="text-sm text-muted-foreground">annually</p>
+                      {/* <p className="text-xs font-medium text-green-500">
                         Save ৳
                         {yearlyPlan.discountPrice
                           ? yearlyPlan.basePrice - yearlyPlan.discountPrice
@@ -451,7 +446,7 @@ const PricingContent = () => {
                               yearlyPlan.discountPercent
                             )}{" "}
                         per year
-                      </p>
+                      </p> */}
                     </div>
 
                     <Separator className="my-4" />
@@ -474,14 +469,7 @@ const PricingContent = () => {
                       }
                     >
                       <Star className="mr-2 h-4 w-4" />
-                      Get Yearly - ৳
-                      {yearlyPlan.discountPrice
-                        ? yearlyPlan.discountPrice
-                        : calculateDiscountedPrice(
-                            yearlyPlan.basePrice,
-                            yearlyPlan.discountPercent
-                          )}
-                      /year
+                      Get Yearly
                     </Button>
                   </CardFooter>
                 </Card>
@@ -492,169 +480,163 @@ const PricingContent = () => {
           <TabsContent value="credit" className="mt-0">
             <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
               {/* Free Plan */}
-              <div className="transform transition-all duration-300 hover:scale-105">
-                <FreePlanCard />
-              </div>
+              <FreePlanCard className="transform transition-all duration-300 hover:scale-105" />
 
               {/* Basic Credit Plan */}
               {basicCreditPlan && (
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <Card className="flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-2xl">
-                        <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        Basic Plan
-                      </CardTitle>
-                      <CardDescription>
-                        Perfect for occasional use
-                      </CardDescription>
-                      {basicCreditPlan.discountPercent > 0 && (
-                        <Badge className="absolute right-4 top-4 bg-green-500 hover:bg-green-600">
-                          {basicCreditPlan.discountPercent}% OFF
-                        </Badge>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4 flex-1">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-4xl font-bold text-foreground">
-                            ৳
-                            {basicCreditPlan.discountPrice
-                              ? basicCreditPlan.discountPrice
-                              : calculateDiscountedPrice(
-                                  basicCreditPlan.basePrice,
-                                  basicCreditPlan.discountPercent
-                                )}
-                          </p>
-                          {basicCreditPlan.discountPercent > 0 && (
-                            <p className="text-sm text-muted-foreground line-through">
-                              ৳{basicCreditPlan.basePrice}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {basicCreditPlan.credit} credits
+                <Card className="transform transition-all duration-300 hover:scale-105 flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-2xl">
+                      <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      Basic Plan
+                    </CardTitle>
+                    <CardDescription>
+                      Perfect for occasional use
+                    </CardDescription>
+                    {basicCreditPlan.discountPercent > 0 && (
+                      <Badge className="absolute right-4 top-4 bg-green-500 hover:bg-green-600">
+                        {basicCreditPlan.discountPercent}% OFF
+                      </Badge>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4 flex-1">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-4xl font-bold text-foreground">
+                          ৳
+                          {basicCreditPlan.discountPrice
+                            ? basicCreditPlan.discountPrice
+                            : calculateDiscountedPrice(
+                                basicCreditPlan.basePrice,
+                                basicCreditPlan.discountPercent
+                              )}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Sparkles className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium">
-                            ৳
-                            {(
-                              basicCreditPlan.basePrice / basicCreditPlan.credit
-                            ).toFixed(3)}{" "}
-                            per credit
-                          </span>
+                        {basicCreditPlan.discountPercent > 0 && (
+                          <p className="text-sm text-muted-foreground line-through">
+                            ৳{basicCreditPlan.basePrice}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {basicCreditPlan.credit} credits
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Sparkles className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          ৳
+                          {(
+                            basicCreditPlan.basePrice / basicCreditPlan.credit
+                          ).toFixed(3)}{" "}
+                          per credit
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    <div className="space-y-3">
+                      {creditFeatures.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <span className="text-sm">{feature}</span>
                         </div>
-                      </div>
-
-                      <Separator className="my-4" />
-
-                      <div className="space-y-3">
-                        {creditFeatures.map((feature, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                            <span className="text-sm">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        variant="outline"
-                        className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                        size="lg"
-                        onClick={() =>
-                          handlePurchase(basicCreditPlan._id, "credit")
-                        }
-                      >
-                        <Zap className="mr-2 h-4 w-4" />
-                        Buy Basic Credits
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      variant="outline"
+                      className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                      size="lg"
+                      onClick={() =>
+                        handlePurchase(basicCreditPlan._id, "credit")
+                      }
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      Buy Basic Credits
+                    </Button>
+                  </CardFooter>
+                </Card>
               )}
 
               {/* Pro Credit Plan */}
               {proCreditPlan && (
-                <div className="transform transition-all duration-300 hover:scale-105">
-                  <Card className="flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 shadow-md transition-all hover:shadow-lg">
-                    <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                      Best Value
-                    </div>
-                    {proCreditPlan.discountPercent > 0 && (
-                      <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                        {proCreditPlan.discountPercent}% OFF
-                      </Badge>
-                    )}
+                <Card className="transform duration-300 hover:scale-105 flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 shadow-md transition-all hover:shadow-lg">
+                  <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
+                    Best Value
+                  </div>
+                  {proCreditPlan.discountPercent > 0 && (
+                    <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
+                      {proCreditPlan.discountPercent}% OFF
+                    </Badge>
+                  )}
 
-                    <CardHeader className="mt-6 pb-2">
-                      <CardTitle className="flex items-center gap-2 text-2xl">
-                        <Star className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        Pro Plan
-                      </CardTitle>
-                      <CardDescription>
-                        Best value for heavy users
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 flex-1">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-4xl font-bold text-foreground">
-                            ৳
-                            {proCreditPlan.discountPrice
-                              ? proCreditPlan.discountPrice
-                              : calculateDiscountedPrice(
-                                  proCreditPlan.basePrice,
-                                  proCreditPlan.discountPercent
-                                )}
-                          </p>
-                          {proCreditPlan.discountPercent > 0 && (
-                            <p className="text-sm text-muted-foreground line-through">
-                              ৳{proCreditPlan.basePrice}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {proCreditPlan.credit} credits
+                  <CardHeader className="mt-6 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-2xl">
+                      <Star className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      Pro Plan
+                    </CardTitle>
+                    <CardDescription>
+                      Best value for heavy users
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 flex-1">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-4xl font-bold text-foreground">
+                          ৳
+                          {proCreditPlan.discountPrice
+                            ? proCreditPlan.discountPrice
+                            : calculateDiscountedPrice(
+                                proCreditPlan.basePrice,
+                                proCreditPlan.discountPercent
+                              )}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Sparkles className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium">
-                            ৳
-                            {(
-                              proCreditPlan.basePrice / proCreditPlan.credit
-                            ).toFixed(3)}{" "}
-                            per credit
-                          </span>
+                        {proCreditPlan.discountPercent > 0 && (
+                          <p className="text-sm text-muted-foreground line-through">
+                            ৳{proCreditPlan.basePrice}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {proCreditPlan.credit} credits
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Sparkles className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          ৳
+                          {(
+                            proCreditPlan.basePrice / proCreditPlan.credit
+                          ).toFixed(3)}{" "}
+                          per credit
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator className="my-4" />
+
+                    <div className="space-y-3">
+                      {creditFeatures.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <span className="text-sm">{feature}</span>
                         </div>
-                      </div>
-
-                      <Separator className="my-4" />
-
-                      <div className="space-y-3">
-                        {creditFeatures.map((feature, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                            <span className="text-sm">{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
-                        size="lg"
-                        onClick={() =>
-                          handlePurchase(proCreditPlan._id, "credit")
-                        }
-                      >
-                        <Star className="mr-2 h-4 w-4" />
-                        Buy Pro Credits
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
+                      size="lg"
+                      onClick={() =>
+                        handlePurchase(proCreditPlan._id, "credit")
+                      }
+                    >
+                      <Star className="mr-2 h-4 w-4" />
+                      Buy Pro Credits
+                    </Button>
+                  </CardFooter>
+                </Card>
               )}
             </div>
           </TabsContent>
