@@ -790,37 +790,7 @@ function BulkFeatureCard({
   );
 }
 
-function StepCard({
-  number,
-  title,
-  description,
-  icon: Icon,
-  delay = 0,
-}: {
-  number: string;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  delay?: number;
-}) {
-  return (
-    <div
-      className="text-center relative animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-6 shadow-lg shadow-violet-500/20 relative z-10 transform hover:scale-110 transition-all duration-300">
-        {number}
-      </div>
-      <div className="bg-card rounded-xl p-6 border border-violet-100 dark:border-violet-900 shadow-sm hover:shadow-lg transition-all duration-500 -mt-8 pt-10 transform hover:scale-105">
-        <div className="w-12 h-12 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:scale-110">
-          <Icon className="w-6 h-6 text-violet-600 dark:text-violet-400" />
-        </div>
-        <h3 className="text-xl font-semibold mb-2 text-foreground">{title}</h3>
-        <p className="text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
+
 
 function SettingItem({
   title,
@@ -882,105 +852,6 @@ function TestimonialCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function QuickSetupCard({
-  step,
-  title,
-  description,
-  image,
-  delay = 0,
-  isReversed = false,
-}: {
-  step: string;
-  title: string;
-  description: string;
-  image: string;
-  delay?: number;
-  isReversed?: boolean;
-}) {
-  return (
-    <div
-      className={`flex flex-col ${
-        isReversed ? "lg:flex-row-reverse" : "lg:flex-row"
-      } items-center gap-8 lg:gap-12 animate-fade-in-up`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex-1 space-y-6">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold shadow-lg shadow-violet-500/20 transform hover:scale-110 transition-all duration-300">
-            {step}
-          </div>
-          <h3 className="text-3xl font-bold text-foreground">{title}</h3>
-        </div>
-        <p className="text-xl text-muted-foreground leading-relaxed">
-          {description}
-        </p>
-      </div>
-      <div className="flex-1 max-w-2xl">
-        <div className="relative group">
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-indigo-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 transform group-hover:scale-110"></div>
-          <div className="relative bg-card rounded-3xl border border-violet-100 dark:border-violet-900 overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
-            <Image
-              src={image || "/placeholder.svg"}
-              alt={`Step ${step}: ${title}`}
-              width={800}
-              height={500}
-              className="w-full h-auto object-cover"
-              priority={step === "1"}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuickSetupMobileCard({
-  step,
-  title,
-  description,
-  image,
-  delay = 0,
-}: {
-  step: string;
-  title: string;
-  description: string;
-  image: string;
-  delay?: number;
-}) {
-  return (
-    <div
-      className="flex-shrink-0 w-80 snap-center animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <Card className="h-full overflow-hidden border-violet-100 dark:border-violet-900 shadow-lg hover:shadow-xl transition-all duration-500">
-        <div className="relative">
-          <div className="absolute top-4 left-4 z-10">
-            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
-              {step}
-            </div>
-          </div>
-          <div className="aspect-video overflow-hidden">
-            <Image
-              src={image || "/placeholder.svg"}
-              alt={`Step ${step}: ${title}`}
-              width={400}
-              height={250}
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-              priority={step === "1"}
-            />
-          </div>
-        </div>
-        <CardContent className="p-6 space-y-3">
-          <h3 className="text-lg font-bold text-foreground">{title}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {description}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
   );
 }
 

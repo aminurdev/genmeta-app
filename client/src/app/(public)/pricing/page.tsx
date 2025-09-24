@@ -132,7 +132,7 @@ const PricingContent = () => {
     "Limited (10 Images day) — Batch Processing",
     "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Basic export options",
     "Limited Results",
   ];
@@ -141,7 +141,7 @@ const PricingContent = () => {
     "Unlimited — Batch Processing",
     "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Priority customer support",
     "Unlimited Results",
   ];
@@ -150,7 +150,7 @@ const PricingContent = () => {
     "Faster processing — Batch Processing",
     "Powerful Metadata Editor — Bulk Edits",
     "No API required — Built-in API Access",
-    "JPG, JPEG, PNG, EPS — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "1 credit token per image — Results Generation",
     "Priority customer support",
     "No monthly expiry — Credits never expire",
@@ -186,7 +186,7 @@ const PricingContent = () => {
     {
       question: "What file formats are supported?",
       answer:
-        "We support JPG, JPEG, PNG, and EPS formats. Our AI can process images of various sizes and generate comprehensive metadata including titles, descriptions, keywords, and alt text for better SEO and accessibility.",
+        "We support JPG, JPEG, PNG, EPS, MP4, and MOV formats. Our AI can process images of various sizes and generate comprehensive metadata including titles, descriptions, keywords, and alt text for better SEO and accessibility.",
     },
   ];
 

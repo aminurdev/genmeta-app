@@ -547,7 +547,7 @@ export default function Cart({ planId }: { planId: string }) {
                           "Unlimited — Batch Processing",
                           "Use Own API key — Gemini API Integration",
                           "Powerful Metadata Editor — Bulk Edits",
-                          "JPG, JPEG, PNG, EPS — Supported Formats",
+                          "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
                           "Priority customer support",
                           "Unlimited Results",
                         ]
@@ -555,7 +555,7 @@ export default function Cart({ planId }: { planId: string }) {
                           "Faster processing — Batch Processing",
                           "Powerful Metadata Editor — Bulk Edits",
                           "No API required — Built-in API Access",
-                          "JPG, JPEG, PNG, EPS — Supported Formats",
+                          "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
                           "1 credit token per image — Results Generation",
                           "Priority customer support",
                           "No monthly commitment",
