@@ -72,7 +72,6 @@ const configureGoogleStrategy = () => {
 
             if (needsUpdate) {
               await user.save();
-              console.log(`Google user updated: ${email}`);
             }
           }
 
