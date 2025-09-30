@@ -262,6 +262,7 @@ const resetDevice = asyncHandler(async (req, res) => {
   }
 
   appKey.deviceId = null;
+  appKey.allowedDevices = [];
   await appKey.save();
 
   return new ApiResponse(200, true, "Device ID reset successfully.").send(res);
@@ -487,6 +488,8 @@ const validateAppKey = asyncHandler(async (req, res) => {
   const deviceId = req.header("x-device-id");
   const { processCount } = req.body;
 
+  console.log("Hit validateAppKey");
+
   if (!key) {
     throw new ApiError(400, "API key is required in headers.");
   }
@@ -562,15 +565,24 @@ const validateAppKey = asyncHandler(async (req, res) => {
 
 const getAppKeyStats = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
+  const deviceId = req.headers["x-device-id"];
 
   if (!key) {
     throw new ApiError(400, "API key is required.");
+  }
+  if (!deviceId) {
+    throw new ApiError(400, "Device ID is required.");
   }
 
   const appKey = await AppKey.findOne({ key }).populate("userId", "name email");
 
   if (!appKey) {
     throw new ApiError(404, "API key not found.");
+  }
+
+  // 🔐 Enforce device check
+  if (appKey.deviceId !== deviceId) {
+    throw new ApiError(403, " Please log in.");
   }
 
   // Check if API key is valid and refresh daily credits if needed
@@ -586,6 +598,7 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
           Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
         )
       : null;
+
   const encryptedKey = await AiAPI.findOne();
   const aiApiKey =
     appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
