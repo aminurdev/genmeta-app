@@ -133,7 +133,7 @@ export default function AppKeyList() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 500);
+    }, 0);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
