@@ -466,7 +466,6 @@ const googleCallback = asyncHandler(async (req, res, next) => {
 
 // Email/Password Login
 const appUserLogin = asyncHandler(async (req, res) => {
-  const deviceId = req.headers["x-device-id"];
   const { email, password } = req.body;
 
   if (!email || !password)
@@ -480,7 +479,7 @@ const appUserLogin = asyncHandler(async (req, res) => {
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) throw new ApiError(401, "Invalid credentials");
 
-  const appKeyDoc = await findOrCreateAppKey(user, deviceId);
+  const appKeyDoc = await findOrCreateAppKey(user);
 
   return new ApiResponse(200, true, "Login successful", {
     user: {
@@ -495,10 +494,9 @@ const appUserLogin = asyncHandler(async (req, res) => {
 
 // Google verify
 const verifyGoogle = asyncHandler(async (req, res) => {
-  const deviceId = req.headers["x-device-id"];
   const user = req.user;
 
-  const appKeyDoc = await findOrCreateAppKey(user, deviceId);
+  const appKeyDoc = await findOrCreateAppKey(user);
 
   return new ApiResponse(200, true, "Login successful", {
     user: {
@@ -512,7 +510,7 @@ const verifyGoogle = asyncHandler(async (req, res) => {
 });
 
 // Util to create or fetch API key
-const findOrCreateAppKey = async (user, deviceId) => {
+const findOrCreateAppKey = async (user) => {
   let appKey = await AppKey.findOne({ userId: user._id });
 
   if (!appKey) {
@@ -526,30 +524,9 @@ const findOrCreateAppKey = async (user, deviceId) => {
       plan,
       credit: 100,
       lastCreditRefresh: new Date().toISOString().split("T")[0],
-      deviceId,
-      allowedDevices: deviceId ? [deviceId] : [],
     });
-  } else {
-    if (deviceId) {
-      const alreadyAllowed = appKey.allowedDevices.includes(deviceId);
 
-      if (!alreadyAllowed) {
-        if (appKey.allowedDevices.length >= 2) {
-          // Reject login if max device limit reached
-          throw new ApiError(
-            403,
-            "This account is already in use on 2 devices. Contact support."
-          );
-        }
-
-        // ✅ Allow new device
-        appKey.allowedDevices.push(deviceId);
-      }
-
-      // Always update current active device
-      appKey.deviceId = deviceId;
-      await appKey.save();
-    }
+    await appKey.save();
   }
 
   return appKey;

@@ -40,7 +40,6 @@ const appKeySchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
-  deviceId: String,
   allowedDevices: {
     type: [String],
     default: [],

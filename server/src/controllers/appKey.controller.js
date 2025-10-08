@@ -261,7 +261,6 @@ const resetDevice = asyncHandler(async (req, res) => {
     throw new ApiError(404, "API key not found.");
   }
 
-  appKey.deviceId = null;
   appKey.allowedDevices = [];
   await appKey.save();
 
@@ -488,8 +487,6 @@ const validateAppKey = asyncHandler(async (req, res) => {
   const deviceId = req.header("x-device-id");
   const { processCount } = req.body;
 
-  console.log("Hit validateAppKey");
-
   if (!key) {
     throw new ApiError(400, "API key is required in headers.");
   }
@@ -521,12 +518,17 @@ const validateAppKey = asyncHandler(async (req, res) => {
     throw new ApiError(403, "API key is not valid or active.");
   }
 
-  // Set deviceId if not already set
-  if (!appKey.deviceId) {
-    appKey.deviceId = deviceId;
+  // Device authorization logic (allow max 2 devices)
+  if (!appKey.allowedDevices.includes(deviceId)) {
+    if (appKey.allowedDevices.length >= 2) {
+      throw new ApiError(
+        403,
+        "This account is already used on allowed devices. Please contact support."
+      );
+    }
+
+    appKey.allowedDevices.push(deviceId);
     await appKey.save();
-  } else if (appKey.deviceId !== deviceId) {
-    throw new ApiError(403, "Account is already used on another device.");
   }
 
   // Check if can process the request
@@ -558,31 +560,22 @@ const validateAppKey = asyncHandler(async (req, res) => {
     expiresAt: appKey.plan.type === "free" ? null : appKey.expiresAt,
     expiresIn,
     aiApiSecret,
-    deviceId: appKey.deviceId,
+    deviceId: deviceId,
     remainingCredit: appKey.credit,
   }).send(res);
 });
 
 const getAppKeyStats = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
-  const deviceId = req.headers["x-device-id"];
 
   if (!key) {
-    throw new ApiError(400, "API key is required.");
-  }
-  if (!deviceId) {
-    throw new ApiError(400, "Device ID is required.");
+    throw new ApiError(400, "Key is required.");
   }
 
   const appKey = await AppKey.findOne({ key }).populate("userId", "name email");
 
   if (!appKey) {
-    throw new ApiError(404, "API key not found.");
-  }
-
-  // 🔐 Enforce device check
-  if (appKey.deviceId !== deviceId) {
-    throw new ApiError(403, " Please log in.");
+    throw new ApiError(404, "Key not found.");
   }
 
   // Check if API key is valid and refresh daily credits if needed
@@ -624,15 +617,10 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
 
 export const processApiUsage = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
-  const deviceId = req.header("x-device-id");
   const { processCount } = req.body;
 
   if (!key) {
     throw new ApiError(400, "API key is required in headers.");
-  }
-
-  if (!deviceId) {
-    throw new ApiError(400, "Device ID is required in headers.");
   }
 
   const count = parseInt(processCount);
