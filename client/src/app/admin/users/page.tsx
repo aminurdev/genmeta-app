@@ -150,7 +150,6 @@ export default function UsersPage() {
       page: 1,
       search: searchTerm,
       role: roleFilter === "all" ? undefined : roleFilter,
-      // Add status filter to your API if supported
     });
   };
 
@@ -171,7 +170,6 @@ export default function UsersPage() {
       role: roleFilter === "all" ? undefined : roleFilter,
     });
 
-    // Refresh stats
     try {
       const data = await getUserStats();
       if (data.success) {
@@ -184,44 +182,14 @@ export default function UsersPage() {
     setIsRefreshing(false);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800";
-      case "inactive":
-        return "bg-muted text-muted-foreground border-border";
-      case "suspended":
-        return "bg-destructive/10 text-destructive border-destructive/20";
-      default:
-        return "bg-primary/10 text-primary border-primary/20";
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role.toLowerCase()) {
-      case "admin":
-        return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800";
-      case "user":
-        return "bg-primary/10 text-primary border-primary/20";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
-
   const getVerificationBadge = (isVerified: boolean) => {
     return isVerified ? (
-      <Badge
-        variant="outline"
-        className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 flex items-center gap-1 transition-colors"
-      >
+      <Badge variant="outline" className="gap-1">
         <CheckCircle2 className="h-3 w-3" />
         Verified
       </Badge>
     ) : (
-      <Badge
-        variant="outline"
-        className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800 flex items-center gap-1 transition-colors"
-      >
+      <Badge variant="secondary" className="gap-1">
         <XCircle className="h-3 w-3" />
         Unverified
       </Badge>
@@ -240,7 +208,6 @@ export default function UsersPage() {
         `${baseApi}/admin/users/delete/${userToDelete.id}`,
         {
           method: "DELETE",
-
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -250,7 +217,6 @@ export default function UsersPage() {
 
       if (data.success) {
         toast.success("User and all associated data deleted successfully");
-        // Refresh the users list
         await fetchUsers({
           page: currentPage,
           search: searchTerm,
@@ -270,7 +236,7 @@ export default function UsersPage() {
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-destructive">
               Error Loading Users
@@ -280,12 +246,7 @@ export default function UsersPage() {
             <p className="text-muted-foreground text-center">{error.message}</p>
           </CardContent>
           <CardFooter className="flex justify-center">
-            <Button
-              onClick={() => fetchUsers()}
-              className="transition-all hover:scale-105"
-            >
-              Try Again
-            </Button>
+            <Button onClick={() => fetchUsers()}>Try Again</Button>
           </CardFooter>
         </Card>
       </div>
@@ -293,18 +254,18 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col">
       <div className="flex-1 space-y-6 p-4 lg:p-6 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <h2 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">
               User Management
             </h2>
             <p className="text-muted-foreground">
               Manage and monitor your platform users
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -313,10 +274,9 @@ export default function UsersPage() {
                     size="icon"
                     onClick={refreshData}
                     disabled={isRefreshing}
-                    className="transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
                   >
                     <RefreshCw
-                      className={`h-4 w-4 transition-transform duration-200 ${
+                      className={`h-4 w-4 ${
                         isRefreshing ? "animate-spin" : ""
                       }`}
                     />
@@ -330,7 +290,7 @@ export default function UsersPage() {
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="transition-all duration-200 hover:scale-105 hover:shadow-md">
+                <Button>
                   <UserPlus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add User</span>
                   <span className="sm:hidden">Add</span>
@@ -384,43 +344,39 @@ export default function UsersPage() {
           <LoginProviderStats stats={stats} />
         </div>
 
-        <Card className="shadow-sm hover:shadow-md transition-all duration-300">
+        <Card>
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-xl font-semibold">Users</CardTitle>
+              <div>
+                <CardTitle className="text-xl">Users</CardTitle>
                 <CardDescription>
                   Manage your platform users, their roles, and permissions.
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="transition-all duration-200 hover:scale-105 hover:shadow-md bg-transparent"
-              >
+              <Button variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Export Users</span>
                 <span className="sm:hidden">Export</span>
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                 <div className="relative flex-1 lg:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground transform -translate-y-1/2" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
                   <Input
                     type="search"
-                    placeholder="Search users by name or email..."
-                    className="pl-9 transition-all duration-200 focus:shadow-md"
+                    placeholder="Search users..."
+                    className="pl-9"
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Select value={roleFilter} onValueChange={handleRoleFilter}>
-                    <SelectTrigger className="w-full sm:w-[160px] transition-all duration-200 focus:shadow-md">
-                      <SelectValue placeholder="Filter by role" />
+                    <SelectTrigger className="w-full sm:w-[140px]">
+                      <SelectValue placeholder="Role" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Roles</SelectItem>
@@ -432,8 +388,8 @@ export default function UsersPage() {
                     value={statusFilter}
                     onValueChange={handleStatusFilter}
                   >
-                    <SelectTrigger className="w-full sm:w-[160px] transition-all duration-200 focus:shadow-md">
-                      <SelectValue placeholder="Filter by status" />
+                    <SelectTrigger className="w-full sm:w-[140px]">
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
@@ -446,9 +402,8 @@ export default function UsersPage() {
                     roleFilter !== "all" ||
                     statusFilter !== "all") && (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="transition-all duration-200 hover:scale-105 bg-transparent"
                       onClick={() => {
                         setSearchTerm("");
                         setRoleFilter("all");
@@ -456,8 +411,7 @@ export default function UsersPage() {
                         fetchUsers();
                       }}
                     >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Reset filters
+                      Reset
                     </Button>
                   )}
                 </div>
@@ -467,13 +421,10 @@ export default function UsersPage() {
                 statusFilter !== "all") && (
                 <div className="flex flex-wrap gap-2">
                   {searchTerm && (
-                    <Badge
-                      variant="secondary"
-                      className="gap-1 transition-all hover:scale-105"
-                    >
+                    <Badge variant="secondary" className="gap-1">
                       Search: {searchTerm}
                       <XCircle
-                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                        className="h-3 w-3 cursor-pointer"
                         onClick={() => {
                           setSearchTerm("");
                           fetchUsers({
@@ -485,13 +436,10 @@ export default function UsersPage() {
                     </Badge>
                   )}
                   {roleFilter !== "all" && (
-                    <Badge
-                      variant="secondary"
-                      className="gap-1 transition-all hover:scale-105"
-                    >
+                    <Badge variant="secondary" className="gap-1">
                       Role: {roleFilter}
                       <XCircle
-                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                        className="h-3 w-3 cursor-pointer"
                         onClick={() => {
                           setRoleFilter("all");
                           fetchUsers({
@@ -503,13 +451,10 @@ export default function UsersPage() {
                     </Badge>
                   )}
                   {statusFilter !== "all" && (
-                    <Badge
-                      variant="secondary"
-                      className="gap-1 transition-all hover:scale-105"
-                    >
+                    <Badge variant="secondary" className="gap-1">
                       Status: {statusFilter}
                       <XCircle
-                        className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                        className="h-3 w-3 cursor-pointer"
                         onClick={() => {
                           setStatusFilter("all");
                           fetchUsers({
@@ -525,25 +470,21 @@ export default function UsersPage() {
               )}
             </div>
 
-            <div className="rounded-lg border overflow-hidden">
+            <div className="rounded-md border">
               <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow className="hover:bg-muted/70 transition-colors">
-                    <TableHead className="w-[80px]">Avatar</TableHead>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px]">Avatar</TableHead>
                     <TableHead>
                       <div className="flex items-center gap-1">
                         User
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-1 h-8 p-0 hover:bg-muted transition-colors"
-                        >
+                        <Button variant="ghost" size="sm" className="h-8 p-0">
                           <ArrowUpDown className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableHead>
                     <TableHead>Role</TableHead>
-                    <TableHead>Verify Status</TableHead>
+                    <TableHead>Verified</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Usage</TableHead>
@@ -554,8 +495,8 @@ export default function UsersPage() {
                 <TableBody>
                   {loading ? (
                     <>
-                      {Array.from({ length: 8 }).map((_, index) => (
-                        <TableRow key={index} className="animate-pulse">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <TableRow key={index}>
                           <TableCell>
                             <Skeleton className="h-9 w-9 rounded-full" />
                           </TableCell>
@@ -566,50 +507,39 @@ export default function UsersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Skeleton className="h-6 w-[70px] rounded-full" />
+                            <Skeleton className="h-5 w-[60px]" />
                           </TableCell>
                           <TableCell>
-                            <Skeleton className="h-6 w-[90px] rounded-full" />
+                            <Skeleton className="h-5 w-[80px]" />
                           </TableCell>
                           <TableCell>
-                            <Skeleton className="h-6 w-[80px] rounded-full" />
+                            <Skeleton className="h-5 w-[70px]" />
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-2">
-                              <Skeleton className="h-4 w-[100px]" />
-                              <Skeleton className="h-3 w-[80px]" />
-                            </div>
+                            <Skeleton className="h-4 w-[80px]" />
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-2">
-                              <Skeleton className="h-4 w-[90px]" />
-                              <Skeleton className="h-3 w-[70px]" />
-                            </div>
+                            <Skeleton className="h-4 w-[70px]" />
                           </TableCell>
                           <TableCell>
                             <Skeleton className="h-4 w-[90px]" />
                           </TableCell>
                           <TableCell>
-                            <div className="flex justify-end">
-                              <Skeleton className="h-8 w-8 rounded" />
-                            </div>
+                            <Skeleton className="h-8 w-8" />
                           </TableCell>
                         </TableRow>
                       ))}
                     </>
                   ) : users.length > 0 ? (
                     users.map((user) => (
-                      <TableRow
-                        key={user.email}
-                        className="hover:bg-muted/50 transition-colors duration-200"
-                      >
+                      <TableRow key={user.email}>
                         <TableCell>
-                          <Avatar className="h-9 w-9 border transition-all hover:scale-110">
+                          <Avatar className="h-9 w-9">
                             <AvatarImage
                               src={`https://avatar.vercel.sh/${user.email}`}
                               alt={user.name}
                             />
-                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                            <AvatarFallback>
                               {user.name
                                 .split(" ")
                                 .map((n) => n[0])
@@ -619,21 +549,14 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <p className="font-medium text-foreground">
-                              {user.name}
-                            </p>
+                            <p className="font-medium">{user.name}</p>
                             <p className="text-sm text-muted-foreground">
                               {user.email}
                             </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`capitalize transition-colors ${getRoleColor(
-                              user.role
-                            )}`}
-                          >
+                          <Badge variant="outline" className="capitalize">
                             {user.role}
                           </Badge>
                         </TableCell>
@@ -641,49 +564,31 @@ export default function UsersPage() {
                           {getVerificationBadge(user.isVerified)}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`transition-colors ${getStatusColor(
-                              user.status
-                            )}`}
-                          >
-                            {user.status}
-                          </Badge>
+                          <Badge variant="secondary">{user.status}</Badge>
                         </TableCell>
-
                         <TableCell>
-                          <div className="flex items-center gap-1 text-muted-foreground">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Calendar className="h-3.5 w-3.5" />
-                            <span className="text-sm">
-                              {user.currentPlan?.name ??
-                                user.metadata?.hasActiveKey?.type ??
-                                "N/A"}
+                            {user.currentPlan?.name ??
+                              user.metadata?.hasActiveKey?.type ??
+                              "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm">
+                            <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="font-medium">
+                              {user.usage.totalProcess}
+                            </span>
+                            <span className="text-muted-foreground">
+                              /{user.usage.credit}
                             </span>
                           </div>
                         </TableCell>
-
                         <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-1">
-                              <Coins className="h-3.5 w-3.5 text-amber-500" />
-                              <span className="text-sm">
-                                <span className="font-medium text-foreground">
-                                  {user.usage.totalProcess}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  /{user.usage.credit}
-                                </span>
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-muted-foreground">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Calendar className="h-3.5 w-3.5" />
-                            <span className="text-sm">
-                              {format(new Date(user.createdAt), "MMM d, yyyy")}
-                            </span>
+                            {format(new Date(user.createdAt), "MMM d, yyyy")}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -692,7 +597,7 @@ export default function UsersPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 transition-all hover:scale-110"
+                                className="h-8 w-8 p-0"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Open menu</span>
@@ -732,20 +637,17 @@ export default function UsersPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="h-32 text-center">
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <Users className="h-12 w-12 text-muted-foreground/60" />
-                          <div className="space-y-1">
-                            <p className="text-muted-foreground font-medium">
-                              No users found.
-                            </p>
-                            <p className="text-sm text-muted-foreground/80">
-                              Try adjusting your search or filter criteria.
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Users className="h-10 w-10 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">No users found</p>
+                            <p className="text-sm text-muted-foreground">
+                              Try adjusting your filters
                             </p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="transition-all hover:scale-105 bg-transparent"
                             onClick={() => {
                               setSearchTerm("");
                               setRoleFilter("all");
@@ -763,30 +665,10 @@ export default function UsersPage() {
               </Table>
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-2">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="text-sm text-muted-foreground">
-                Showing{" "}
-                <strong className="text-foreground">{users.length}</strong> of{" "}
-                <strong className="text-foreground">
-                  {pagination.totalUsers}
-                </strong>{" "}
-                users
-                {searchTerm && (
-                  <span>
-                    {" "}
-                    matching &quot;
-                    <strong className="text-foreground">{searchTerm}</strong>
-                    &quot;
-                  </span>
-                )}
-                {roleFilter !== "all" && (
-                  <span>
-                    {" "}
-                    with role &quot;
-                    <strong className="text-foreground">{roleFilter}</strong>
-                    &quot;
-                  </span>
-                )}
+                Showing <strong>{users.length}</strong> of{" "}
+                <strong>{pagination.totalUsers}</strong> users
               </div>
               <PaginationView
                 currentPage={pagination.currentPage}
@@ -805,38 +687,28 @@ export default function UsersPage() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Delete User</DialogTitle>
-            <DialogDescription className="pt-4">
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <p className="text-destructive font-medium mb-2">
-                    ⚠️ Warning: This action cannot be undone
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    This will permanently delete all associated data.
-                  </p>
-                </div>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground pl-4">
-                  <li>User account and profile</li>
-                  <li>All associated images and data</li>
-                  <li>Usage history and statistics</li>
-                </ul>
-                <p className="font-medium text-foreground">
-                  Are you sure you want to delete user{" "}
-                  <span className="text-primary font-semibold">
-                    {userToDelete?.name}
-                  </span>
-                  ?
-                </p>
-              </div>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold">{userToDelete?.name}</span>? This
+              will permanently delete:
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+              <li>User account and profile</li>
+              <li>All associated images and data</li>
+              <li>Usage history and statistics</li>
+            </ul>
+            <p className="text-sm text-destructive font-medium">
+              This action cannot be undone.
+            </p>
+          </div>
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setUserToDelete(null)}
               disabled={isDeleting}
-              className="transition-all hover:scale-105"
             >
               Cancel
             </Button>
@@ -844,7 +716,6 @@ export default function UsersPage() {
               variant="destructive"
               onClick={handleDeleteUser}
               disabled={isDeleting}
-              className="transition-all hover:scale-105"
             >
               {isDeleting ? (
                 <>
@@ -854,7 +725,7 @@ export default function UsersPage() {
               ) : (
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete User
+                  Delete
                 </>
               )}
             </Button>
