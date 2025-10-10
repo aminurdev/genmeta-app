@@ -17,7 +17,6 @@ import {
   Star,
   Gift,
   Check,
-  Zap,
   Sparkles,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
@@ -42,7 +41,7 @@ import {
 } from "@/services/auth-services";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -434,14 +433,14 @@ export default function Cart({ planId }: { planId: string }) {
               <CardContent className="space-y-6">
                 {/* Plan Type Tabs */}
                 <div>
-                  <Label className="text-sm font-medium mb-3 block">
+                  {/* <Label className="text-sm font-medium mb-3 block">
                     Plan Type
-                  </Label>
+                  </Label> */}
                   <Tabs
                     value={selectedPlanType}
                     onValueChange={handlePlanTypeChange}
                   >
-                    <TabsList className="grid w-full grid-cols-2">
+                    {/* <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger
                         value="subscription"
                         className="flex items-center gap-2"
@@ -449,14 +448,14 @@ export default function Cart({ planId }: { planId: string }) {
                         <Sparkles className="h-4 w-4" />
                         Subscription
                       </TabsTrigger>
-                      <TabsTrigger
+                       <TabsTrigger
                         value="credit"
                         className="flex items-center gap-2"
                       >
                         <Zap className="h-4 w-4" />
                         Credits
-                      </TabsTrigger>
-                    </TabsList>
+                      </TabsTrigger> 
+                    </TabsList> */}
                   </Tabs>
                 </div>
 
