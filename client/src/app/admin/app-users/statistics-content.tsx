@@ -76,7 +76,7 @@ export default function StatisticsContent() {
 
   return (
     <div className="grid gap-6">
-      <div className="grid gap-4 grid-cols-3 md:grid-cols-6">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -89,41 +89,6 @@ export default function StatisticsContent() {
             <p className="text-xs text-muted-foreground">
               {statistics.activeKeys} active, {statistics.suspendedKeys}{" "}
               suspended
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <Key className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.activeKeys}</div>
-            <p className="text-xs text-muted-foreground">
-              {((statistics.activeKeys / statistics.totalKeys) * 100).toFixed(
-                1
-              )}
-              % of total Users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Suspended Users
-            </CardTitle>
-            <Key className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.suspendedKeys}</div>
-            <p className="text-xs text-muted-foreground">
-              {(
-                (statistics.suspendedKeys / statistics.totalKeys) *
-                100
-              ).toFixed(1)}
-              % of total Users
             </p>
           </CardContent>
         </Card>
@@ -185,55 +150,7 @@ export default function StatisticsContent() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>APP Users Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-primary"></div>
-                  <span>Active Users</span>
-                </div>
-                <span className="font-medium">{statistics.activeKeys}</span>
-              </div>
-              <Progress
-                value={(statistics.activeKeys / statistics.totalKeys) * 100}
-                className="h-2"
-              />
-              <p className="text-xs text-muted-foreground">
-                {((statistics.activeKeys / statistics.totalKeys) * 100).toFixed(
-                  1
-                )}
-                % of total users
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 rounded-full bg-destructive/70"></div>
-                  <span>Suspended Users</span>
-                </div>
-                <span className="font-medium">{statistics.suspendedKeys}</span>
-              </div>
-              <Progress
-                value={(statistics.suspendedKeys / statistics.totalKeys) * 100}
-                className="h-2 bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                {(
-                  (statistics.suspendedKeys / statistics.totalKeys) *
-                  100
-                ).toFixed(1)}
-                % of total users
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Plan Distribution</CardTitle>

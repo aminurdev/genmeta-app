@@ -329,6 +329,11 @@ export default function AppKeyList() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -722,12 +727,12 @@ export default function AppKeyList() {
             <TableHead>APP Key</TableHead>
             <TableHead>Plan</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Device Bound</TableHead>
-            <TableHead>Expires</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Processes</TableHead>
+            <TableHead className="text-center">Device Bound</TableHead>
+            <TableHead className="text-center">Expires</TableHead>
+            <TableHead className="text-center">Created</TableHead>
+            <TableHead className="text-center">Processes</TableHead>
             {appKeys.some((key) => key.credit !== undefined) && (
-              <TableHead>Credit</TableHead>
+              <TableHead className="text-center">Credit</TableHead>
             )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -769,7 +774,7 @@ export default function AppKeyList() {
                   {appKey.status}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="flex justify-center">
                 {(appKey.allowedDevices?.length ?? 0) > 0 ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
@@ -782,11 +787,19 @@ export default function AppKeyList() {
                   </div>
                 )}
               </TableCell>
-              <TableCell>{formatDate(appKey?.expiresAt || "")}</TableCell>
-              <TableCell>{formatDate(appKey.createdAt)}</TableCell>
-              <TableCell>{appKey.totalProcess}</TableCell>
+              <TableCell className="text-center">
+                {formatDate(appKey?.expiresAt || "")}
+              </TableCell>
+              <TableCell className="text-center">
+                {formatDate(appKey.createdAt)}
+              </TableCell>
+              <TableCell className="text-center">
+                {appKey.totalProcess}
+              </TableCell>
               {appKeys.some((key) => key.credit !== undefined) && (
-                <TableCell>{appKey.credit || 0}</TableCell>
+                <TableCell className="text-center">
+                  {appKey.credit || 0}
+                </TableCell>
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
