@@ -297,9 +297,11 @@ const PricingContent = () => {
               }
               className="w-full max-w-md mt-6"
             >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="subscription">Subscription</TabsTrigger>
-                <TabsTrigger value="credit">Credit Plans</TabsTrigger>
+              <TabsList className="flex w-full ">
+                <TabsTrigger className="w-full" value="subscription">
+                  Subscription
+                </TabsTrigger>
+                {/* <TabsTrigger value="credit">Credit Plans</TabsTrigger> */}
               </TabsList>
             </Tabs>
           </div>
