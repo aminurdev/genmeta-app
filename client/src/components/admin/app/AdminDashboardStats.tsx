@@ -156,7 +156,7 @@ export default function DashboardStats() {
   const processData = prepareChartData(stats.appKeys.monthlyProcessList);
 
   return (
-    <div className="container mx-auto space-y-6">
+    <div className=" space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button variant="outline" onClick={fetchDashboardStats}>
@@ -207,8 +207,8 @@ export default function DashboardStats() {
                 }
               >
                 {stats.revenue.growthPercentage !== 0
-                  ? `${Math.abs(
-                      stats.revenue.growthPercentage
+                  ? `${Math.abs(stats.revenue.growthPercentage).toFixed(
+                      2
                     )}% from last month`
                   : "No change from last month"}
               </span>
