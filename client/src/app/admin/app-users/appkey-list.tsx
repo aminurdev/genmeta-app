@@ -558,7 +558,7 @@ export default function AppKeyList() {
         key.expiresAt,
         key.createdAt,
         key.totalProcess.toString(),
-        key.deviceId ? "Yes" : "No",
+        key.allowedDevices.length > 0 ? "Yes" : "No",
       ];
       csvRows.push(row.map((value) => value?.toString() ?? "")); // Convert any undefined values to empty strings
     });
@@ -770,7 +770,7 @@ export default function AppKeyList() {
                 </Badge>
               </TableCell>
               <TableCell>
-                {appKey.deviceId ? (
+                {appKey.allowedDevices.length > 0 ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-xs text-muted-foreground">Yes</span>

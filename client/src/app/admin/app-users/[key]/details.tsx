@@ -98,7 +98,7 @@ interface AppKeyDetails {
   credit?: number | null;
   totalProcess: number;
   createdAt: string;
-  deviceId?: string | null;
+  allowedDevices: [string];
   monthlyUsage: Record<string, number>;
   isValid: boolean;
 }
@@ -702,7 +702,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Device Bound
               </div>
               <div className="col-span-2">
-                {appKeyDetails.deviceId ? (
+                {appKeyDetails.allowedDevices.length > 0 ? (
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                     Yes
                   </Badge>
@@ -742,7 +742,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             <Button
               variant="outline"
               onClick={resetDeviceId}
-              disabled={isResetting || !appKeyDetails.deviceId}
+              disabled={isResetting || !appKeyDetails.allowedDevices.length}
             >
               {isResetting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -57,8 +57,7 @@ export interface AppKeys {
   dailyProcess: Record<string, number>;
   lastCreditRefresh: string;
   createdAt: string;
-  __v: number;
-  deviceId: string;
+  allowedDevices: [string];
   expiresAt?: string;
   lastPlanChange: string;
   plan: {
