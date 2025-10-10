@@ -558,7 +558,7 @@ export default function AppKeyList() {
         key.expiresAt,
         key.createdAt,
         key.totalProcess.toString(),
-        key.allowedDevices.length > 0 ? "Yes" : "No",
+        (key.allowedDevices?.length ?? 0) > 0 ? "Yes" : "No",
       ];
       csvRows.push(row.map((value) => value?.toString() ?? "")); // Convert any undefined values to empty strings
     });
@@ -770,7 +770,7 @@ export default function AppKeyList() {
                 </Badge>
               </TableCell>
               <TableCell>
-                {appKey.allowedDevices.length > 0 ? (
+                {(appKey.allowedDevices?.length ?? 0) > 0 ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-xs text-muted-foreground">Yes</span>
@@ -1192,7 +1192,7 @@ export default function AppKeyList() {
                 required
               />
             </div>
-            <div className="grid gap-2">
+            <div className="hidden">
               <Label htmlFor="createPlan">Plan</Label>
               <Select value={createPlan} onValueChange={setCreatePlan}>
                 <SelectTrigger>
@@ -1200,56 +1200,8 @@ export default function AppKeyList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="free">Free Plan</SelectItem>
-                  <SelectItem value="credit">Credit Plan</SelectItem>
-                  <SelectItem value="subscription">
-                    Subscription Plan
-                  </SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {createPlan === "credit" && (
-              <div className="grid gap-2">
-                <Label htmlFor="initialCredit">Initial Credits</Label>
-                <Input
-                  id="initialCredit"
-                  type="number"
-                  min="1"
-                  defaultValue="100"
-                />
-              </div>
-            )}
-
-            {createPlan === "subscription" && (
-              <div className="grid gap-2">
-                <Label htmlFor="subscriptionPlanId">Subscription Plan ID</Label>
-                <Select defaultValue="premium_monthly">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subscription plan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="premium_monthly">
-                      Premium Monthly
-                    </SelectItem>
-                    <SelectItem value="premium_yearly">
-                      Premium Yearly
-                    </SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid gap-2">
-              <Label htmlFor="createExpiryDays">Expiry Days</Label>
-              <Input
-                id="createExpiryDays"
-                type="number"
-                min="1"
-                max="365"
-                value={createExpiryDays}
-                onChange={(e) => setCreateExpiryDays(e.target.value)}
-              />
             </div>
           </div>
           <DialogFooter>

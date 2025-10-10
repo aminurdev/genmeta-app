@@ -459,16 +459,9 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
       createdAt: user.createdAt,
     },
     appKey: {
-      id: appKey._id,
-      key: appKey.key,
-      plan: appKey.plan,
-      status: appKey.status,
-      credit: remainingCredit,
+      ...appKey.toObject(),
+      remainingCredit,
       isValid,
-      createdAt: appKey.createdAt,
-      expiresAt: appKey.expiresAt,
-      totalProcess: appKey.totalProcess,
-      lastPlanChange: appKey.lastPlanChange,
       monthlyUsage, // 👈 added here
     },
     payments: formattedPayments,

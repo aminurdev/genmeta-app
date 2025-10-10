@@ -72,6 +72,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import Link from "next/link";
 
 interface UserDetails {
   id: string;
@@ -98,7 +99,7 @@ interface AppKeyDetails {
   credit?: number | null;
   totalProcess: number;
   createdAt: string;
-  allowedDevices: [string];
+  allowedDevices?: [string];
   monthlyUsage: Record<string, number>;
   isValid: boolean;
 }
@@ -129,6 +130,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const [appKeyDetails, setAppKeyDetails] = useState<AppKeyDetails | null>(
     null
   );
+  console.log(appKeyDetails);
   const [payments, setPayments] = useState<Payment[]>([]);
 
   // Action states
@@ -213,14 +215,19 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Invalid Date";
+
     return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date(dateString));
+    }).format(date);
   };
 
   const getStatusColor = (status: string) => {
@@ -449,7 +456,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
       if (result.success) {
         toast("API key deleted successfully");
-        router.push("/api-keys");
+        router.push("/admin/app-users");
       } else {
         throw new Error(result.message || "Failed to delete API key");
       }
@@ -533,9 +540,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         <h3 className="text-lg font-medium">Error loading API key details</h3>
         <p className="text-muted-foreground mt-2 mb-4">{error}</p>
         <div className="flex gap-4">
-          <Button onClick={() => router.push("/api-keys")} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to API Keys
+          <Button variant="outline" asChild>
+            <Link href="/admin/app-users">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to APP Users
+            </Link>
           </Button>
           {appKey && (
             <Button onClick={() => fetchAppKeyDetails(appKey)}>
@@ -556,9 +565,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         <p className="text-muted-foreground mt-2 mb-4">
           The requested API key could not be found.
         </p>
-        <Button onClick={() => router.push("/api-keys")} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to API Keys
+        <Button variant="outline" asChild>
+          <Link href="/admin/app-users" className="text-center">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to APP Users
+          </Link>
         </Button>
       </div>
     );
@@ -568,12 +579,10 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     <div className=" py-6 space-y-6 ">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => router.push("/api-keys")}
-          >
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/admin/app-users">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-semibold">API Key Details</h1>
@@ -686,7 +695,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 </Badge>
               </div>
 
-              {appKeyDetails.plan.type === "credit" &&
+              {appKeyDetails.plan.type !== "subscription" &&
                 appKeyDetails.credit !== null && (
                   <>
                     <div className="font-medium text-muted-foreground">
@@ -702,7 +711,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Device Bound
               </div>
               <div className="col-span-2">
-                {appKeyDetails.allowedDevices.length > 0 ? (
+                {(appKeyDetails?.allowedDevices?.length ?? 0) > 0 ? (
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
                     Yes
                   </Badge>
@@ -742,7 +751,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             <Button
               variant="outline"
               onClick={resetDeviceId}
-              disabled={isResetting || !appKeyDetails.allowedDevices.length}
+              disabled={isResetting || !appKeyDetails.allowedDevices?.length}
             >
               {isResetting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -778,7 +787,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Reactivate
               </Button>
             )}
-            {appKeyDetails.plan.type === "credit" && (
+            {appKeyDetails.plan.type !== "subscription" && (
               <Button
                 variant="outline"
                 onClick={() => setAddCreditDialogOpen(true)}
@@ -972,7 +981,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={userDetails.name}
+                value={appKeyDetails.username}
                 disabled
                 className="bg-muted"
               />
@@ -992,17 +1001,19 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="expiryDays">Expiry Days</Label>
-              <Input
-                id="expiryDays"
-                type="number"
-                min="1"
-                max="365"
-                value={updateExpiryDays}
-                onChange={(e) => setUpdateExpiryDays(e.target.value)}
-              />
-            </div>
+            {updatePlan === "subscription" && (
+              <div className="grid gap-2">
+                <Label htmlFor="expiryDays">Expiry Days</Label>
+                <Input
+                  id="expiryDays"
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={updateExpiryDays}
+                  onChange={(e) => setUpdateExpiryDays(e.target.value)}
+                />
+              </div>
+            )}
             {updatePlan === "credit" && (
               <div className="grid gap-2">
                 <Label htmlFor="credit">Credit</Label>
