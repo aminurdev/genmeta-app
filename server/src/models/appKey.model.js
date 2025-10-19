@@ -90,7 +90,11 @@ appKeySchema.methods.refreshDailyCredits = function () {
   const today = new Date().toISOString().split("T")[0];
   const currentMonth = `${today.substring(0, 7)}`;
 
-  if (this.plan.type === "free" && this.lastCreditRefresh !== today) {
+  if (
+    this.plan.type === "free" &&
+    this.lastCreditRefresh !== today &&
+    this.credit < 10
+  ) {
     this.credit = 10;
     this.lastCreditRefresh = today;
 
