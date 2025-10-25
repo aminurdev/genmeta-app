@@ -610,43 +610,103 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
 
 export const processApiUsage = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
-  const { processCount } = req.body;
+  const { processCount, failedCount, failedErrors } = req.body;
 
-  if (!key) {
-    throw new ApiError(400, "API key is required in headers.");
-  }
-
-  const count = parseInt(processCount);
-  if (isNaN(count) || count < 1) {
-    throw new ApiError(400, "Valid process count is required.");
-  }
+  if (!key) throw new ApiError(400, "API key is required in headers.");
 
   const appKey = await AppKey.findOne({ key });
+  if (!appKey) throw new ApiError(404, "API key not found.");
 
-  if (!appKey) {
-    throw new ApiError(404, "API key not found.");
-  }
+  const count = parseInt(processCount) || 0;
+  const failed = parseInt(failedCount) || 0;
+  const errorMsg = failedErrors || "";
 
-  // Check if API key is valid before processing
+  // If key is invalid before processing
   if (!appKey.isValid()) {
+    if (failed > 0) {
+      await logFailedProcess(appKey, failed, errorMsg);
+    }
     throw new ApiError(403, "API key is not valid or active.");
   }
 
-  // Try using credit and updating process stats
-  try {
-    await appKey.useCredit(count);
-  } catch (error) {
-    throw new ApiError(429, error.message);
+  // Handle successful processing
+  if (count > 0) {
+    try {
+      await appKey.useCredit(count);
+    } catch (error) {
+      // If success fails due to insufficient credits etc.
+      await logFailedProcess(appKey, failed > 0 ? failed : 1, error.message);
+      throw new ApiError(429, error.message);
+    }
   }
 
-  return new ApiResponse(200, true, "Credits used and processing counted.", {
+  // If failedCount exists additionally (should not throw)
+  if (failed > 0) {
+    await logFailedProcess(appKey, failed, errorMsg);
+  }
+
+  return new ApiResponse(200, true, "Usage updated successfully", {
     plan: appKey.plan,
     remainingCredit: appKey.calculateCredit(),
     totalProcess: appKey.totalProcess,
     dailyProcess: Object.fromEntries(appKey.dailyProcess),
     monthlyProcess: Object.fromEntries(appKey.monthlyProcess),
+    totalFailedProcess: appKey.totalFailedProcess,
+    failedProcess: Object.fromEntries(appKey.failedProcess),
   }).send(res);
 });
+
+async function logFailedProcess(appKey, count, errorMessage) {
+  const now = new Date();
+  const dayKey = now.toISOString().split("T")[0];
+
+  // Init map if missing
+  if (!appKey.failedProcess) {
+    appKey.failedProcess = new Map();
+  }
+
+  let dayData = appKey.failedProcess.get(dayKey) || {
+    count: 0,
+    errorMessages: [],
+  };
+
+  // Increment count
+  dayData.count += count;
+  appKey.totalFailedProcess = (appKey.totalFailedProcess || 0) + count;
+
+  // Push errors
+  if (errorMessage.trim()) {
+    const errorList = errorMessage
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    dayData.errorMessages.push(...errorList);
+  }
+
+  appKey.failedProcess.set(dayKey, dayData);
+
+  cleanupFailedData(appKey); // ✅ remove old data
+
+  await appKey.save();
+}
+
+function cleanupFailedData(appKey) {
+  const now = new Date();
+  const recentDays = new Set();
+
+  for (let i = 0; i < 3; i++) {
+    const date = new Date();
+    date.setDate(now.getDate() - i);
+    recentDays.add(date.toISOString().split("T")[0]);
+  }
+
+  for (const key of appKey.failedProcess.keys()) {
+    if (!recentDays.has(key)) {
+      appKey.failedProcess.delete(key);
+    }
+  }
+}
 
 export {
   createAppKey,

@@ -42,5 +42,6 @@ router.get(
 router.post("/appkey/validate", validateAppKey);
 router.get("/appkey/stats", getAppKeyStats);
 router.post("/appkey/uses", processApiUsage);
+router.post("/appkey/usage", processApiUsage);
 
 export default router;

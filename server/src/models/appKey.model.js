@@ -71,7 +71,7 @@ const appKeySchema = new mongoose.Schema({
   lastCreditRefresh: {
     type: String,
   },
-  // New fields for better tracking
+
   lastPlanChange: {
     type: Date,
     default: Date.now,
@@ -83,6 +83,19 @@ const appKeySchema = new mongoose.Schema({
       reason: String,
     },
   ],
+  // ✅ NEW failure tracking fields
+  failedProcess: {
+    type: Map,
+    of: {
+      count: { type: Number, default: 0 },
+      errorMessages: { type: [String], default: [] },
+    },
+    default: {},
+  },
+  totalFailedProcess: {
+    type: Number,
+    default: 0,
+  },
 });
 
 // Enhanced refresh daily credits for free plan
