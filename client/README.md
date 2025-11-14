@@ -100,8 +100,6 @@ Create a `.env.local` file in the client directory with:
 # API Configuration
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
 
-# Facebook Meta Pixel (optional)
-NEXT_PUBLIC_FACEBOOK_PIXEL_ID=your_facebook_pixel_id
 
 # Google Tag Manager (optional)
 NEXT_PUBLIC_GTM_ID=your_gtm_id

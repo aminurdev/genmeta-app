@@ -9,15 +9,8 @@ import {
   ChevronRight,
   X,
   CheckCircle,
-  ChevronDown,
-  Shield,
   CreditCard,
-  Percent,
-  Clock,
-  Star,
-  Gift,
   Check,
-  Sparkles,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import type { PricingPlan } from "@/lib/actions";
@@ -26,14 +19,12 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import {
   getAccessToken,
   getCurrentUser,
@@ -41,7 +32,6 @@ import {
 } from "@/services/auth-services";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Tabs } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -49,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+// import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PromoCode {
   code: string;
@@ -70,26 +61,10 @@ const paymentMethods: PaymentMethod[] = [
   {
     id: "bkash",
     name: "bKash",
-    description: "Bangladesh's leading mobile financial service",
+    description: "Local payment method",
     logo: "/bkash-logo.png",
     available: true,
   },
-  // {
-  //   id: "nagad",
-  //   name: "Nagad",
-  //   description: "Digital financial service",
-  //   logo: "/nagad-logo.png",
-  //   available: false,
-  //   comingSoon: true,
-  // },
-  // {
-  //   id: "rocket",
-  //   name: "Rocket",
-  //   description: "Mobile financial service",
-  //   logo: "/rocket-logo.png",
-  //   available: false,
-  //   comingSoon: true,
-  // },
 ];
 
 export default function Cart({ planId }: { planId: string }) {
@@ -99,15 +74,13 @@ export default function Cart({ planId }: { planId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Plan customization states
-  const [allPlans, setAllPlans] = useState<{
-    subscriptionPlans: PricingPlan[];
-    creditPlans: PricingPlan[];
-  }>({ subscriptionPlans: [], creditPlans: [] });
+  // Plan selection states
+  const [subscriptionPlans, setSubscriptionPlans] = useState<PricingPlan[]>([]);
+  const [creditPlans, setCreditPlans] = useState<PricingPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [selectedPlanType, setSelectedPlanType] = useState<
     "subscription" | "credit"
   >("subscription");
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
 
   // Payment method state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("bkash");
@@ -117,10 +90,9 @@ export default function Cart({ planId }: { planId: string }) {
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [validPromo, setValidPromo] = useState<PromoCode | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
-  const [isPromoExpanded, setIsPromoExpanded] = useState(false);
 
   useEffect(() => {
-    const fetchAllPlans = async () => {
+    const fetchPlans = async () => {
       try {
         setIsLoading(true);
         const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -128,24 +100,26 @@ export default function Cart({ planId }: { planId: string }) {
         const result = await response.json();
 
         if (result.success && result.data) {
-          const { subscriptionPlans, creditPlans } = result.data;
-          setAllPlans({ subscriptionPlans, creditPlans });
+          const { subscriptionPlans: subs, creditPlans: credits } = result.data;
+          setSubscriptionPlans(subs as PricingPlan[]);
+          setCreditPlans(credits as PricingPlan[]);
 
           // Set initial plan if planId is provided
           if (planId) {
-            const foundPlan = [...subscriptionPlans, ...creditPlans].find(
-              (p) => p._id === planId
+            const foundPlan = [...subs, ...credits].find(
+              (p: PricingPlan) => p._id === planId
             );
             if (foundPlan) {
               setPlan(foundPlan);
-              setSelectedPlanType(foundPlan.type as "subscription" | "credit");
               setSelectedPlanId(foundPlan._id);
+              setSelectedPlanType(foundPlan.type as "subscription" | "credit");
             }
           } else {
             // Default to first subscription plan
-            if (subscriptionPlans.length > 0) {
-              setPlan(subscriptionPlans[0]);
-              setSelectedPlanId(subscriptionPlans[0]._id);
+            if (subs.length > 0) {
+              setPlan(subs[0]);
+              setSelectedPlanId(subs[0]._id);
+              setSelectedPlanType("subscription");
             }
           }
         }
@@ -157,7 +131,7 @@ export default function Cart({ planId }: { planId: string }) {
       }
     };
 
-    fetchAllPlans();
+    fetchPlans();
   }, [planId]);
 
   const handleBackToPricing = () => {
@@ -181,7 +155,6 @@ export default function Cart({ planId }: { planId: string }) {
     setPromoError(null);
     setIsApplyingPromo(true);
     try {
-      // Use direct fetch instead of server action to avoid server component errors
       const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const response = await fetch(
         `${baseApi}/promo-codes/validate/${promoCode.trim()}`,
@@ -201,14 +174,11 @@ export default function Cart({ planId }: { planId: string }) {
       const responseData = await response.json();
       const promoResult = responseData.data.promoCode;
 
-      // Check if promo code applies to the selected plan type
       if (
         promoResult.appliesTo !== "both" &&
         promoResult.appliesTo !== plan.type
       ) {
-        setPromoError(
-          `This promo code is only valid for ${promoResult.appliesTo} plans`
-        );
+        setPromoError("This promo code is not valid for your plan");
         setValidPromo(null);
         return;
       }
@@ -243,51 +213,34 @@ export default function Cart({ planId }: { planId: string }) {
   };
 
   const handlePlanChange = (planId: string) => {
-    const allPlansList = [
-      ...allPlans.subscriptionPlans,
-      ...allPlans.creditPlans,
-    ];
-    const selectedPlan = allPlansList.find((p) => p._id === planId);
+    const allPlans = [...subscriptionPlans, ...creditPlans];
+    const selectedPlan = allPlans.find((p) => p._id === planId);
     if (selectedPlan) {
       setPlan(selectedPlan);
       setSelectedPlanId(planId);
-      // Clear promo code when changing plans
       setValidPromo(null);
       setPromoCode("");
       setPromoError(null);
     }
   };
 
-  const handlePlanTypeChange = (value: string) => {
-    const type = value as "subscription" | "credit";
-    setSelectedPlanType(type);
-    const plans =
-      type === "subscription"
-        ? allPlans.subscriptionPlans
-        : allPlans.creditPlans;
-    if (plans.length > 0) {
-      setPlan(plans[0]);
-      setSelectedPlanId(plans[0]._id);
-      // Clear promo code when changing plan type
-      setValidPromo(null);
-      setPromoCode("");
-      setPromoError(null);
-    }
-  };
+  // const handlePlanTypeChange = (type: "subscription" | "credit") => {
+  //   setSelectedPlanType(type);
+  //   const plans = type === "subscription" ? subscriptionPlans : creditPlans;
+  //   if (plans.length > 0) {
+  //     setPlan(plans[0]);
+  //     setSelectedPlanId(plans[0]._id);
+  //     setValidPromo(null);
+  //     setPromoCode("");
+  //     setPromoError(null);
+  //   }
+  // };
 
   const handleCheckout = async (
     id: string,
     type: string,
     promoCode?: string
   ) => {
-    console.log(
-      "Checkout initiated with ID:",
-      id,
-      "Type:",
-      type,
-      "Promo Code:",
-      promoCode
-    );
     try {
       const user = await getCurrentUser();
       if (user) {
@@ -308,16 +261,14 @@ export default function Cart({ planId }: { planId: string }) {
           }),
         });
         const data = await response.json();
-        console.log(data);
         if (!data.success) {
           throw new Error(data.message || "Failed to process payment");
         }
-        // Redirect to payment page based on selected method
         if (selectedPaymentMethod === "bkash" && data.data?.bkashURL) {
           window.location.href = data.data.bkashURL;
         }
       } else {
-        router.push("/login?redirectPath=cart?type=" + type);
+        router.push("/login?redirectPath=cart?type=subscription");
       }
     } catch (error) {
       console.error("Error processing payment:", error);
@@ -373,7 +324,7 @@ export default function Cart({ planId }: { planId: string }) {
     );
   }
 
-  // Calculate the price with plan discount
+  // Calculate the price with discounts
   const priceAfterPlanDiscount = plan.discountPrice
     ? plan.discountPrice
     : plan.discountPercent > 0
@@ -382,7 +333,6 @@ export default function Cart({ planId }: { planId: string }) {
       )
     : plan.basePrice;
 
-  // Apply promo code discount if valid
   const finalPrice = validPromo
     ? Number.parseFloat(
         calculateDiscountedPrice(
@@ -392,291 +342,178 @@ export default function Cart({ planId }: { planId: string }) {
       )
     : priceAfterPlanDiscount;
 
-  const totalSavings = plan.basePrice - finalPrice;
+  const currentPlans =
+    selectedPlanType === "subscription" ? subscriptionPlans : creditPlans;
 
   return (
     <div className="min-h-screen bg-background">
       <MaxWidthWrapper className="py-8 lg:py-12">
         {/* Header */}
-        <div className="mb-12">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-foreground">
-              Complete Your Purchase
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              You&apos;re just one step away from unlocking the full power of
-              GenMeta
-            </p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Complete Your Purchase
+          </h1>
+          <p className="text-muted-foreground">Secure checkout with GenMeta</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Main Content - Left Side */}
-          <div className="lg:col-span-7 space-y-8">
-            {/* Plan Customization */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Plan Type Selection - Tabs */}
+            {/* <Card>
+              <CardHeader>
+                <CardTitle>Choose Plan Type</CardTitle>
+                <CardDescription>
+                  Select between subscription or credit-based plans
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs
+                  value={selectedPlanType}
+                  onValueChange={(value) =>
+                    handlePlanTypeChange(value as "subscription" | "credit")
+                  }
+                >
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="subscription" className="flex gap-2">
+                      <Check className="h-4 w-4" />
+                      Subscription
+                    </TabsTrigger>
+                    <TabsTrigger value="credit" className="flex gap-2">
+                      <Zap className="h-4 w-4" />
+                      Credits
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </CardContent>
+            </Card> */}
+
+            {/* Plan Selection */}
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">
-                      Customize Your Plan
-                    </CardTitle>
-                    <CardDescription>
-                      Choose the perfect plan for your needs
-                    </CardDescription>
-                  </div>
-                </div>
+                <CardTitle>Select Your Plan</CardTitle>
+                <CardDescription>
+                  Choose the{" "}
+                  {selectedPlanType === "subscription"
+                    ? "subscription"
+                    : "credit"}{" "}
+                  plan that works best for you
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Plan Type Tabs */}
-                <div>
-                  {/* <Label className="text-sm font-medium mb-3 block">
-                    Plan Type
-                  </Label> */}
-                  <Tabs
-                    value={selectedPlanType}
-                    onValueChange={handlePlanTypeChange}
-                  >
-                    {/* <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger
-                        value="subscription"
-                        className="flex items-center gap-2"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Subscription
-                      </TabsTrigger>
-                       <TabsTrigger
-                        value="credit"
-                        className="flex items-center gap-2"
-                      >
-                        <Zap className="h-4 w-4" />
-                        Credits
-                      </TabsTrigger> 
-                    </TabsList> */}
-                  </Tabs>
-                </div>
-
-                {/* Plan Selection */}
-                <div>
-                  <Label className="text-sm font-medium mb-3 block">
-                    Select Plan
-                  </Label>
-                  <Select
-                    value={selectedPlanId}
-                    onValueChange={handlePlanChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(selectedPlanType === "subscription"
-                        ? allPlans.subscriptionPlans
-                        : allPlans.creditPlans
-                      ).map((planOption) => (
-                        <SelectItem key={planOption._id} value={planOption._id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-medium">
-                              {planOption.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground ml-4 font-medium">
-                              ৳
-                              {planOption.discountPrice
-                                ? planOption.discountPrice
-                                : planOption.discountPercent > 0
-                                ? (
-                                    (planOption.basePrice *
-                                      (100 - planOption.discountPercent)) /
-                                    100
-                                  ).toFixed(0)
-                                : planOption.basePrice.toFixed(0)}
-                              {selectedPlanType === "subscription" &&
-                                planOption.planDuration === 365 &&
-                                "/yearly"}{" "}
-                              {selectedPlanType === "subscription" &&
-                                planOption.planDuration === 182 &&
-                                "/half-yearly"}
-                              {selectedPlanType === "subscription" &&
-                                planOption.planDuration === 91 &&
-                                "/quarterly"}
-                              {selectedPlanType === "subscription" &&
-                                planOption.planDuration === 30 &&
-                                "/monthly"}
-                              {selectedPlanType === "credit" &&
-                                ` (${planOption.credit} credits)`}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <CardContent>
+                <Select value={selectedPlanId} onValueChange={handlePlanChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentPlans.map((planOption) => (
+                      <SelectItem key={planOption._id} value={planOption._id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{planOption.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            ৳
+                            {planOption.discountPrice
+                              ? planOption.discountPrice
+                              : planOption.discountPercent > 0
+                              ? (
+                                  (planOption.basePrice *
+                                    (100 - planOption.discountPercent)) /
+                                  100
+                                ).toFixed(0)
+                              : planOption.basePrice.toFixed(0)}
+                            {selectedPlanType === "subscription"
+                              ? "/month"
+                              : ""}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardContent>
             </Card>
 
             {/* Plan Details */}
             <Card>
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
-                    <CardDescription className="text-base">
-                      {plan.type === "subscription"
-                        ? `${plan.planDuration} days of unlimited access to all premium features`
-                        : `${plan.credit} AI-powered metadata generations with priority processing`}
-                    </CardDescription>
-                  </div>
-                  <Badge variant="secondary" className="capitalize">
-                    {plan.type}
-                  </Badge>
-                </div>
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardDescription>
+                  {selectedPlanType === "subscription"
+                    ? `${plan.planDuration} days of unlimited access to all premium features`
+                    : `${plan.credit} AI-powered metadata generations`}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Plan Features */}
-                <div className="space-y-6 mb-8">
-                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Star className="h-5 w-5 text-primary" />
-                    What&apos;s included:
-                  </h3>
-                  <div className="grid gap-3">
-                    {(plan.type === "subscription"
+                <div className="space-y-4">
+                  <h3 className="font-semibold">What&apos;s included:</h3>
+                  <div className="grid gap-2">
+                    {(selectedPlanType === "subscription"
                       ? [
-                          "Unlimited — Batch Processing",
-                          "Use Own API key — Gemini API Integration",
-                          "Powerful Metadata Editor — Bulk Edits",
-                          "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
-                          "Priority customer support",
+                          "Unlimited Batch Processing",
+                          "Use Your Own API Key",
+                          "Metadata Editor with Bulk Edits",
+                          "Support for JPG, PNG, EPS, MP4, MOV",
+                          "Priority Customer Support",
                           "Unlimited Results",
                         ]
                       : [
-                          "Faster processing — Batch Processing",
-                          "Powerful Metadata Editor — Bulk Edits",
-                          "No API required — Built-in API Access",
-                          "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
-                          "1 credit token per image — Results Generation",
-                          "Priority customer support",
-                          "No monthly commitment",
+                          "Faster Processing — Batch Support",
+                          "No API Required — Built-in Access",
+                          "Metadata Editor with Bulk Edits",
+                          "Support for JPG, PNG, EPS, MP4, MOV",
+                          "1 Credit Token per Image",
+                          "Priority Customer Support",
+                          "No Monthly Commitment",
                         ]
                     ).map((feature, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                        className="flex items-center gap-2 text-sm"
                       >
-                        <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Check className="h-3 w-3 text-primary" />
-                        </div>
-                        <span className="text-sm">{feature}</span>
+                        <Check className="h-4 w-4 text-primary" />
+                        <span>{feature}</span>
                       </div>
                     ))}
-                  </div>
-                </div>
-
-                <Separator className="my-8" />
-
-                {/* Additional Features */}
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Star className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Premium Features</p>
-                      <p className="text-sm text-muted-foreground">
-                        Full access included
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Secure Payment</p>
-                      <p className="text-sm text-muted-foreground">
-                        256-bit encryption
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 rounded-lg border bg-card">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Instant Access</p>
-                      <p className="text-sm text-muted-foreground">
-                        Available immediately
-                      </p>
-                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar - Right Side */}
-          <div className="lg:col-span-5 space-y-6">
-            {/* Promo Code Section */}
-            <Card>
-              <CardHeader className="pb-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setIsPromoExpanded(!isPromoExpanded)}
-                  className="w-full justify-between p-0 h-auto hover:bg-transparent"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Gift className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="text-left">
-                      <CardTitle className="text-lg">
-                        Have a Promo Code?
-                      </CardTitle>
-                      <CardDescription className="text-sm mt-1">
-                        {validPromo
-                          ? `${validPromo.discountPercent}% discount applied`
-                          : "Get additional savings on your purchase"}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <ChevronDown
-                    className={`h-5 w-5 text-muted-foreground transition-transform ${
-                      isPromoExpanded ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CardHeader>
-              {isPromoExpanded && (
-                <CardContent className="pt-0">
-                  {validPromo ? (
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                        <div>
-                          <p className="font-medium">{validPromo.code}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {validPromo.discountPercent}% discount applied
-                          </p>
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <Card>
+                <CardContent className="space-y-5 pt-6">
+                  {/* Promo Code */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Have a Promo Code?</h3>
+                    {validPromo ? (
+                      <div className="flex items-center justify-between p-2 border rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <div>
+                            <p className="font-medium">{validPromo.code}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {validPromo.discountPercent}% discount applied
+                            </p>
+                          </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearPromoCode}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClearPromoCode}
-                        className="h-8 w-8 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
+                    ) : (
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
                           handleApplyPromoCode();
                         }}
-                        className="flex gap-3"
+                        className="flex gap-2"
                       >
                         <Input
                           placeholder="Enter promo code"
@@ -698,119 +535,70 @@ export default function Cart({ planId }: { planId: string }) {
                           )}
                         </Button>
                       </form>
-                      {promoError && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive">
-                          <X className="h-4 w-4 flex-shrink-0" />
-                          <p className="text-sm">{promoError}</p>
+                    )}
+                    {promoError && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                        <X className="h-4 w-4 flex-shrink-0" />
+                        <p>{promoError}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Order Summary */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Order Summary</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span>{plan.name}</span>
+                        <span className="font-medium">
+                          ৳{plan.basePrice.toFixed(2)}
+                        </span>
+                      </div>
+                      {plan.discountPercent > 0 && (
+                        <div className="flex justify-between text-sm text-green-500">
+                          <span>Discount ({plan.discountPercent}%)</span>
+                          <span>
+                            -৳
+                            {(plan.basePrice - priceAfterPlanDiscount).toFixed(
+                              2
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {validPromo && (
+                        <div className="flex justify-between text-sm text-green-500">
+                          <span>Promo ({validPromo.discountPercent}%)</span>
+                          <span>
+                            -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
+                          </span>
                         </div>
                       )}
                     </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-
-            {/* Order Summary */}
-            <Card className="sticky top-6">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <CreditCard className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl">Order Summary</CardTitle>
-                    <CardDescription>
-                      Review your purchase details
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start p-4 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium text-lg">{plan.name}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {plan.type === "subscription"
-                          ? `${plan.planDuration} days subscription`
-                          : `${plan.credit} credits`}
-                      </p>
+                    <Separator />
+                    <div className="flex justify-between items-end">
+                      <span className="font-semibold">Total</span>
+                      <div className="text-right">
+                        <span className="text-2xl font-bold">
+                          ৳{finalPrice.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <p
-                      className={`font-medium text-lg ${
-                        plan.discountPercent > 0
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }`}
+                  </div>
+
+                  <Separator />
+
+                  {/* Payment Method */}
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Payment Method</h3>
+                    <RadioGroup
+                      value={selectedPaymentMethod}
+                      onValueChange={setSelectedPaymentMethod}
                     >
-                      ৳{plan.basePrice.toFixed(2)}
-                    </p>
-                  </div>
-
-                  {plan.discountPercent > 0 && (
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <Percent className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">
-                          Plan Discount ({plan.discountPercent}%)
-                        </span>
-                      </div>
-                      <span className="text-primary font-medium">
-                        -৳{(plan.basePrice - priceAfterPlanDiscount).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-
-                  {validPromo && (
-                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">
-                          Promo Discount ({validPromo.discountPercent}%)
-                        </span>
-                      </div>
-                      <span className="text-primary font-medium">
-                        -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold">Total</span>
-                    <div className="text-right">
-                      {totalSavings > 0 && (
-                        <Badge variant="secondary" className="mb-2 block">
-                          You save ৳{totalSavings.toFixed(2)}
-                        </Badge>
-                      )}
-                      <span className="text-3xl font-bold">
-                        ৳{finalPrice.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-
-              {/* Payment Method Selection */}
-              <CardContent className="pt-0">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                    </div>
-                    <h3 className="font-medium text-lg">Payment Method</h3>
-                  </div>
-                  <RadioGroup
-                    value={selectedPaymentMethod}
-                    onValueChange={setSelectedPaymentMethod}
-                  >
-                    {paymentMethods.map((method) => (
-                      <div key={method.id} className="relative">
+                      {paymentMethods.map((method) => (
                         <div
+                          key={method.id}
                           className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
                             selectedPaymentMethod === method.id
                               ? "border-primary bg-primary/5"
@@ -846,18 +634,10 @@ export default function Cart({ planId }: { planId: string }) {
                               />
                             </div>
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium">{method.name}</p>
-                                {method.comingSoon && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    Coming Soon
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="font-medium text-sm">
+                                {method.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
                                 {method.description}
                               </p>
                             </div>
@@ -867,45 +647,42 @@ export default function Cart({ planId }: { planId: string }) {
                               )}
                           </Label>
                         </div>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </div>
-              </CardContent>
+                      ))}
+                    </RadioGroup>
+                  </div>
 
-              <CardFooter className="pt-6">
-                <Button
-                  className="w-full h-12 font-medium"
-                  onClick={() =>
-                    handleCheckout(plan._id, plan.type, validPromo?.code)
-                  }
-                  disabled={
-                    isProcessing ||
-                    !paymentMethods.find((m) => m.id === selectedPaymentMethod)
-                      ?.available
-                  }
-                  size="lg"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing Payment...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Pay with{" "}
-                      {
-                        paymentMethods.find(
-                          (m) => m.id === selectedPaymentMethod
-                        )?.name
-                      }
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
+                  <Separator />
+
+                  {/* Checkout Button */}
+                  <Button
+                    className="w-full h-12 font-medium"
+                    onClick={() =>
+                      handleCheckout(plan._id, plan.type, validPromo?.code)
+                    }
+                    disabled={
+                      isProcessing ||
+                      !paymentMethods.find(
+                        (m) => m.id === selectedPaymentMethod
+                      )?.available
+                    }
+                    size="lg"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Continue to Payment
+                        <ChevronRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </MaxWidthWrapper>

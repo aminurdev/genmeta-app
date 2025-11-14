@@ -77,7 +77,6 @@ interface FaqItem {
   answer: string;
 }
 
-// Component that uses useSearchParams, to be wrapped in Suspense
 const PricingContent = () => {
   const [activeTab, setActiveTab] = useState<"subscription" | "credit">(
     "subscription"
@@ -86,14 +85,12 @@ const PricingContent = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
-  // State for pricing data
   const [subscriptionPlans, setSubscriptionPlans] = useState<
     SubscriptionPlan[]
   >([]);
   const [creditPlans, setCreditPlans] = useState<CreditPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Parse error message from URL if present
   useEffect(() => {
     if (searchParams) {
       const message = searchParams.get("message");
@@ -103,7 +100,6 @@ const PricingContent = () => {
     }
   }, [searchParams]);
 
-  // Fetch pricing data
   useEffect(() => {
     const fetchPricingData = async () => {
       try {
@@ -127,7 +123,6 @@ const PricingContent = () => {
     fetchPricingData();
   }, []);
 
-  // Plan features
   const freeFeatures = [
     "instant Get 100 credits upon signup",
     "Limited (10 Files day) — Batch Processing",
@@ -157,7 +152,6 @@ const PricingContent = () => {
     "No monthly expiry — Credits never expire",
   ];
 
-  // FAQ data
   const faqItems: FaqItem[] = [
     {
       question: "How does the free plan work?",
@@ -206,7 +200,12 @@ const PricingContent = () => {
     return Math.round(basePrice * (1 - discountPercent / 100));
   };
 
-  // Free Plan Card Component
+  const activeSubscriptionPlans = subscriptionPlans
+    .filter((plan) => plan.isActive)
+    .sort((a, b) => a.planDuration - b.planDuration);
+
+  const activeCreditPlans = creditPlans.filter((plan) => plan.isActive);
+
   const FreePlanCard = ({ className }: { className?: string }) => (
     <Card
       className={`flex flex-col relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg ${className}`}
@@ -253,18 +252,6 @@ const PricingContent = () => {
     return <PricingLoading />;
   }
 
-  // Get specific plans
-  const monthlyPlan = subscriptionPlans.find(
-    (plan) => plan.planDuration === 30
-  );
-  const yearlyPlan = subscriptionPlans.find(
-    (plan) => plan.planDuration === 365
-  );
-  const basicCreditPlan = creditPlans.find((plan) =>
-    plan.name.includes("Basic")
-  );
-  const proCreditPlan = creditPlans.find((plan) => plan.name.includes("Pro"));
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -301,7 +288,9 @@ const PricingContent = () => {
                 <TabsTrigger className="w-full" value="subscription">
                   Subscription
                 </TabsTrigger>
-                {/* <TabsTrigger value="credit">Credit Plans</TabsTrigger> */}
+                {/* <TabsTrigger className="w-full" value="credit">
+                  Credit Plans
+                </TabsTrigger> */}
               </TabsList>
             </Tabs>
           </div>
@@ -328,7 +317,7 @@ const PricingContent = () => {
       )}
 
       {/* Pricing Cards */}
-      <div className="container mx-auto px-4 -mt-10 mb-10" id="premium">
+      <div className="max-w-screen-xl mx-auto px-4 -mt-10 mb-10" id="premium">
         <Tabs
           value={activeTab}
           onValueChange={(value) =>
@@ -336,316 +325,258 @@ const PricingContent = () => {
           }
         >
           <TabsContent value="subscription" className="mt-0">
-            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
+            <div
+              className={`mx-auto grid max-w-full justify-center gap-8 ${
+                activeSubscriptionPlans.length === 0
+                  ? "grid-cols-1"
+                  : activeSubscriptionPlans.length === 1
+                  ? "grid-cols-2"
+                  : activeSubscriptionPlans.length === 2
+                  ? "md:grid-cols-3"
+                  : activeSubscriptionPlans.length === 3
+                  ? "md:grid-cols-3"
+                  : activeSubscriptionPlans.length === 4
+                  ? "md:grid-cols-2 lg:grid-cols-3"
+                  : "md:grid-cols-2 lg:grid-cols-3 "
+              } grid-cols-1`}
+            >
               {/* Free Plan */}
               <FreePlanCard />
 
-              {/* Monthly Plan */}
-              {monthlyPlan && (
-                <Card className="flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg">
-                  {monthlyPlan.discountPercent > 0 && (
-                    <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                      {monthlyPlan.discountPercent}% OFF
-                    </Badge>
-                  )}
-                  <CardHeader className="pb-2 mt-6">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                      Monthly Premium
-                    </CardTitle>
-                    <CardDescription>
-                      Perfect for getting experience
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 flex-1">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-4xl font-bold text-foreground">
-                          ৳
-                          {monthlyPlan.discountPrice
-                            ? monthlyPlan.discountPrice
-                            : calculateDiscountedPrice(
-                                monthlyPlan.basePrice,
-                                monthlyPlan.discountPercent
-                              )}
-                        </p>
-                        {monthlyPlan.discountPercent > 0 && (
-                          <p className="text-sm text-muted-foreground line-through">
-                            ৳{monthlyPlan.basePrice}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">per month</p>
-                    </div>
+              {activeSubscriptionPlans.length > 0 ? (
+                activeSubscriptionPlans.map((plan, index) => {
+                  const displayPrice = plan.discountPrice
+                    ? plan.discountPrice
+                    : calculateDiscountedPrice(
+                        plan.basePrice,
+                        plan.discountPercent
+                      );
 
-                    <Separator className="my-4" />
+                  const isBestValue = index === 3;
+                  const isRecommended = index === 1;
 
-                    <div className="space-y-3">
-                      {premiumFeatures.map((feature, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <Check className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
-                      size="lg"
-                      onClick={() =>
-                        handlePurchase(monthlyPlan._id, "subscription")
-                      }
+                  const durationText =
+                    plan.planDuration === 30
+                      ? "per month"
+                      : plan.planDuration === 365
+                      ? "per year"
+                      : plan.planDuration === 7
+                      ? "per week"
+                      : `per ${plan.planDuration} days`;
+
+                  return (
+                    <Card
+                      key={plan._id}
+                      className={`flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg ${
+                        isBestValue ? "shadow-md" : ""
+                      }`}
                     >
-                      <Star className="mr-2 h-4 w-4" />
-                      Get Monthly
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
-
-              {/* Yearly Plan */}
-              {yearlyPlan && (
-                <Card className="flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 shadow-md transition-all hover:shadow-lg">
-                  <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                    Best Value
-                  </div>
-                  {yearlyPlan.discountPercent > 0 && (
-                    <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                      {yearlyPlan.discountPercent}% OFF
-                    </Badge>
-                  )}
-
-                  <CardHeader className="mt-6 pb-2">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Star className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                      Yearly Premium
-                    </CardTitle>
-                    <CardDescription>
-                      Best value for professional users
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 flex-1">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-4xl font-bold text-foreground">
-                          ৳{yearlyPlan.discountPrice}
-                        </p>
-                        {yearlyPlan.discountPercent > 0 && (
-                          <p className="text-sm text-muted-foreground line-through">
-                            ৳{yearlyPlan.basePrice}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">annually</p>
-                      {/* <p className="text-xs font-medium text-green-500">
-                        Save ৳
-                        {yearlyPlan.discountPrice
-                          ? yearlyPlan.basePrice - yearlyPlan.discountPrice
-                          : yearlyPlan.basePrice -
-                            calculateDiscountedPrice(
-                              yearlyPlan.basePrice,
-                              yearlyPlan.discountPercent
-                            )}{" "}
-                        per year
-                      </p> */}
-                    </div>
-
-                    <Separator className="my-4" />
-
-                    <div className="space-y-3">
-                      {premiumFeatures.map((feature, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <Check className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
+                      {isBestValue && activeSubscriptionPlans.length > 1 && (
+                        <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
+                          Best Value
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
-                      size="lg"
-                      onClick={() =>
-                        handlePurchase(yearlyPlan._id, "subscription")
-                      }
-                    >
-                      <Star className="mr-2 h-4 w-4" />
-                      Get Yearly
-                    </Button>
-                  </CardFooter>
-                </Card>
+                      )}
+                      {isRecommended && activeSubscriptionPlans.length > 1 && (
+                        <div className="absolute -right-10 top-6 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
+                          Recommended
+                        </div>
+                      )}
+
+                      {plan.discountPercent > 0 && (
+                        <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
+                          {plan.discountPercent}% OFF
+                        </Badge>
+                      )}
+
+                      <CardHeader className={"pb-2 mt-6"}>
+                        <CardTitle className="flex items-center gap-2 text-2xl">
+                          <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                          {plan.name}
+                        </CardTitle>
+                        <CardDescription>
+                          {plan.type || "Premium plan"}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 flex-1">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-4xl font-bold text-foreground">
+                              ৳{displayPrice}
+                            </p>
+                            {plan.discountPercent > 0 && (
+                              <p className="text-sm text-muted-foreground line-through">
+                                ৳{plan.basePrice}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {durationText}
+                          </p>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <div className="space-y-3">
+                          {premiumFeatures.map((feature, featureIndex) => (
+                            <div
+                              key={featureIndex}
+                              className="flex items-center gap-3"
+                            >
+                              <Check className="h-4 w-4 text-violet-500 flex-shrink-0" />
+                              <span className="text-sm">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                          size="lg"
+                          onClick={() =>
+                            handlePurchase(plan._id, "subscription")
+                          }
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          Get {plan.name}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">
+                    No subscription plans available
+                  </p>
+                </div>
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="credit" className="mt-0">
-            <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
+            <div
+              className={`mx-auto grid max-w-full gap-8 ${
+                activeCreditPlans.length === 0
+                  ? "grid-cols-1"
+                  : activeCreditPlans.length === 1
+                  ? "grid-cols-2"
+                  : activeCreditPlans.length === 2
+                  ? "md:grid-cols-3"
+                  : "md:grid-cols-3"
+              } grid-cols-1`}
+            >
               {/* Free Plan */}
-              <FreePlanCard className="transform transition-all duration-300 hover:scale-105" />
+              <FreePlanCard />
 
-              {/* Basic Credit Plan */}
-              {basicCreditPlan && (
-                <Card className="transform transition-all duration-300 hover:scale-105 flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      Basic Plan
-                    </CardTitle>
-                    <CardDescription>
-                      Perfect for occasional use
-                    </CardDescription>
-                    {basicCreditPlan.discountPercent > 0 && (
-                      <Badge className="absolute right-4 top-4 bg-green-500 hover:bg-green-600">
-                        {basicCreditPlan.discountPercent}% OFF
-                      </Badge>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4 flex-1">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-4xl font-bold text-foreground">
-                          ৳
-                          {basicCreditPlan.discountPrice
-                            ? basicCreditPlan.discountPrice
-                            : calculateDiscountedPrice(
-                                basicCreditPlan.basePrice,
-                                basicCreditPlan.discountPercent
-                              )}
-                        </p>
-                        {basicCreditPlan.discountPercent > 0 && (
-                          <p className="text-sm text-muted-foreground line-through">
-                            ৳{basicCreditPlan.basePrice}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {basicCreditPlan.credit} credits
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Sparkles className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">
-                          ৳
-                          {(
-                            basicCreditPlan.basePrice / basicCreditPlan.credit
-                          ).toFixed(3)}{" "}
-                          per credit
-                        </span>
-                      </div>
-                    </div>
+              {activeCreditPlans.length > 0 ? (
+                activeCreditPlans.map((plan, index) => {
+                  const displayPrice = plan.discountPrice
+                    ? plan.discountPrice
+                    : calculateDiscountedPrice(
+                        plan.basePrice,
+                        plan.discountPercent
+                      );
 
-                    <Separator className="my-4" />
+                  const isBestValue =
+                    index === Math.floor(activeCreditPlans.length / 2) ||
+                    (activeCreditPlans.length === 1 && index === 0);
 
-                    <div className="space-y-3">
-                      {creditFeatures.map((feature, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      variant="outline"
-                      className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                      size="lg"
-                      onClick={() =>
-                        handlePurchase(basicCreditPlan._id, "credit")
-                      }
+                  return (
+                    <Card
+                      key={plan._id}
+                      className={`flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg ${
+                        isBestValue ? "shadow-md" : ""
+                      }`}
                     >
-                      <Zap className="mr-2 h-4 w-4" />
-                      Buy Basic Credits
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )}
-
-              {/* Pro Credit Plan */}
-              {proCreditPlan && (
-                <Card className="transform duration-300 hover:scale-105 flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 shadow-md transition-all hover:shadow-lg">
-                  <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                    Best Value
-                  </div>
-                  {proCreditPlan.discountPercent > 0 && (
-                    <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                      {proCreditPlan.discountPercent}% OFF
-                    </Badge>
-                  )}
-
-                  <CardHeader className="mt-6 pb-2">
-                    <CardTitle className="flex items-center gap-2 text-2xl">
-                      <Star className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      Pro Plan
-                    </CardTitle>
-                    <CardDescription>
-                      Best value for heavy users
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 flex-1">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-4xl font-bold text-foreground">
-                          ৳
-                          {proCreditPlan.discountPrice
-                            ? proCreditPlan.discountPrice
-                            : calculateDiscountedPrice(
-                                proCreditPlan.basePrice,
-                                proCreditPlan.discountPercent
-                              )}
-                        </p>
-                        {proCreditPlan.discountPercent > 0 && (
-                          <p className="text-sm text-muted-foreground line-through">
-                            ৳{proCreditPlan.basePrice}
-                          </p>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {proCreditPlan.credit} credits
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Sparkles className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm font-medium">
-                          ৳
-                          {(
-                            proCreditPlan.basePrice / proCreditPlan.credit
-                          ).toFixed(3)}{" "}
-                          per credit
-                        </span>
-                      </div>
-                    </div>
-
-                    <Separator className="my-4" />
-
-                    <div className="space-y-3">
-                      {creditFeatures.map((feature, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                          <span className="text-sm">{feature}</span>
+                      {isBestValue && activeCreditPlans.length > 1 && (
+                        <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
+                          Best Value
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
-                      size="lg"
-                      onClick={() =>
-                        handlePurchase(proCreditPlan._id, "credit")
-                      }
-                    >
-                      <Star className="mr-2 h-4 w-4" />
-                      Buy Pro Credits
-                    </Button>
-                  </CardFooter>
-                </Card>
+                      )}
+
+                      {plan.discountPercent > 0 && (
+                        <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
+                          {plan.discountPercent}% OFF
+                        </Badge>
+                      )}
+
+                      <CardHeader className={`pb-2 mt-10`}>
+                        <CardTitle className="flex items-center gap-2 text-2xl">
+                          <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          {plan.name}
+                        </CardTitle>
+                        <CardDescription>
+                          {plan.type || "Credit package"}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 flex-1">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-4xl font-bold text-foreground">
+                              ৳{displayPrice}
+                            </p>
+                            {plan.discountPercent > 0 && (
+                              <p className="text-sm text-muted-foreground line-through">
+                                ৳{plan.basePrice}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {plan.credit} credits
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Sparkles className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-medium">
+                              ৳{(plan.basePrice / plan.credit).toFixed(3)} per
+                              credit
+                            </span>
+                          </div>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <div className="space-y-3">
+                          {creditFeatures.map((feature, featureIndex) => (
+                            <div
+                              key={featureIndex}
+                              className="flex items-center gap-3"
+                            >
+                              <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              <span className="text-sm">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          className={`w-full ${
+                            isBestValue
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
+                              : "border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                          }`}
+                          variant={isBestValue ? "default" : "outline"}
+                          size="lg"
+                          onClick={() => handlePurchase(plan._id, "credit")}
+                        >
+                          <Zap className="mr-2 h-4 w-4" />
+                          Buy {plan.name}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">
+                    No credit plans available
+                  </p>
+                </div>
               )}
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* App Screenshot */}
       <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-5xl">
@@ -831,14 +762,10 @@ const HeroSkeleton = () => (
   </div>
 );
 
-// Loading component with skeleton UI
 const PricingLoading = () => {
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Skeleton */}
       <HeroSkeleton />
-
-      {/* Pricing Cards Skeleton */}
       <div className="container mx-auto px-4 -mt-10">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
           <PricingCardSkeleton />
@@ -846,8 +773,6 @@ const PricingLoading = () => {
           <PricingCardSkeleton />
         </div>
       </div>
-
-      {/* Features Section Skeleton */}
       <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20 mt-20">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-5xl">
@@ -875,7 +800,6 @@ const PricingLoading = () => {
   );
 };
 
-// Main component that wraps PricingContent in a Suspense boundary
 const PricingPage = () => {
   return (
     <Suspense fallback={<PricingLoading />}>
