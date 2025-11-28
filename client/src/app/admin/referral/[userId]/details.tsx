@@ -38,7 +38,7 @@ import {
   type ReferralDetails,
   type WithdrawHistory,
   updateWithdrawal,
-} from "@/services/admin-dashboard/referral";
+} from "@/services/admin-dashboard";
 
 interface AdminUserReferralDashboardProps {
   data: ReferralDetails;
