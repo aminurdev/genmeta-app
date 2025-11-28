@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/main/theme-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import QueryProvider from "@/components/providers/queryProvider";
 import {
   AnalyticsScripts,
   AnalyticsNoScript,
@@ -46,7 +47,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <QueryProvider>{children}</QueryProvider>
           <PageViewTracker />
           <Toaster richColors />
         </ThemeProvider>
