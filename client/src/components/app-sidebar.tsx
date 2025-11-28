@@ -104,11 +104,6 @@ const adminSidebarData = [
         icon: Users,
       },
       {
-        title: "App Users",
-        url: "/admin/app-users",
-        icon: Users,
-      },
-      {
         title: "Referral",
         url: "/admin/referral",
         icon: Users, // Referral: using Users icon

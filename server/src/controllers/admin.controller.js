@@ -306,7 +306,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
-const getAllUsers = asyncHandler(async (req, res) => {
+const getAllUsersOld = asyncHandler(async (req, res) => {
   const {
     page = 1,
     limit = 5,
@@ -557,7 +557,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
   }
 });
 
-const getUserStats = asyncHandler(async (req, res) => {
+const getUserStatsOld = asyncHandler(async (req, res) => {
   try {
     const stats = await User.aggregate([
       {
@@ -948,9 +948,148 @@ const updateWithdrawal = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, search = "" } = req.query;
+
+  const query = {
+    $or: [
+      { username: { $regex: search, $options: "i" } },
+      { key: { $regex: search, $options: "i" } },
+    ],
+  };
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  const [appKeysRaw, total] = await Promise.all([
+    AppKey.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit)),
+    AppKey.countDocuments(query),
+  ]);
+
+  // Enrich each appKey with plan.name (if plan.id exists)
+  const appKeys = await Promise.all(
+    appKeysRaw.map(async (appKey) => {
+      const enrichedPlan = { ...appKey.plan };
+      if (appKey.plan?.id) {
+        const plan = await AppPricing.findById(appKey.plan.id).select("name");
+        enrichedPlan.name = plan?.name || null;
+      }
+      return {
+        ...appKey.toObject(),
+        plan: enrichedPlan,
+      };
+    })
+  );
+
+  return new ApiResponse(200, true, "API keys retrieved successfully", {
+    users: appKeys,
+    total,
+    currentPage: parseInt(page),
+    totalPages: Math.ceil(total / limit),
+  }).send(res);
+});
+
+const getUserStats = asyncHandler(async (req, res) => {
+  // Calculate date 7 days ago
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Single aggregation with $facet - all stats in one query
+  const stats = await AppKey.aggregate([
+    {
+      $facet: {
+        counts: [
+          {
+            $group: {
+              _id: null,
+              totalKeys: { $sum: 1 },
+              activeKeys: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$isActive", true] },
+                        { $eq: ["$status", "active"] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              suspendedKeys: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "suspended"] }, 1, 0],
+                },
+              },
+              totalProcesses: { $sum: "$totalProcess" },
+              avgProcessesPerKey: { $avg: "$totalProcess" },
+            },
+          },
+        ],
+        keysByPlan: [
+          {
+            $group: {
+              _id: "$plan.type",
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        dailyNewKeys: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: -1 } },
+        ],
+      },
+    },
+  ]);
+
+  const countData = stats[0].counts[0] || {
+    totalKeys: 0,
+    activeKeys: 0,
+    suspendedKeys: 0,
+    totalProcesses: 0,
+    avgProcessesPerKey: 0,
+  };
+
+  const keysByPlanArray = stats[0].keysByPlan || [];
+  const dailyNewKeysArray = stats[0].dailyNewKeys || [];
+
+  return new ApiResponse(200, true, "Statistics retrieved successfully", {
+    totalUsers: countData.totalKeys,
+    activeUsers: countData.activeKeys,
+    suspendedUsers: countData.suspendedKeys,
+    usersByPlan: keysByPlanArray.reduce((acc, { _id, count }) => {
+      acc[_id] = count;
+      return acc;
+    }, {}),
+    totalProcesses: countData.totalProcesses,
+    avgProcessesPerUser: Math.round(countData.avgProcessesPerKey * 100) / 100,
+    dailyNewUsers: dailyNewKeysArray.map(({ _id, count }) => ({
+      date: _id,
+      count,
+    })),
+  }).send(res);
+});
+
 export {
   getAllUsers,
   getUserStats,
+  getAllUsersOld,
+  getUserStatsOld,
   getAdminDashboardStats,
   getPaymentsHistory,
   downloadPaymentsHistory,

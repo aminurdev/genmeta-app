@@ -1,11 +1,28 @@
 import { QUERY_KEYS } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
-import { getAdminOverview } from "../admin-dashboard";
+import {
+  getAdminOverview,
+  getAllUsers,
+  getUserStats,
+} from "../admin-dashboard";
 
 export function useAdminOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.adminOverview,
     queryFn: getAdminOverview,
-    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+export function useUserStatsQuery() {
+  return useQuery({
+    queryKey: QUERY_KEYS.usersStats,
+    queryFn: getUserStats,
+  });
+}
+
+export function useAllUsersQuery(queryParams: string) {
+  return useQuery({
+    queryKey: QUERY_KEYS.allUsers(queryParams),
+    queryFn: () => getAllUsers(queryParams),
   });
 }

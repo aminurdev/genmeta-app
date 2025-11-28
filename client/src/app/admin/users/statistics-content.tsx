@@ -1,78 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Activity, Key, KeyRound, Layers, Zap } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-// Removed getBaseApi import to prevent server component errors
-import { getAccessToken } from "@/services/auth-services";
-
-interface StatisticsData {
-  totalKeys: number;
-  activeKeys: number;
-  suspendedKeys: number;
-  keysByPlan: Record<string, number>;
-  totalProcesses: number;
-  avgProcessesPerKey: number;
-  dailyNewKeys: Array<{
-    date: string;
-    count: number;
-  }>;
-}
+import { useUserStatsQuery } from "@/services/queries/admin-dashboard";
+import Loading from "@/app/admin/loading";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, XCircle } from "lucide-react";
 
 export default function StatisticsContent() {
-  const [statistics, setStatistics] = useState<StatisticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useUserStatsQuery();
 
-  useEffect(() => {
-    const fetchStatistics = async () => {
-      try {
-        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const accessToken = await getAccessToken();
-        const response = await fetch(`${baseApi}/app/appkey/statistics`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch statistics");
-        }
-
-        const result = await response.json();
-
-        if (result.success) {
-          setStatistics(result.data);
-        } else {
-          throw new Error(result.message || "Failed to fetch statistics");
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStatistics();
-  }, []);
-
-  if (loading) {
-    return <div>Loading statistics...</div>;
+  if (isLoading) {
+    return <Loading />;
   }
 
   if (error) {
-    return <div className="text-destructive">Error: {error}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <XCircle className="h-12 w-12 text-destructive mb-4" />
+        <h3 className="text-lg font-medium">Error loading statistics</h3>
+        <p className="text-muted-foreground mt-2 mb-4">
+          {error instanceof Error ? error.message : "An unknown error occurred"}
+        </p>
+        <Button onClick={() => refetch()} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try Again
+        </Button>
+      </div>
+    );
   }
 
-  if (!statistics) {
-    return <div>No statistics available</div>;
+  if (!data?.success || !data?.data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium">No statistics available</h3>
+        <p className="text-muted-foreground mt-2 mb-4">
+          Statistics could not be loaded.
+        </p>
+        <Button onClick={() => refetch()} variant="outline">
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
+        </Button>
+      </div>
+    );
   }
+
+  const statistics = data.data;
 
   return (
     <div className="grid gap-6">
@@ -85,9 +61,9 @@ export default function StatisticsContent() {
             <KeyRound className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalKeys}</div>
+            <div className="text-2xl font-bold">{statistics.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              {statistics.activeKeys} active, {statistics.suspendedKeys}{" "}
+              {statistics.activeUsers} active, {statistics.suspendedUsers}{" "}
               suspended
             </p>
           </CardContent>
@@ -102,14 +78,14 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.dailyNewKeys.length > 0
-                ? statistics.dailyNewKeys[0].count
+              {statistics.dailyNewUsers.length > 0
+                ? statistics.dailyNewUsers[0].count
                 : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               on{" "}
-              {statistics.dailyNewKeys.length > 0
-                ? new Date(statistics.dailyNewKeys[0].date).toLocaleDateString()
+              {statistics.dailyNewUsers.length > 0
+                ? new Date(statistics.dailyNewUsers[0].date).toLocaleDateString()
                 : "N/A"}
             </p>
           </CardContent>
@@ -127,7 +103,7 @@ export default function StatisticsContent() {
               {statistics.totalProcesses}
             </div>
             <p className="text-xs text-muted-foreground">
-              {statistics.avgProcessesPerKey.toFixed(1)} avg per key
+              {statistics.avgProcessesPerUser.toFixed(1)} avg per user
             </p>
           </CardContent>
         </Card>
@@ -141,7 +117,7 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.avgProcessesPerKey.toFixed(1)}
+              {statistics.avgProcessesPerUser.toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground">
               {statistics.totalProcesses} total processes
@@ -157,7 +133,7 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Object.entries(statistics.keysByPlan).map(([plan, count]) => (
+              {Object.entries(statistics.usersByPlan).map(([plan, count]) => (
                 <div key={plan} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -169,12 +145,12 @@ export default function StatisticsContent() {
                     <span className="font-medium">{count}</span>
                   </div>
                   <Progress
-                    value={(count / statistics.totalKeys) * 100}
+                    value={(count / statistics.totalUsers) * 100}
                     className="h-2"
                   />
                   <p className="text-xs text-muted-foreground">
-                    {((count / statistics.totalKeys) * 100).toFixed(1)}% of
-                    total keys
+                    {((count / statistics.totalUsers) * 100).toFixed(1)}% of
+                    total users
                   </p>
                 </div>
               ))}

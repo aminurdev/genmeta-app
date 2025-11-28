@@ -8,7 +8,6 @@ import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
 import config from "../config/index.js";
 import { AppKey } from "../models/appKey.model.js";
-import { AppPricing } from "../models/appPricing.model.js";
 
 export function generateAppKey() {
   const buffer = crypto.randomBytes(32);
@@ -205,49 +204,6 @@ const deleteAppKey = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "API key deleted successfully").send(res);
 });
 
-const getAllAppKeys = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "" } = req.query;
-
-  const query = {
-    $or: [
-      { username: { $regex: search, $options: "i" } },
-      { key: { $regex: search, $options: "i" } },
-    ],
-  };
-
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-
-  const [appKeysRaw, total] = await Promise.all([
-    AppKey.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit)),
-    AppKey.countDocuments(query),
-  ]);
-
-  // Enrich each appKey with plan.name (if plan.id exists)
-  const appKeys = await Promise.all(
-    appKeysRaw.map(async (appKey) => {
-      const enrichedPlan = { ...appKey.plan };
-      if (appKey.plan?.id) {
-        const plan = await AppPricing.findById(appKey.plan.id).select("name");
-        enrichedPlan.name = plan?.name || null;
-      }
-      return {
-        ...appKey.toObject(),
-        plan: enrichedPlan,
-      };
-    })
-  );
-
-  return new ApiResponse(200, true, "API keys retrieved successfully", {
-    appKeys,
-    total,
-    currentPage: parseInt(page),
-    totalPages: Math.ceil(total / limit),
-  }).send(res);
-});
-
 const resetDevice = asyncHandler(async (req, res) => {
   const { key } = req.body;
 
@@ -328,73 +284,6 @@ const addCredits = asyncHandler(async (req, res) => {
     true,
     `${credits} credits added successfully. New balance: ${appKey.credit}`
   ).send(res);
-});
-
-const getStatistics = asyncHandler(async (req, res) => {
-  const [
-    totalKeys,
-    activeKeys,
-    suspendedKeys,
-    keysByPlan,
-    totalProcesses,
-    avgProcessesPerKey,
-    dailyNewKeys,
-  ] = await Promise.all([
-    AppKey.countDocuments(),
-    AppKey.countDocuments({ isActive: true, status: "active" }),
-    AppKey.countDocuments({ status: "suspended" }),
-    AppKey.aggregate([
-      {
-        $group: {
-          _id: "$plan.type",
-          count: { $sum: 1 },
-        },
-      },
-    ]),
-    AppKey.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$totalProcess" },
-        },
-      },
-    ]),
-    AppKey.aggregate([
-      {
-        $group: {
-          _id: null,
-          average: { $avg: "$totalProcess" },
-        },
-      },
-    ]),
-    AppKey.aggregate([
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: -1 } },
-    ]),
-  ]);
-
-  return new ApiResponse(200, true, "Statistics retrieved successfully", {
-    totalKeys,
-    activeKeys,
-    suspendedKeys,
-    keysByPlan: keysByPlan.reduce((acc, { _id, count }) => {
-      acc[_id] = count;
-      return acc;
-    }, {}),
-    totalProcesses: totalProcesses[0]?.total || 0,
-    avgProcessesPerKey: avgProcessesPerKey[0]?.average || 0,
-    dailyNewKeys: dailyNewKeys.map(({ _id, count }) => ({
-      date: _id,
-      count,
-    })),
-  }).send(res);
 });
 
 const getUserDetailsByKey = asyncHandler(async (req, res) => {
@@ -712,12 +601,10 @@ export {
   createAppKey,
   updateAppKey,
   deleteAppKey,
-  getAllAppKeys,
   validateAppKey,
   getAppKeyStats,
   resetDevice,
   updateAppKeyStatus,
-  getStatistics,
   getUserDetailsByKey,
   addCredits,
 };

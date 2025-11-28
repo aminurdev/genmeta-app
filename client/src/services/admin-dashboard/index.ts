@@ -1,113 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use server";
 
 import { ApiErrorResponse, ApiResponse } from "@/types";
 import { apiRequest } from "../api";
 import { api } from "../api-client";
-import { DashboardData } from "@/types/admin/stats";
-
-export interface AppKeys {
-  _id: string;
-  userId: string;
-  username: string;
-  key: string;
-  credit: number | null;
-  isActive: boolean;
-  status: "active" | "suspended";
-  suspendedAt: string | null;
-  totalProcess: number;
-  monthlyProcess: Record<string, number>;
-  dailyProcess: Record<string, number>;
-  lastCreditRefresh: string;
-  createdAt: string;
-  allowedDevices?: [string];
-  expiresAt?: string;
-  lastPlanChange: string;
-  plan: {
-    type: "free" | "credit" | "subscription";
-    id: string;
-    name: string;
-  } | null;
-  planHistory: {
-    planType: string;
-    changedAt: string;
-    reason: string;
-  }[];
-}
-
-export interface AllAppKeysResponse {
-  success: boolean;
-  message: string;
-  data: {
-    appKeys: AppKeys[];
-    total: number;
-    currentPage: number;
-    totalPages: number;
-  };
-}
-
-export interface AllUsersResponse {
-  success: boolean;
-  message: string;
-  data: {
-    users: {
-      _id: string;
-      isVerified: boolean;
-      avatar: string | null;
-      loginProvider: string[];
-      name: string;
-      email: string;
-      role: "user" | "admin" | "superAdmin";
-      status: "active" | "disabled";
-      currentPlan: {
-        name: string;
-        type: "free" | "credit" | "subscription";
-        expiresAt: string | null;
-        status: "active" | "suspended";
-      } | null;
-      metadata?: {
-        hasActiveKey?: {
-          type?: "free";
-        };
-        keyStatus: "active" | "suspended";
-        planActive: boolean;
-      };
-      usage: {
-        credit: number | null;
-        totalProcess: number;
-      };
-      createdAt: string;
-    }[];
-    pagination: {
-      currentPage: number;
-      totalPages: number;
-      totalUsers: number;
-      pageSize: number;
-    };
-  };
-}
-
-export interface UserStats {
-  success: boolean;
-  message: string;
-  data: {
-    totalUsers: number;
-    activeUsers: number;
-    verifiedUsers: number;
-    recentRegistrations: number;
-    roleDistribution: [
-      { _id: "user"; count: number },
-      { _id: "admin"; count: number }
-    ];
-    loginProviders: [
-      { _id: "google"; count: number },
-      { _id: "email"; count: number }
-    ];
-    appUsers: {
-      count: number;
-      percentage: number;
-    };
-  };
-}
+import {
+  AllUsersResponse,
+  DashboardData,
+  UsersStatisticsData,
+} from "@/types/admin";
 
 export interface PaymentResponse {
   success: boolean;
@@ -160,35 +61,63 @@ export const getAdminOverview = async (): Promise<
   return result.data;
 };
 
-export const getAppUsers = async (
-  queryParams: string
-): Promise<AllAppKeysResponse> => {
-  const result = await apiRequest({
-    method: "GET",
-    endpoint: `/app/appkey/get?${queryParams}`,
-  });
-
-  return result;
-};
-
 export const getAllUsers = async (
   queryParams: string
-): Promise<AllUsersResponse> => {
-  const result = await apiRequest({
-    method: "GET",
-    endpoint: `/admin/users/all?${queryParams}`,
-  });
-
-  return result;
+): Promise<ApiResponse<AllUsersResponse> | ApiErrorResponse> => {
+  const result = await api.get(`/admin/users/all?${queryParams}`);
+  return result.data;
 };
 
-export const getUserStats = async (): Promise<UserStats> => {
-  const result = await apiRequest({
-    method: "GET",
-    endpoint: "/admin/users/statistics",
-  });
+export const getUserStats = async (): Promise<
+  ApiResponse<UsersStatisticsData> | ApiErrorResponse
+> => {
+  const result = await api.get("/admin/users/statistics");
+  return result.data;
+};
 
-  return result;
+export const resetDeviceId = async (
+  userId: string
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.put(`/app/appkey/reset-device`, {
+    key: userId,
+  });
+  return result.data;
+};
+
+export const updateUserStats = async (
+  userId: string,
+  mode: "suspend" | "reactivate"
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.put(`/app/appkey/update-status`, {
+    key: userId,
+    mode,
+  });
+  return result.data;
+};
+
+export const updateUser = async (
+  requestBody: any
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.put("/app/appkey/update", requestBody);
+  return result.data;
+};
+
+export const createUser = async (
+  requestBody: any
+): Promise<ApiResponse<any> | ApiErrorResponse> => {
+  const result = await api.post("/app/appkey/create", requestBody);
+  return result.data;
+};
+
+export const addCredits = async (
+  key: string,
+  credits: number
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.put("/app/appkey/add-credits", {
+    key,
+    credits,
+  });
+  return result.data;
 };
 
 interface GetPaymentsHistoryParams {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAccessToken, getBaseApi } from "@/services/auth-services";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -55,15 +54,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   Edit,
   Copy,
   MoreHorizontal,
@@ -85,25 +75,60 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import Link from "next/link";
+import { AppUsers } from "@/types/admin";
+import { useAllUsersQuery } from "@/services/queries/admin-dashboard";
+import PaginationView from "@/components/pagination-view";
 import {
-  AllAppKeysResponse,
-  AppKeys,
-  getAppUsers,
+  addCredits,
+  createUser,
+  resetDeviceId,
+  updateUser,
+  updateUserStats,
 } from "@/services/admin-dashboard";
 
 export default function AppKeyList() {
   // Pagination and search states
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalKeys, setTotalKeys] = useState(0);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>("all");
+  const [selectedStatusFilter, setSelectedStatusFilter] =
+    useState<string>("all");
 
-  // APP key states
-  const [appKeys, setAppKeys] = useState<AppKeys[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Build query parameters
+  const buildQueryParams = () => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", currentPage.toString());
+    queryParams.append("limit", limit.toString());
+
+    if (debouncedSearchTerm) {
+      queryParams.append("search", debouncedSearchTerm);
+    }
+
+    if (selectedPlanFilter !== "all") {
+      queryParams.append("plan", selectedPlanFilter);
+    }
+
+    if (selectedStatusFilter !== "all") {
+      queryParams.append("status", selectedStatusFilter);
+    }
+
+    return queryParams.toString();
+  };
+
+  // Use React Query hook
+  const { data, isLoading, error, refetch } = useAllUsersQuery(
+    buildQueryParams()
+  );
+
+  // Extract data from React Query response
+  const appKeys = data?.success && data.data?.users ? data.data.users : [];
+  const totalPages =
+    data?.success && data.data?.totalPages ? data.data.totalPages : 1;
+  const totalKeys = data?.success && data.data?.total ? data.data.total : 0;
+
+  // Action states
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateUsername, setUpdateUsername] = useState("");
@@ -112,9 +137,6 @@ export default function AppKeyList() {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
-  const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>("all");
-  const [selectedStatusFilter, setSelectedStatusFilter] =
-    useState<string>("all");
 
   // Create API key states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -133,103 +155,20 @@ export default function AppKeyList() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 0);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
-
-  const fetchAppKeys = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Build query parameters
-      const queryParams = new URLSearchParams();
-      queryParams.append("page", currentPage.toString());
-      queryParams.append("limit", limit.toString());
-
-      if (debouncedSearchTerm) {
-        queryParams.append("search", debouncedSearchTerm);
-      }
-
-      if (selectedPlanFilter !== "all") {
-        queryParams.append("plan", selectedPlanFilter);
-      }
-
-      if (selectedStatusFilter !== "all") {
-        queryParams.append("status", selectedStatusFilter);
-      }
-
-      const result = await getAppUsers(queryParams.toString());
-
-      if (result.success) {
-        const responseData: AllAppKeysResponse["data"] = result.data;
-        setAppKeys(responseData.appKeys);
-        setTotalPages(responseData.totalPages);
-        setTotalKeys(responseData.total);
-        setCurrentPage(responseData.currentPage);
-      } else {
-        throw new Error(result.message || "Failed to fetch app users");
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    currentPage,
-    limit,
-    debouncedSearchTerm,
-    selectedPlanFilter,
-    selectedStatusFilter,
-  ]);
-
-  // Fetch API keys when page, limit, or search term changes
-  useEffect(() => {
-    fetchAppKeys();
-  }, [
-    currentPage,
-    limit,
-    debouncedSearchTerm,
-    selectedPlanFilter,
-    selectedStatusFilter,
-    fetchAppKeys,
-  ]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast("API key has been copied to clipboard");
   };
 
-  const deleteAppKey = async (username: string) => {
+  const deleteUser = async (username: string) => {
     try {
       setDeletingUsername(username);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/delete/${username}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete API key");
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Refresh the API keys list
-        fetchAppKeys();
-
-        toast("API key deleted successfully");
-      } else {
-        throw new Error(result.message || "Failed to delete API key");
-      }
+      throw new Error("Failed to delete User");
     } catch (err) {
       toast(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
@@ -237,36 +176,17 @@ export default function AppKeyList() {
     }
   };
 
-  const resetDeviceId = async (appKey: string) => {
+  const handleResetDeviceId = async (appKey: string) => {
     try {
       setProcessingKey(appKey);
       setProcessingAction("reset-device");
-
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/reset-device`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKey,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to reset device ID");
-      }
+      const result = await resetDeviceId(appKey);
 
       if (result.success) {
         toast("Device ID reset successfully");
 
         // Refresh the API keys to get updated data
-        await fetchAppKeys();
+        await refetch();
       } else {
         throw new Error(result.message || "Failed to reset device ID");
       }
@@ -278,7 +198,7 @@ export default function AppKeyList() {
     }
   };
 
-  const updateKeyStatus = async (
+  const handleUpdateKeyStatus = async (
     appKey: string,
     mode: "suspend" | "reactivate"
   ) => {
@@ -286,26 +206,7 @@ export default function AppKeyList() {
       setProcessingKey(appKey);
       setProcessingAction(mode);
 
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/update-status`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKey,
-          mode,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || `Failed to ${mode} API key`);
-      }
+      const result = await updateUserStats(appKey, mode);
 
       if (result.success) {
         toast(
@@ -316,7 +217,7 @@ export default function AppKeyList() {
         );
 
         // Refresh the API keys list
-        await fetchAppKeys();
+        await refetch();
       } else {
         throw new Error(result.message || `Failed to ${mode} API key`);
       }
@@ -368,8 +269,6 @@ export default function AppKeyList() {
   const updateAppKey = async () => {
     try {
       setIsUpdating(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
       // Create the request body with only the necessary fields
       const requestBody: {
@@ -401,26 +300,13 @@ export default function AppKeyList() {
         }
       }
 
-      const response = await fetch(`${baseApi}/app/appkey/update`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to update app user");
-      }
+      const result = await updateUser(requestBody);
 
       if (result.success) {
         toast("App user updated successfully");
 
         // Refresh the API keys list
-        await fetchAppKeys();
+        await refetch();
 
         setUpdateDialogOpen(false);
       } else {
@@ -436,8 +322,6 @@ export default function AppKeyList() {
   const createAppKey = async () => {
     try {
       setIsCreating(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
       // Build request body based on selected plan
       const requestBody: {
@@ -469,24 +353,11 @@ export default function AppKeyList() {
         requestBody.plan = createPlan;
       }
 
-      const response = await fetch(`${baseApi}/app/appkey/create`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to create app user");
-      }
+      const result = await createUser(requestBody);
 
       if (result.success) {
         // Refresh the API keys list to include the new key
-        await fetchAppKeys();
+        await refetch();
 
         toast("App user created successfully");
 
@@ -494,13 +365,13 @@ export default function AppKeyList() {
         toast(
           <div className="mt-2 flex items-center space-x-2">
             <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
-              {result.data.appKey}
+              {result.data?.appKey}
             </code>
             <Button
               variant="outline"
               size="sm"
               className="h-8 px-2"
-              onClick={() => copyToClipboard(result.data.appKey)}
+              onClick={() => copyToClipboard(result.data?.appKey)}
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
@@ -522,7 +393,7 @@ export default function AppKeyList() {
     }
   };
 
-  const openUpdateDialog = (appKey: AppKeys) => {
+  const openUpdateDialog = (appKey: AppUsers) => {
     setUpdateUsername(appKey.username);
     setUpdatePlan(appKey.plan?.type || "N/A");
     setUpdateExpiryDays("30"); // Default to 30 days
@@ -558,14 +429,14 @@ export default function AppKeyList() {
       const row = [
         key.username,
         key.key,
-        key.plan?.type, // Access the 'type' property of the plan
+        key.plan?.type ?? "",
         key.status,
-        key.expiresAt,
+        key.expiresAt ?? "",
         key.createdAt,
-        key.totalProcess.toString(),
+        key.totalProcess?.toString() ?? "0",
         (key.allowedDevices?.length ?? 0) > 0 ? "Yes" : "No",
       ];
-      csvRows.push(row.map((value) => value?.toString() ?? "")); // Convert any undefined values to empty strings
+      csvRows.push(row.map((value) => value?.toString() ?? ""));
     });
 
     // Convert to CSV string
@@ -591,91 +462,8 @@ export default function AppKeyList() {
     setCurrentPage(page);
   };
 
-  const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            isActive={currentPage === i}
-            onClick={() => handlePageChange(i)}
-          >
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      );
-    }
-
-    return (
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => handlePageChange(currentPage - 1)}
-              className={
-                currentPage === 1 ? "pointer-events-none opacity-50" : ""
-              }
-            />
-          </PaginationItem>
-
-          {startPage > 1 && (
-            <>
-              <PaginationItem>
-                <PaginationLink onClick={() => handlePageChange(1)}>
-                  1
-                </PaginationLink>
-              </PaginationItem>
-              {startPage > 2 && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-            </>
-          )}
-
-          {pages}
-
-          {endPage < totalPages && (
-            <>
-              {endPage < totalPages - 1 && (
-                <PaginationItem>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )}
-              <PaginationItem>
-                <PaginationLink onClick={() => handlePageChange(totalPages)}>
-                  {totalPages}
-                </PaginationLink>
-              </PaginationItem>
-            </>
-          )}
-
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => handlePageChange(currentPage + 1)}
-              className={
-                currentPage === totalPages
-                  ? "pointer-events-none opacity-50"
-                  : ""
-              }
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  };
-
   const renderAppKeyTable = () => {
-    if (loading && appKeys.length === 0) {
+    if (isLoading && appKeys.length === 0) {
       return (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -692,8 +480,12 @@ export default function AppKeyList() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <XCircle className="h-12 w-12 text-destructive mb-4" />
           <h3 className="text-lg font-medium">Error loading API keys</h3>
-          <p className="text-muted-foreground mt-2 mb-4">{error}</p>
-          <Button onClick={fetchAppKeys} variant="outline">
+          <p className="text-muted-foreground mt-2 mb-4">
+            {error instanceof Error
+              ? error.message
+              : "An unknown error occurred"}
+          </p>
+          <Button onClick={() => refetch()} variant="outline">
             <RefreshCw className="mr-2 h-4 w-4" />
             Try Again
           </Button>
@@ -803,7 +595,7 @@ export default function AppKeyList() {
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/app-users/${appKey.key}`}>
+                  <Link href={`/admin/users/${appKey.key}`}>
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View user details</span>
                   </Link>
@@ -840,7 +632,7 @@ export default function AppKeyList() {
 
                     {/* Reset Device ID option */}
                     <DropdownMenuItem
-                      onClick={() => resetDeviceId(appKey.key)}
+                      onClick={() => handleResetDeviceId(appKey.key)}
                       disabled={isProcessing(appKey.key, "reset-device")}
                     >
                       {isProcessing(appKey.key, "reset-device") ? (
@@ -857,7 +649,9 @@ export default function AppKeyList() {
                     {appKey.status === "active" ? (
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => updateKeyStatus(appKey.key, "suspend")}
+                        onClick={() =>
+                          handleUpdateKeyStatus(appKey.key, "suspend")
+                        }
                         disabled={isProcessing(appKey.key, "suspend")}
                       >
                         {isProcessing(appKey.key, "suspend") ? (
@@ -873,7 +667,7 @@ export default function AppKeyList() {
                       <DropdownMenuItem
                         className="text-green-600"
                         onClick={() =>
-                          updateKeyStatus(appKey.key, "reactivate")
+                          handleUpdateKeyStatus(appKey.key, "reactivate")
                         }
                         disabled={isProcessing(appKey.key, "reactivate")}
                       >
@@ -914,7 +708,7 @@ export default function AppKeyList() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => deleteAppKey(appKey.username)}
+                            onClick={() => deleteUser(appKey.username)}
                             disabled={deletingUsername === appKey.username}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
@@ -940,35 +734,17 @@ export default function AppKeyList() {
     );
   };
 
-  const addCredits = async () => {
+  const handleAddCredits = async () => {
     try {
       setIsAddingCredit(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
 
-      const response = await fetch(`${baseApi}/app/appkey/add-credits`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: creditAppKey,
-          credits: parseInt(creditAmount),
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to add credits");
-      }
+      const result = await addCredits(creditAppKey, parseInt(creditAmount));
 
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);
 
         // Refresh the API keys list
-        await fetchAppKeys();
+        await refetch();
 
         setAddCreditDialogOpen(false);
         setCreditAmount("50");
@@ -982,7 +758,7 @@ export default function AppKeyList() {
     }
   };
 
-  const openAddCreditDialog = (appKey: AppKeys) => {
+  const openAddCreditDialog = (appKey: AppUsers) => {
     setCreditAppKey(appKey.key);
     setCreditAmount("50");
     setAddCreditDialogOpen(true);
@@ -1000,7 +776,7 @@ export default function AppKeyList() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={fetchAppKeys}
+            onClick={() => refetch()}
             className="flex items-center gap-1"
           >
             <RefreshCw className="h-4 w-4" />
@@ -1098,9 +874,15 @@ export default function AppKeyList() {
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             Showing {appKeys.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
-            {Math.min(currentPage * limit, totalKeys)} of {totalKeys} APP Users
+            {Math.min(currentPage * limit, totalKeys ?? 0)} of {totalKeys ?? 0}{" "}
+            APP Users
           </div>
-          {totalPages > 1 && renderPagination()}
+          <PaginationView
+            currentPage={currentPage}
+            totalPages={totalPages}
+            paginationItemsToDisplay={5}
+            handlePageChange={handlePageChange}
+          />
         </div>
       </CardContent>
 
@@ -1273,7 +1055,7 @@ export default function AppKeyList() {
             >
               Cancel
             </Button>
-            <Button onClick={addCredits} disabled={isAddingCredit}>
+            <Button onClick={handleAddCredits} disabled={isAddingCredit}>
               {isAddingCredit ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

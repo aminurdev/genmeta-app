@@ -2,13 +2,11 @@ import express from "express";
 import {
   createAppKey,
   deleteAppKey,
-  getAllAppKeys,
   updateAppKey,
   validateAppKey,
   getAppKeyStats,
   updateAppKeyStatus,
   resetDevice,
-  getStatistics,
   getUserDetailsByKey,
   addCredits,
   processApiUsage,
@@ -17,7 +15,6 @@ import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/appkey/get", authenticateAndVerifyAdmin, getAllAppKeys);
 router.post("/appkey/create", authenticateAndVerifyAdmin, createAppKey);
 router.put("/appkey/update", authenticateAndVerifyAdmin, updateAppKey);
 router.delete(
@@ -32,7 +29,6 @@ router.put(
   updateAppKeyStatus
 );
 router.put("/appkey/add-credits", authenticateAndVerifyAdmin, addCredits);
-router.get("/appkey/statistics", authenticateAndVerifyAdmin, getStatistics);
 router.get(
   "/appkey/user/details/:key",
   authenticateAndVerifyAdmin,

@@ -48,7 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { getAccessToken, getBaseApi } from "@/services/auth-services";
+import { getBaseApi } from "@/services/auth-services";
 import {
   ArrowLeft,
   Copy,
@@ -73,6 +73,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Link from "next/link";
+import { getAccessToken } from "@/lib/cookies";
 
 interface UserDetails {
   id: string;
@@ -456,7 +457,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
       if (result.success) {
         toast("API key deleted successfully");
-        router.push("/admin/app-users");
+        router.push("/admin/users");
       } else {
         throw new Error(result.message || "Failed to delete API key");
       }
@@ -541,7 +542,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         <p className="text-muted-foreground mt-2 mb-4">{error}</p>
         <div className="flex gap-4">
           <Button variant="outline" asChild>
-            <Link href="/admin/app-users">
+            <Link href="/admin/users">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to APP Users
             </Link>
@@ -566,7 +567,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           The requested API key could not be found.
         </p>
         <Button variant="outline" asChild>
-          <Link href="/admin/app-users" className="text-center">
+          <Link href="/admin/users" className="text-center">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to APP Users
           </Link>
@@ -580,7 +581,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" asChild>
-            <Link href="/admin/app-users">
+            <Link href="/admin/users">
               <ArrowLeft className="mr-2 h-4 w-4" />
             </Link>
           </Button>

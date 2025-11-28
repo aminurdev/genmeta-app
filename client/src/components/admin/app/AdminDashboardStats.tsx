@@ -23,7 +23,6 @@ import {
   CreditCard,
   DollarSign,
   Key,
-  Loader2,
   RefreshCw,
   Users,
   XCircle,
@@ -31,6 +30,7 @@ import {
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAdminOverviewQuery } from "@/services/queries/admin-dashboard";
+import Loading from "@/app/admin/loading";
 
 export default function DashboardStats() {
   const { data, isLoading, error, refetch } = useAdminOverviewQuery();
@@ -68,12 +68,7 @@ export default function DashboardStats() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Loading dashboard statistics...</p>
-      </div>
-    );
+    return <Loading />;
   }
 
   if (error) {
@@ -173,14 +168,14 @@ export default function DashboardStats() {
                   stats.revenue.growthPercentage > 0
                     ? "text-xs text-green-500"
                     : stats.revenue.growthPercentage < 0
-                      ? "text-xs text-red-500"
-                      : "text-xs text-muted-foreground"
+                    ? "text-xs text-red-500"
+                    : "text-xs text-muted-foreground"
                 }
               >
                 {stats.revenue.growthPercentage !== 0
                   ? `${Math.abs(stats.revenue.growthPercentage).toFixed(
-                    2
-                  )}% from last month`
+                      2
+                    )}% from last month`
                   : "No change from last month"}
               </span>
             </div>
