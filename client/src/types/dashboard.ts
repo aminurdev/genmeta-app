@@ -62,3 +62,43 @@ export interface Profile {
     expiresAt: string | null;
   } | null;
 }
+
+// Earned history item
+export interface EarnedHistoryItem {
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  amount: number;
+  createdAt: string;
+}
+
+// Withdrawal history item
+export interface WithdrawHistoryItem {
+  amount: number;
+  status: "pending" | "completed" | "rejected";
+  createdAt: string;
+  issuedAt: string | null;
+  trx: string | null;
+  withdrawAccount?: string;
+}
+
+// Referral response data
+export interface ReferralData {
+  referralCode: string;
+  withdrawAccount: string | null;
+  referralCount: number;
+  totalEarned: number;
+  availableBalance: number;
+  totalWithdrawn: number;
+  earnedHistory?: EarnedHistoryItem[];
+  withdrawHistory?: WithdrawHistoryItem[];
+}
+
+export interface RequestWithdrawRes {
+  amount: number;
+  withdrawAccount: string;
+  status: string;
+  requestedAt: Date;
+}

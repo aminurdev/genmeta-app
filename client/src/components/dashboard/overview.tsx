@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useOverviewQuery } from "@/hooks/queries/dashboard";
+import { useOverviewQuery } from "@/services/queries/dashboard";
 import {
   Card,
   CardContent,
@@ -62,9 +62,7 @@ const Overview = () => {
 
   // Loading state
   if (isLoading) {
-    return (
-      <Loading />
-    );
+    return <Loading />;
   }
 
   // Error state
@@ -76,7 +74,9 @@ const Overview = () => {
             Failed to load overview
           </h2>
           <p className="text-muted-foreground">
-            {overview?.message || (error as Error)?.message || "An error occurred"}
+            {overview?.message ||
+              (error as Error)?.message ||
+              "An error occurred"}
           </p>
         </div>
       </div>
@@ -93,9 +93,7 @@ const Overview = () => {
           <h2 className="text-2xl font-bold text-destructive mb-2">
             No data available
           </h2>
-          <p className="text-muted-foreground">
-            Unable to load dashboard data
-          </p>
+          <p className="text-muted-foreground">Unable to load dashboard data</p>
         </div>
       </div>
     );

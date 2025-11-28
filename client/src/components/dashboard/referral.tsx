@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useReferralDetailsQuery } from "@/services/queries/dashboard";
 import {
   Card,
   CardContent,
@@ -41,17 +42,66 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { type ReferralData, requestWithdraw } from "@/services/referral";
+import { requestWithdraw } from "@/services/dashboard";
 import { useBaseUrl } from "@/hooks/use-baseUrl";
+import Loading from "@/app/dashboard/loading";
 
-interface ReferralDashboardProps {
-  referralData: ReferralData;
-}
-
-export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
+export function ReferralDashboard() {
+  // All hooks must be at the top
+  const {
+    data: referralResponse,
+    isLoading,
+    isError,
+    error,
+  } = useReferralDetailsQuery();
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
-  const [mobileNumber, setMobileNumber] = useState("");
+  const [mobileNumber, setMobileNumber] = useState(
+    referralResponse?.data?.withdrawAccount || ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const baseUrl = useBaseUrl();
+
+  // Loading state
+  if (isLoading) {
+    return <Loading />;
+  }
+
+  // Error state
+  if (isError || !referralResponse?.success) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive mb-2">
+            Failed to load referral data
+          </h2>
+          <p className="text-muted-foreground">
+            {referralResponse?.message ||
+              (error as Error)?.message ||
+              "An error occurred"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const referralData = referralResponse.data;
+
+  // Safety check for data
+  if (!referralData) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive mb-2">
+            No data available
+          </h2>
+          <p className="text-muted-foreground">Unable to load referral data</p>
+        </div>
+      </div>
+    );
+  }
+
+  const referralUrl = `${baseUrl}/signup?ref=${referralData.referralCode}`;
 
   // Helper function to calculate this month's earnings
   const calculateThisMonthEarnings = (): number => {
@@ -147,11 +197,6 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
       setIsSubmitting(false);
     }
   };
-
-  const baseUrl = useBaseUrl();
-  const referralUrl = `${baseUrl}/signup?ref=${referralData.referralCode}`;
-
-  const [copied, setCopied] = React.useState(false);
 
   return (
     <div className="p-4 space-y-6">
@@ -343,7 +388,9 @@ export function ReferralDashboard({ referralData }: ReferralDashboardProps) {
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="mobile">Mobile Account Number</Label>
+                        <Label htmlFor="mobile">
+                          Enter your Bkash Personal Number
+                        </Label>
                         <div className="relative">
                           <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
