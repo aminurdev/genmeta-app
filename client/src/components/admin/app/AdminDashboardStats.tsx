@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -17,14 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { AreaChart } from "@/components/ui/area-chart";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -38,38 +30,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AdminOverview, getAdminOverview } from "@/services/admin-dashboard";
+import { useAdminOverviewQuery } from "@/services/queries/admin-dashboard";
 
 export default function DashboardStats() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<AdminOverview["data"] | null>(null);
-
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
-    try {
-      setLoading(true);
-
-      const result = await getAdminOverview();
-
-      if (result.success) {
-        setStats(result.data);
-      } else {
-        throw new Error(
-          result.message || "Failed to fetch dashboard statistics"
-        );
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error, refetch } = useAdminOverviewQuery();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -95,13 +59,6 @@ export default function DashboardStats() {
     );
   };
 
-  const prepareChartData = (monthlyData: Record<string, number>) => {
-    return Object.entries(monthlyData).map(([month, value]) => ({
-      month: formatMonthYear(month),
-      value,
-    }));
-  };
-
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -110,7 +67,7 @@ export default function DashboardStats() {
       .toUpperCase();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
@@ -118,7 +75,6 @@ export default function DashboardStats() {
       </div>
     );
   }
-  console.log(stats);
 
   if (error) {
     return (
@@ -127,8 +83,10 @@ export default function DashboardStats() {
         <h3 className="text-lg font-medium">
           Error loading dashboard statistics
         </h3>
-        <p className="text-muted-foreground mt-2 mb-4">{error}</p>
-        <Button onClick={fetchDashboardStats}>
+        <p className="text-muted-foreground mt-2 mb-4">
+          {error instanceof Error ? error.message : "An unknown error occurred"}
+        </p>
+        <Button onClick={() => refetch()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
         </Button>
@@ -136,7 +94,7 @@ export default function DashboardStats() {
     );
   }
 
-  if (!stats) {
+  if (!data?.success || !data?.data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
@@ -144,7 +102,7 @@ export default function DashboardStats() {
         <p className="text-muted-foreground mt-2 mb-4">
           Dashboard statistics could not be loaded.
         </p>
-        <Button onClick={fetchDashboardStats}>
+        <Button onClick={() => refetch()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
@@ -152,14 +110,27 @@ export default function DashboardStats() {
     );
   }
 
-  const revenueData = prepareChartData(stats.revenue.monthlyRevenueList);
-  const processData = prepareChartData(stats.appKeys.monthlyProcessList);
+  const stats = data.data;
+
+  const revenueData = Object.entries(stats.revenue.monthlyRevenueList).map(
+    ([month, value]) => ({
+      label: formatMonthYear(month),
+      value,
+    })
+  );
+
+  const processData = Object.entries(stats.appKeys.monthlyProcessList).map(
+    ([month, value]) => ({
+      label: formatMonthYear(month),
+      value,
+    })
+  );
 
   return (
     <div className=" space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button variant="outline" onClick={fetchDashboardStats}>
+        <Button variant="outline" onClick={() => refetch()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
@@ -202,14 +173,14 @@ export default function DashboardStats() {
                   stats.revenue.growthPercentage > 0
                     ? "text-xs text-green-500"
                     : stats.revenue.growthPercentage < 0
-                    ? "text-xs text-red-500"
-                    : "text-xs text-muted-foreground"
+                      ? "text-xs text-red-500"
+                      : "text-xs text-muted-foreground"
                 }
               >
                 {stats.revenue.growthPercentage !== 0
                   ? `${Math.abs(stats.revenue.growthPercentage).toFixed(
-                      2
-                    )}% from last month`
+                    2
+                  )}% from last month`
                   : "No change from last month"}
               </span>
             </div>
@@ -304,69 +275,13 @@ export default function DashboardStats() {
             <CardDescription>Monthly revenue trends</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={revenueData}
-                margin={{
-                  top: 10,
-                  right: 30,
-                  left: 0,
-                  bottom: 0,
-                }}
-              >
-                <XAxis
-                  dataKey="month"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `$${value}`}
-                />
-                <RechartsTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Month
-                              </span>
-                              <span className="font-bold text-sm">
-                                {payload[0].payload.month}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Revenue
-                              </span>
-                              <span className="font-bold text-sm">
-                                {formatCurrency(payload[0].value as number)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#8884d8"
-                  fill="#8884d8"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <AreaChart
+              data={revenueData}
+              color="#8884d8"
+              tooltipLabel="Revenue"
+              valueFormatter={formatCurrency}
+              yAxisFormatter={(value) => `$${value}`}
+            />
           </CardContent>
         </Card>
 
@@ -377,68 +292,12 @@ export default function DashboardStats() {
             <CardDescription>Monthly image processing trends</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={processData}
-                margin={{
-                  top: 10,
-                  right: 30,
-                  left: 0,
-                  bottom: 0,
-                }}
-              >
-                <XAxis
-                  dataKey="month"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <RechartsTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Month
-                              </span>
-                              <span className="font-bold text-sm">
-                                {payload[0].payload.month}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Processes
-                              </span>
-                              <span className="font-bold text-sm">
-                                {payload[0].value}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#82ca9d"
-                  fill="#82ca9d"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <AreaChart
+              data={processData}
+              color="#82ca9d"
+              tooltipLabel="Processes"
+              valueFormatter={(value) => value.toLocaleString()}
+            />
           </CardContent>
         </Card>
       </div>

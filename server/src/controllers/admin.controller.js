@@ -13,131 +13,294 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  // === 1. PAYMENTS ===
-  const allPayments = await AppPayment.find({});
-  const totalRevenue = allPayments.reduce((sum, p) => sum + p.amount, 0);
+  // Helper to format month key
+  const formatMonthKey = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 
-  const currentMonthRevenue = allPayments
-    .filter((p) => new Date(p.createdAt) >= thisMonth)
-    .reduce((sum, p) => sum + p.amount, 0);
+  // Initialize 6-month keys for aggregation
+  const monthlyKeys = {};
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthlyKeys[formatMonthKey(date)] = 0;
+  }
 
-  const lastMonthRevenue = allPayments
-    .filter(
-      (p) =>
-        new Date(p.createdAt) >= lastMonth && new Date(p.createdAt) < thisMonth
-    )
-    .reduce((sum, p) => sum + p.amount, 0);
+  // === AGGREGATED QUERIES (Single database round trip) ===
+  const [paymentStats, appKeyStats, userStats] = await Promise.all([
+    // 1. PAYMENT AGGREGATION
+    AppPayment.aggregate([
+      {
+        $facet: {
+          revenue: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: "$amount" },
+                currentMonth: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", thisMonth] }, "$amount", 0],
+                  },
+                },
+                lastMonth: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $gte: ["$createdAt", lastMonth] },
+                          { $lt: ["$createdAt", thisMonth] },
+                        ],
+                      },
+                      "$amount",
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+          monthlyRevenue: [
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: "%Y-%m", date: "$createdAt" },
+                },
+                amount: { $sum: "$amount" },
+              },
+            },
+          ],
+          recent: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 5 },
+            {
+              $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "user",
+              },
+            },
+            {
+              $project: {
+                amount: 1,
+                createdAt: 1,
+                userId: {
+                  $arrayElemAt: [
+                    {
+                      $map: {
+                        input: "$user",
+                        as: "u",
+                        in: {
+                          _id: "$$u._id",
+                          name: "$$u.name",
+                          email: "$$u.email",
+                        },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+            },
+          ],
+          count: [{ $count: "total" }],
+          monthlyNewPayments: [
+            { $match: { createdAt: { $gte: thisMonth } } },
+            { $count: "total" },
+          ],
+        },
+      },
+    ]),
+
+    // 2. APP KEY AGGREGATION
+    AppKey.aggregate([
+      {
+        $facet: {
+          counts: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                active: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ["$isActive", true] },
+                          { $eq: ["$status", "active"] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                newThisMonth: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
+                  },
+                },
+                activePremium: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ["$isActive", true] },
+                          { $eq: ["$status", "active"] },
+                          { $ne: ["$plan.type", "free"] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                subscriptionPlan: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ["$isActive", true] },
+                          { $eq: ["$status", "active"] },
+                          { $eq: ["$plan.type", "subscription"] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                creditPlan: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ["$isActive", true] },
+                          { $eq: ["$status", "active"] },
+                          { $eq: ["$plan.type", "credit"] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+          monthlyProcess: [
+            {
+              $match: { monthlyProcess: { $exists: true } },
+            },
+            {
+              $addFields: {
+                monthlyProcessArray: {
+                  $objectToArray: "$monthlyProcess",
+                },
+              },
+            },
+            {
+              $unwind: "$monthlyProcessArray",
+            },
+            {
+              $group: {
+                _id: "$monthlyProcessArray.k",
+                count: { $sum: "$monthlyProcessArray.v" },
+              },
+            },
+          ],
+        },
+      },
+    ]),
+
+    // 3. USER AGGREGATION
+    User.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          newThisMonth: {
+            $sum: {
+              $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  // Extract and format results
+  const revenueData = paymentStats[0].revenue[0] || {
+    total: 0,
+    currentMonth: 0,
+    lastMonth: 0,
+  };
 
   const revenueGrowth =
-    lastMonthRevenue === 0
+    revenueData.lastMonth === 0
       ? null
-      : ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+      : ((revenueData.currentMonth - revenueData.lastMonth) /
+          revenueData.lastMonth) *
+        100;
 
-  // === 2. API KEYS ===
-  const totalAppKeys = await AppKey.countDocuments();
-  const activeAppKeys = await AppKey.countDocuments({
-    isActive: true,
-    status: "active",
-  });
-  const newAppKeysThisMonth = await AppKey.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
-
-  // 🔍 Active premium keys (not free)
-  const activePremiumKeys = await AppKey.find({
-    isActive: true,
-    status: "active",
-    "plan.type": { $ne: "free" },
-  });
-
-  const activePremiumCount = activePremiumKeys.length;
-  const subscriptionPlanCount = activePremiumKeys.filter(
-    (key) => key.plan?.type === "subscription"
-  ).length;
-  const creditPlanCount = activePremiumKeys.filter(
-    (key) => key.plan?.type === "credit"
-  ).length;
-
-  const appKeys = await AppKey.find({});
-  const monthlyProcessList = {};
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    monthlyProcessList[monthKey] = 0;
-  }
-
-  appKeys.forEach((appKey) => {
-    if (!appKey.monthlyProcess) return;
-    for (const [month, count] of appKey.monthlyProcess.entries()) {
-      if (monthlyProcessList[month] !== undefined) {
-        monthlyProcessList[month] += count;
-      }
+  // Format monthly revenue
+  const monthlyRevenueList = { ...monthlyKeys };
+  paymentStats[0].monthlyRevenue.forEach((item) => {
+    if (item._id in monthlyRevenueList) {
+      monthlyRevenueList[item._id] = item.amount;
     }
   });
 
-  // === 3. USERS ===
-  const totalUsers = await User.countDocuments();
-  const newUsersThisMonth = await User.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
-
-  // === 4. MONTHLY REVENUE LIST ===
-  const monthlyRevenueList = {};
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    monthlyRevenueList[monthKey] = 0;
-  }
-
-  allPayments.forEach((payment) => {
-    const createdAt = new Date(payment.createdAt);
-    const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
-    if (monthlyRevenueList[key] !== undefined) {
-      monthlyRevenueList[key] += payment.amount;
+  // Format monthly process list
+  const monthlyProcessList = { ...monthlyKeys };
+  appKeyStats[0].monthlyProcess.forEach((item) => {
+    if (item._id in monthlyProcessList) {
+      monthlyProcessList[item._id] = item.count;
     }
   });
 
-  // === 5. RECENT PAYMENTS ===
-  const recentPayments = await AppPayment.find({})
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .populate("userId", "name email")
-    .select("amount createdAt userId");
+  const appKeyCounts = appKeyStats[0].counts[0] || {
+    total: 0,
+    active: 0,
+    newThisMonth: 0,
+    activePremium: 0,
+    subscriptionPlan: 0,
+    creditPlan: 0,
+  };
 
-  const monthlyNewPayments = await AppPayment.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
+  const userCounts = userStats[0] || {
+    total: 0,
+    newThisMonth: 0,
+  };
 
-  // === 6. RESPONSE ===
+  // === RESPONSE ===
   return new ApiResponse(
     200,
     true,
     "Admin dashboard statistics retrieved successfully",
     {
       revenue: {
-        total: totalRevenue,
-        currentMonth: currentMonthRevenue,
-        lastMonth: lastMonthRevenue,
+        total: revenueData.total,
+        currentMonth: revenueData.currentMonth,
+        lastMonth: revenueData.lastMonth,
         growthPercentage: revenueGrowth,
         monthlyRevenueList,
       },
       appKeys: {
-        total: totalAppKeys,
-        newThisMonth: newAppKeysThisMonth,
-        active: activeAppKeys,
-        activePremium: activePremiumCount,
-        subscriptionPlanCount,
-        creditPlanCount,
+        total: appKeyCounts.total,
+        newThisMonth: appKeyCounts.newThisMonth,
+        active: appKeyCounts.active,
+        activePremium: appKeyCounts.activePremium,
+        subscriptionPlanCount: appKeyCounts.subscriptionPlan,
+        creditPlanCount: appKeyCounts.creditPlan,
         monthlyProcessList,
       },
       users: {
-        total: totalUsers,
-        newThisMonth: newUsersThisMonth,
+        total: userCounts.total,
+        newThisMonth: userCounts.newThisMonth,
       },
       payments: {
-        total: allPayments.length,
-        newThisMonth: monthlyNewPayments,
-        recent: recentPayments,
+        total: paymentStats[0].count[0]?.total || 0,
+        newThisMonth: paymentStats[0].monthlyNewPayments[0]?.total || 0,
+        recent: paymentStats[0].recent,
       },
     }
   ).send(res);

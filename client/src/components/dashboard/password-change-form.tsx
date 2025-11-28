@@ -6,11 +6,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { changePassword, getCurrentUser } from "@/services/auth-services";
+import { changePassword } from "@/services/auth-services";
 
 export function PasswordChangeForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +64,7 @@ export function PasswordChangeForm() {
           result.message || "Failed to update password. Please try again."
         );
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update password. Please try again.");
     } finally {
       setIsLoading(false);

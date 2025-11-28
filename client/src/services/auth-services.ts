@@ -369,7 +369,7 @@ export const changePassword = async (
   confirmPassword: string
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/users/change-password", {
+    const result = await api.patch("/users/change-password", {
       currentPassword,
       newPassword,
       confirmPassword,
