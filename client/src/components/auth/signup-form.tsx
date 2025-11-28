@@ -213,9 +213,9 @@ const SignUpForm = () => {
         if (result?.success) {
           setUserEmail(values.email);
           setShowEmailVerification(true);
-          setOtpToken(result.data?.otpToken);
+          setOtpToken(result.data?.otpToken || "");
           setResendTimer(60); // Start 60 second timer for resend
-          updateUrlForVerification(values.email, result.data?.otpToken);
+          updateUrlForVerification(values.email, result.data?.otpToken || "");
         } else {
           setError(result?.message);
         }
@@ -274,8 +274,8 @@ const SignUpForm = () => {
         setSuccess("Verification code sent!");
         setResendTimer(60); // Reset timer
         setOtp(""); // Clear current OTP
-        setOtpToken(result.data?.otpToken); // Update OTP token
-        updateUrlForVerification(userEmail, result.data?.otpToken);
+        setOtpToken(result.data?.otpToken || ""); // Update OTP token
+        updateUrlForVerification(userEmail, result.data?.otpToken || "");
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setOtpError(result.message || "Failed to resend code");

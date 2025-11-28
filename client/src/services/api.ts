@@ -1,8 +1,7 @@
-// api.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios, { AxiosRequestConfig, Method } from "axios";
-import { getAccessToken, getTokenFromCookie } from "./auth-services";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL as string;
+import { ENV } from "@/lib/env";
+import { getAccessToken } from "../lib/cookies";
 
 // API request options interface
 interface ApiRequestOptions {
@@ -32,7 +31,7 @@ export const apiRequest = async <T = any>({
 
   const config: AxiosRequestConfig = {
     method,
-    url: `${BASE_URL}${endpoint}`,
+    url: `${ENV.apiBaseUrl}${endpoint}`,
     data,
     params,
     headers,

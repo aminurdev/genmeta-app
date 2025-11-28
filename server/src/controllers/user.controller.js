@@ -104,10 +104,20 @@ const verifyGoogleToken = asyncHandler(async (req, res) => {
   const accessToken = user.generateAccessToken();
   const refreshToken = user.generateRefreshToken();
 
+  const userRes = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar | null,
+    isVerified: user.isVerified,
+    loginProvider: user.loginProvider,
+    role: user.role,
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+  };
+
   return new ApiResponse(200, true, "Google verification successful", {
-    user,
-    accessToken,
-    refreshToken,
+    user: userRes,
   }).send(res);
 });
 
@@ -245,10 +255,20 @@ const verifyEmail = asyncHandler(async (req, res) => {
     updatedUser._id
   );
 
+  const user = {
+    _id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    avatar: updatedUser.avatar | null,
+    isVerified: updatedUser.isVerified,
+    loginProvider: updatedUser.loginProvider,
+    role: updatedUser.role,
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+  };
+
   return new ApiResponse(200, true, "Email verified successfully", {
-    user: updatedUser,
-    accessToken,
-    refreshToken,
+    user,
   }).send(res);
 });
 
@@ -295,10 +315,20 @@ const loginUser = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
+  const userRes = {
+    _id: loggedInUser._id,
+    name: loggedInUser.name,
+    email: loggedInUser.email,
+    avatar: loggedInUser.avatar | null,
+    isVerified: loggedInUser.isVerified,
+    loginProvider: loggedInUser.loginProvider,
+    role: loggedInUser.role,
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+  };
+
   return new ApiResponse(200, true, "Login Successful", {
-    user: loggedInUser,
-    accessToken,
-    refreshToken,
+    user: userRes,
   }).send(res);
 });
 
@@ -453,7 +483,9 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-  return new ApiResponse(200, req.user, "User fetched successfully").send(res);
+  return new ApiResponse(200, true, "User fetched successfully", req.user).send(
+    res
+  );
 });
 
 export {

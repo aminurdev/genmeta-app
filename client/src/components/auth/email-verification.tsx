@@ -78,7 +78,7 @@ export default function EmailVerification() {
       const result = await requestPasswordReset(email);
 
       if (result.success) {
-        setOtpToken(result.data.otpToken);
+        setOtpToken(result.data?.otpToken || "");
         setSuccess("OTP sent to your email address");
         setStep(2);
       } else {
@@ -106,7 +106,7 @@ export default function EmailVerification() {
       const result = await verifyOTP(otp, otpToken);
 
       if (result.success) {
-        setTempToken(result.data.tempToken);
+        setTempToken(result.data?.tempToken || "");
         setSuccess("OTP verified successfully");
         setStep(3);
       } else {

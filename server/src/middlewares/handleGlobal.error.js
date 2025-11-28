@@ -27,6 +27,7 @@ const globalErrorHandler = (err, req, res, next) => {
 
   res.status(statusCode).json({
     status: "error",
+    statusCode,
     message,
     stack: config.NODE_ENV === "development" ? err.stack : undefined,
   });
