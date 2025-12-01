@@ -20,7 +20,6 @@ import { AreaChart } from "@/components/ui/area-chart";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  CreditCard,
   DollarSign,
   Key,
   RefreshCw,
@@ -248,7 +247,7 @@ export default function DashboardStats() {
         </Card>
 
         {/* Payments Card */}
-        <Card>
+        {/* <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Payments</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -259,7 +258,7 @@ export default function DashboardStats() {
               +{stats.payments.newThisMonth} new this month
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -275,7 +274,7 @@ export default function DashboardStats() {
               color="#8884d8"
               tooltipLabel="Revenue"
               valueFormatter={formatCurrency}
-              yAxisFormatter={(value) => `$${value}`}
+              yAxisFormatter={(value) => formatCurrency(value)}
             />
           </CardContent>
         </Card>
@@ -293,6 +292,179 @@ export default function DashboardStats() {
               tooltipLabel="Processes"
               valueFormatter={(value) => value.toLocaleString()}
             />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top API Usage</CardTitle>
+            <CardDescription>Most active users by processes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Count</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats.appKeys.topUsage.map((item, index) => (
+                  <TableRow key={`${item._id}-${index}`}>
+                    <TableCell>
+                      <div className="flex gap-4">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage
+                            src={`https://avatar.vercel.sh/${item.user.email}`}
+                            alt={item.user.name}
+                          />
+                          <AvatarFallback>
+                            {getInitials(item.user.name ?? "")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.user.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.user.email}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {item.count.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {stats.appKeys.topUsage.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={2}
+                      className="text-center py-6 text-muted-foreground"
+                    >
+                      No data
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Spenders</CardTitle>
+            <CardDescription>Highest total payments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Total Spent</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats.payments.topSpenders.map((item, index) => (
+                  <TableRow key={`${item._id}-${index}`}>
+                    <TableCell>
+                      <div className="flex gap-4">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage
+                            src={
+                              item.user?.email
+                                ? `https://avatar.vercel.sh/${item.user.email}`
+                                : ""
+                            }
+                            alt={item.user?.name ?? ""}
+                          />
+                          <AvatarFallback>
+                            {getInitials(item.user?.name ?? "")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {item.user?.name ?? ""}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.user?.email}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(item.totalSpent)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {stats.payments.topSpenders.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={2}
+                      className="text-center py-6 text-muted-foreground"
+                    >
+                      No data
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Referrers</CardTitle>
+            <CardDescription>Users with most referrals</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Referrals</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats.topReferrers.map((item, index) => (
+                  <TableRow key={`${item._id}-${index}`}>
+                    <TableCell>
+                      <div className="flex gap-4">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage
+                            src={`https://avatar.vercel.sh/${item.user.email}`}
+                            alt={item.user.name}
+                          />
+                          <AvatarFallback>
+                            {getInitials(item.user.name ?? "")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.user.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {item.user.email}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {item.referredCount.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {stats.topReferrers.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={2}
+                      className="text-center py-6 text-muted-foreground"
+                    >
+                      No data
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

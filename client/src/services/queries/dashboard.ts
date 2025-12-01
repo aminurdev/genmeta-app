@@ -1,6 +1,6 @@
 "use client";
 
-import { QUERY_KEYS } from "@/lib/constants";
+import { QUERY_KEYS } from "@/services/constants";
 import {
   getOverview,
   getProfile,

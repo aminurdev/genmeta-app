@@ -5,56 +5,18 @@ import { ApiErrorResponse, ApiResponse } from "@/types";
 import { api } from "./api-client";
 import {
   AllUsersResponse,
-  DashboardData,
+  AdminDashboardStats,
   UsersStatisticsData,
+  PaymentResponse,
+  DownloadPaymentHistory,
+  ReferralRes,
+  ReferralDetails,
+  UpdateWithdrawalRes,
+  GetPaymentsHistoryParams,
 } from "@/types/admin";
 
-export interface PaymentResponse {
-  success: boolean;
-  message: string;
-  data: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    payments: {
-      _id: string;
-      user: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-      paymentID: string;
-      trxID: string;
-      plan?: {
-        id?: string;
-        name?: string;
-        type?: string;
-      };
-      amount: number;
-      createdAt: string;
-      transactionStatus: string;
-    }[];
-  };
-}
-
-export interface DownloadPaymentHistory {
-  success: boolean;
-  message: string;
-  data: {
-    name: string;
-    email: string;
-    paymentNumber: string;
-    paymentCreatedAt: string;
-    paymentExecuteTime: string;
-    amount: string;
-    trxID: string;
-    paymentID: string;
-  }[];
-}
-
 export const getAdminOverview = async (): Promise<
-  ApiResponse<DashboardData> | ApiErrorResponse
+  ApiResponse<AdminDashboardStats> | ApiErrorResponse
 > => {
   const result = await api.get("/admin/dashboard/stats");
   return result.data;
@@ -119,17 +81,6 @@ export const addCredits = async (
   return result.data;
 };
 
-interface GetPaymentsHistoryParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: string;
-  status?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
 export const getPaymentsHistory = async ({
   page,
   limit,
@@ -139,12 +90,12 @@ export const getPaymentsHistory = async ({
   status,
   startDate,
   endDate,
-}: GetPaymentsHistoryParams = {}): Promise<PaymentResponse> => {
+}: GetPaymentsHistoryParams = {}): Promise<
+  ApiResponse<PaymentResponse> | ApiErrorResponse
+> => {
   const result = await api.get(
-    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${
-      search ?? ""
-    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${
-      status ?? ""
+    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${search ?? ""
+    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${status ?? ""
     }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`
   );
   return result.data;
@@ -158,74 +109,11 @@ export const downloadPaymentHistory = async (
   return result.data;
 };
 
-interface ReferralRes {
-  referrer: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  referralCode: string;
-  referredCount: number;
-  totalEarned: number;
-  availableBalance: number;
-  withdrawAccount: string | null;
-  pendingWithdrawals: number;
-}
-
 export const getAllReferral = async (): Promise<ApiResponse<ReferralRes[]>> => {
   const result = await api.get("/admin/referral");
 
   return result.data;
 };
-
-// Referrer basic info
-export interface Referrer {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-// Referred User info
-export interface ReferredUser {
-  _id: string;
-  name: string;
-  email: string;
-}
-
-// Earned History
-export interface EarnedHistory {
-  _id: string;
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  amount: number;
-  createdAt: string;
-}
-
-// Withdrawal History
-export interface WithdrawHistory {
-  _id: string;
-  amount: number;
-  status: "pending" | "completed" | "rejected";
-  withdrawAccount: string;
-  trx: string | null;
-  createdAt: string;
-  issuedAt: string | null;
-}
-
-export interface ReferralDetails {
-  referrer: Referrer;
-  referralCode: string;
-  availableBalance: number;
-  withdrawAccount: string | null;
-  referralCount: number;
-  totalEarned: number;
-  referredUsers: ReferredUser[];
-  earnedHistory: EarnedHistory[];
-  withdrawHistory: WithdrawHistory[];
-}
 
 export const getAllReferralByUserId = async (
   userId: string
@@ -234,16 +122,6 @@ export const getAllReferralByUserId = async (
 
   return result.data;
 };
-
-export interface UpdateWithdrawalRes {
-  _id: string;
-  amount: number;
-  status: "completed" | "rejected";
-  withdrawAccount: string;
-  trx: string | null;
-  createdAt: Date;
-  issuedAt: Date;
-}
 
 export const updateWithdrawal = async (
   userId: string,
@@ -258,5 +136,251 @@ export const updateWithdrawal = async (
       trx,
     }
   );
+  return result.data;
+};
+
+// Pricing Plans
+export interface PricingPlan {
+  _id: string;
+  name: string;
+  type: "subscription" | "credit";
+  basePrice: number;
+  discountPrice?: number;
+  discountPercent: number;
+  isActive: boolean;
+  planDuration?: number | null;
+  credit?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
+export interface PricingPlansResponse {
+  plans: PricingPlan[];
+  pagination: PaginationData;
+}
+
+export interface PromoCode {
+  _id: string;
+  code: string;
+  description?: string;
+  discountPercent: number;
+  isActive: boolean;
+  appliesTo: "subscription" | "credit" | "both";
+  usageLimit: number | null;
+  usedCount: number;
+  validFrom: string;
+  validUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoCodesResponse {
+  promoCodes: PromoCode[];
+}
+
+export const getPricingPlans = async (params?: {
+  isActive?: boolean;
+  type?: "subscription" | "credit";
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}): Promise<ApiResponse<PricingPlansResponse> | ApiErrorResponse> => {
+  const queryParams = new URLSearchParams();
+
+  if (params) {
+    if (params.isActive !== undefined) {
+      queryParams.append("isActive", params.isActive.toString());
+    }
+    if (params.type) {
+      queryParams.append("type", params.type);
+    }
+    if (params.page) {
+      queryParams.append("page", params.page.toString());
+    }
+    if (params.limit) {
+      queryParams.append("limit", params.limit.toString());
+    }
+    if (params.sortBy) {
+      queryParams.append("sortBy", params.sortBy);
+    }
+    if (params.sortOrder) {
+      queryParams.append("sortOrder", params.sortOrder);
+    }
+  }
+
+  const queryString = queryParams.toString();
+  const result = await api.get(
+    `/pricing${queryString ? `?${queryString}` : ""}`
+  );
+  return result.data;
+};
+
+export const getPromoCodes = async (params?: {
+  active?: boolean;
+  appliesTo?: "subscription" | "credit" | "both";
+}): Promise<ApiResponse<PromoCodesResponse> | ApiErrorResponse> => {
+  const queryParams = new URLSearchParams();
+
+  if (params?.active !== undefined) {
+    queryParams.append("active", params.active.toString());
+  }
+  if (params?.appliesTo) {
+    queryParams.append("appliesTo", params.appliesTo);
+  }
+
+  const queryString = queryParams.toString();
+  const result = await api.get(
+    `/promo-codes${queryString ? `?${queryString}` : ""}`
+  );
+  return result.data;
+};
+
+// Pricing Plan Mutations
+export const createPricingPlan = async (data: {
+  name: string;
+  type: "subscription" | "credit";
+  basePrice: number;
+  discountPrice?: number;
+  isActive?: boolean;
+  planDuration?: number;
+  credit?: number;
+}): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
+  const result = await api.post("/pricing", data);
+  return result.data;
+};
+
+export const updatePricingPlan = async (
+  id: string,
+  data: Partial<{
+    name: string;
+    type: "subscription" | "credit";
+    basePrice: number;
+    discountPrice?: number;
+    discountPercent: number;
+    isActive: boolean;
+    planDuration?: number;
+    credit?: number;
+  }>
+): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
+  const result = await api.put(`/pricing/${id}`, data);
+  return result.data;
+};
+
+export const deletePricingPlan = async (
+  id: string
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.delete(`/pricing/${id}`);
+  return result.data;
+};
+
+// Promo Code Mutations
+export const createPromoCode = async (data: {
+  code: string;
+  description?: string;
+  discountPercent: number;
+  isActive: boolean;
+  appliesTo: "subscription" | "credit" | "both";
+  usageLimit?: number | null;
+  validFrom: string;
+  validUntil: string;
+}): Promise<ApiResponse<{ promoCode: PromoCode }> | ApiErrorResponse> => {
+  const result = await api.post("/promo-codes", data);
+  return result.data;
+};
+
+export const updatePromoCode = async (
+  id: string,
+  data: Partial<{
+    code?: string;
+    description?: string;
+    discountPercent: number;
+    isActive?: boolean;
+    appliesTo?: "subscription" | "credit" | "both";
+    usageLimit?: number | null;
+    validFrom?: string;
+    validUntil?: string;
+  }>
+): Promise<ApiResponse<{ promoCode: PromoCode }> | ApiErrorResponse> => {
+  const result = await api.patch(`/promo-codes/${id}`, data);
+  return result.data;
+};
+
+export const deletePromoCode = async (
+  id: string
+): Promise<ApiResponse<null> | ApiErrorResponse> => {
+  const result = await api.delete(`/promo-codes/${id}`);
+  return result.data;
+};
+
+// Scheduler Management
+export interface SchedulerStatus {
+  isRunning: boolean;
+  lastRun: string | null;
+  stats: {
+    totalRuns: number;
+    successfulRuns: number;
+    failedRuns: number;
+    lastResult: any;
+  };
+  nextRun: string | null;
+}
+
+export interface MaintenanceStats {
+  planDistribution: Array<{
+    _id: string;
+    count: number;
+    totalCredits: number;
+    avgCredits: number;
+  }>;
+  maintenanceNeeded: {
+    freeUsersNeedingRefresh: number;
+    expiredSubscriptions: number;
+    zeroCreditPlans: number;
+    total: number;
+  };
+  scheduler: SchedulerStatus;
+  lastChecked: string;
+}
+
+export const getSchedulerStatus = async (): Promise<
+  ApiResponse<SchedulerStatus> | ApiErrorResponse
+> => {
+  const result = await api.get("/scheduler/status");
+  return result.data;
+};
+
+export const getMaintenanceStats = async (): Promise<
+  ApiResponse<MaintenanceStats> | ApiErrorResponse
+> => {
+  const result = await api.get("/scheduler/stats");
+  return result.data;
+};
+
+export const startScheduler = async (): Promise<
+  ApiResponse<null> | ApiErrorResponse
+> => {
+  const result = await api.post("/scheduler/start");
+  return result.data;
+};
+
+export const stopScheduler = async (): Promise<
+  ApiResponse<null> | ApiErrorResponse
+> => {
+  const result = await api.post("/scheduler/stop");
+  return result.data;
+};
+
+export const triggerMaintenance = async (): Promise<
+  ApiResponse<any> | ApiErrorResponse
+> => {
+  const result = await api.post("/scheduler/trigger");
   return result.data;
 };

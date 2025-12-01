@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { PromoCode, updatePromoCode } from "@/lib/actions";
+import { PromoCode, updatePromoCode } from "@/services/admin-dashboard";
 import { toast } from "sonner";
 
 interface EditPromoCodeFormProps {

@@ -17,8 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import type { PricingPlan } from "@/lib/actions";
-import { updatePricingPlan } from "@/lib/actions";
+import type { PricingPlan } from "@/services/admin-dashboard";
+import { updatePricingPlan } from "@/services/admin-dashboard";
 import { toast } from "sonner";
 
 interface EditPricingFormProps {

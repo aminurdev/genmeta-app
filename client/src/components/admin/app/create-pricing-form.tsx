@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { createPricingPlan } from "@/lib/actions";
+import { createPricingPlan } from "@/services/admin-dashboard";
 import { toast } from "sonner";
 
 interface CreatePricingFormProps {

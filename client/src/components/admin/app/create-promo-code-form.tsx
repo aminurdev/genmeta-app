@@ -19,7 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { createPromoCode } from "@/lib/actions";
+import { createPromoCode } from "@/services/admin-dashboard";
 
 interface CreatePromoCodeFormProps {
   onSuccess: () => void;

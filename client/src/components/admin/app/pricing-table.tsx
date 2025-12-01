@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PricingPlan } from "@/lib/actions";
+import type { PricingPlan } from "@/services/admin-dashboard";
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePricingPlan } from "@/lib/actions";
+import { deletePricingPlan } from "@/services/admin-dashboard";
 import { EditPricingForm } from "./edit-pricing-form";
 import { toast } from "sonner";
 
@@ -168,11 +168,11 @@ export function PricingTable({
                   {plan.discountPrice
                     ? formatCurrency(plan.discountPrice)
                     : formatCurrency(
-                        calculateDiscountedPrice(
-                          plan.basePrice,
-                          plan.discountPercent ?? 0
-                        )
-                      )}
+                      calculateDiscountedPrice(
+                        plan.basePrice,
+                        plan.discountPercent ?? 0
+                      )
+                    )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">

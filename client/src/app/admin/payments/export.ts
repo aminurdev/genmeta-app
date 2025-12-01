@@ -1,4 +1,4 @@
-import { DownloadPaymentHistory } from "@/services/admin-dashboard";
+import { DownloadPaymentHistory } from "@/types/admin";
 
 /**
  * Escapes CSV field values to handle commas, quotes, and newlines
