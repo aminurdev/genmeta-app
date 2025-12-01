@@ -441,5 +441,7 @@ appKeySchema.index({ "plan.type": 1, expiresAt: 1 });
 appKeySchema.index({ "plan.type": 1, credit: 1 });
 appKeySchema.index({ "plan.type": 1, lastCreditRefresh: 1 });
 appKeySchema.index({ isActive: 1, status: 1 });
+appKeySchema.index({ createdAt: -1 });
+appKeySchema.index({ username: 1 });
 
 export const AppKey = mongoose.model("AppKey", appKeySchema);

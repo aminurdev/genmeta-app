@@ -32,4 +32,8 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+paymentSchema.index({ createdAt: -1 });
+paymentSchema.index({ userId: 1, createdAt: -1 });
+paymentSchema.index({ amount: -1 });
+
 export const AppPayment = mongoose.model("AppPayment", paymentSchema);

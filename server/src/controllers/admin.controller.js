@@ -788,7 +788,9 @@ const getPaymentsHistory = asyncHandler(async (req, res) => {
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
       ],
-    }).select("_id");
+    })
+      .select("_id")
+      .lean();
 
     const userIds = matchedUsers.map((u) => u._id);
 
@@ -815,65 +817,80 @@ const getPaymentsHistory = asyncHandler(async (req, res) => {
   const pageSize = Math.max(1, parseInt(limit));
   const skip = (pageNum - 1) * pageSize;
 
-  const total = await AppPayment.countDocuments(query);
-
-  const payments = await AppPayment.find(query)
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(pageSize)
-    .populate("userId", "name email");
-
-  // Collect plan IDs from structured `plan.id`
-  const planIds = [
-    ...new Set(
-      payments
-        .map((p) =>
-          typeof p.plan === "object" && p.plan?.id ? p.plan.id.toString() : null
-        )
-        .filter(Boolean)
-    ),
-  ];
-
-  // Fetch plan details
-  const plansMap = new Map();
-  if (planIds.length) {
-    const plans = await AppPricing.find({ _id: { $in: planIds } }).select(
-      "name type"
-    );
-    plans.forEach((plan) => plansMap.set(plan._id.toString(), plan));
-  }
-
-  // Format response
-  const formattedPayments = payments.map((p) => {
-    let planData = { id: null, name: null, type: null };
-
-    if (p.plan.id === undefined) {
-      // Old data, just a string
-      planData.name = p.plan;
-    } else if (p.plan.id) {
-      const found = plansMap.get(p.plan?.id?.toString());
-      planData = {
-        id: p.plan?.id || null,
-        name: found?.name || p.plan?.name || null,
-        type: found?.type || p.plan?.type || null,
-      };
-    }
-
-    return {
-      _id: p._id,
-      user: {
-        _id: p.userId?._id,
-        name: p.userId?.name,
-        email: p.userId?.email,
+  const agg = await AppPayment.aggregate([
+    { $match: query },
+    { $sort: sortOptions },
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        data: [
+          { $skip: skip },
+          { $limit: pageSize },
+          {
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "user",
+            },
+          },
+          { $addFields: { user: { $arrayElemAt: ["$user", 0] } } },
+          {
+            $lookup: {
+              from: "apppricings",
+              let: { planId: "$plan.id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $eq: [{ $toString: "$_id" }, "$$planId"] },
+                  },
+                },
+                { $project: { _id: 0, name: 1, type: 1 } },
+              ],
+              as: "planInfo",
+            },
+          },
+          { $addFields: { planInfo: { $arrayElemAt: ["$planInfo", 0] } } },
+          {
+            $project: {
+              _id: 1,
+              user: {
+                _id: "$user._id",
+                name: "$user.name",
+                email: "$user.email",
+              },
+              paymentID: 1,
+              trxID: 1,
+              amount: 1,
+              createdAt: 1,
+              transactionStatus: {
+                $ifNull: ["$paymentDetails.transactionStatus", "unknown"],
+              },
+              plan: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$plan.id", null] },
+                      { $ne: ["$plan.id", ""] },
+                    ],
+                  },
+                  {
+                    id: "$plan.id",
+                    type: { $ifNull: ["$planInfo.type", "$plan.type"] },
+                    name: { $ifNull: ["$planInfo.name", "$plan.name"] },
+                  },
+                  { name: "$plan" },
+                ],
+              },
+            },
+          },
+        ],
       },
-      paymentID: p.paymentID,
-      trxID: p.trxID,
-      plan: planData,
-      amount: p.amount,
-      createdAt: p.createdAt,
-      transactionStatus: p.paymentDetails?.transactionStatus || "unknown",
-    };
-  });
+    },
+  ]).allowDiskUse(true);
+
+  const total = agg[0]?.totalCount[0]?.count || 0;
+  const formattedPayments = agg[0]?.data || [];
 
   return new ApiResponse(200, true, "Payments fetched successfully", {
     total,
@@ -1098,24 +1115,42 @@ const getAllUsers = asyncHandler(async (req, res) => {
     AppKey.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit)),
+      .limit(parseInt(limit))
+      .select(
+        "userId username key createdAt plan credit isActive status expiresAt totalProcess lastCreditRefresh"
+      )
+      .lean(),
     AppKey.countDocuments(query),
   ]);
 
   // Enrich each appKey with plan.name (if plan.id exists)
-  const appKeys = await Promise.all(
-    appKeysRaw.map(async (appKey) => {
-      const enrichedPlan = { ...appKey.plan };
-      if (appKey.plan?.id) {
-        const plan = await AppPricing.findById(appKey.plan.id).select("name");
-        enrichedPlan.name = plan?.name || null;
-      }
-      return {
-        ...appKey.toObject(),
-        plan: enrichedPlan,
-      };
-    })
-  );
+  const uniquePlanIds = [
+    ...new Set(
+      appKeysRaw
+        .map((k) => (k.plan && k.plan.id ? k.plan.id.toString() : null))
+        .filter(Boolean)
+    ),
+  ];
+
+  const planNameMap = new Map();
+  if (uniquePlanIds.length) {
+    const plans = await AppPricing.find({ _id: { $in: uniquePlanIds } })
+      .select("name")
+      .lean();
+    plans.forEach((p) => planNameMap.set(p._id.toString(), p.name));
+  }
+
+  const appKeys = appKeysRaw.map((appKey) => {
+    const enrichedPlan = { ...appKey.plan };
+    if (appKey.plan?.id) {
+      const name = planNameMap.get(appKey.plan.id.toString());
+      enrichedPlan.name = name || null;
+    }
+    return {
+      ...appKey,
+      plan: enrichedPlan,
+    };
+  });
 
   return new ApiResponse(200, true, "API keys retrieved successfully", {
     users: appKeys,
