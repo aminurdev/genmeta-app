@@ -34,6 +34,8 @@ export const QUERY_KEYS = {
   }) => ["admin", "promo", "codes", params],
   schedulerStatus: ["admin", "scheduler", "status"],
   maintenanceStats: ["admin", "scheduler", "stats"],
+
+  allPricing: ["pricing", "all"],
 } as const;
 
 export const MUTATION_KEYS = {

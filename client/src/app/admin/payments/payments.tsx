@@ -549,8 +549,8 @@ export function PaymentHistoryPage() {
                           <TableCell>
                             {getPlanTypeBadge(
                               payment.plan?.type ??
-                              payment.plan?.name ??
-                              "Unknown"
+                                payment.plan?.name ??
+                                "Unknown"
                             )}
                           </TableCell>
                           <TableCell>
@@ -669,7 +669,9 @@ export function PaymentHistoryPage() {
                               : "outline"
                           }
                           size="sm"
-                          onClick={() => setCurrentPage(paymentsData.totalPages)}
+                          onClick={() =>
+                            setCurrentPage(paymentsData.totalPages)
+                          }
                           className="w-8 h-8 p-0"
                         >
                           {paymentsData.totalPages}

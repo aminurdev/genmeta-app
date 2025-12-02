@@ -31,7 +31,7 @@ router
   .delete(authenticateAndVerifyAdmin, deletePromoCode);
 
 // Public routes for validation/usage
-router.get("/validate/:code", validatePromoCode);
+router.post("/validate", validatePromoCode);
 
 // Auth required but not admin
 router.patch("/use/:code", verifyUser, incrementPromoCodeUsage);

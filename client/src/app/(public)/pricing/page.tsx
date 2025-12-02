@@ -36,41 +36,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Banner } from "@/components/main/banner";
-
-interface SubscriptionPlan {
-  _id: string;
-  name: string;
-  type: string;
-  basePrice: number;
-  discountPrice?: number;
-  discountPercent: number;
-  isActive: boolean;
-  planDuration: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface CreditPlan {
-  _id: string;
-  name: string;
-  type: string;
-  basePrice: number;
-  discountPrice?: number;
-  discountPercent: number;
-  isActive: boolean;
-  credit: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PlansResponse {
-  success: boolean;
-  message: string;
-  data: {
-    subscriptionPlans: SubscriptionPlan[];
-    creditPlans: CreditPlan[];
-  };
-}
+import { useAllPricing } from "@/services/queries/pricing";
 
 interface FaqItem {
   question: string;
@@ -85,11 +51,13 @@ const PricingContent = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
-  const [subscriptionPlans, setSubscriptionPlans] = useState<
-    SubscriptionPlan[]
-  >([]);
-  const [creditPlans, setCreditPlans] = useState<CreditPlan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use React Query hook instead of manual fetching
+  const { data: pricingData, isLoading } = useAllPricing();
+
+  const subscriptionPlans =
+    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
+  const creditPlans =
+    (pricingData?.success && pricingData?.data?.creditPlans) || [];
 
   useEffect(() => {
     if (searchParams) {
@@ -99,29 +67,6 @@ const PricingContent = () => {
       }
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    const fetchPricingData = async () => {
-      try {
-        setIsLoading(true);
-        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const response = await fetch(`${baseApi}/pricing/plans`);
-        const result = (await response.json()) as PlansResponse;
-
-        if (result.success && result.data) {
-          const { subscriptionPlans, creditPlans } = result.data;
-          setSubscriptionPlans(subscriptionPlans);
-          setCreditPlans(creditPlans);
-        }
-      } catch (error) {
-        console.error("Error fetching pricing data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPricingData();
-  }, []);
 
   const freeFeatures = [
     "instant Get 100 credits upon signup",
@@ -344,7 +289,7 @@ const PricingContent = () => {
               <FreePlanCard />
 
               {activeSubscriptionPlans.length > 0 ? (
-                activeSubscriptionPlans.map((plan, index) => {
+                activeSubscriptionPlans.map((plan, index: number) => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
@@ -469,7 +414,7 @@ const PricingContent = () => {
               <FreePlanCard />
 
               {activeCreditPlans.length > 0 ? (
-                activeCreditPlans.map((plan, index) => {
+                activeCreditPlans.map((plan, index: number) => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
