@@ -212,6 +212,8 @@ const deletePromoCode = asyncHandler(async (req, res) => {
 const validatePromoCode = asyncHandler(async (req, res) => {
   const { code } = req.body;
 
+  console.log({ code });
+
   if (!code) {
     throw new ApiError(400, "Promo code is required");
   }

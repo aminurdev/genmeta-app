@@ -143,44 +143,42 @@ export default function Cart({ planId }: { planId: string }) {
 
     setPromoError(null);
     setIsApplyingPromo(true);
-    try {
-      const res = await validPromoCode(promoCode.trim());
-      if (!res.success) {
-        throw new Error(res.message || "Invalid promo code");
-      }
 
-      const promoResult = res.data;
+    const res = await validPromoCode(promoCode.trim());
 
-      if (
-        promoResult?.promoCode?.appliesTo !== "both" &&
-        promoResult?.promoCode?.appliesTo !== plan.type
-      ) {
-        setPromoError("This promo code is not valid for your plan");
-        setValidPromo(null);
-        return;
-      }
-
-      // Check if promo code is expired
-      const validUntil = new Date(promoResult.promoCode.validUntil);
-      if (validUntil < new Date()) {
-        setPromoError("This promo code has expired");
-        setValidPromo(null);
-        return;
-      }
-
-      setValidPromo(res.data);
-      toast.success(
-        `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`
-      );
-    } catch (error) {
-      console.error("Error validating promo code:", error);
-      setPromoError(
-        error instanceof Error ? error.message : "Invalid promo code"
-      );
+    if (!res.success) {
+      setPromoError(res.message || "Invalid promo code");
       setValidPromo(null);
-    } finally {
       setIsApplyingPromo(false);
+      return;
     }
+
+    const promoResult = res.data;
+
+    if (
+      promoResult?.promoCode?.appliesTo !== "both" &&
+      promoResult?.promoCode?.appliesTo !== plan.type
+    ) {
+      setPromoError("This promo code is not valid for your plan");
+      setValidPromo(null);
+      setIsApplyingPromo(false);
+      return;
+    }
+
+    // Check if promo code is expired
+    const validUntil = new Date(promoResult.promoCode.validUntil);
+    if (validUntil < new Date()) {
+      setPromoError("This promo code has expired");
+      setValidPromo(null);
+      setIsApplyingPromo(false);
+      return;
+    }
+
+    setValidPromo(res.data);
+    toast.success(
+      `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`
+    );
+    setIsApplyingPromo(false);
   };
 
   const handleClearPromoCode = () => {
@@ -292,7 +290,6 @@ export default function Cart({ planId }: { planId: string }) {
       </div>
     );
   }
-
 
   // Calculate the price with discounts
   const priceAfterPlanDiscount = plan.discountPrice
@@ -463,9 +460,12 @@ export default function Cart({ planId }: { planId: string }) {
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-600" />
                           <div>
-                            <p className="font-medium">{validPromo.promoCode.code}</p>
+                            <p className="font-medium">
+                              {validPromo.promoCode.code}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {validPromo.promoCode.discountPercent}% discount applied
+                              {validPromo.promoCode.discountPercent}% discount
+                              applied
                             </p>
                           </div>
                         </div>
@@ -539,7 +539,9 @@ export default function Cart({ planId }: { planId: string }) {
                       )}
                       {validPromo && (
                         <div className="flex justify-between text-sm text-green-500">
-                          <span>Promo ({validPromo.promoCode.discountPercent}%)</span>
+                          <span>
+                            Promo ({validPromo.promoCode.discountPercent}%)
+                          </span>
                           <span>
                             -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
                           </span>
@@ -624,7 +626,11 @@ export default function Cart({ planId }: { planId: string }) {
                   <Button
                     className="w-full h-12 font-medium"
                     onClick={() =>
-                      handleCheckout(plan._id, plan.type, validPromo?.promoCode.code)
+                      handleCheckout(
+                        plan._id,
+                        plan.type,
+                        validPromo?.promoCode.code
+                      )
                     }
                     disabled={
                       isProcessing ||

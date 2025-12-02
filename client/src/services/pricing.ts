@@ -1,4 +1,4 @@
-import { ApiErrorResponse, ApiResponse } from "@/types";
+import { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import {
   PaymentCreateResponse,
   PricingResponse,
@@ -33,18 +33,40 @@ export const createPayment = async ({
 }: createPaymentParams): Promise<
   ApiResponse<PaymentCreateResponse> | ApiErrorResponse
 > => {
-  const result = await api.post("/payment/create-app-payment", {
-    planId,
-    type,
-    promoCode,
-    paymentMethod,
-  });
-  return result.data;
+  try {
+    const result = await api.post("/payment/create-app-payment", {
+      planId,
+      type,
+      promoCode,
+      paymentMethod,
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message: err.message || "Unexpected error occurred",
+      }
+    );
+  }
 };
 
 export const validPromoCode = async (
   promoCode: string
 ): Promise<ApiResponse<PromoCodeRes> | ApiErrorResponse> => {
-  const result = await api.post("/promo/validate", { code: promoCode });
-  return result.data;
+  try {
+    const result = await api.post("/promo-codes/validate", { code: promoCode });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message: err.message || "Unexpected error occurred",
+      }
+    );
+  }
 };
