@@ -16,6 +16,7 @@ async function saveToken(data) {
   const expiresAt = new Date();
   expiresAt.setSeconds(expiresAt.getSeconds() + data.expires_in);
 
+  await BKashToken.deleteMany({});
   await BKashToken.create({
     id_token: data.id_token,
     refresh_token: data.refresh_token,
@@ -84,7 +85,7 @@ async function refreshAccessToken(refreshTokenValue) {
 
 // Get Valid Token
 async function getValidToken() {
-  const tokenDoc = await BKashToken.findOne().sort({ created_at: -1 });
+  const tokenDoc = await BKashToken.findOne();
 
   if (tokenDoc) {
     if (tokenDoc.expires_at > new Date()) return tokenDoc.id_token;
