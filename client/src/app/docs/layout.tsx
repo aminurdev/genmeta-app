@@ -7,7 +7,6 @@ import {
   FileText,
   Search,
   BookOpen,
-  Code,
   Zap,
   HelpCircle,
 } from "lucide-react";

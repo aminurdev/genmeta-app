@@ -34,11 +34,8 @@ import {
   TrendingUp,
   Phone,
 } from "lucide-react";
-import {
-  type ReferralDetails,
-  type WithdrawHistory,
-  updateWithdrawal,
-} from "@/services/admin-dashboard";
+import { updateWithdrawal } from "@/services/admin-dashboard";
+import { ReferralDetails, WithdrawHistory } from "@/types/admin";
 
 interface AdminUserReferralDashboardProps {
   data: ReferralDetails;
