@@ -117,6 +117,10 @@ export const handleAppCallback = asyncHandler(async (req, res) => {
       error: error.message,
       stack: error.stack,
     });
-    return redirectToPricing(res, "Payment failed", "server_error");
+    return redirectToPricing(
+      res,
+      "Payment failed",
+      error.message ?? "server_error"
+    );
   }
 });

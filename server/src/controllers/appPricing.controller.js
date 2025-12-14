@@ -7,7 +7,6 @@ const getAllPlans = asyncHandler(async (req, res) => {
   const plans = await AppPricing.find({ isActive: true }).sort({
     basePrice: 1,
   });
-  console.log("triggered");
 
   const subscriptionPlans = [];
   const creditPlans = [];
@@ -194,15 +193,8 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
     );
   }
 
-  if (
-    newType === "subscription" &&
-    planDuration === undefined &&
-    existingPlan.type !== "subscription"
-  ) {
-    throw new ApiError(
-      400,
-      "Plan duration is required when changing to subscription type pricing"
-    );
+  if (!planDuration) {
+    throw new ApiError(400, "Plan duration is required");
   }
 
   // Figure out base price first
@@ -239,12 +231,7 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
             ? credit
             : existingPlan.credit
           : undefined,
-      planDuration:
-        newType === "subscription"
-          ? planDuration !== undefined
-            ? planDuration
-            : existingPlan.planDuration
-          : undefined,
+      planDuration,
     },
     { new: true, runValidators: true }
   );

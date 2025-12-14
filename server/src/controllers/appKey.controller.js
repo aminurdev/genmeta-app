@@ -405,7 +405,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
     if (appKey.allowedDevices.length >= 2) {
       throw new ApiError(
         403,
-        "This account is already used on allowed devices. Please contact support."
+        "This account is already used on allowed devices."
       );
     }
 
@@ -499,14 +499,16 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
 
 export const processApiUsage = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
-  const { processCount, failedCount, failedErrors } = req.body;
+  const { processCount, processFileCount, failedCount, failedErrors } =
+    req.body;
 
   if (!key) throw new ApiError(400, "API key is required in headers.");
 
   const appKey = await AppKey.findOne({ key });
   if (!appKey) throw new ApiError(404, "API key not found.");
 
-  const count = parseInt(processCount) || 0;
+  const creditUsed = parseInt(processCount) || 0;
+  const fileCount = parseInt(processFileCount) || 0;
   const failed = parseInt(failedCount) || 0;
   const errorMsg = failedErrors || "";
 
@@ -519,9 +521,9 @@ export const processApiUsage = asyncHandler(async (req, res) => {
   }
 
   // Handle successful processing
-  if (count > 0) {
+  if (creditUsed > 0) {
     try {
-      await appKey.useCredit(count);
+      await appKey.useCredit(creditUsed, fileCount);
     } catch (error) {
       // If success fails due to insufficient credits etc.
       await logFailedProcess(appKey, failed > 0 ? failed : 1, error.message);

@@ -177,8 +177,16 @@ export const executePayment = async (paymentID) => {
     }
 
     console.warn(`⚠️ Payment execution response: ${JSON.stringify(data)}`);
-    return data;
+    throw new ApiError(
+      data.statusCode || 500,
+      data.statusMessage || "bKash payment execution failed."
+    );
   } catch (error) {
+    // If it's already an ApiError from the status check above, re-throw it
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
     if (error.response?.status === 401) {
       console.log(
         "🔄 Token expired during execution. Retrying with new token..."
@@ -189,7 +197,7 @@ export const executePayment = async (paymentID) => {
 
     throw new ApiError(
       error.response?.status || 500,
-      error.response?.data?.message || "bKash payment execution failed."
+      error.response?.data?.message || error.message || "bKash payment execution failed."
     );
   }
 };

@@ -1102,26 +1102,75 @@ const updateWithdrawal = asyncHandler(async (req, res) => {
 const getAllUsers = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search = "" } = req.query;
 
-  const query = {
-    $or: [
-      { username: { $regex: search, $options: "i" } },
-      { key: { $regex: search, $options: "i" } },
-    ],
-  };
-
   const skip = (parseInt(page) - 1) * parseInt(limit);
+  const pageSize = parseInt(limit);
 
-  const [appKeysRaw, total] = await Promise.all([
-    AppKey.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .select(
-        "userId username key createdAt plan credit isActive status expiresAt totalProcess lastCreditRefresh allowedDevices"
-      )
-      .lean(),
-    AppKey.countDocuments(query),
-  ]);
+  // Build aggregation pipeline
+  const pipeline = [
+    // First, lookup the user data
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: {
+        path: "$user",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ];
+
+  // Add search filter if search term is provided
+  if (search && search.trim()) {
+    const searchRegex = { $regex: search.trim(), $options: "i" };
+    pipeline.push({
+      $match: {
+        $or: [
+          { username: searchRegex },
+          { key: searchRegex },
+          { "user.name": searchRegex },
+          { "user.email": searchRegex },
+        ],
+      },
+    });
+  }
+
+  // Get total count for pagination
+  const countPipeline = [...pipeline, { $count: "total" }];
+  const countResult = await AppKey.aggregate(countPipeline);
+  const total = countResult.length > 0 ? countResult[0].total : 0;
+
+  // Add sorting, pagination, and projection
+  pipeline.push(
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: pageSize },
+    {
+      $project: {
+        userId: 1,
+        username: 1,
+        key: 1,
+        createdAt: 1,
+        plan: 1,
+        credit: 1,
+        isActive: 1,
+        status: 1,
+        expiresAt: 1,
+        totalProcess: 1,
+        lastCreditRefresh: 1,
+        allowedDevices: 1,
+        "user.name": 1,
+        "user.email": 1,
+      },
+    }
+  );
+
+  // Execute the aggregation
+  const appKeysRaw = await AppKey.aggregate(pipeline);
 
   // Enrich each appKey with plan.name (if plan.id exists)
   const uniquePlanIds = [
@@ -1149,6 +1198,9 @@ const getAllUsers = asyncHandler(async (req, res) => {
     return {
       ...appKey,
       plan: enrichedPlan,
+      // Include user info in the response
+      userName: appKey.user?.name || null,
+      userEmail: appKey.user?.email || null,
     };
   });
 

@@ -36,9 +36,21 @@ export const fetchAppUserData = async (username) => {
 };
 
 export const processSuccessfulPayment = async (paymentID, res) => {
-  const paymentDetails = await executePayment(paymentID);
+  let paymentDetails;
 
-  console.log(paymentDetails);
+  try {
+    paymentDetails = await executePayment(paymentID);
+  } catch (error) {
+    logger.error("Payment execution failed", {
+      paymentID,
+      error: error.message,
+    });
+    return redirectToPricing(
+      res,
+      "Payment execution failed",
+      error.message || "execution_error"
+    );
+  }
 
   if (!paymentDetails) {
     logger.error("Failed to retrieve payment details", { paymentID });
@@ -154,7 +166,7 @@ export const processSuccessfulPayment = async (paymentID, res) => {
       }
 
       return res.redirect(
-        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${plan}&trxID=${trxID}`
+        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${plan}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
       );
     } else {
       logger.warn("Payment incomplete", { paymentID, transactionStatus });
@@ -187,7 +199,7 @@ const updatePlan = async (userId, planId) => {
     const now = new Date();
     let expirationDate;
 
-    if (planType === "subscription" && selectedPlan.planDuration) {
+    if (selectedPlan.planDuration) {
       expirationDate = new Date(now);
       expirationDate.setDate(now.getDate() + selectedPlan.planDuration);
       expirationDate.setHours(23, 59, 59, 999);
@@ -208,7 +220,7 @@ const updatePlan = async (userId, planId) => {
           type: planType,
           id: selectedPlan._id.toString(),
         },
-        expiresAt: planType === "subscription" ? expirationDate : undefined,
+        expiresAt: expirationDate,
         credit:
           planType === "credit"
             ? selectedPlan.credit
@@ -228,28 +240,66 @@ const updatePlan = async (userId, planId) => {
       });
     } else {
       // Update existing API key
-      if (planType === "subscription") {
-        // If existing plan expired, set new expiration date
-        // Otherwise, extend current expiration date
-        const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
+      const previousPlanType = appKey.plan.type; // Track previous plan type
 
-        if (isExpired) {
+      if (planType === "subscription") {
+        // SUBSCRIPTION PLAN LOGIC
+        if (previousPlanType === "subscription") {
+          // Subscription → Subscription: Extend expiry date
+          const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
+
+          if (isExpired) {
+            // If expired, set new expiration from now
+            appKey.expiresAt = expirationDate;
+          } else if (appKey.expiresAt && selectedPlan.planDuration) {
+            // If still valid, extend the current expiration date
+            const newExpiresAt = new Date(appKey.expiresAt);
+            newExpiresAt.setDate(
+              newExpiresAt.getDate() + selectedPlan.planDuration
+            );
+            newExpiresAt.setHours(23, 59, 59, 999);
+            appKey.expiresAt = newExpiresAt;
+          }
+        } else {
+          // Free/Credit → Subscription: Start fresh expiry
           appKey.expiresAt = expirationDate;
-        } else if (appKey.expiresAt) {
-          const newExpiresAt = new Date(appKey.expiresAt);
-          newExpiresAt.setDate(
-            newExpiresAt.getDate() + selectedPlan.planDuration
-          );
-          newExpiresAt.setHours(23, 59, 59, 999);
-          appKey.expiresAt = newExpiresAt;
         }
 
         appKey.credit = Infinity;
       } else if (planType === "credit") {
-        // Add credits to existing balance
-        const currentCredit = isFinite(appKey.credit) ? appKey.credit : 0;
-        appKey.credit = currentCredit + (selectedPlan.credit || 0);
-        appKey.expiresAt = undefined; // Credit plans don't expire
+        // CREDIT PLAN LOGIC
+
+        if (previousPlanType === "free") {
+          // Free → Credit: Replace credits (don't add), set fresh expiry
+          appKey.credit = selectedPlan.credit || 0;
+          appKey.expiresAt = expirationDate;
+        } else if (previousPlanType === "subscription") {
+          // Subscription → Credit: Start fresh expiry, replace credits
+          appKey.credit = selectedPlan.credit || 0;
+          appKey.expiresAt = expirationDate;
+        } else if (previousPlanType === "credit") {
+          // Credit → Credit: Add credits and extend expiry
+          const currentCredit = isFinite(appKey.credit) ? appKey.credit : 0;
+          appKey.credit = currentCredit + (selectedPlan.credit || 0);
+
+          // Extend expiration date
+          if (expirationDate) {
+            const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
+
+            if (isExpired) {
+              // If expired, set new expiration from now
+              appKey.expiresAt = expirationDate;
+            } else if (appKey.expiresAt && selectedPlan.planDuration) {
+              // If still valid, extend the current expiration date
+              const newExpiresAt = new Date(appKey.expiresAt);
+              newExpiresAt.setDate(
+                newExpiresAt.getDate() + selectedPlan.planDuration
+              );
+              newExpiresAt.setHours(23, 59, 59, 999);
+              appKey.expiresAt = newExpiresAt;
+            }
+          }
+        }
       }
 
       // Update plan details

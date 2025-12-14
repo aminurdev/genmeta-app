@@ -11,7 +11,6 @@ import {
   CheckCircle,
   CreditCard,
   Check,
-  Zap,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ import { useAllPricing } from "@/services/queries/pricing";
 import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentMethod {
   id: string;
@@ -200,17 +199,17 @@ export default function Cart({ planId }: { planId: string }) {
     }
   };
 
-  const handlePlanTypeChange = (type: "subscription" | "credit") => {
-    setSelectedPlanType(type);
-    const plans = type === "subscription" ? subscriptionPlans : creditPlans;
-    if (plans.length > 0) {
-      setPlan(plans[0]);
-      setSelectedPlanId(plans[0]._id);
-      setValidPromo(null);
-      setPromoCode("");
-      setPromoError(null);
-    }
-  };
+  // const handlePlanTypeChange = (type: "subscription" | "credit") => {
+  //   setSelectedPlanType(type);
+  //   const plans = type === "subscription" ? subscriptionPlans : creditPlans;
+  //   if (plans.length > 0) {
+  //     setPlan(plans[0]);
+  //     setSelectedPlanId(plans[0]._id);
+  //     setValidPromo(null);
+  //     setPromoCode("");
+  //     setPromoError(null);
+  //   }
+  // };
 
   const handleCheckout = async (
     id: string,
@@ -296,18 +295,18 @@ export default function Cart({ planId }: { planId: string }) {
   const priceAfterPlanDiscount = plan.discountPrice
     ? plan.discountPrice
     : plan.discountPercent > 0
-      ? Number.parseFloat(
+    ? Number.parseFloat(
         calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
       )
-      : plan.basePrice;
+    : plan.basePrice;
 
   const finalPrice = validPromo
     ? Number.parseFloat(
-      calculateDiscountedPrice(
-        priceAfterPlanDiscount,
-        validPromo.promoCode.discountPercent
+        calculateDiscountedPrice(
+          priceAfterPlanDiscount,
+          validPromo.promoCode.discountPercent
+        )
       )
-    )
     : priceAfterPlanDiscount;
 
   const currentPlans =
@@ -328,7 +327,7 @@ export default function Cart({ planId }: { planId: string }) {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Plan Type Selection - Tabs */}
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>Choose Plan Type</CardTitle>
                 <CardDescription>
@@ -354,7 +353,7 @@ export default function Cart({ planId }: { planId: string }) {
                   </TabsList>
                 </Tabs>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Plan Selection */}
             <Card>
@@ -383,12 +382,12 @@ export default function Cart({ planId }: { planId: string }) {
                             {planOption.discountPrice
                               ? planOption.discountPrice
                               : planOption.discountPercent > 0
-                                ? (
+                              ? (
                                   (planOption.basePrice *
                                     (100 - planOption.discountPercent)) /
                                   100
                                 ).toFixed(0)
-                                : planOption.basePrice.toFixed(0)}
+                              : planOption.basePrice.toFixed(0)}
                             {selectedPlanType === "subscription"
                               ? "/month"
                               : ""}
@@ -417,22 +416,22 @@ export default function Cart({ planId }: { planId: string }) {
                   <div className="grid gap-2">
                     {(selectedPlanType === "subscription"
                       ? [
-                        "Unlimited Batch Processing",
-                        "Use Your Own API Key",
-                        "Metadata Editor with Bulk Edits",
-                        "Support for JPG, PNG, EPS, MP4, MOV",
-                        "Priority Customer Support",
-                        "Unlimited Results",
-                      ]
+                          "Unlimited Batch Processing",
+                          "Use Your Own API Key",
+                          "Metadata Editor with Bulk Edits",
+                          "Support for JPG, PNG, EPS, MP4, MOV",
+                          "Priority Customer Support",
+                          "Unlimited Results",
+                        ]
                       : [
-                        "Faster Processing — Batch Support",
-                        "No API Required — Built-in Access",
-                        "Metadata Editor with Bulk Edits",
-                        "Support for JPG, PNG, EPS, MP4, MOV",
-                        "1 Credit Token per Image",
-                        "Priority Customer Support",
-                        "No Monthly Commitment",
-                      ]
+                          "Faster Processing — Batch Support",
+                          "No API Required — Built-in Access",
+                          "Metadata Editor with Bulk Edits",
+                          "Support for JPG, PNG, EPS, MP4, MOV",
+                          "1 Credit Token per Image",
+                          "Priority Customer Support",
+                          "No Monthly Commitment",
+                        ]
                     ).map((feature, index) => (
                       <div
                         key={index}
@@ -575,13 +574,15 @@ export default function Cart({ planId }: { planId: string }) {
                       {paymentMethods.map((method) => (
                         <div
                           key={method.id}
-                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${selectedPaymentMethod === method.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-muted-foreground/40"
-                            } ${!method.available
+                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
+                            selectedPaymentMethod === method.id
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/40"
+                          } ${
+                            !method.available
                               ? "opacity-50 cursor-not-allowed"
                               : "cursor-pointer"
-                            }`}
+                          }`}
                         >
                           <RadioGroupItem
                             value={method.id}
@@ -590,10 +591,11 @@ export default function Cart({ planId }: { planId: string }) {
                           />
                           <Label
                             htmlFor={method.id}
-                            className={`flex items-center gap-4 flex-1 ${!method.available
-                              ? "cursor-not-allowed"
-                              : "cursor-pointer"
-                              }`}
+                            className={`flex items-center gap-4 flex-1 ${
+                              !method.available
+                                ? "cursor-not-allowed"
+                                : "cursor-pointer"
+                            }`}
                           >
                             <div className="w-12 h-12 rounded-lg bg-background border flex items-center justify-center">
                               <img

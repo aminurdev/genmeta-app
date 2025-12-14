@@ -6,16 +6,23 @@ import {
 } from "@/types/pricing";
 import { api } from "./api-client";
 
+// export const getAllPricing = async (): Promise<
+//   ApiResponse<PricingResponse> | ApiErrorResponse
+// > => {
+//   const res = await fetch(
+//     `${process.env.NEXT_PUBLIC_API_BASE_URL}/pricing/plans`,
+//     {
+//       cache: "force-cache",
+//     }
+//   );
+//   return res.json();
+// };
+
 export const getAllPricing = async (): Promise<
   ApiResponse<PricingResponse> | ApiErrorResponse
 > => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/pricing/plans`,
-    {
-      cache: "force-cache",
-    }
-  );
-  return res.json();
+  const res = await api.get("/pricing/plans");
+  return res.data;
 };
 
 type createPaymentParams = {

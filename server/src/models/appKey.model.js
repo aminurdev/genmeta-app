@@ -271,20 +271,16 @@ appKeySchema.methods.canProcess = function (count = 1) {
 };
 
 // Enhanced useCredit with better error handling
-appKeySchema.methods.useCredit = async function (count = 1) {
-  if (!this.canProcess(count)) {
-    const errorMessage =
-      this.plan.type === "subscription"
-        ? "Subscription has expired"
-        : "Not enough credit";
-    throw new Error(errorMessage);
-  }
-
+appKeySchema.methods.useCredit = async function (
+  creditUsed = 1,
+  processFileCount = 1
+) {
   // Ensure we're using a valid count
-  count = Math.max(1, parseInt(count) || 1);
+  creditUsed = Math.max(1, parseInt(creditUsed) || 1);
+  processFileCount = Math.max(1, parseInt(processFileCount) || 1);
 
   if (this.plan.type === "free" || this.plan.type === "credit") {
-    this.credit -= count;
+    this.credit -= creditUsed;
 
     // Auto-downgrade if credit reaches zero
     if (this.credit <= 0 && this.plan.type === "credit") {
@@ -292,7 +288,7 @@ appKeySchema.methods.useCredit = async function (count = 1) {
     }
   }
 
-  await this.incrementProcessCount(count);
+  await this.incrementProcessCount(processFileCount);
 };
 
 // Enhanced incrementProcessCount with better Map handling

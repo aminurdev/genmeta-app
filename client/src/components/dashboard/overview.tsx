@@ -154,12 +154,12 @@ const Overview = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {/* Total Processes */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {/* Total generates */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Total Processes
+              Total Generate
             </CardTitle>
             <div className="rounded-full bg-blue-500/10 p-1.5 sm:p-2">
               <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
@@ -170,27 +170,7 @@ const Overview = () => {
               {data.appKey.totalProcess.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              All time processes
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Today Usage */}
-        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Today
-            </CardTitle>
-            <div className="rounded-full bg-emerald-500/10 p-1.5 sm:p-2">
-              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {data.appKey.todayUsage.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Processes today
+              All time generates
             </p>
           </CardContent>
         </Card>
@@ -210,8 +190,26 @@ const Overview = () => {
               {data.appKey.thisMonthUsage.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Monthly processes
+              Monthly generates
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Today Usage */}
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Today
+            </CardTitle>
+            <div className="rounded-full bg-emerald-500/10 p-1.5 sm:p-2">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+              {data.appKey.todayUsage.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Generate today</p>
           </CardContent>
         </Card>
 
@@ -242,6 +240,29 @@ const Overview = () => {
                   Credits remaining
                 </p>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+              Day Remaining
+            </CardTitle>
+            <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
+              {data.appKey.daysLeft === null ? (
+                <Infinity className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
+              ) : (
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+              {data.appKey.daysLeft}
+            </div>
+            <div className="flex items-center pt-1">
+              <p className="text-xs text-muted-foreground">Days remaining</p>
             </div>
           </CardContent>
         </Card>
@@ -388,10 +409,8 @@ const Overview = () => {
                   Expires At
                 </span>
                 <span className="text-sm font-medium">
-                  {data.appKey.planType === "subscription"
-                    ? data.appKey.expiresAt
-                      ? formatDate(data.appKey.expiresAt)
-                      : "N/A"
+                  {data.appKey.expiresAt
+                    ? formatDate(data.appKey.expiresAt)
                     : "N/A"}
                 </span>
               </div>
@@ -402,7 +421,8 @@ const Overview = () => {
                 <div className="flex items-center gap-2">
                   {data.appKey.daysLeft !== null &&
                     data.appKey.daysLeft <= 7 &&
-                    data.appKey.planType === "subscription" && (
+                    (data.appKey.planType === "subscription" ||
+                      data.appKey.planType === "credit") && (
                       <AlertTriangle className="h-4 w-4 text-amber-500" />
                     )}
                   <span className="text-sm font-medium">
