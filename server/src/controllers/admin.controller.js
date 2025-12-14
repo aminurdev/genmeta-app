@@ -1117,7 +1117,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .select(
-        "userId username key createdAt plan credit isActive status expiresAt totalProcess lastCreditRefresh"
+        "userId username key createdAt plan credit isActive status expiresAt totalProcess lastCreditRefresh allowedDevices"
       )
       .lean(),
     AppKey.countDocuments(query),
