@@ -25,7 +25,7 @@ import type { PricingPlan, PromoCode } from "@/services/admin-dashboard";
 export function PricingDashboard() {
   const [open, setOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("subscription");
+  const [activeTab, setActiveTab] = useState("credit");
 
   // Fetch pricing plans using React Query
   const {
@@ -95,17 +95,17 @@ export function PricingDashboard() {
   return (
     <div className="space-y-8">
       <Tabs
-        defaultValue="subscription"
+        defaultValue="credit"
         value={activeTab}
         onValueChange={setActiveTab}
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-3 h-12">
-          <TabsTrigger value="subscription" className="text-sm font-medium">
-            Subscription Plans
-          </TabsTrigger>
           <TabsTrigger value="credit" className="text-sm font-medium">
             Credit Plans
+          </TabsTrigger>
+          <TabsTrigger value="subscription" className="text-sm font-medium">
+            Subscription Plans
           </TabsTrigger>
           <TabsTrigger value="promocodes" className="text-sm font-medium">
             Promo Codes

@@ -94,8 +94,10 @@ export const getPaymentsHistory = async ({
   ApiResponse<PaymentResponse> | ApiErrorResponse
 > => {
   const result = await api.get(
-    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${search ?? ""
-    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${status ?? ""
+    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${
+      search ?? ""
+    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${
+      status ?? ""
     }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`
   );
   return result.data;
@@ -148,7 +150,7 @@ export interface PricingPlan {
   discountPrice?: number;
   discountPercent: number;
   isActive: boolean;
-  planDuration?: number | null;
+  planDuration: number;
   credit?: number | null;
   createdAt: string;
   updatedAt: string;
@@ -250,7 +252,7 @@ export const createPricingPlan = async (data: {
   basePrice: number;
   discountPrice?: number;
   isActive?: boolean;
-  planDuration?: number;
+  planDuration: number;
   credit?: number;
 }): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
   const result = await api.post("/pricing", data);
@@ -266,7 +268,7 @@ export const updatePricingPlan = async (
     discountPrice?: number;
     discountPercent: number;
     isActive: boolean;
-    planDuration?: number;
+    planDuration: number;
     credit?: number;
   }>
 ): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {

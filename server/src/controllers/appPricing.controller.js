@@ -7,6 +7,7 @@ const getAllPlans = asyncHandler(async (req, res) => {
   const plans = await AppPricing.find({ isActive: true }).sort({
     basePrice: 1,
   });
+  console.log("triggered");
 
   const subscriptionPlans = [];
   const creditPlans = [];
@@ -44,11 +45,8 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Credit is required for credit type pricing");
   }
 
-  if (type === "subscription" && !planDuration) {
-    throw new ApiError(
-      400,
-      "Plan duration is required for subscription type pricing"
-    );
+  if (!planDuration) {
+    throw new ApiError(400, "Plan duration is required  pricing");
   }
 
   // Ensure discountPrice is valid
@@ -72,7 +70,7 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     discountPercent: finalDiscountPercent,
     isActive: isActive !== undefined ? isActive : true,
     credit: type === "credit" ? credit : undefined,
-    planDuration: type === "subscription" ? planDuration : undefined,
+    planDuration,
   });
 
   return new ApiResponse(

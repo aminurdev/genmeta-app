@@ -1,7 +1,7 @@
 export interface SubscriptionPlan {
   _id: string;
   name: string;
-  type: string;
+  type: "subscription" | "credit";
   basePrice: number;
   discountPrice?: number;
   discountPercent: number;
@@ -14,12 +14,13 @@ export interface SubscriptionPlan {
 export interface CreditPlan {
   _id: string;
   name: string;
-  type: string;
+  type: "subscription" | "credit";
   basePrice: number;
   discountPrice?: number;
   discountPercent: number;
   isActive: boolean;
   credit: number;
+  planDuration: number;
   createdAt: string;
   updatedAt: string;
 }

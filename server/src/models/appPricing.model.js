@@ -28,7 +28,7 @@ const appPricing = new Schema(
       default: undefined,
       validate: {
         validator: function (value) {
-          if (this.type === "subscription") {
+          if (this.type === "subscription" || this.type === "credit") {
             return typeof value === "number" && value >= 1;
           }
           return true;

@@ -45,7 +45,7 @@ interface FaqItem {
 
 const PricingContent = () => {
   const [activeTab, setActiveTab] = useState<"subscription" | "credit">(
-    "subscription"
+    "credit"
   );
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -71,30 +71,29 @@ const PricingContent = () => {
   const freeFeatures = [
     "instant Get 100 credits upon signup",
     "Limited (10 Files day) — Batch Processing",
-    "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
     "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Basic export options",
+    "Add your Own API key — Gemini API Integration",
     "Limited Results",
   ];
 
   const premiumFeatures = [
     "Unlimited — Batch Processing",
-    "Use Own API key — Gemini API Integration",
     "Powerful Metadata Editor — Bulk Edits",
     "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
     "Priority customer support",
+    "Add your Own API key — Gemini API Integration",
     "Unlimited Results",
   ];
 
   const creditFeatures = [
-    "Faster processing — Batch Processing",
+    "Faster processing",
     "Powerful Metadata Editor — Bulk Edits",
-    "No API required — Built-in API Access",
+    "No API key required",
     "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
-    "1 credit token per image — Results Generation",
+    "Upto 500 files or 100 videos from 100 credit — Results Generation",
     "Priority customer support",
-    "No monthly expiry — Credits never expire",
   ];
 
   const faqItems: FaqItem[] = [
@@ -222,7 +221,7 @@ const PricingContent = () => {
             </p>
 
             <Tabs
-              defaultValue="subscription"
+              defaultValue="credit"
               value={activeTab}
               onValueChange={(value) =>
                 setActiveTab(value as "subscription" | "credit")
@@ -230,12 +229,12 @@ const PricingContent = () => {
               className="w-full max-w-md mt-6"
             >
               <TabsList className="flex w-full ">
+                <TabsTrigger className="w-full" value="credit">
+                  Credit Plans
+                </TabsTrigger>
                 <TabsTrigger className="w-full" value="subscription">
                   Subscription
                 </TabsTrigger>
-                {/* <TabsTrigger className="w-full" value="credit">
-                  Credit Plans
-                </TabsTrigger> */}
               </TabsList>
             </Tabs>
           </div>
@@ -271,19 +270,18 @@ const PricingContent = () => {
         >
           <TabsContent value="subscription" className="mt-0">
             <div
-              className={`mx-auto grid max-w-full justify-center gap-8 ${
-                activeSubscriptionPlans.length === 0
+              className={`mx-auto grid max-w-full justify-center gap-8 ${activeSubscriptionPlans.length === 0
                   ? "grid-cols-1"
                   : activeSubscriptionPlans.length === 1
-                  ? "grid-cols-2"
-                  : activeSubscriptionPlans.length === 2
-                  ? "md:grid-cols-3"
-                  : activeSubscriptionPlans.length === 3
-                  ? "md:grid-cols-3"
-                  : activeSubscriptionPlans.length === 4
-                  ? "md:grid-cols-2 lg:grid-cols-3"
-                  : "md:grid-cols-2 lg:grid-cols-3 "
-              } grid-cols-1`}
+                    ? "grid-cols-2"
+                    : activeSubscriptionPlans.length === 2
+                      ? "md:grid-cols-3"
+                      : activeSubscriptionPlans.length === 3
+                        ? "md:grid-cols-3"
+                        : activeSubscriptionPlans.length === 4
+                          ? "md:grid-cols-2 lg:grid-cols-3"
+                          : "md:grid-cols-2 lg:grid-cols-3 "
+                } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
@@ -293,9 +291,9 @@ const PricingContent = () => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
-                        plan.basePrice,
-                        plan.discountPercent
-                      );
+                      plan.basePrice,
+                      plan.discountPercent
+                    );
 
                   const isBestValue = index === 3;
                   const isRecommended = index === 1;
@@ -304,17 +302,16 @@ const PricingContent = () => {
                     plan.planDuration === 30
                       ? "per month"
                       : plan.planDuration === 365
-                      ? "per year"
-                      : plan.planDuration === 7
-                      ? "per week"
-                      : `per ${plan.planDuration} days`;
+                        ? "per year"
+                        : plan.planDuration === 7
+                          ? "per week"
+                          : `per ${plan.planDuration} days`;
 
                   return (
                     <Card
                       key={plan._id}
-                      className={`flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg ${
-                        isBestValue ? "shadow-md" : ""
-                      }`}
+                      className={`flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg ${isBestValue ? "shadow-md" : ""
+                        }`}
                     >
                       {isBestValue && activeSubscriptionPlans.length > 1 && (
                         <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
@@ -400,15 +397,14 @@ const PricingContent = () => {
 
           <TabsContent value="credit" className="mt-0">
             <div
-              className={`mx-auto grid max-w-full gap-8 ${
-                activeCreditPlans.length === 0
+              className={`mx-auto grid max-w-full gap-8 ${activeCreditPlans.length === 0
                   ? "grid-cols-1"
                   : activeCreditPlans.length === 1
-                  ? "grid-cols-2"
-                  : activeCreditPlans.length === 2
-                  ? "md:grid-cols-3"
-                  : "md:grid-cols-3"
-              } grid-cols-1`}
+                    ? "grid-cols-2"
+                    : activeCreditPlans.length === 2
+                      ? "md:grid-cols-3"
+                      : "md:grid-cols-3"
+                } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
@@ -418,9 +414,9 @@ const PricingContent = () => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
-                        plan.basePrice,
-                        plan.discountPercent
-                      );
+                      plan.basePrice,
+                      plan.discountPercent
+                    );
 
                   const isBestValue =
                     index === Math.floor(activeCreditPlans.length / 2) ||
@@ -429,9 +425,8 @@ const PricingContent = () => {
                   return (
                     <Card
                       key={plan._id}
-                      className={`flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg ${
-                        isBestValue ? "shadow-md" : ""
-                      }`}
+                      className={`flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg ${isBestValue ? "shadow-md" : ""
+                        }`}
                     >
                       {isBestValue && activeCreditPlans.length > 1 && (
                         <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
@@ -494,11 +489,10 @@ const PricingContent = () => {
                       </CardContent>
                       <CardFooter>
                         <Button
-                          className={`w-full ${
-                            isBestValue
+                          className={`w-full ${isBestValue
                               ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
                               : "border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                          }`}
+                            }`}
                           variant={isBestValue ? "default" : "outline"}
                           size="lg"
                           onClick={() => handlePurchase(plan._id, "credit")}

@@ -36,7 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePricingPlan } from "@/services/admin-dashboard";
+import { useDeletePricingPlanMutation } from "@/services/queries/admin-dashboard";
 import { EditPricingForm } from "./edit-pricing-form";
 import { toast } from "sonner";
 
@@ -57,6 +57,7 @@ export function PricingTable({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const deletePricingPlanMutation = useDeletePricingPlanMutation();
 
   const handleEdit = (plan: PricingPlan) => {
     setEditingPlan(plan);
@@ -72,10 +73,11 @@ export function PricingTable({
     if (!planToDelete) return;
 
     try {
-      await deletePricingPlan(planToDelete);
+      await deletePricingPlanMutation.mutateAsync(planToDelete);
       onPlanDeleted();
+      toast.success("Pricing plan deleted successfully");
     } catch {
-      toast("Failed to delete pricing plan");
+      toast.error("Failed to delete pricing plan");
     } finally {
       setIsDeleteDialogOpen(false);
       setPlanToDelete(null);
@@ -135,9 +137,10 @@ export function PricingTable({
                 Final Price
               </TableHead>
               <TableHead className="font-semibold text-foreground">
-                {plans[0]?.type === "subscription"
-                  ? "Duration (days)"
-                  : "Credits"}
+                Duration (days)
+              </TableHead>
+              <TableHead className="font-semibold text-foreground">
+                {plans[0]?.type === "credit" && "Credits"}
               </TableHead>
               <TableHead className="font-semibold text-foreground">
                 Status
@@ -176,9 +179,14 @@ export function PricingTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">
-                    {plan.type === "subscription"
+                    {plan.planDuration
                       ? `${plan.planDuration} days`
-                      : `${plan.credit} credits`}
+                      : `Undefined`}
+                  </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+                    {plan.type === "credit" && `${plan.credit} credits`}
                   </span>
                 </TableCell>
                 <TableCell>

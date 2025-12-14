@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import type { PricingPlan } from "@/services/admin-dashboard";
-import { updatePricingPlan } from "@/services/admin-dashboard";
+import { useUpdatePricingPlanMutation } from "@/services/queries/admin-dashboard";
 import { toast } from "sonner";
 
 interface EditPricingFormProps {
@@ -50,8 +50,8 @@ const formSchema = z
   });
 
 export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const updatePricingPlanMutation = useUpdatePricingPlanMutation();
 
   const initialDiscountPrice = plan.discountPrice
     ? plan.discountPrice
@@ -83,8 +83,6 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setIsSubmitting(true);
-
       // Validate based on plan type
       if (values.type === "subscription" && !values.planDuration) {
         form.setError("planDuration", {
@@ -100,12 +98,14 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
         return;
       }
 
-      await updatePricingPlan(plan._id, values);
+      await updatePricingPlanMutation.mutateAsync({
+        id: plan._id,
+        data: values,
+      });
       onSuccess();
+      toast.success("Pricing plan updated successfully");
     } catch {
-      toast("Failed to update pricing plan");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to update pricing plan");
     }
   }
 
@@ -189,24 +189,22 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
           )}
         />
 
-        {planType === "subscription" && (
-          <FormField
-            control={form.control}
-            name="planDuration"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Duration (days)</FormLabel>
-                <FormControl>
-                  <Input type="number" min="1" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Number of days the subscription is valid for
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="planDuration"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Duration (days)</FormLabel>
+              <FormControl>
+                <Input type="number" min="1" {...field} />
+              </FormControl>
+              <FormDescription>
+                Number of days the subscription is valid for
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {planType === "credit" && (
           <FormField
@@ -248,8 +246,12 @@ export function EditPricingForm({ plan, onSuccess }: EditPricingFormProps) {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Updating..." : "Update Plan"}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={updatePricingPlanMutation.isPending}
+        >
+          {updatePricingPlanMutation.isPending ? "Updating..." : "Update Plan"}
         </Button>
       </form>
     </Form>

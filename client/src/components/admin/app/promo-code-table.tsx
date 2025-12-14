@@ -35,7 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePromoCode, PromoCode } from "@/services/admin-dashboard";
+import type { PromoCode } from "@/services/admin-dashboard";
+import { useDeletePromoCodeMutation } from "@/services/queries/admin-dashboard";
 import { toast } from "sonner";
 import { EditPromoCodeForm } from "./edit-promo-code-form";
 
@@ -60,6 +61,7 @@ export function PromoCodeTable({
   const [promoCodeToDelete, setPromoCodeToDelete] = useState<string | null>(
     null
   );
+  const deletePromoCodeMutation = useDeletePromoCodeMutation();
 
   const handleEdit = (promoCode: PromoCode) => {
     setEditingPromoCode(promoCode);
@@ -75,10 +77,11 @@ export function PromoCodeTable({
     if (!promoCodeToDelete) return;
 
     try {
-      await deletePromoCode(promoCodeToDelete);
+      await deletePromoCodeMutation.mutateAsync(promoCodeToDelete);
       onPromoCodeDeleted();
+      toast.success("Promo code deleted successfully");
     } catch {
-      toast("Failed to delete promo code");
+      toast.error("Failed to delete promo code");
     } finally {
       setIsDeleteDialogOpen(false);
       setPromoCodeToDelete(null);
