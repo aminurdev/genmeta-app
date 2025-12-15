@@ -484,24 +484,6 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
     appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
 
   const remainingCredit = appKey.calculateCredit();
-  console.log({
-    plan: appKey.plan,
-    username: appKey.username,
-    status: appKey.status,
-    isValid,
-    expiresAt:
-      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
-        ? appKey.expiresAt
-        : null,
-    expiresIn,
-    credit: remainingCredit,
-    totalProcess: appKey.totalProcess,
-    aiApiKey,
-    user: {
-      name: appKey.userId?.name,
-      email: appKey.userId?.email,
-    },
-  });
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     plan: appKey.plan,
