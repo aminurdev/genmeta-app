@@ -423,10 +423,11 @@ const validateAppKey = asyncHandler(async (req, res) => {
     );
   }
 
-  // Calculate expiresIn only for non-free plans
+  // Calculate expiresIn for credit and subscription plans
   const now = new Date();
   const expiresIn =
-    appKey.plan.type !== "free" && appKey.expiresAt
+    (appKey.plan.type === "credit" || appKey.plan.type === "subscription") &&
+    appKey.expiresAt
       ? Math.max(
           0,
           Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
@@ -439,7 +440,10 @@ const validateAppKey = asyncHandler(async (req, res) => {
     username: appKey.username,
     plan: appKey.plan,
     totalProcess: appKey.totalProcess,
-    expiresAt: appKey.plan.type === "free" ? null : appKey.expiresAt,
+    expiresAt:
+      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
+        ? appKey.expiresAt
+        : null,
     expiresIn,
     aiApiSecret,
     deviceId: deviceId,
@@ -464,10 +468,11 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
   const isValid = appKey.isValid();
   await appKey.save();
 
-  // Calculate expiresIn only for non-free plans
+  // Calculate expiresIn for credit and subscription plans
   const now = new Date();
   const expiresIn =
-    appKey.plan.type !== "free" && appKey.expiresAt
+    (appKey.plan.type === "credit" || appKey.plan.type === "subscription") &&
+    appKey.expiresAt
       ? Math.max(
           0,
           Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
@@ -479,13 +484,34 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
     appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
 
   const remainingCredit = appKey.calculateCredit();
+  console.log({
+    plan: appKey.plan,
+    username: appKey.username,
+    status: appKey.status,
+    isValid,
+    expiresAt:
+      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
+        ? appKey.expiresAt
+        : null,
+    expiresIn,
+    credit: remainingCredit,
+    totalProcess: appKey.totalProcess,
+    aiApiKey,
+    user: {
+      name: appKey.userId?.name,
+      email: appKey.userId?.email,
+    },
+  });
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     plan: appKey.plan,
     username: appKey.username,
     status: appKey.status,
     isValid,
-    expiresAt: appKey.plan.type === "free" ? null : appKey.expiresAt,
+    expiresAt:
+      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
+        ? appKey.expiresAt
+        : null,
     expiresIn,
     credit: remainingCredit,
     totalProcess: appKey.totalProcess,
