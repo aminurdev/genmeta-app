@@ -11,7 +11,6 @@ import {
   XCircle,
   ArrowRight,
   Download,
-  Star,
   BarChart3,
   HelpCircle,
 } from "lucide-react";
@@ -19,14 +18,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
@@ -69,30 +66,31 @@ const PricingContent = () => {
   }, [searchParams]);
 
   const freeFeatures = [
-    "instant Get 100 credits upon signup",
-    "Limited (10 Files day) — Batch Processing",
+    "100 free credits upon signup",
+    "Requires your own Gemini API key",
+    "Limited to 10 files per day — Batch Processing",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
     "Basic export options",
-    "Add your Own API key — Gemini API Integration",
-    "Limited Results",
+    "Community support",
   ];
 
   const premiumFeatures = [
-    "Unlimited — Batch Processing",
+    "Unlimited Batch Processing — No daily limits",
     "Powerful Metadata Editor — Bulk Edits",
-    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+    "Advanced export options with customization",
+    "Unlimited results generation",
+    "Requires your own Gemini API key",
     "Priority customer support",
-    "Add your Own API key — Gemini API Integration",
-    "Unlimited Results",
   ];
 
   const creditFeatures = [
-    "Faster processing",
+    "No API key required — Hassle-free processing",
+    "Faster processing with priority queue",
     "Powerful Metadata Editor — Bulk Edits",
-    "No API key required",
-    "JPG, JPEG, PNG, EPS, MP4, MOV — Supported Formats",
-    "Upto 500 files or 100 videos from 100 credit — Results Generation",
+    "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+    "Advanced export options with customization",
     "Priority customer support",
   ];
 
@@ -151,42 +149,35 @@ const PricingContent = () => {
   const activeCreditPlans = creditPlans.filter((plan) => plan.isActive);
 
   const FreePlanCard = ({ className }: { className?: string }) => (
-    <Card
-      className={`flex flex-col relative overflow-hidden border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20 transition-all hover:shadow-lg ${className}`}
-    >
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-2xl">
+    <Card className={`flex flex-col border transition-all hover:shadow-md ${className}`}>
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-2xl font-bold text-foreground">Free</CardTitle>
           <Download className="h-5 w-5 text-green-600 dark:text-green-400" />
-          Free Plan
-        </CardTitle>
-        <CardDescription>Perfect for getting started</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 flex-1">
-        <div className="space-y-1">
-          <p className="text-4xl font-bold">৳0</p>
-          <p className="text-sm text-muted-foreground">Forever free</p>
         </div>
-
-        <Separator className="my-4" />
-
-        <div className="space-y-3">
+        <div className="mt-4">
+          <p className="text-4xl font-bold">৳0</p>
+          <p className="text-sm text-muted-foreground mt-1">Forever free</p>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1">
+        <div className="space-y-2.5">
           {freeFeatures.map((feature, index) => (
-            <div key={index} className="flex items-center gap-3">
-              <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span className="text-sm">{feature}</span>
+            <div key={index} className="flex items-start gap-2.5">
+              <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+              <span className="text-sm text-muted-foreground">{feature}</span>
             </div>
           ))}
         </div>
       </CardContent>
-      <CardFooter className="mt-auto">
+      <CardFooter>
         <Button
           variant="outline"
-          className="w-full border-green-200 dark:border-green-800 hover:bg-green-50 dark:hover:bg-green-900/30"
+          className="w-full"
           size="lg"
           onClick={handleDownloadFree}
         >
-          <Download className="mr-2 h-4 w-4" />
-          Get Started Free
+          Get Started
         </Button>
       </CardFooter>
     </Card>
@@ -199,7 +190,7 @@ const PricingContent = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background pt-16 pb-24">
+      <div className="relative overflow-hidden bg-gradient-to-b  pt-16 pb-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-center space-y-6 text-center">
@@ -271,23 +262,23 @@ const PricingContent = () => {
           <TabsContent value="subscription" className="mt-0">
             <div
               className={`mx-auto grid max-w-full justify-center gap-8 ${activeSubscriptionPlans.length === 0
-                  ? "grid-cols-1"
-                  : activeSubscriptionPlans.length === 1
-                    ? "grid-cols-2"
-                    : activeSubscriptionPlans.length === 2
+                ? "grid-cols-1"
+                : activeSubscriptionPlans.length === 1
+                  ? "grid-cols-2"
+                  : activeSubscriptionPlans.length === 2
+                    ? "md:grid-cols-3"
+                    : activeSubscriptionPlans.length === 3
                       ? "md:grid-cols-3"
-                      : activeSubscriptionPlans.length === 3
-                        ? "md:grid-cols-3"
-                        : activeSubscriptionPlans.length === 4
-                          ? "md:grid-cols-2 lg:grid-cols-3"
-                          : "md:grid-cols-2 lg:grid-cols-3 "
+                      : activeSubscriptionPlans.length === 4
+                        ? "md:grid-cols-2 lg:grid-cols-3"
+                        : "md:grid-cols-2 lg:grid-cols-3 "
                 } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
 
               {activeSubscriptionPlans.length > 0 ? (
-                activeSubscriptionPlans.map((plan, index: number) => {
+                activeSubscriptionPlans.map((plan) => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
@@ -295,8 +286,6 @@ const PricingContent = () => {
                       plan.discountPercent
                     );
 
-                  const isBestValue = index === 3;
-                  const isRecommended = index === 1;
 
                   const durationText =
                     plan.planDuration === 30
@@ -310,76 +299,55 @@ const PricingContent = () => {
                   return (
                     <Card
                       key={plan._id}
-                      className={`flex flex-col relative overflow-hidden border-violet-200 dark:border-violet-800 transition-all hover:shadow-lg ${isBestValue ? "shadow-md" : ""
-                        }`}
+                      className="flex flex-col relative border transition-all hover:shadow-md"
                     >
-                      {isBestValue && activeSubscriptionPlans.length > 1 && (
-                        <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                          Best Value
-                        </div>
-                      )}
-                      {isRecommended && activeSubscriptionPlans.length > 1 && (
-                        <div className="absolute -right-10 top-6 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                          Recommended
-                        </div>
-                      )}
-
                       {plan.discountPercent > 0 && (
-                        <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                          {plan.discountPercent}% OFF
+                        <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
+                          Save {plan.discountPercent}%
                         </Badge>
                       )}
 
-                      <CardHeader className={"pb-2 mt-6"}>
-                        <CardTitle className="flex items-center gap-2 text-2xl">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
                           <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                          {plan.name}
-                        </CardTitle>
-                        <CardDescription>
-                          {plan.type || "Premium plan"}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 flex-1">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-4xl font-bold text-foreground">
-                              ৳{displayPrice}
-                            </p>
+                        </div>
+                        <div className="mt-4">
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-4xl font-bold">৳{displayPrice}</p>
                             {plan.discountPercent > 0 && (
-                              <p className="text-sm text-muted-foreground line-through">
+                              <p className="text-lg text-muted-foreground line-through">
                                 ৳{plan.basePrice}
                               </p>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground mt-1">
                             {durationText}
                           </p>
                         </div>
-
-                        <Separator className="my-4" />
-
-                        <div className="space-y-3">
+                      </CardHeader>
+                      <CardContent className="flex-1">
+                        <div className="space-y-2.5">
                           {premiumFeatures.map((feature, featureIndex) => (
                             <div
                               key={featureIndex}
-                              className="flex items-center gap-3"
+                              className="flex items-start gap-2.5"
                             >
-                              <Check className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                              <span className="text-sm">{feature}</span>
+                              <Check className="h-4 w-4 text-violet-600 dark:text-violet-400 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-muted-foreground">{feature}</span>
                             </div>
                           ))}
                         </div>
                       </CardContent>
                       <CardFooter>
                         <Button
-                          className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                          className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
                           size="lg"
                           onClick={() =>
                             handlePurchase(plan._id, "subscription")
                           }
                         >
-                          <Star className="mr-2 h-4 w-4" />
-                          Get {plan.name}
+                          Choose Plan
                         </Button>
                       </CardFooter>
                     </Card>
@@ -398,19 +366,19 @@ const PricingContent = () => {
           <TabsContent value="credit" className="mt-0">
             <div
               className={`mx-auto grid max-w-full gap-8 ${activeCreditPlans.length === 0
-                  ? "grid-cols-1"
-                  : activeCreditPlans.length === 1
-                    ? "grid-cols-2"
-                    : activeCreditPlans.length === 2
-                      ? "md:grid-cols-3"
-                      : "md:grid-cols-3"
+                ? "grid-cols-1"
+                : activeCreditPlans.length === 1
+                  ? "grid-cols-2"
+                  : activeCreditPlans.length === 2
+                    ? "md:grid-cols-3"
+                    : "md:grid-cols-3"
                 } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
 
               {activeCreditPlans.length > 0 ? (
-                activeCreditPlans.map((plan, index: number) => {
+                activeCreditPlans.map((plan) => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
@@ -418,87 +386,83 @@ const PricingContent = () => {
                       plan.discountPercent
                     );
 
-                  const isBestValue =
-                    index === Math.floor(activeCreditPlans.length / 2) ||
-                    (activeCreditPlans.length === 1 && index === 0);
+
+                  // Calculate duration text
+                  const durationText =
+                    plan.planDuration === 30
+                      ? "Monthly"
+                      : plan.planDuration === 91
+                        ? "Quarterly"
+                        : plan.planDuration === 182
+                          ? "Half-Yearly"
+                          : plan.planDuration === 365
+                            ? "Yearly"
+                            : `${plan.planDuration} days`;
+
+                  // Calculate image and video counts based on credits
+                  const imageCount = (plan.credit * 5).toLocaleString();
+                  const videoCount = plan.credit.toLocaleString();
 
                   return (
                     <Card
                       key={plan._id}
-                      className={`flex flex-col relative overflow-hidden border-blue-200 dark:border-blue-800 transition-all hover:shadow-lg ${isBestValue ? "shadow-md" : ""
-                        }`}
+                      className="flex flex-col relative border transition-all hover:shadow-md"
                     >
-                      {isBestValue && activeCreditPlans.length > 1 && (
-                        <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
-                          Best Value
-                        </div>
-                      )}
-
                       {plan.discountPercent > 0 && (
-                        <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
-                          {plan.discountPercent}% OFF
+                        <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
+                          Save {plan.discountPercent}%
                         </Badge>
                       )}
 
-                      <CardHeader className={`pb-2 mt-10`}>
-                        <CardTitle className="flex items-center gap-2 text-2xl">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
                           <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          {plan.name}
-                        </CardTitle>
-                        <CardDescription>
-                          {plan.type || "Credit package"}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 flex-1">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-4xl font-bold text-foreground">
-                              ৳{displayPrice}
-                            </p>
+                        </div>
+                        <div className="mt-4">
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-4xl font-bold">৳{displayPrice}</p>
                             {plan.discountPercent > 0 && (
-                              <p className="text-sm text-muted-foreground line-through">
+                              <p className="text-lg text-muted-foreground line-through">
                                 ৳{plan.basePrice}
                               </p>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {plan.credit} credits
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {plan.credit.toLocaleString()} credits • {durationText}
                           </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Sparkles className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-medium">
-                              ৳{(plan.basePrice / plan.credit).toFixed(3)} per
-                              credit
-                            </span>
-                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1">
+                        {/* Processing Capacity */}
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 mb-4">
+                          <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1.5">
+                            You can process:
+                          </p>
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            {imageCount} images or {videoCount} videos
+                          </p>
                         </div>
 
-                        <Separator className="my-4" />
-
-                        <div className="space-y-3">
+                        <div className="space-y-2.5">
                           {creditFeatures.map((feature, featureIndex) => (
                             <div
                               key={featureIndex}
-                              className="flex items-center gap-3"
+                              className="flex items-start gap-2.5"
                             >
-                              <Check className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                              <span className="text-sm">{feature}</span>
+                              <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-muted-foreground">{feature}</span>
                             </div>
                           ))}
                         </div>
                       </CardContent>
                       <CardFooter>
                         <Button
-                          className={`w-full ${isBestValue
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20"
-                              : "border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                            }`}
-                          variant={isBestValue ? "default" : "outline"}
+                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                           size="lg"
                           onClick={() => handlePurchase(plan._id, "credit")}
                         >
-                          <Zap className="mr-2 h-4 w-4" />
-                          Buy {plan.name}
+                          Purchase Credits
                         </Button>
                       </CardFooter>
                     </Card>
