@@ -20,19 +20,19 @@ import {
   Zap,
   Shield,
   FileText,
-  Image,
   Sparkles,
   ArrowLeft,
   BookOpen,
   Github,
+  ImageIcon,
 } from "lucide-react";
-import { getLatestRelease } from "@/app/(public)/download/page";
+import { getLatestRelease, ReleaseInfo } from "@/app/(public)/download/page";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 
 export function DocsContent() {
-  const [releaseInfo, setReleaseInfo] = useState<any>(null);
+  const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [showModal, setShowModal] = useState(true);
   const router = useRouter();
 
@@ -63,11 +63,11 @@ export function DocsContent() {
               GenMeta Documentation (In Progress)
             </DialogTitle>
             <DialogDescription className="mt-1 text-sm sm:text-base">
-              We're currently working on finalizing the documentation for
+              We&apos;re currently working on finalizing the documentation for
               GenMeta. While some sections are ready, others are still being
               written or improved. Your patience is appreciated as we continue
               to build a comprehensive guide to help you set up and use all of
-              GenMeta's features effectively.
+              GenMeta&apos;s features effectively.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -169,7 +169,7 @@ export function DocsContent() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
-                  Uses Google's Gemini AI to analyze images and generate
+                  Uses Google&apos;s Gemini AI to analyze images and generate
                   accurate, contextual metadata.
                 </p>
               </CardContent>
@@ -336,7 +336,7 @@ export function DocsContent() {
                   </Button>
                   <ul className="text-sm text-muted-foreground list-disc list-inside ml-4 space-y-1">
                     <li>Sign in with your Google account</li>
-                    <li>Click "Create API Key"</li>
+                    <li>Click &quot;Create API Key&quot;</li>
                     <li>Copy the generated API key</li>
                   </ul>
                 </CardContent>
@@ -356,7 +356,7 @@ export function DocsContent() {
                     <li>Open GenMeta application</li>
                     <li>Go to Settings → API Configuration</li>
                     <li>Paste your Gemini API key</li>
-                    <li>Click "Save" and test the connection</li>
+                    <li>Click &quot;Save&quot; and test the connection</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -366,7 +366,7 @@ export function DocsContent() {
           <div id="first-run" className="space-y-4">
             <h3 className="text-lg font-medium">First Run</h3>
             <p className="text-muted-foreground">
-              When you first launch GenMeta, you'll be guided through the
+              When you first launch GenMeta, you&apos;ll be guided through the
               initial setup:
             </p>
             <div className="bg-muted rounded-lg p-4">
@@ -404,7 +404,7 @@ export function DocsContent() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Image className="size-5" />
+                      <ImageIcon className="size-5" />
                       Select Image
                     </CardTitle>
                   </CardHeader>
@@ -413,7 +413,7 @@ export function DocsContent() {
                       Choose the image you want to process:
                     </p>
                     <ul className="text-sm text-muted-foreground list-disc list-inside ml-4 space-y-1">
-                      <li>Click "Select Image" or drag & drop</li>
+                      <li>Click &quot;Select Image&quot; or drag & drop</li>
                       <li>Supported formats: JPG, PNG, WebP, GIF</li>
                       <li>Maximum file size: 10MB</li>
                     </ul>
@@ -454,7 +454,7 @@ export function DocsContent() {
                       Let AI analyze your image:
                     </p>
                     <ul className="text-sm text-muted-foreground list-disc list-inside ml-4 space-y-1">
-                      <li>Click "Generate Metadata"</li>
+                      <li>Click &quot;Generate Metadata&quot;</li>
                       <li>Wait for AI processing (usually 5-10 seconds)</li>
                       <li>Review the generated results</li>
                       <li>Edit if needed</li>
@@ -500,7 +500,10 @@ export function DocsContent() {
                 </CardHeader>
                 <CardContent>
                   <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                    <li>Use "Select Folder" to process entire directories</li>
+                    <li>
+                      Use &quot;Select Folder&quot; to process entire
+                      directories
+                    </li>
                     <li>Or select multiple individual files</li>
                     <li>Set filters by file type or size</li>
                   </ul>
@@ -528,8 +531,8 @@ export function DocsContent() {
         <div id="ai-metadata" className="space-y-4">
           <h2 className="text-2xl font-semibold">AI Metadata Generation</h2>
           <p className="text-muted-foreground">
-            GenMeta uses Google's advanced Gemini AI to analyze your images and
-            generate contextually accurate metadata.
+            GenMeta uses Google&apos;s advanced Gemini AI to analyze your images
+            and generate contextually accurate metadata.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -605,7 +608,7 @@ export function DocsContent() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Image className="size-5 text-green-600" />
+                  <ImageIcon className="size-5 text-green-600" />
                   EXIF Embedding
                 </CardTitle>
               </CardHeader>
@@ -641,7 +644,7 @@ export function DocsContent() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm font-medium mb-1">
-                    Problem: "Invalid API Key" error
+                    Problem: &apos;Invalid API Key&apos; error
                   </p>
                   <p className="text-sm text-muted-foreground mb-2">
                     Solution:
@@ -688,7 +691,7 @@ export function DocsContent() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm font-medium mb-1">
-                    Problem: Application won't start
+                    Problem: Application won&apos;t start
                   </p>
                   <p className="text-sm text-muted-foreground mb-2">
                     Solution:

@@ -1,4 +1,4 @@
-import { getAllReferral } from "@/services/admin-dashboard/referral";
+import { getAllReferral } from "@/services/admin-dashboard";
 import { AdminReferralDashboard } from "./admin-referral";
 
 const AdminReferralPage = async () => {
@@ -17,8 +17,7 @@ const AdminReferralPage = async () => {
         </div>
       );
     }
-
-    return <AdminReferralDashboard referralData={result.data} />;
+    return <AdminReferralDashboard referralData={result.data ?? []} />;
   } catch (error) {
     console.error("Failed to load referral data:", error);
     return (

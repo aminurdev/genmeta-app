@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { createPricingPlan } from "@/lib/actions";
+import { useCreatePricingPlanMutation } from "@/services/queries/admin-dashboard";
 import { toast } from "sonner";
 
 interface CreatePricingFormProps {
@@ -39,7 +39,9 @@ const formSchema = z
       message: "Discount price must be a positive number.",
     }),
     isActive: z.boolean().default(true),
-    planDuration: z.coerce.number().optional(),
+    planDuration: z.coerce.number().positive({
+      message: "Plan duration must be a positive number.",
+    }),
     credit: z.coerce.number().optional(),
   })
   .refine((data) => data.discountPrice <= data.basePrice, {
@@ -48,14 +50,14 @@ const formSchema = z
   });
 
 export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const createPricingPlanMutation = useCreatePricingPlanMutation();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      type: "subscription",
+      type: "credit",
       basePrice: 0,
       discountPrice: 0,
       isActive: true,
@@ -77,16 +79,7 @@ export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setIsSubmitting(true);
-
       // Validate based on plan type
-      if (values.type === "subscription" && !values.planDuration) {
-        form.setError("planDuration", {
-          message: "Plan duration is required for subscription plans",
-        });
-        return;
-      }
-
       if (values.type === "credit" && !values.credit) {
         form.setError("credit", {
           message: "Credit amount is required for credit plans",
@@ -94,13 +87,12 @@ export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
         return;
       }
 
-      await createPricingPlan(values);
+      await createPricingPlanMutation.mutateAsync(values);
       onSuccess();
       form.reset();
+      toast.success("Pricing plan created successfully");
     } catch {
-      toast("Failed to create pricing plan");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to create pricing plan");
     }
   }
 
@@ -135,15 +127,15 @@ export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
                 >
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
-                      <RadioGroupItem value="subscription" />
-                    </FormControl>
-                    <FormLabel className="font-normal">Subscription</FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
                       <RadioGroupItem value="credit" />
                     </FormControl>
                     <FormLabel className="font-normal">Credit</FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="subscription" />
+                    </FormControl>
+                    <FormLabel className="font-normal">Subscription</FormLabel>
                   </FormItem>
                 </RadioGroup>
               </FormControl>
@@ -184,24 +176,24 @@ export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
           )}
         />
 
-        {planType === "subscription" && (
-          <FormField
-            control={form.control}
-            name="planDuration"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Duration (days)</FormLabel>
-                <FormControl>
-                  <Input type="number" min="1" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Number of days the subscription is valid for
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+        <FormField
+          control={form.control}
+          name="planDuration"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Duration (days)</FormLabel>
+              <FormControl>
+                <Input type="number" min="1" {...field} />
+              </FormControl>
+              <FormDescription>
+                {planType === "subscription"
+                  ? "Number of days the subscription is valid for"
+                  : "Number of days until the plan expires from purchase date"}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {planType === "credit" && (
           <FormField
@@ -243,8 +235,8 @@ export function CreatePricingForm({ onSuccess }: CreatePricingFormProps) {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Plan"}
+        <Button type="submit" className="w-full" disabled={createPricingPlanMutation.isPending}>
+          {createPricingPlanMutation.isPending ? "Creating..." : "Create Plan"}
         </Button>
       </form>
     </Form>

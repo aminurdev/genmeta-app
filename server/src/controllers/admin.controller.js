@@ -13,137 +13,434 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  // === 1. PAYMENTS ===
-  const allPayments = await AppPayment.find({});
-  const totalRevenue = allPayments.reduce((sum, p) => sum + p.amount, 0);
+  // Helper to format month key
+  const formatMonthKey = (date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 
-  const currentMonthRevenue = allPayments
-    .filter((p) => new Date(p.createdAt) >= thisMonth)
-    .reduce((sum, p) => sum + p.amount, 0);
+  // Initialize 6-month keys for aggregation
+  const monthlyKeys = {};
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthlyKeys[formatMonthKey(date)] = 0;
+  }
 
-  const lastMonthRevenue = allPayments
-    .filter(
-      (p) =>
-        new Date(p.createdAt) >= lastMonth && new Date(p.createdAt) < thisMonth
-    )
-    .reduce((sum, p) => sum + p.amount, 0);
+  const currentMonthKey = formatMonthKey(thisMonth);
+
+  // === AGGREGATED QUERIES (Single database round trip) ===
+  const [paymentStats, appKeyStats, userStats, referralTop] = await Promise.all(
+    [
+      // 1. PAYMENT AGGREGATION
+      AppPayment.aggregate([
+        {
+          $facet: {
+            revenue: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: "$amount" },
+                  currentMonth: {
+                    $sum: {
+                      $cond: [
+                        { $gte: ["$createdAt", thisMonth] },
+                        "$amount",
+                        0,
+                      ],
+                    },
+                  },
+                  lastMonth: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$createdAt", lastMonth] },
+                            { $lt: ["$createdAt", thisMonth] },
+                          ],
+                        },
+                        "$amount",
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            monthlyRevenue: [
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: "%Y-%m", date: "$createdAt" },
+                  },
+                  amount: { $sum: "$amount" },
+                },
+              },
+            ],
+            recent: [
+              { $sort: { createdAt: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "userId",
+                  foreignField: "_id",
+                  as: "user",
+                },
+              },
+              {
+                $project: {
+                  amount: 1,
+                  createdAt: 1,
+                  userId: {
+                    $arrayElemAt: [
+                      {
+                        $map: {
+                          input: "$user",
+                          as: "u",
+                          in: {
+                            _id: "$$u._id",
+                            name: "$$u.name",
+                            email: "$$u.email",
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            ],
+            count: [{ $count: "total" }],
+            monthlyNewPayments: [
+              { $match: { createdAt: { $gte: thisMonth } } },
+              { $count: "total" },
+            ],
+            topSpenders: [
+              {
+                $group: {
+                  _id: "$userId",
+                  totalSpent: { $sum: "$amount" },
+                },
+              },
+              { $sort: { totalSpent: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "_id",
+                  foreignField: "_id",
+                  as: "user",
+                },
+              },
+              {
+                $project: {
+                  totalSpent: 1,
+                  user: {
+                    $arrayElemAt: [
+                      {
+                        $map: {
+                          input: "$user",
+                          as: "u",
+                          in: {
+                            _id: "$$u._id",
+                            name: "$$u.name",
+                            email: "$$u.email",
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+
+      // 2. APP KEY AGGREGATION
+      AppKey.aggregate([
+        {
+          $facet: {
+            counts: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  active: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$isActive", true] },
+                            { $eq: ["$status", "active"] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  newThisMonth: {
+                    $sum: {
+                      $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
+                    },
+                  },
+                  activePremium: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$isActive", true] },
+                            { $eq: ["$status", "active"] },
+                            { $ne: ["$plan.type", "free"] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  subscriptionPlan: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$isActive", true] },
+                            { $eq: ["$status", "active"] },
+                            { $eq: ["$plan.type", "subscription"] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                  creditPlan: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$isActive", true] },
+                            { $eq: ["$status", "active"] },
+                            { $eq: ["$plan.type", "credit"] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            monthlyProcess: [
+              {
+                $match: { monthlyProcess: { $exists: true } },
+              },
+              {
+                $addFields: {
+                  monthlyProcessArray: {
+                    $objectToArray: "$monthlyProcess",
+                  },
+                },
+              },
+              {
+                $unwind: "$monthlyProcessArray",
+              },
+              {
+                $group: {
+                  _id: "$monthlyProcessArray.k",
+                  count: { $sum: "$monthlyProcessArray.v" },
+                },
+              },
+            ],
+            topUsage: [
+              { $match: { monthlyProcess: { $exists: true } } },
+              {
+                $addFields: {
+                  monthlyProcessArray: { $objectToArray: "$monthlyProcess" },
+                },
+              },
+              { $unwind: "$monthlyProcessArray" },
+              { $match: { "monthlyProcessArray.k": currentMonthKey } },
+              {
+                $group: {
+                  _id: "$userId",
+                  count: { $sum: "$monthlyProcessArray.v" },
+                },
+              },
+              { $sort: { count: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "_id",
+                  foreignField: "_id",
+                  as: "user",
+                },
+              },
+              {
+                $project: {
+                  count: 1,
+                  user: {
+                    $arrayElemAt: [
+                      {
+                        $map: {
+                          input: "$user",
+                          as: "u",
+                          in: {
+                            _id: "$$u._id",
+                            name: "$$u.name",
+                            email: "$$u.email",
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+
+      // 3. USER AGGREGATION
+      User.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            newThisMonth: {
+              $sum: {
+                $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
+              },
+            },
+          },
+        },
+      ]),
+
+      Referral.aggregate([
+        {
+          $project: { referrer: 1, referredCount: { $size: "$referredUsers" } },
+        },
+        { $sort: { referredCount: -1 } },
+        { $limit: 5 },
+        {
+          $lookup: {
+            from: "users",
+            localField: "referrer",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        {
+          $project: {
+            referredCount: 1,
+            user: {
+              $arrayElemAt: [
+                {
+                  $map: {
+                    input: "$user",
+                    as: "u",
+                    in: {
+                      _id: "$$u._id",
+                      name: "$$u.name",
+                      email: "$$u.email",
+                    },
+                  },
+                },
+                0,
+              ],
+            },
+          },
+        },
+      ]),
+    ]
+  );
+
+  // Extract and format results
+  const revenueData = paymentStats[0].revenue[0] || {
+    total: 0,
+    currentMonth: 0,
+    lastMonth: 0,
+  };
 
   const revenueGrowth =
-    lastMonthRevenue === 0
+    revenueData.lastMonth === 0
       ? null
-      : ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+      : ((revenueData.currentMonth - revenueData.lastMonth) /
+          revenueData.lastMonth) *
+        100;
 
-  // === 2. API KEYS ===
-  const totalAppKeys = await AppKey.countDocuments();
-  const activeAppKeys = await AppKey.countDocuments({
-    isActive: true,
-    status: "active",
-  });
-  const newAppKeysThisMonth = await AppKey.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
-
-  // 🔍 Active premium keys (not free)
-  const activePremiumKeys = await AppKey.find({
-    isActive: true,
-    status: "active",
-    "plan.type": { $ne: "free" },
-  });
-
-  const activePremiumCount = activePremiumKeys.length;
-  const subscriptionPlanCount = activePremiumKeys.filter(
-    (key) => key.plan?.type === "subscription"
-  ).length;
-  const creditPlanCount = activePremiumKeys.filter(
-    (key) => key.plan?.type === "credit"
-  ).length;
-
-  const appKeys = await AppKey.find({});
-  const monthlyProcessList = {};
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    monthlyProcessList[monthKey] = 0;
-  }
-
-  appKeys.forEach((appKey) => {
-    if (!appKey.monthlyProcess) return;
-    for (const [month, count] of appKey.monthlyProcess.entries()) {
-      if (monthlyProcessList[month] !== undefined) {
-        monthlyProcessList[month] += count;
-      }
+  // Format monthly revenue
+  const monthlyRevenueList = { ...monthlyKeys };
+  paymentStats[0].monthlyRevenue.forEach((item) => {
+    if (item._id in monthlyRevenueList) {
+      monthlyRevenueList[item._id] = item.amount;
     }
   });
 
-  // === 3. USERS ===
-  const totalUsers = await User.countDocuments();
-  const newUsersThisMonth = await User.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
-
-  // === 4. MONTHLY REVENUE LIST ===
-  const monthlyRevenueList = {};
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    monthlyRevenueList[monthKey] = 0;
-  }
-
-  allPayments.forEach((payment) => {
-    const createdAt = new Date(payment.createdAt);
-    const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, "0")}`;
-    if (monthlyRevenueList[key] !== undefined) {
-      monthlyRevenueList[key] += payment.amount;
+  // Format monthly process list
+  const monthlyProcessList = { ...monthlyKeys };
+  appKeyStats[0].monthlyProcess.forEach((item) => {
+    if (item._id in monthlyProcessList) {
+      monthlyProcessList[item._id] = item.count;
     }
   });
 
-  // === 5. RECENT PAYMENTS ===
-  const recentPayments = await AppPayment.find({})
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .populate("userId", "name email")
-    .select("amount createdAt userId");
+  const appKeyCounts = appKeyStats[0].counts[0] || {
+    total: 0,
+    active: 0,
+    newThisMonth: 0,
+    activePremium: 0,
+    subscriptionPlan: 0,
+    creditPlan: 0,
+  };
 
-  const monthlyNewPayments = await AppPayment.countDocuments({
-    createdAt: { $gte: thisMonth },
-  });
+  const userCounts = userStats[0] || {
+    total: 0,
+    newThisMonth: 0,
+  };
 
-  // === 6. RESPONSE ===
+  // === RESPONSE ===
   return new ApiResponse(
     200,
     true,
     "Admin dashboard statistics retrieved successfully",
     {
       revenue: {
-        total: totalRevenue,
-        currentMonth: currentMonthRevenue,
-        lastMonth: lastMonthRevenue,
+        total: revenueData.total,
+        currentMonth: revenueData.currentMonth,
+        lastMonth: revenueData.lastMonth,
         growthPercentage: revenueGrowth,
         monthlyRevenueList,
       },
       appKeys: {
-        total: totalAppKeys,
-        newThisMonth: newAppKeysThisMonth,
-        active: activeAppKeys,
-        activePremium: activePremiumCount,
-        subscriptionPlanCount,
-        creditPlanCount,
+        total: appKeyCounts.total,
+        newThisMonth: appKeyCounts.newThisMonth,
+        active: appKeyCounts.active,
+        activePremium: appKeyCounts.activePremium,
+        subscriptionPlanCount: appKeyCounts.subscriptionPlan,
+        creditPlanCount: appKeyCounts.creditPlan,
         monthlyProcessList,
+        topUsage: appKeyStats[0].topUsage || [],
       },
       users: {
-        total: totalUsers,
-        newThisMonth: newUsersThisMonth,
+        total: userCounts.total,
+        newThisMonth: userCounts.newThisMonth,
       },
       payments: {
-        total: allPayments.length,
-        newThisMonth: monthlyNewPayments,
-        recent: recentPayments,
+        total: paymentStats[0].count[0]?.total || 0,
+        newThisMonth: paymentStats[0].monthlyNewPayments[0]?.total || 0,
+        recent: paymentStats[0].recent,
+        topSpenders: paymentStats[0].topSpenders || [],
       },
+      topReferrers: referralTop || [],
     }
   ).send(res);
 });
 
-const getAllUsers = asyncHandler(async (req, res) => {
+const getAllUsersOld = asyncHandler(async (req, res) => {
   const {
     page = 1,
     limit = 5,
@@ -394,7 +691,7 @@ const getAllUsers = asyncHandler(async (req, res) => {
   }
 });
 
-const getUserStats = asyncHandler(async (req, res) => {
+const getUserStatsOld = asyncHandler(async (req, res) => {
   try {
     const stats = await User.aggregate([
       {
@@ -491,7 +788,9 @@ const getPaymentsHistory = asyncHandler(async (req, res) => {
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
       ],
-    }).select("_id");
+    })
+      .select("_id")
+      .lean();
 
     const userIds = matchedUsers.map((u) => u._id);
 
@@ -518,65 +817,80 @@ const getPaymentsHistory = asyncHandler(async (req, res) => {
   const pageSize = Math.max(1, parseInt(limit));
   const skip = (pageNum - 1) * pageSize;
 
-  const total = await AppPayment.countDocuments(query);
-
-  const payments = await AppPayment.find(query)
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(pageSize)
-    .populate("userId", "name email");
-
-  // Collect plan IDs from structured `plan.id`
-  const planIds = [
-    ...new Set(
-      payments
-        .map((p) =>
-          typeof p.plan === "object" && p.plan?.id ? p.plan.id.toString() : null
-        )
-        .filter(Boolean)
-    ),
-  ];
-
-  // Fetch plan details
-  const plansMap = new Map();
-  if (planIds.length) {
-    const plans = await AppPricing.find({ _id: { $in: planIds } }).select(
-      "name type"
-    );
-    plans.forEach((plan) => plansMap.set(plan._id.toString(), plan));
-  }
-
-  // Format response
-  const formattedPayments = payments.map((p) => {
-    let planData = { id: null, name: null, type: null };
-
-    if (p.plan.id === undefined) {
-      // Old data, just a string
-      planData.name = p.plan;
-    } else if (p.plan.id) {
-      const found = plansMap.get(p.plan?.id?.toString());
-      planData = {
-        id: p.plan?.id || null,
-        name: found?.name || p.plan?.name || null,
-        type: found?.type || p.plan?.type || null,
-      };
-    }
-
-    return {
-      _id: p._id,
-      user: {
-        _id: p.userId?._id,
-        name: p.userId?.name,
-        email: p.userId?.email,
+  const agg = await AppPayment.aggregate([
+    { $match: query },
+    { $sort: sortOptions },
+    {
+      $facet: {
+        totalCount: [{ $count: "count" }],
+        data: [
+          { $skip: skip },
+          { $limit: pageSize },
+          {
+            $lookup: {
+              from: "users",
+              localField: "userId",
+              foreignField: "_id",
+              as: "user",
+            },
+          },
+          { $addFields: { user: { $arrayElemAt: ["$user", 0] } } },
+          {
+            $lookup: {
+              from: "apppricings",
+              let: { planId: "$plan.id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $eq: [{ $toString: "$_id" }, "$$planId"] },
+                  },
+                },
+                { $project: { _id: 0, name: 1, type: 1 } },
+              ],
+              as: "planInfo",
+            },
+          },
+          { $addFields: { planInfo: { $arrayElemAt: ["$planInfo", 0] } } },
+          {
+            $project: {
+              _id: 1,
+              user: {
+                _id: "$user._id",
+                name: "$user.name",
+                email: "$user.email",
+              },
+              paymentID: 1,
+              trxID: 1,
+              amount: 1,
+              createdAt: 1,
+              transactionStatus: {
+                $ifNull: ["$paymentDetails.transactionStatus", "unknown"],
+              },
+              plan: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$plan.id", null] },
+                      { $ne: ["$plan.id", ""] },
+                    ],
+                  },
+                  {
+                    id: "$plan.id",
+                    type: { $ifNull: ["$planInfo.type", "$plan.type"] },
+                    name: { $ifNull: ["$planInfo.name", "$plan.name"] },
+                  },
+                  { name: "$plan" },
+                ],
+              },
+            },
+          },
+        ],
       },
-      paymentID: p.paymentID,
-      trxID: p.trxID,
-      plan: planData,
-      amount: p.amount,
-      createdAt: p.createdAt,
-      transactionStatus: p.paymentDetails?.transactionStatus || "unknown",
-    };
-  });
+    },
+  ]).allowDiskUse(true);
+
+  const total = agg[0]?.totalCount[0]?.count || 0;
+  const formattedPayments = agg[0]?.data || [];
 
   return new ApiResponse(200, true, "Payments fetched successfully", {
     total,
@@ -785,9 +1099,218 @@ const updateWithdrawal = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
+const getAllUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, search = "" } = req.query;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const pageSize = parseInt(limit);
+
+  // Build aggregation pipeline
+  const pipeline = [
+    // First, lookup the user data
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    {
+      $unwind: {
+        path: "$user",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ];
+
+  // Add search filter if search term is provided
+  if (search && search.trim()) {
+    const searchRegex = { $regex: search.trim(), $options: "i" };
+    pipeline.push({
+      $match: {
+        $or: [
+          { username: searchRegex },
+          { key: searchRegex },
+          { "user.name": searchRegex },
+          { "user.email": searchRegex },
+        ],
+      },
+    });
+  }
+
+  // Get total count for pagination
+  const countPipeline = [...pipeline, { $count: "total" }];
+  const countResult = await AppKey.aggregate(countPipeline);
+  const total = countResult.length > 0 ? countResult[0].total : 0;
+
+  // Add sorting, pagination, and projection
+  pipeline.push(
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: pageSize },
+    {
+      $project: {
+        userId: 1,
+        username: 1,
+        key: 1,
+        createdAt: 1,
+        plan: 1,
+        credit: 1,
+        isActive: 1,
+        status: 1,
+        expiresAt: 1,
+        totalProcess: 1,
+        lastCreditRefresh: 1,
+        allowedDevices: 1,
+        "user.name": 1,
+        "user.email": 1,
+      },
+    }
+  );
+
+  // Execute the aggregation
+  const appKeysRaw = await AppKey.aggregate(pipeline);
+
+  // Enrich each appKey with plan.name (if plan.id exists)
+  const uniquePlanIds = [
+    ...new Set(
+      appKeysRaw
+        .map((k) => (k.plan && k.plan.id ? k.plan.id.toString() : null))
+        .filter(Boolean)
+    ),
+  ];
+
+  const planNameMap = new Map();
+  if (uniquePlanIds.length) {
+    const plans = await AppPricing.find({ _id: { $in: uniquePlanIds } })
+      .select("name")
+      .lean();
+    plans.forEach((p) => planNameMap.set(p._id.toString(), p.name));
+  }
+
+  const appKeys = appKeysRaw.map((appKey) => {
+    const enrichedPlan = { ...appKey.plan };
+    if (appKey.plan?.id) {
+      const name = planNameMap.get(appKey.plan.id.toString());
+      enrichedPlan.name = name || null;
+    }
+    return {
+      ...appKey,
+      plan: enrichedPlan,
+      // Include user info in the response
+      userName: appKey.user?.name || null,
+      userEmail: appKey.user?.email || null,
+    };
+  });
+
+  return new ApiResponse(200, true, "API keys retrieved successfully", {
+    users: appKeys,
+    total,
+    currentPage: parseInt(page),
+    totalPages: Math.ceil(total / limit),
+  }).send(res);
+});
+
+const getUserStats = asyncHandler(async (req, res) => {
+  // Calculate date 7 days ago
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  // Single aggregation with $facet - all stats in one query
+  const stats = await AppKey.aggregate([
+    {
+      $facet: {
+        counts: [
+          {
+            $group: {
+              _id: null,
+              totalKeys: { $sum: 1 },
+              activeKeys: {
+                $sum: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$isActive", true] },
+                        { $eq: ["$status", "active"] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+              },
+              suspendedKeys: {
+                $sum: {
+                  $cond: [{ $eq: ["$status", "suspended"] }, 1, 0],
+                },
+              },
+              totalProcesses: { $sum: "$totalProcess" },
+              avgProcessesPerKey: { $avg: "$totalProcess" },
+            },
+          },
+        ],
+        keysByPlan: [
+          {
+            $group: {
+              _id: "$plan.type",
+              count: { $sum: 1 },
+            },
+          },
+        ],
+        dailyNewKeys: [
+          {
+            $match: {
+              createdAt: { $gte: sevenDaysAgo },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: -1 } },
+        ],
+      },
+    },
+  ]);
+
+  const countData = stats[0].counts[0] || {
+    totalKeys: 0,
+    activeKeys: 0,
+    suspendedKeys: 0,
+    totalProcesses: 0,
+    avgProcessesPerKey: 0,
+  };
+
+  const keysByPlanArray = stats[0].keysByPlan || [];
+  const dailyNewKeysArray = stats[0].dailyNewKeys || [];
+
+  return new ApiResponse(200, true, "Statistics retrieved successfully", {
+    totalUsers: countData.totalKeys,
+    activeUsers: countData.activeKeys,
+    suspendedUsers: countData.suspendedKeys,
+    usersByPlan: keysByPlanArray.reduce((acc, { _id, count }) => {
+      acc[_id] = count;
+      return acc;
+    }, {}),
+    totalProcesses: countData.totalProcesses,
+    avgProcessesPerUser: Math.round(countData.avgProcessesPerKey * 100) / 100,
+    dailyNewUsers: dailyNewKeysArray.map(({ _id, count }) => ({
+      date: _id,
+      count,
+    })),
+  }).send(res);
+});
+
 export {
   getAllUsers,
   getUserStats,
+  getAllUsersOld,
+  getUserStatsOld,
   getAdminDashboardStats,
   getPaymentsHistory,
   downloadPaymentsHistory,

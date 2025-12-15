@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -60,11 +60,11 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import type { PaymentResponse } from "@/types/admin";
 import {
-  downloadPaymentHistory,
-  getPaymentsHistory,
-  PaymentResponse,
-} from "@/services/admin-dashboard";
+  usePaymentsHistoryQuery,
+  useDownloadPaymentHistoryQuery,
+} from "@/services/queries/admin-dashboard";
 import {
   buildQueryParams,
   convertToCSV,
@@ -73,12 +73,7 @@ import {
 } from "./export";
 
 export function PaymentHistoryPage() {
-  const [payments, setPayments] = useState<PaymentResponse["data"] | null>(
-    null
-  );
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [planTypeFilter, setPlanTypeFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,35 +87,25 @@ export function PaymentHistoryPage() {
     planTypeFilter !== "all" ||
     (dateRange?.from && dateRange?.to);
 
-  const fetchPayments = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await getPaymentsHistory({
-        page: currentPage,
-        limit: pageSize,
-        search: searchTerm,
-        sortBy,
-        sortOrder,
-        startDate: dateRange?.from?.toISOString(),
-        endDate: dateRange?.to?.toISOString(),
-      });
-      if (response.success) {
-        setPayments(response.data);
-      } else {
-        setError("Failed to fetch payments");
-      }
-    } catch (err) {
-      setError("Failed to fetch payment history");
-      console.error("Error fetching payments:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, pageSize, searchTerm, sortBy, sortOrder, dateRange]);
+  const {
+    data: paymentsResponse,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchPayments,
+  } = usePaymentsHistoryQuery({
+    page: currentPage,
+    limit: pageSize,
+    search: searchTerm,
+    sortBy,
+    sortOrder,
+    startDate: dateRange?.from?.toISOString(),
+    endDate: dateRange?.to?.toISOString(),
+  });
 
-  useEffect(() => {
-    fetchPayments();
-  }, [fetchPayments]);
+  const paymentsData: PaymentResponse | null = paymentsResponse?.success
+    ? paymentsResponse.data
+    : null;
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -147,36 +132,21 @@ export function PaymentHistoryPage() {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const handleExport = async (
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<void> => {
-    try {
-      // Build query parameters
-      const queryParams = buildQueryParams(startDate, endDate);
+  const [downloadParams, setDownloadParams] = useState<string | undefined>();
+  const { refetch: refetchDownload } = useDownloadPaymentHistoryQuery(
+    downloadParams,
+    false
+  );
 
-      // Fetch data from API
-      const result = await downloadPaymentHistory(queryParams);
-
-      // Validate API response
-      if (!result.success) {
-        throw new Error(result.message || "Failed to fetch payment history");
-      }
-
-      if (!result.data || result.data.length === 0) {
-        return;
-      }
-
-      // Convert to CSV
-      const csvContent = convertToCSV(result.data);
-
-      // Generate filename
+  const handleExport = async (startDate?: Date, endDate?: Date) => {
+    const queryParams = buildQueryParams(startDate, endDate);
+    setDownloadParams(queryParams);
+    const result = await refetchDownload();
+    const data = result.data;
+    if (data?.success && data.data && data.data.length > 0) {
+      const csvContent = convertToCSV(data.data);
       const filename = generateFilename(startDate, endDate);
-
-      // Download file
       downloadCSVFile(csvContent, filename);
-    } catch (error) {
-      console.log(error);
     }
   };
 
@@ -253,7 +223,7 @@ export function PaymentHistoryPage() {
     toast.success("Filters cleared");
   };
 
-  if (error) {
+  if (isError || (paymentsResponse && !paymentsResponse.success)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
         <div>
@@ -263,9 +233,13 @@ export function PaymentHistoryPage() {
                 <XCircle className="h-5 w-5" />
                 <p className="font-medium">Error loading payment history</p>
               </div>
-              <p className="text-red-600 dark:text-red-400 mt-2">{error}</p>
+              <p className="text-red-600 dark:text-red-400 mt-2">
+                {paymentsResponse && !paymentsResponse.success
+                  ? paymentsResponse.message
+                  : (error as Error)?.message}
+              </p>
               <Button
-                onClick={fetchPayments}
+                onClick={() => refetchPayments()}
                 className="mt-4 bg-transparent"
                 variant="outline"
               >
@@ -293,7 +267,11 @@ export function PaymentHistoryPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={fetchPayments} variant="outline" size="sm">
+            <Button
+              onClick={() => refetchPayments()}
+              variant="outline"
+              size="sm"
+            >
               <RefreshCw
                 className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
               />
@@ -318,7 +296,6 @@ export function PaymentHistoryPage() {
                 <Filter className="h-5 w-5 text-violet-600" />
                 <CardTitle className="text-lg">Filters & Search</CardTitle>
               </div>
-              hasActiveFilters
               <Button
                 onClick={handleClearFilters}
                 variant="outline"
@@ -431,8 +408,8 @@ export function PaymentHistoryPage() {
               <div>
                 <CardTitle className="text-xl">Payment Records</CardTitle>
                 <CardDescription>
-                  {payments
-                    ? `Showing ${payments.payments.length} of ${payments.total} payments`
+                  {paymentsData
+                    ? `Showing ${paymentsData.payments.length} of ${paymentsData.total} payments`
                     : "Loading payment data..."}
                 </CardDescription>
               </div>
@@ -524,8 +501,8 @@ export function PaymentHistoryPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : payments && payments.payments.length > 0 ? (
-                    payments.payments
+                  ) : paymentsData && paymentsData.payments.length > 0 ? (
+                    paymentsData.payments
                       .filter(
                         (payment) =>
                           planTypeFilter === "all" ||
@@ -647,11 +624,11 @@ export function PaymentHistoryPage() {
             </div>
 
             {/* Pagination */}
-            {payments && payments.totalPages > 1 && (
+            {paymentsData && paymentsData.totalPages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t">
                 <div className="text-sm text-muted-foreground">
-                  Page {currentPage} of {payments.totalPages} • Total{" "}
-                  {payments.total} payments
+                  Page {currentPage} of {paymentsData.totalPages} • Total{" "}
+                  {paymentsData.total} payments
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -664,7 +641,7 @@ export function PaymentHistoryPage() {
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from(
-                      { length: Math.min(5, payments.totalPages) },
+                      { length: Math.min(5, paymentsData.totalPages) },
                       (_, i) => {
                         const page = i + 1;
                         return (
@@ -682,20 +659,22 @@ export function PaymentHistoryPage() {
                         );
                       }
                     )}
-                    {payments.totalPages > 5 && (
+                    {paymentsData.totalPages > 5 && (
                       <>
                         <span className="text-muted-foreground px-2">...</span>
                         <Button
                           variant={
-                            currentPage === payments.totalPages
+                            currentPage === paymentsData.totalPages
                               ? "default"
                               : "outline"
                           }
                           size="sm"
-                          onClick={() => setCurrentPage(payments.totalPages)}
+                          onClick={() =>
+                            setCurrentPage(paymentsData.totalPages)
+                          }
                           className="w-8 h-8 p-0"
                         >
-                          {payments.totalPages}
+                          {paymentsData.totalPages}
                         </Button>
                       </>
                     )}
@@ -705,10 +684,10 @@ export function PaymentHistoryPage() {
                     size="sm"
                     onClick={() =>
                       setCurrentPage(
-                        Math.min(payments.totalPages, currentPage + 1)
+                        Math.min(paymentsData.totalPages, currentPage + 1)
                       )
                     }
-                    disabled={currentPage === payments.totalPages}
+                    disabled={currentPage === paymentsData.totalPages}
                   >
                     Next
                   </Button>

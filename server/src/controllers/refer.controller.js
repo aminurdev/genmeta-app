@@ -51,6 +51,7 @@ const getReferralDetails = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "Referral data retrieved", {
     referralCode: referral.referralCode,
     referralCount: validReferredUsers.length,
+    withdrawAccount: referral.withdrawAccount,
     totalEarned,
     availableBalance,
     totalWithdrawn,

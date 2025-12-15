@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,25 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,118 +38,62 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { getAccessToken, getBaseApi } from "@/services/auth-services";
-
-interface SchedulerStatus {
-  isRunning: boolean;
-  lastRun: string | null;
-  stats: {
-    totalRuns: number;
-    successfulRuns: number;
-    failedRuns: number;
-    lastResult: any;
-  };
-  nextRun: string | null;
-}
-
-interface MaintenanceStats {
-  planDistribution: Array<{
-    _id: string;
-    count: number;
-    totalCredits: number;
-    avgCredits: number;
-  }>;
-  maintenanceNeeded: {
-    freeUsersNeedingRefresh: number;
-    expiredSubscriptions: number;
-    zeroCreditPlans: number;
-    total: number;
-  };
-  scheduler: SchedulerStatus;
-  lastChecked: string;
-}
+import {
+  useSchedulerStatusQuery,
+  useMaintenanceStatsQuery,
+} from "@/services/queries/admin-dashboard";
+import {
+  startScheduler,
+  stopScheduler,
+  triggerMaintenance,
+} from "@/services/admin-dashboard";
+import type {
+  SchedulerStatus,
+  MaintenanceStats,
+} from "@/services/admin-dashboard";
 
 export function SchedulerDashboard() {
-  const [schedulerStatus, setSchedulerStatus] =
-    useState<SchedulerStatus | null>(null);
-  const [maintenanceStats, setMaintenanceStats] =
-    useState<MaintenanceStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [scheduledTime, setScheduledTime] = useState("");
 
-  const fetchSchedulerStatus = useCallback(async () => {
-    try {
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
+  // Fetch scheduler status and maintenance stats using React Query
+  const {
+    data: schedulerResponse,
+    isLoading: schedulerLoading,
+    refetch: refetchScheduler,
+  } = useSchedulerStatusQuery();
 
-      const response = await fetch(`${baseApi}/scheduler/status`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+  const {
+    data: statsResponse,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useMaintenanceStatsQuery();
 
-      const data = await response.json();
-      if (data.success) {
-        setSchedulerStatus(data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching scheduler status:", error);
-      toast.error("Failed to fetch scheduler status");
-    }
-  }, []);
+  // Extract data from responses
+  const schedulerStatus: SchedulerStatus | null =
+    schedulerResponse?.success && schedulerResponse.data
+      ? schedulerResponse.data
+      : null;
 
-  const fetchMaintenanceStats = useCallback(async () => {
-    try {
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
+  const maintenanceStats: MaintenanceStats | null =
+    statsResponse?.success && statsResponse.data ? statsResponse.data : null;
 
-      const response = await fetch(`${baseApi}/scheduler/stats`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+  const loading = schedulerLoading || statsLoading;
 
-      const data = await response.json();
-      if (data.success) {
-        setMaintenanceStats(data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching maintenance stats:", error);
-      toast.error("Failed to fetch maintenance statistics");
-    }
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    await Promise.all([fetchSchedulerStatus(), fetchMaintenanceStats()]);
-    setLoading(false);
-  }, [fetchSchedulerStatus, fetchMaintenanceStats]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const refetchData = async () => {
+    await Promise.all([refetchScheduler(), refetchStats()]);
+  };
 
   const handleSchedulerAction = async (action: "start" | "stop") => {
     try {
       setActionLoading(action);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
+      const actionFn = action === "start" ? startScheduler : stopScheduler;
+      const result = await actionFn();
 
-      const response = await fetch(`${baseApi}/scheduler/${action}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
+      if (result.success) {
         toast.success(`Scheduler ${action}ed successfully`);
-        await fetchSchedulerStatus();
+        await refetchScheduler();
       } else {
-        throw new Error(data.message || `Failed to ${action} scheduler`);
+        throw new Error(result.message || `Failed to ${action} scheduler`);
       }
     } catch (error) {
       toast.error(
@@ -182,65 +107,17 @@ export function SchedulerDashboard() {
   const handleTriggerMaintenance = async () => {
     try {
       setActionLoading("trigger");
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
+      const result = await triggerMaintenance();
 
-      const response = await fetch(`${baseApi}/scheduler/trigger`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
+      if (result.success) {
         toast.success("Maintenance triggered successfully");
-        await fetchData();
+        await refetchData();
       } else {
-        throw new Error(data.message || "Failed to trigger maintenance");
+        throw new Error(result.message || "Failed to trigger maintenance");
       }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to trigger maintenance"
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleScheduleOnetime = async () => {
-    try {
-      if (!scheduledTime) {
-        toast.error("Please select a scheduled time");
-        return;
-      }
-
-      setActionLoading("schedule");
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/scheduler/schedule-once`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ scheduledTime }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        toast.success("One-time maintenance scheduled successfully");
-        setScheduleDialogOpen(false);
-        setScheduledTime("");
-      } else {
-        throw new Error(data.message || "Failed to schedule maintenance");
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to schedule maintenance"
       );
     } finally {
       setActionLoading(null);
@@ -296,7 +173,7 @@ export function SchedulerDashboard() {
             Monitor and control the automated maintenance scheduler
           </p>
         </div>
-        <Button onClick={fetchData} variant="outline" className="w-fit">
+        <Button onClick={refetchData} variant="outline" className="w-fit">
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
@@ -318,9 +195,9 @@ export function SchedulerDashboard() {
             <p className="text-xs text-muted-foreground mt-2">
               {schedulerStatus?.nextRun
                 ? `Next run: ${format(
-                    new Date(schedulerStatus.nextRun),
-                    "PPp"
-                  )}`
+                  new Date(schedulerStatus.nextRun),
+                  "PPp"
+                )}`
                 : "No scheduled runs"}
             </p>
           </CardContent>
@@ -447,53 +324,6 @@ export function SchedulerDashboard() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-
-            <Dialog
-              open={scheduleDialogOpen}
-              onOpenChange={setScheduleDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Schedule One-time
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Schedule One-time Maintenance</DialogTitle>
-                  <DialogDescription>
-                    Schedule a one-time maintenance run at a specific date and
-                    time.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="scheduledTime" className="text-right">
-                      Date & Time
-                    </Label>
-                    <Input
-                      id="scheduledTime"
-                      type="datetime-local"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="col-span-3"
-                      min={new Date().toISOString().slice(0, 16)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={handleScheduleOnetime}
-                    disabled={actionLoading === "schedule"}
-                  >
-                    {actionLoading === "schedule" ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Schedule
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           </div>
         </CardContent>
       </Card>

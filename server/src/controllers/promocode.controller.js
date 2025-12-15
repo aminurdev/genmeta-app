@@ -210,7 +210,9 @@ const deletePromoCode = asyncHandler(async (req, res) => {
 });
 
 const validatePromoCode = asyncHandler(async (req, res) => {
-  const { code } = req.params;
+  const { code } = req.body;
+
+  console.log({ code });
 
   if (!code) {
     throw new ApiError(400, "Promo code is required");
@@ -238,7 +240,7 @@ const validatePromoCode = asyncHandler(async (req, res) => {
   // Check if the code is within valid date range
   const now = new Date();
   if (now < promoCode.validFrom || now > promoCode.validUntil) {
-    throw new ApiError(400, "This promo code has expired or is not yet valid");
+    throw new ApiError(400, "This promo code is not valid");
   }
 
   // Return the valid promo code with details

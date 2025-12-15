@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -19,7 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { createPromoCode } from "@/lib/actions";
+import { useCreatePromoCodeMutation } from "@/services/queries/admin-dashboard";
 
 interface CreatePromoCodeFormProps {
   onSuccess: () => void;
@@ -50,7 +49,7 @@ const formSchema = z.object({
 });
 
 export function CreatePromoCodeForm({ onSuccess }: CreatePromoCodeFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createPromoCodeMutation = useCreatePromoCodeMutation();
 
   // Format date to YYYY-MM-DD for input fields
   const formatDateForInput = (date: Date) => {
@@ -78,8 +77,6 @@ export function CreatePromoCodeForm({ onSuccess }: CreatePromoCodeFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setIsSubmitting(true);
-
       // Convert dates to ISO strings
       const formattedValues = {
         ...values,
@@ -87,13 +84,12 @@ export function CreatePromoCodeForm({ onSuccess }: CreatePromoCodeFormProps) {
         validUntil: new Date(values.validUntil).toISOString(),
       };
 
-      await createPromoCode(formattedValues);
+      await createPromoCodeMutation.mutateAsync(formattedValues);
       onSuccess();
       form.reset();
+      toast.success("Promo code created successfully");
     } catch {
-      toast("Failed to create promo code");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to create promo code");
     }
   }
 
@@ -271,8 +267,8 @@ export function CreatePromoCodeForm({ onSuccess }: CreatePromoCodeFormProps) {
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Promo Code"}
+        <Button type="submit" className="w-full" disabled={createPromoCodeMutation.isPending}>
+          {createPromoCodeMutation.isPending ? "Creating..." : "Create Promo Code"}
         </Button>
       </form>
     </Form>

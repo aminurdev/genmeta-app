@@ -30,19 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-interface ReferralRes {
-  referrer: {
-    _id: string;
-    name: string;
-    email: string;
-  };
-  referralCode: string;
-  referredCount: number;
-  totalEarned: number;
-  availableBalance: number;
-  withdrawAccount: string | null;
-  pendingWithdrawals: number;
-}
+import type { ReferralRes } from "@/types/admin";
 
 interface AdminReferralDashboardProps {
   referralData: ReferralRes[];

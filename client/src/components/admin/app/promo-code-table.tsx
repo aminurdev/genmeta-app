@@ -35,7 +35,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePromoCode, PromoCode } from "@/lib/actions";
+import type { PromoCode } from "@/services/admin-dashboard";
+import { useDeletePromoCodeMutation } from "@/services/queries/admin-dashboard";
 import { toast } from "sonner";
 import { EditPromoCodeForm } from "./edit-promo-code-form";
 
@@ -60,6 +61,7 @@ export function PromoCodeTable({
   const [promoCodeToDelete, setPromoCodeToDelete] = useState<string | null>(
     null
   );
+  const deletePromoCodeMutation = useDeletePromoCodeMutation();
 
   const handleEdit = (promoCode: PromoCode) => {
     setEditingPromoCode(promoCode);
@@ -75,10 +77,11 @@ export function PromoCodeTable({
     if (!promoCodeToDelete) return;
 
     try {
-      await deletePromoCode(promoCodeToDelete);
+      await deletePromoCodeMutation.mutateAsync(promoCodeToDelete);
       onPromoCodeDeleted();
+      toast.success("Promo code deleted successfully");
     } catch {
-      toast("Failed to delete promo code");
+      toast.error("Failed to delete promo code");
     } finally {
       setIsDeleteDialogOpen(false);
       setPromoCodeToDelete(null);
@@ -154,55 +157,55 @@ export function PromoCodeTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-          {promoCodes.map((promoCode) => (
-            <TableRow key={promoCode._id}>
-              <TableCell className="font-medium">{promoCode.code}</TableCell>
-              <TableCell>{promoCode.discountPercent}%</TableCell>
-              <TableCell>{getAppliesToBadge(promoCode.appliesTo)}</TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">
-                    From: {formatDate(promoCode.validFrom)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Until: {formatDate(promoCode.validUntil)}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                {promoCode.usedCount} /{" "}
-                {promoCode.usageLimit ? promoCode.usageLimit : "∞"}
-              </TableCell>
-              <TableCell>
-                <Badge variant={promoCode.isActive ? "default" : "secondary"}>
-                  {promoCode.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEdit(promoCode)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleDelete(promoCode._id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+            {promoCodes.map((promoCode) => (
+              <TableRow key={promoCode._id}>
+                <TableCell className="font-medium">{promoCode.code}</TableCell>
+                <TableCell>{promoCode.discountPercent}%</TableCell>
+                <TableCell>{getAppliesToBadge(promoCode.appliesTo)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">
+                      From: {formatDate(promoCode.validFrom)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Until: {formatDate(promoCode.validUntil)}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {promoCode.usedCount} /{" "}
+                  {promoCode.usageLimit ? promoCode.usageLimit : "∞"}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={promoCode.isActive ? "default" : "secondary"}>
+                    {promoCode.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEdit(promoCode)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDelete(promoCode._id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

@@ -44,11 +44,8 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Credit is required for credit type pricing");
   }
 
-  if (type === "subscription" && !planDuration) {
-    throw new ApiError(
-      400,
-      "Plan duration is required for subscription type pricing"
-    );
+  if (!planDuration) {
+    throw new ApiError(400, "Plan duration is required  pricing");
   }
 
   // Ensure discountPrice is valid
@@ -72,7 +69,7 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     discountPercent: finalDiscountPercent,
     isActive: isActive !== undefined ? isActive : true,
     credit: type === "credit" ? credit : undefined,
-    planDuration: type === "subscription" ? planDuration : undefined,
+    planDuration,
   });
 
   return new ApiResponse(
@@ -196,15 +193,8 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
     );
   }
 
-  if (
-    newType === "subscription" &&
-    planDuration === undefined &&
-    existingPlan.type !== "subscription"
-  ) {
-    throw new ApiError(
-      400,
-      "Plan duration is required when changing to subscription type pricing"
-    );
+  if (!planDuration) {
+    throw new ApiError(400, "Plan duration is required");
   }
 
   // Figure out base price first
@@ -241,12 +231,7 @@ const updatePricingPlan = asyncHandler(async (req, res) => {
             ? credit
             : existingPlan.credit
           : undefined,
-      planDuration:
-        newType === "subscription"
-          ? planDuration !== undefined
-            ? planDuration
-            : existingPlan.planDuration
-          : undefined,
+      planDuration,
     },
     { new: true, runValidators: true }
   );

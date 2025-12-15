@@ -1,13 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  fetchPricingPlans,
-  fetchPromoCodes,
-  PricingPlan,
-  PromoCode,
-} from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import {
@@ -22,80 +16,75 @@ import { CreatePricingForm } from "./create-pricing-form";
 import { PricingTable } from "./pricing-table";
 import { CreatePromoCodeForm } from "./create-promo-code-form";
 import { PromoCodeTable } from "./promo-code-table";
+import {
+  usePricingPlansQuery,
+  usePromoCodesQuery,
+} from "@/services/queries/admin-dashboard";
+import type { PricingPlan, PromoCode } from "@/services/admin-dashboard";
 
 export function PricingDashboard() {
-  const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [promoLoading, setPromoLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("subscription");
+  const [activeTab, setActiveTab] = useState("credit");
 
-  useEffect(() => {
-    loadPlans();
-    loadPromoCodes();
-  }, []);
+  // Fetch pricing plans using React Query
+  const {
+    data: plansResponse,
+    isLoading: plansLoading,
+    refetch: refetchPlans,
+  } = usePricingPlansQuery();
 
-  const loadPlans = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchPricingPlans();
-      setPlans(data.plans);
-    } catch {
-      toast("Failed to load pricing plans");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch promo codes using React Query
+  const {
+    data: promoCodesResponse,
+    isLoading: promoLoading,
+    refetch: refetchPromoCodes,
+  } = usePromoCodesQuery();
 
-  const loadPromoCodes = async () => {
-    try {
-      setPromoLoading(true);
-      const data = await fetchPromoCodes();
-      setPromoCodes(
-        data.promoCodes.map((promoCode: PromoCode) => ({
-          ...promoCode,
-          appliesTo: promoCode.appliesTo as "subscription" | "both" | "credit",
-        }))
-      );
-    } catch {
-      toast("Failed to load promo codes");
-    } finally {
-      setPromoLoading(false);
-    }
-  };
+  // Extract data from responses
+  const plans: PricingPlan[] =
+    plansResponse?.success && plansResponse.data?.plans
+      ? plansResponse.data.plans
+      : [];
+
+  const promoCodes: PromoCode[] =
+    promoCodesResponse?.success && promoCodesResponse.data?.promoCodes
+      ? promoCodesResponse.data.promoCodes.map((promoCode) => ({
+        ...promoCode,
+        appliesTo: promoCode.appliesTo as "subscription" | "both" | "credit",
+      }))
+      : [];
 
   const handlePlanCreated = () => {
     setOpen(false);
-    loadPlans();
-    toast("Pricing plan created successfully");
+    refetchPlans();
+    toast.success("Pricing plan created successfully");
   };
 
   const handlePlanUpdated = () => {
-    loadPlans();
-    toast("Pricing plan updated successfully");
+    refetchPlans();
+    toast.success("Pricing plan updated successfully");
   };
 
   const handlePlanDeleted = () => {
-    loadPlans();
-    toast("Pricing plan deleted successfully");
+    refetchPlans();
+    toast.success("Pricing plan deleted successfully");
   };
 
   const handlePromoCodeCreated = () => {
     setPromoOpen(false);
-    loadPromoCodes();
-    toast("Promo code created successfully");
+    refetchPromoCodes();
+    toast.success("Promo code created successfully");
   };
 
   const handlePromoCodeUpdated = () => {
-    loadPromoCodes();
-    toast("Promo code updated successfully");
+    refetchPromoCodes();
+    toast.success("Promo code updated successfully");
   };
 
   const handlePromoCodeDeleted = () => {
-    loadPromoCodes();
-    toast("Promo code deleted successfully");
+    refetchPromoCodes();
+    toast.success("Promo code deleted successfully");
   };
 
   const subscriptionPlans = plans.filter(
@@ -106,17 +95,17 @@ export function PricingDashboard() {
   return (
     <div className="space-y-8">
       <Tabs
-        defaultValue="subscription"
+        defaultValue="credit"
         value={activeTab}
         onValueChange={setActiveTab}
         className="w-full"
       >
         <TabsList className="grid w-full grid-cols-3 h-12">
-          <TabsTrigger value="subscription" className="text-sm font-medium">
-            Subscription Plans
-          </TabsTrigger>
           <TabsTrigger value="credit" className="text-sm font-medium">
             Credit Plans
+          </TabsTrigger>
+          <TabsTrigger value="subscription" className="text-sm font-medium">
+            Subscription Plans
           </TabsTrigger>
           <TabsTrigger value="promocodes" className="text-sm font-medium">
             Promo Codes
@@ -129,15 +118,15 @@ export function PricingDashboard() {
               {activeTab === "promocodes"
                 ? "Manage Promo Codes"
                 : activeTab === "subscription"
-                ? "Manage Subscription Plans"
-                : "Manage Credit Plans"}
+                  ? "Manage Subscription Plans"
+                  : "Manage Credit Plans"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {activeTab === "promocodes"
                 ? "Create and manage promotional discount codes"
                 : activeTab === "subscription"
-                ? "Configure subscription-based pricing plans"
-                : "Set up credit-based pricing options"}
+                  ? "Configure subscription-based pricing plans"
+                  : "Set up credit-based pricing options"}
             </p>
           </div>
 
@@ -178,7 +167,7 @@ export function PricingDashboard() {
           <div className="bg-card rounded-lg border shadow-sm">
             <PricingTable
               plans={subscriptionPlans}
-              loading={loading}
+              loading={plansLoading}
               onPlanUpdated={handlePlanUpdated}
               onPlanDeleted={handlePlanDeleted}
             />
@@ -188,7 +177,7 @@ export function PricingDashboard() {
           <div className="bg-card rounded-lg border shadow-sm">
             <PricingTable
               plans={creditPlans}
-              loading={loading}
+              loading={plansLoading}
               onPlanUpdated={handlePlanUpdated}
               onPlanDeleted={handlePlanDeleted}
             />

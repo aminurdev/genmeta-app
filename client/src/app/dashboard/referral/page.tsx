@@ -1,15 +1,13 @@
 import React from "react";
-import { ReferralDashboard } from "./referral";
-import { getReferralDetails } from "@/services/referral";
+import { ReferralDashboard } from "../../../components/dashboard/referral";
 
-const page = async () => {
-  const data = await getReferralDetails();
-
+const page = () => {
   return (
     <div>
-      <ReferralDashboard referralData={data.data} />
+      <ReferralDashboard />
     </div>
   );
 };
 
 export default page;
+

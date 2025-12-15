@@ -1,4 +1,4 @@
-import { getAllReferralByUserId } from "@/services/admin-dashboard/referral";
+import { getAllReferralByUserId } from "@/services/admin-dashboard";
 import { notFound } from "next/navigation";
 import AdminUserReferralDashboard from "./details";
 

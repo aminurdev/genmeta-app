@@ -12,10 +12,18 @@ export interface GitHubAsset {
   size: number;
 }
 
-export async function getLatestRelease() {
+export type ReleaseInfo = {
+  downloadUrl: string;
+  fileSize: number;
+  publishedAt: string;
+  version: string;
+};
+
+export const getLatestRelease = async (): Promise<ReleaseInfo | null> => {
   try {
     const response = await fetch(
-      `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`
+      `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`,
+      { next: { revalidate: 3600 } }
     );
     if (!response.ok) throw new Error("Failed to fetch release info");
     const data = await response.json();
@@ -31,14 +39,14 @@ export async function getLatestRelease() {
       downloadUrl: windowsExe?.browser_download_url,
       fileSize: windowsExe?.size
         ? Math.round(windowsExe.size / (1024 * 1024))
-        : null,
+        : 0,
       publishedAt: data.published_at,
     };
   } catch (error) {
     console.error("Error fetching release info:", error);
     return null;
   }
-}
+};
 
 export default async function DownloadPage() {
   const releaseInfo = await getLatestRelease();

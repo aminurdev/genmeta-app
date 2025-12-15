@@ -13,7 +13,6 @@ import {
   Check,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
-import type { PricingPlan } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,11 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import {
-  getAccessToken,
-  getCurrentUser,
-  getBaseApi,
-} from "@/services/auth-services";
+import { getCurrentUser } from "@/services/auth-services";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import {
@@ -39,14 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAllPricing } from "@/services/queries/pricing";
+import { createPayment, validPromoCode } from "@/services/pricing";
+import { PromoCodeRes } from "@/types/pricing";
+import { PricingPlan } from "@/services/admin-dashboard";
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface PromoCode {
-  code: string;
-  discountPercent: number;
-  appliesTo: "subscription" | "credit" | "both";
-  validUntil: string;
-}
 
 interface PaymentMethod {
   id: string;
@@ -75,8 +67,6 @@ export default function Cart({ planId }: { planId: string }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Plan selection states
-  const [subscriptionPlans, setSubscriptionPlans] = useState<PricingPlan[]>([]);
-  const [creditPlans, setCreditPlans] = useState<PricingPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [selectedPlanType, setSelectedPlanType] = useState<
     "subscription" | "credit"
@@ -88,51 +78,50 @@ export default function Cart({ planId }: { planId: string }) {
   // Promo code states
   const [promoCode, setPromoCode] = useState<string>("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
-  const [validPromo, setValidPromo] = useState<PromoCode | null>(null);
+  const [validPromo, setValidPromo] = useState<PromoCodeRes | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
+  // Use React Query hook instead of manual fetching
+  const { data: pricingData, isLoading: isPricingLoading } = useAllPricing();
+
+  // Derive plans from React Query data
+  const subscriptionPlans =
+    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
+  const creditPlans =
+    (pricingData?.success && pricingData?.data?.creditPlans) || [];
+
   useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        setIsLoading(true);
-        const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-        const response = await fetch(`${baseApi}/pricing/plans`);
-        const result = await response.json();
+    // Set initial plan when pricing data is loaded
+    if (pricingData?.success && pricingData?.data) {
+      const { subscriptionPlans: subs, creditPlans: credits } =
+        pricingData.data;
+      const allPlans = [...subs, ...credits];
 
-        if (result.success && result.data) {
-          const { subscriptionPlans: subs, creditPlans: credits } = result.data;
-          setSubscriptionPlans(subs as PricingPlan[]);
-          setCreditPlans(credits as PricingPlan[]);
-
-          // Set initial plan if planId is provided
-          if (planId) {
-            const foundPlan = [...subs, ...credits].find(
-              (p: PricingPlan) => p._id === planId
-            );
-            if (foundPlan) {
-              setPlan(foundPlan);
-              setSelectedPlanId(foundPlan._id);
-              setSelectedPlanType(foundPlan.type as "subscription" | "credit");
-            }
-          } else {
-            // Default to first subscription plan
-            if (subs.length > 0) {
-              setPlan(subs[0]);
-              setSelectedPlanId(subs[0]._id);
-              setSelectedPlanType("subscription");
-            }
-          }
+      if (planId) {
+        const foundPlan = allPlans.find((p) => p._id === planId);
+        if (foundPlan) {
+          setPlan(foundPlan as PricingPlan);
+          setSelectedPlanId(foundPlan._id);
+          setSelectedPlanType(foundPlan.type as "subscription" | "credit");
+        } else {
+          setError("Plan not found. Please select a valid plan.");
         }
-      } catch (error) {
-        console.error("Error fetching plans:", error);
-        setError("Failed to load plan details. Please try again.");
-      } finally {
-        setIsLoading(false);
+      } else {
+        // Default to first subscription plan
+        if (subs.length > 0) {
+          setPlan(subs[0] as PricingPlan);
+          setSelectedPlanId(subs[0]._id);
+          setSelectedPlanType("subscription");
+        }
       }
-    };
-
-    fetchPlans();
-  }, [planId]);
+      setIsLoading(false);
+    } else if (pricingData && !pricingData.success) {
+      setError("Failed to load plan details. Please try again.");
+      setIsLoading(false);
+    } else if (isPricingLoading) {
+      setIsLoading(true);
+    }
+  }, [pricingData, planId, isPricingLoading]);
 
   const handleBackToPricing = () => {
     router.push("/pricing");
@@ -154,56 +143,42 @@ export default function Cart({ planId }: { planId: string }) {
 
     setPromoError(null);
     setIsApplyingPromo(true);
-    try {
-      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(
-        `${baseApi}/promo-codes/validate/${promoCode.trim()}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Invalid promo code");
-      }
+    const res = await validPromoCode(promoCode.trim());
 
-      const responseData = await response.json();
-      const promoResult = responseData.data.promoCode;
-
-      if (
-        promoResult.appliesTo !== "both" &&
-        promoResult.appliesTo !== plan.type
-      ) {
-        setPromoError("This promo code is not valid for your plan");
-        setValidPromo(null);
-        return;
-      }
-
-      // Check if promo code is expired
-      const validUntil = new Date(promoResult.validUntil);
-      if (validUntil < new Date()) {
-        setPromoError("This promo code has expired");
-        setValidPromo(null);
-        return;
-      }
-
-      setValidPromo(promoResult);
-      toast.success(
-        `Promo code applied: ${promoResult.discountPercent}% discount`
-      );
-    } catch (error) {
-      console.error("Error validating promo code:", error);
-      setPromoError(
-        error instanceof Error ? error.message : "Invalid promo code"
-      );
+    if (!res.success) {
+      setPromoError(res.message || "Invalid promo code");
       setValidPromo(null);
-    } finally {
       setIsApplyingPromo(false);
+      return;
     }
+
+    const promoResult = res.data;
+
+    if (
+      promoResult?.promoCode?.appliesTo !== "both" &&
+      promoResult?.promoCode?.appliesTo !== plan.type
+    ) {
+      setPromoError("This promo code is not valid for your plan");
+      setValidPromo(null);
+      setIsApplyingPromo(false);
+      return;
+    }
+
+    // Check if promo code is expired
+    const validUntil = new Date(promoResult.promoCode.validUntil);
+    if (validUntil < new Date()) {
+      setPromoError("This promo code has expired");
+      setValidPromo(null);
+      setIsApplyingPromo(false);
+      return;
+    }
+
+    setValidPromo(res.data);
+    toast.success(
+      `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`
+    );
+    setIsApplyingPromo(false);
   };
 
   const handleClearPromoCode = () => {
@@ -216,7 +191,7 @@ export default function Cart({ planId }: { planId: string }) {
     const allPlans = [...subscriptionPlans, ...creditPlans];
     const selectedPlan = allPlans.find((p) => p._id === planId);
     if (selectedPlan) {
-      setPlan(selectedPlan);
+      setPlan(selectedPlan as PricingPlan);
       setSelectedPlanId(planId);
       setValidPromo(null);
       setPromoCode("");
@@ -245,22 +220,14 @@ export default function Cart({ planId }: { planId: string }) {
       const user = await getCurrentUser();
       if (user) {
         setIsProcessing(true);
-        const baseApi = await getBaseApi();
-        const accessToken = await getAccessToken();
-        const response = await fetch(`${baseApi}/payment/create-app-payment`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            planId: id,
-            type,
-            promoCode,
-            paymentMethod: selectedPaymentMethod,
-          }),
+
+        const data = await createPayment({
+          planId: id,
+          type,
+          promoCode,
+          paymentMethod: selectedPaymentMethod,
         });
-        const data = await response.json();
+
         if (!data.success) {
           throw new Error(data.message || "Failed to process payment");
         }
@@ -328,22 +295,24 @@ export default function Cart({ planId }: { planId: string }) {
   const priceAfterPlanDiscount = plan.discountPrice
     ? plan.discountPrice
     : plan.discountPercent > 0
-    ? Number.parseFloat(
+      ? Number.parseFloat(
         calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
       )
-    : plan.basePrice;
+      : plan.basePrice;
 
   const finalPrice = validPromo
     ? Number.parseFloat(
-        calculateDiscountedPrice(
-          priceAfterPlanDiscount,
-          validPromo.discountPercent
-        )
+      calculateDiscountedPrice(
+        priceAfterPlanDiscount,
+        validPromo.promoCode.discountPercent
       )
+    )
     : priceAfterPlanDiscount;
 
   const currentPlans =
     selectedPlanType === "subscription" ? subscriptionPlans : creditPlans;
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -415,12 +384,12 @@ export default function Cart({ planId }: { planId: string }) {
                             {planOption.discountPrice
                               ? planOption.discountPrice
                               : planOption.discountPercent > 0
-                              ? (
+                                ? (
                                   (planOption.basePrice *
                                     (100 - planOption.discountPercent)) /
                                   100
                                 ).toFixed(0)
-                              : planOption.basePrice.toFixed(0)}
+                                : planOption.basePrice.toFixed(0)}
                             {selectedPlanType === "subscription"
                               ? "/month"
                               : ""}
@@ -438,9 +407,14 @@ export default function Cart({ planId }: { planId: string }) {
               <CardHeader>
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>
-                  {selectedPlanType === "subscription"
+                  {plan.type === "subscription"
                     ? `${plan.planDuration} days of unlimited access to all premium features`
-                    : `${plan.credit} AI-powered metadata generations`}
+                    : (() => {
+                      // Calculate image and video counts based on credits
+                      const imageCount = (plan?.credit ?? 0 * 5).toLocaleString();
+                      const videoCount = (plan?.credit ?? 0).toLocaleString();
+                      return `${imageCount} images or ${videoCount} videos metadata generations for ${plan.planDuration} days`;
+                    })()}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -449,22 +423,22 @@ export default function Cart({ planId }: { planId: string }) {
                   <div className="grid gap-2">
                     {(selectedPlanType === "subscription"
                       ? [
-                          "Unlimited Batch Processing",
-                          "Use Your Own API Key",
-                          "Metadata Editor with Bulk Edits",
-                          "Support for JPG, PNG, EPS, MP4, MOV",
-                          "Priority Customer Support",
-                          "Unlimited Results",
-                        ]
+                        "Unlimited Batch Processing — No daily limits",
+                        "Powerful Metadata Editor — Bulk Edits",
+                        "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+                        "Advanced export options with customization",
+                        "Unlimited results generation",
+                        "Requires your own Gemini API key",
+                        "Priority customer support",
+                      ]
                       : [
-                          "Faster Processing — Batch Support",
-                          "No API Required — Built-in Access",
-                          "Metadata Editor with Bulk Edits",
-                          "Support for JPG, PNG, EPS, MP4, MOV",
-                          "1 Credit Token per Image",
-                          "Priority Customer Support",
-                          "No Monthly Commitment",
-                        ]
+                        "No API key required — Hassle-free processing",
+                        "Faster processing with priority queue",
+                        "Powerful Metadata Editor — Bulk Edits",
+                        "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+                        "Advanced export options with customization",
+                        "Priority customer support",
+                      ]
                     ).map((feature, index) => (
                       <div
                         key={index}
@@ -493,9 +467,12 @@ export default function Cart({ planId }: { planId: string }) {
                         <div className="flex items-center gap-3">
                           <CheckCircle className="h-5 w-5 text-green-600" />
                           <div>
-                            <p className="font-medium">{validPromo.code}</p>
+                            <p className="font-medium">
+                              {validPromo.promoCode.code}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {validPromo.discountPercent}% discount applied
+                              {validPromo.promoCode.discountPercent}% discount
+                              applied
                             </p>
                           </div>
                         </div>
@@ -538,7 +515,10 @@ export default function Cart({ planId }: { planId: string }) {
                     )}
                     {promoError && (
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                        <X className="h-4 w-4 flex-shrink-0" />
+                        <X
+                          className="h-4 w-4 flex-shrink-0 hover:cursor-pointer"
+                          onClick={() => setPromoError(null)}
+                        />
                         <p>{promoError}</p>
                       </div>
                     )}
@@ -569,7 +549,9 @@ export default function Cart({ planId }: { planId: string }) {
                       )}
                       {validPromo && (
                         <div className="flex justify-between text-sm text-green-500">
-                          <span>Promo ({validPromo.discountPercent}%)</span>
+                          <span>
+                            Promo ({validPromo.promoCode.discountPercent}%)
+                          </span>
                           <span>
                             -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
                           </span>
@@ -599,15 +581,13 @@ export default function Cart({ planId }: { planId: string }) {
                       {paymentMethods.map((method) => (
                         <div
                           key={method.id}
-                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
-                            selectedPaymentMethod === method.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-muted-foreground/40"
-                          } ${
-                            !method.available
+                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${selectedPaymentMethod === method.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-muted-foreground/40"
+                            } ${!method.available
                               ? "opacity-50 cursor-not-allowed"
                               : "cursor-pointer"
-                          }`}
+                            }`}
                         >
                           <RadioGroupItem
                             value={method.id}
@@ -616,11 +596,10 @@ export default function Cart({ planId }: { planId: string }) {
                           />
                           <Label
                             htmlFor={method.id}
-                            className={`flex items-center gap-4 flex-1 ${
-                              !method.available
-                                ? "cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
+                            className={`flex items-center gap-4 flex-1 ${!method.available
+                              ? "cursor-not-allowed"
+                              : "cursor-pointer"
+                              }`}
                           >
                             <div className="w-12 h-12 rounded-lg bg-background border flex items-center justify-center">
                               <img
@@ -657,7 +636,11 @@ export default function Cart({ planId }: { planId: string }) {
                   <Button
                     className="w-full h-12 font-medium"
                     onClick={() =>
-                      handleCheckout(plan._id, plan.type, validPromo?.code)
+                      handleCheckout(
+                        plan._id,
+                        plan.type,
+                        validPromo?.promoCode.code
+                      )
                     }
                     disabled={
                       isProcessing ||

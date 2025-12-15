@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -18,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { PromoCode, updatePromoCode } from "@/lib/actions";
+import type { PromoCode } from "@/services/admin-dashboard";
+import { useUpdatePromoCodeMutation } from "@/services/queries/admin-dashboard";
 import { toast } from "sonner";
 
 interface EditPromoCodeFormProps {
@@ -48,7 +48,7 @@ export function EditPromoCodeForm({
   promoCode,
   onSuccess,
 }: EditPromoCodeFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const updatePromoCodeMutation = useUpdatePromoCodeMutation();
 
   // Format date for input fields
   const formatDateForInput = (dateString: string) => {
@@ -70,8 +70,6 @@ export function EditPromoCodeForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setIsSubmitting(true);
-
       // Convert dates to ISO strings
       const formattedValues = {
         ...values,
@@ -79,12 +77,11 @@ export function EditPromoCodeForm({
         validUntil: new Date(values.validUntil).toISOString(),
       };
 
-      await updatePromoCode(promoCode._id, formattedValues);
+      await updatePromoCodeMutation.mutateAsync({ id: promoCode._id, data: formattedValues });
       onSuccess();
+      toast.success("Promo code updated successfully");
     } catch {
-      toast("Failed to update promo code");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Failed to update promo code");
     }
   }
 
@@ -248,8 +245,8 @@ export function EditPromoCodeForm({
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Updating..." : "Update Promo Code"}
+        <Button type="submit" className="w-full" disabled={updatePromoCodeMutation.isPending}>
+          {updatePromoCodeMutation.isPending ? "Updating..." : "Update Promo Code"}
         </Button>
       </form>
     </Form>
