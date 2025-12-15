@@ -295,22 +295,24 @@ export default function Cart({ planId }: { planId: string }) {
   const priceAfterPlanDiscount = plan.discountPrice
     ? plan.discountPrice
     : plan.discountPercent > 0
-    ? Number.parseFloat(
+      ? Number.parseFloat(
         calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
       )
-    : plan.basePrice;
+      : plan.basePrice;
 
   const finalPrice = validPromo
     ? Number.parseFloat(
-        calculateDiscountedPrice(
-          priceAfterPlanDiscount,
-          validPromo.promoCode.discountPercent
-        )
+      calculateDiscountedPrice(
+        priceAfterPlanDiscount,
+        validPromo.promoCode.discountPercent
       )
+    )
     : priceAfterPlanDiscount;
 
   const currentPlans =
     selectedPlanType === "subscription" ? subscriptionPlans : creditPlans;
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -382,12 +384,12 @@ export default function Cart({ planId }: { planId: string }) {
                             {planOption.discountPrice
                               ? planOption.discountPrice
                               : planOption.discountPercent > 0
-                              ? (
+                                ? (
                                   (planOption.basePrice *
                                     (100 - planOption.discountPercent)) /
                                   100
                                 ).toFixed(0)
-                              : planOption.basePrice.toFixed(0)}
+                                : planOption.basePrice.toFixed(0)}
                             {selectedPlanType === "subscription"
                               ? "/month"
                               : ""}
@@ -405,9 +407,14 @@ export default function Cart({ planId }: { planId: string }) {
               <CardHeader>
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>
-                  {selectedPlanType === "subscription"
+                  {plan.type === "subscription"
                     ? `${plan.planDuration} days of unlimited access to all premium features`
-                    : `${plan.credit} AI-powered metadata generations`}
+                    : (() => {
+                      // Calculate image and video counts based on credits
+                      const imageCount = (plan?.credit ?? 0 * 5).toLocaleString();
+                      const videoCount = (plan?.credit ?? 0).toLocaleString();
+                      return `${imageCount} images or ${videoCount} videos metadata generations for ${plan.planDuration} days`;
+                    })()}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -416,22 +423,22 @@ export default function Cart({ planId }: { planId: string }) {
                   <div className="grid gap-2">
                     {(selectedPlanType === "subscription"
                       ? [
-                          "Unlimited Batch Processing",
-                          "Use Your Own API Key",
-                          "Metadata Editor with Bulk Edits",
-                          "Support for JPG, PNG, EPS, MP4, MOV",
-                          "Priority Customer Support",
-                          "Unlimited Results",
-                        ]
+                        "Unlimited Batch Processing — No daily limits",
+                        "Powerful Metadata Editor — Bulk Edits",
+                        "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+                        "Advanced export options with customization",
+                        "Unlimited results generation",
+                        "Requires your own Gemini API key",
+                        "Priority customer support",
+                      ]
                       : [
-                          "Faster Processing — Batch Support",
-                          "No API Required — Built-in Access",
-                          "Metadata Editor with Bulk Edits",
-                          "Support for JPG, PNG, EPS, MP4, MOV",
-                          "1 Credit Token per Image",
-                          "Priority Customer Support",
-                          "No Monthly Commitment",
-                        ]
+                        "No API key required — Hassle-free processing",
+                        "Faster processing with priority queue",
+                        "Powerful Metadata Editor — Bulk Edits",
+                        "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
+                        "Advanced export options with customization",
+                        "Priority customer support",
+                      ]
                     ).map((feature, index) => (
                       <div
                         key={index}
@@ -574,15 +581,13 @@ export default function Cart({ planId }: { planId: string }) {
                       {paymentMethods.map((method) => (
                         <div
                           key={method.id}
-                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
-                            selectedPaymentMethod === method.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-muted-foreground/40"
-                          } ${
-                            !method.available
+                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${selectedPaymentMethod === method.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-muted-foreground/40"
+                            } ${!method.available
                               ? "opacity-50 cursor-not-allowed"
                               : "cursor-pointer"
-                          }`}
+                            }`}
                         >
                           <RadioGroupItem
                             value={method.id}
@@ -591,11 +596,10 @@ export default function Cart({ planId }: { planId: string }) {
                           />
                           <Label
                             htmlFor={method.id}
-                            className={`flex items-center gap-4 flex-1 ${
-                              !method.available
-                                ? "cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
+                            className={`flex items-center gap-4 flex-1 ${!method.available
+                              ? "cursor-not-allowed"
+                              : "cursor-pointer"
+                              }`}
                           >
                             <div className="w-12 h-12 rounded-lg bg-background border flex items-center justify-center">
                               <img

@@ -101,19 +101,9 @@ const PricingContent = () => {
         "The free plan gives you access to basic AI image processing with a limit of 10 images per day. You can process images, generate basic metadata, and export results with standard features. Perfect for trying out our platform before committing to a paid plan.",
     },
     {
-      question: "What's the difference between subscription and credit plans?",
-      answer:
-        "Subscription plans provide unlimited access for a fixed monthly or yearly fee, while credit plans let you pay per use. Credits are perfect if you have irregular usage patterns or want to try the service without a monthly commitment. Each credit processes one image.",
-    },
-    {
       question: "Can I upgrade from free to premium anytime?",
       answer:
         "Yes, you can upgrade from the free plan to any premium plan at any time. Your account will be upgraded immediately and you'll have access to all premium features. You can also switch between subscription and credit plans as needed.",
-    },
-    {
-      question: "Is there a refund policy?",
-      answer:
-        "We offer a 30-day money-back guarantee for all premium plans. If you're not satisfied with our service, contact our support team within 30 days of purchase for a full refund. Credits are non-refundable but never expire.",
     },
     {
       question: "Do I need my own API key?",
@@ -149,10 +139,14 @@ const PricingContent = () => {
   const activeCreditPlans = creditPlans.filter((plan) => plan.isActive);
 
   const FreePlanCard = ({ className }: { className?: string }) => (
-    <Card className={`flex flex-col border transition-all hover:shadow-md ${className}`}>
+    <Card
+      className={`flex flex-col border transition-all hover:shadow-md ${className}`}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-2xl font-bold text-foreground">Free</CardTitle>
+          <CardTitle className="text-2xl font-bold text-foreground">
+            Free
+          </CardTitle>
           <Download className="h-5 w-5 text-green-600 dark:text-green-400" />
         </div>
         <div className="mt-4">
@@ -261,18 +255,19 @@ const PricingContent = () => {
         >
           <TabsContent value="subscription" className="mt-0">
             <div
-              className={`mx-auto grid max-w-full justify-center gap-8 ${activeSubscriptionPlans.length === 0
-                ? "grid-cols-1"
-                : activeSubscriptionPlans.length === 1
+              className={`mx-auto grid max-w-full justify-center gap-8 ${
+                activeSubscriptionPlans.length === 0
+                  ? "grid-cols-1"
+                  : activeSubscriptionPlans.length === 1
                   ? "grid-cols-2"
                   : activeSubscriptionPlans.length === 2
-                    ? "md:grid-cols-3"
-                    : activeSubscriptionPlans.length === 3
-                      ? "md:grid-cols-3"
-                      : activeSubscriptionPlans.length === 4
-                        ? "md:grid-cols-2 lg:grid-cols-3"
-                        : "md:grid-cols-2 lg:grid-cols-3 "
-                } grid-cols-1`}
+                  ? "md:grid-cols-3"
+                  : activeSubscriptionPlans.length === 3
+                  ? "md:grid-cols-3"
+                  : activeSubscriptionPlans.length === 4
+                  ? "md:grid-cols-2 lg:grid-cols-3"
+                  : "md:grid-cols-2 lg:grid-cols-3 "
+              } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
@@ -282,19 +277,18 @@ const PricingContent = () => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
-                      plan.basePrice,
-                      plan.discountPercent
-                    );
-
+                        plan.basePrice,
+                        plan.discountPercent
+                      );
 
                   const durationText =
                     plan.planDuration === 30
                       ? "per month"
                       : plan.planDuration === 365
-                        ? "per year"
-                        : plan.planDuration === 7
-                          ? "per week"
-                          : `per ${plan.planDuration} days`;
+                      ? "per year"
+                      : plan.planDuration === 7
+                      ? "per week"
+                      : `per ${plan.planDuration} days`;
 
                   return (
                     <Card
@@ -309,12 +303,16 @@ const PricingContent = () => {
 
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                          <CardTitle className="text-2xl">
+                            {plan.name}
+                          </CardTitle>
                           <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                         </div>
                         <div className="mt-4">
                           <div className="flex items-baseline gap-2">
-                            <p className="text-4xl font-bold">৳{displayPrice}</p>
+                            <p className="text-4xl font-bold">
+                              ৳{displayPrice}
+                            </p>
                             {plan.discountPercent > 0 && (
                               <p className="text-lg text-muted-foreground line-through">
                                 ৳{plan.basePrice}
@@ -334,7 +332,9 @@ const PricingContent = () => {
                               className="flex items-start gap-2.5"
                             >
                               <Check className="h-4 w-4 text-violet-600 dark:text-violet-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-muted-foreground">{feature}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {feature}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -365,14 +365,15 @@ const PricingContent = () => {
 
           <TabsContent value="credit" className="mt-0">
             <div
-              className={`mx-auto grid max-w-full gap-8 ${activeCreditPlans.length === 0
-                ? "grid-cols-1"
-                : activeCreditPlans.length === 1
+              className={`mx-auto grid max-w-full gap-8 ${
+                activeCreditPlans.length === 0
+                  ? "grid-cols-1"
+                  : activeCreditPlans.length === 1
                   ? "grid-cols-2"
                   : activeCreditPlans.length === 2
-                    ? "md:grid-cols-3"
-                    : "md:grid-cols-3"
-                } grid-cols-1`}
+                  ? "md:grid-cols-3"
+                  : "md:grid-cols-3"
+              } grid-cols-1`}
             >
               {/* Free Plan */}
               <FreePlanCard />
@@ -382,22 +383,21 @@ const PricingContent = () => {
                   const displayPrice = plan.discountPrice
                     ? plan.discountPrice
                     : calculateDiscountedPrice(
-                      plan.basePrice,
-                      plan.discountPercent
-                    );
-
+                        plan.basePrice,
+                        plan.discountPercent
+                      );
 
                   // Calculate duration text
                   const durationText =
                     plan.planDuration === 30
                       ? "Monthly"
                       : plan.planDuration === 91
-                        ? "Quarterly"
-                        : plan.planDuration === 182
-                          ? "Half-Yearly"
-                          : plan.planDuration === 365
-                            ? "Yearly"
-                            : `${plan.planDuration} days`;
+                      ? "Quarterly"
+                      : plan.planDuration === 182
+                      ? "Half-Yearly"
+                      : plan.planDuration === 365
+                      ? "Yearly"
+                      : `${plan.planDuration} days`;
 
                   // Calculate image and video counts based on credits
                   const imageCount = (plan.credit * 5).toLocaleString();
@@ -416,12 +416,16 @@ const PricingContent = () => {
 
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                          <CardTitle className="text-2xl">
+                            {plan.name}
+                          </CardTitle>
                           <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="mt-4">
                           <div className="flex items-baseline gap-2">
-                            <p className="text-4xl font-bold">৳{displayPrice}</p>
+                            <p className="text-4xl font-bold">
+                              ৳{displayPrice}
+                            </p>
                             {plan.discountPercent > 0 && (
                               <p className="text-lg text-muted-foreground line-through">
                                 ৳{plan.basePrice}
@@ -429,7 +433,8 @@ const PricingContent = () => {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {plan.credit.toLocaleString()} credits • {durationText}
+                            {plan.credit.toLocaleString()} credits •{" "}
+                            {durationText}
                           </p>
                         </div>
                       </CardHeader>
@@ -451,7 +456,9 @@ const PricingContent = () => {
                               className="flex items-start gap-2.5"
                             >
                               <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-muted-foreground">{feature}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {feature}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -603,10 +610,6 @@ const PricingContent = () => {
                   Start Free
                 </Button>
               </div>
-
-              <p className="mt-4 text-sm text-muted-foreground">
-                30-day money-back guarantee. No questions asked.
-              </p>
             </div>
           </div>
         </div>
