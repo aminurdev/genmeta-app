@@ -214,7 +214,7 @@ const updatePlan = async (userId, planId) => {
 
       appKey = await AppKey.create({
         userId: user._id,
-        username: user.name || user.email.split("@")[0] || "User",
+        username: user.email || user.name,
         key: newAppKey,
         plan: {
           type: planType,
