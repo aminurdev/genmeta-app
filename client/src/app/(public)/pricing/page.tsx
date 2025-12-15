@@ -82,6 +82,7 @@ const PricingContent = () => {
     "Advanced export options with customization",
     "Unlimited results generation",
     "Requires your own Gemini API key",
+    "Daily 200 images or 40 videos per API key",
     "Priority customer support",
   ];
 
