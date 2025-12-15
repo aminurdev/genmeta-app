@@ -106,9 +106,9 @@ appKeySchema.methods.refreshDailyCredits = function () {
   if (
     this.plan.type === "free" &&
     this.lastCreditRefresh !== today &&
-    this.credit < 10
+    this.credit < 5
   ) {
-    this.credit = 10;
+    this.credit = 5;
     this.lastCreditRefresh = today;
 
     // Initialize daily process for today if not exists
@@ -134,7 +134,7 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       "plan.type": "free",
       isActive: true,
       status: "active",
-      credit: { $lte: 10 },
+      credit: { $lte: 5 },
       lastCreditRefresh: { $ne: today },
     });
 
@@ -152,7 +152,7 @@ appKeySchema.statics.performDailyMaintenance = async function () {
     });
 
     for (const appKey of expiredSubscriptions) {
-      appKey.downgradeToPlan("free", "expired_auto");
+      appKey.downgradeToPlan("free", "subscription_expired_auto");
       await appKey.save();
     }
 
@@ -169,11 +169,25 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       await appKey.save();
     }
 
+    // 4. Downgrade expired credit plans (credit plan with expiry date that has passed)
+    const expiredCreditPlans = await this.find({
+      "plan.type": "credit",
+      isActive: true,
+      status: "active",
+      expiresAt: { $lte: now },
+    });
+
+    for (const appKey of expiredCreditPlans) {
+      appKey.downgradeToPlan("free", "credit_plan_expired_auto");
+      await appKey.save();
+    }
+
     return {
       success: true,
       freeUsersRefreshed: freeUsers.length,
       expiredSubscriptionsDowngraded: expiredSubscriptions.length,
       zeroCreditPlansDowngraded: zeroCreditPlans.length,
+      expiredCreditPlansDowngraded: expiredCreditPlans.length,
       timestamp: now.toISOString(),
     };
   } catch (error) {
@@ -196,7 +210,16 @@ appKeySchema.methods.isValid = function () {
     this.expiresAt &&
     new Date() >= this.expiresAt
   ) {
-    this.downgradeToPlan("free", "expired");
+    this.downgradeToPlan("free", "subscription_expired");
+  }
+
+  // Auto-downgrade expired credit plans
+  if (
+    this.plan.type === "credit" &&
+    this.expiresAt &&
+    new Date() >= this.expiresAt
+  ) {
+    this.downgradeToPlan("free", "credit_plan_expired");
   }
 
   // Auto-downgrade zero credit plans
@@ -224,7 +247,7 @@ appKeySchema.methods.downgradeToPlan = function (newPlan, reason = "manual") {
 
   if (newPlan === "free") {
     this.expiresAt = undefined;
-    this.credit = 10;
+    this.credit = 5;
     this.lastCreditRefresh = new Date().toISOString().split("T")[0];
 
     // Initialize tracking for current period
@@ -251,7 +274,16 @@ appKeySchema.methods.canProcess = function (count = 1) {
     this.expiresAt &&
     new Date() >= this.expiresAt
   ) {
-    this.downgradeToPlan("free", "expired");
+    this.downgradeToPlan("free", "subscription_expired");
+  }
+
+  // Auto-downgrade expired credit plans
+  if (
+    this.plan.type === "credit" &&
+    this.expiresAt &&
+    new Date() >= this.expiresAt
+  ) {
+    this.downgradeToPlan("free", "credit_plan_expired");
   }
 
   // Auto-downgrade zero credit plans
@@ -368,7 +400,16 @@ appKeySchema.methods.calculateCredit = function () {
     this.expiresAt &&
     new Date() >= this.expiresAt
   ) {
-    this.downgradeToPlan("free", "expired");
+    this.downgradeToPlan("free", "subscription_expired");
+  }
+
+  // Auto-check for expired credit plans
+  if (
+    this.plan.type === "credit" &&
+    this.expiresAt &&
+    new Date() >= this.expiresAt
+  ) {
+    this.downgradeToPlan("free", "credit_plan_expired");
   }
 
   // Auto-check for zero credit plans
