@@ -60,7 +60,7 @@ const createAppKey = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   if (planType === "free") {
-    credit = 10;
+    credit = 5;
   } else if (planType === "credit") {
     // For credit plan, use provided initial credit or default to 100
     credit = initialCredit ? parseInt(initialCredit) : 100;

@@ -68,9 +68,6 @@ export default function Cart({ planId }: { planId: string }) {
 
   // Plan selection states
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-  const [selectedPlanType, setSelectedPlanType] = useState<
-    "subscription" | "credit"
-  >("subscription");
 
   // Payment method state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("bkash");
@@ -102,7 +99,6 @@ export default function Cart({ planId }: { planId: string }) {
         if (foundPlan) {
           setPlan(foundPlan as PricingPlan);
           setSelectedPlanId(foundPlan._id);
-          setSelectedPlanType(foundPlan.type as "subscription" | "credit");
         } else {
           setError("Plan not found. Please select a valid plan.");
         }
@@ -111,7 +107,9 @@ export default function Cart({ planId }: { planId: string }) {
         if (subs.length > 0) {
           setPlan(subs[0] as PricingPlan);
           setSelectedPlanId(subs[0]._id);
-          setSelectedPlanType("subscription");
+        } else if (credits.length > 0) {
+          setPlan(credits[0] as PricingPlan);
+          setSelectedPlanId(credits[0]._id);
         }
       }
       setIsLoading(false);
@@ -198,18 +196,6 @@ export default function Cart({ planId }: { planId: string }) {
       setPromoError(null);
     }
   };
-
-  // const handlePlanTypeChange = (type: "subscription" | "credit") => {
-  //   setSelectedPlanType(type);
-  //   const plans = type === "subscription" ? subscriptionPlans : creditPlans;
-  //   if (plans.length > 0) {
-  //     setPlan(plans[0]);
-  //     setSelectedPlanId(plans[0]._id);
-  //     setValidPromo(null);
-  //     setPromoCode("");
-  //     setPromoError(null);
-  //   }
-  // };
 
   const handleCheckout = async (
     id: string,
@@ -309,9 +295,6 @@ export default function Cart({ planId }: { planId: string }) {
       )
     : priceAfterPlanDiscount;
 
-  const currentPlans =
-    selectedPlanType === "subscription" ? subscriptionPlans : creditPlans;
-
   return (
     <div className="min-h-screen bg-background">
       <MaxWidthWrapper className="py-8 lg:py-12">
@@ -326,45 +309,12 @@ export default function Cart({ planId }: { planId: string }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Plan Type Selection - Tabs */}
-            {/* <Card>
-              <CardHeader>
-                <CardTitle>Choose Plan Type</CardTitle>
-                <CardDescription>
-                  Select between subscription or credit-based plans
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs
-                  value={selectedPlanType}
-                  onValueChange={(value) =>
-                    handlePlanTypeChange(value as "subscription" | "credit")
-                  }
-                >
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="subscription" className="flex gap-2">
-                      <Check className="h-4 w-4" />
-                      Subscription
-                    </TabsTrigger>
-                    <TabsTrigger value="credit" className="flex gap-2">
-                      <Zap className="h-4 w-4" />
-                      Credits
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardContent>
-            </Card> */}
-
             {/* Plan Selection */}
             <Card>
               <CardHeader>
                 <CardTitle>Select Your Plan</CardTitle>
                 <CardDescription>
-                  Choose the{" "}
-                  {selectedPlanType === "subscription"
-                    ? "subscription"
-                    : "credit"}{" "}
-                  plan that works best for you
+                  Choose the plan that works best for you
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -373,7 +323,12 @@ export default function Cart({ planId }: { planId: string }) {
                     <SelectValue placeholder="Choose a plan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentPlans.map((planOption) => (
+                    {subscriptionPlans.length > 0 && (
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Subscription Plans
+                      </div>
+                    )}
+                    {subscriptionPlans.map((planOption) => (
                       <SelectItem key={planOption._id} value={planOption._id}>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{planOption.name}</span>
@@ -388,9 +343,36 @@ export default function Cart({ planId }: { planId: string }) {
                                   100
                                 ).toFixed(0)
                               : planOption.basePrice.toFixed(0)}
-                            {selectedPlanType === "subscription"
+                            {planOption.planDuration === 30
                               ? "/month"
-                              : ""}
+                              : planOption.planDuration === 365
+                              ? "/year"
+                              : `/${planOption.planDuration} days`}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {creditPlans.length > 0 && (
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                        Credit Plans
+                      </div>
+                    )}
+                    {creditPlans.map((planOption) => (
+                      <SelectItem key={planOption._id} value={planOption._id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{planOption.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            ৳
+                            {planOption.discountPrice
+                              ? planOption.discountPrice
+                              : planOption.discountPercent > 0
+                              ? (
+                                  (planOption.basePrice *
+                                    (100 - planOption.discountPercent)) /
+                                  100
+                                ).toFixed(0)
+                              : planOption.basePrice.toFixed(0)}{" "}
+                            • {planOption.credit.toLocaleString()} credits
                           </span>
                         </div>
                       </SelectItem>
@@ -421,7 +403,7 @@ export default function Cart({ planId }: { planId: string }) {
                 <div className="space-y-4">
                   <h3 className="font-semibold">What&apos;s included:</h3>
                   <div className="grid gap-2">
-                    {(selectedPlanType === "subscription"
+                    {(plan.type === "subscription"
                       ? [
                           "Unlimited Batch Processing — No daily limits",
                           "Powerful Metadata Editor — Bulk Edits",
@@ -429,6 +411,7 @@ export default function Cart({ planId }: { planId: string }) {
                           "Advanced export options with customization",
                           "Unlimited results generation",
                           "Requires your own Gemini API key",
+                          "2,000 images or 400 videos per day - by gemini free api key",
                           "Priority customer support",
                         ]
                       : [

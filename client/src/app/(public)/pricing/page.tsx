@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 import {
   Accordion,
   AccordionContent,
@@ -41,9 +41,6 @@ interface FaqItem {
 }
 
 const PricingContent = () => {
-  const [activeTab, setActiveTab] = useState<"subscription" | "credit">(
-    "credit"
-  );
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
@@ -66,9 +63,9 @@ const PricingContent = () => {
   }, [searchParams]);
 
   const freeFeatures = [
-    "100 free credits upon signup",
+    "50 free credits upon signup",
     "Requires your own Gemini API key",
-    "Limited to 10 files per day — Batch Processing",
+    "Limited to 10 files per day",
     "Powerful Metadata Editor — Bulk Edits",
     "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
     "Basic export options",
@@ -82,7 +79,7 @@ const PricingContent = () => {
     "Advanced export options with customization",
     "Unlimited results generation",
     "Requires your own Gemini API key",
-    "Daily 200 images or 40 videos per API key",
+    "2,000 images or 400 videos per day - by gemini free api key",
     "Priority customer support",
   ];
 
@@ -205,24 +202,6 @@ const PricingContent = () => {
               Transform your image metadata workflow with our AI-powered
               platform. Start free and scale as your needs grow.
             </p>
-
-            <Tabs
-              defaultValue="credit"
-              value={activeTab}
-              onValueChange={(value) =>
-                setActiveTab(value as "subscription" | "credit")
-              }
-              className="w-full max-w-md mt-6"
-            >
-              <TabsList className="flex w-full ">
-                <TabsTrigger className="w-full" value="credit">
-                  Credit Plans
-                </TabsTrigger>
-                <TabsTrigger className="w-full" value="subscription">
-                  Subscription
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
         </div>
       </div>
@@ -248,244 +227,190 @@ const PricingContent = () => {
 
       {/* Pricing Cards */}
       <div className="max-w-screen-xl mx-auto px-4 -mt-10 mb-10" id="premium">
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) =>
-            setActiveTab(value as "subscription" | "credit")
-          }
-        >
-          <TabsContent value="subscription" className="mt-0">
-            <div
-              className={`mx-auto grid max-w-full justify-center gap-8 ${
-                activeSubscriptionPlans.length === 0
-                  ? "grid-cols-1"
-                  : activeSubscriptionPlans.length === 1
-                  ? "grid-cols-2"
-                  : activeSubscriptionPlans.length === 2
-                  ? "md:grid-cols-3"
-                  : activeSubscriptionPlans.length === 3
-                  ? "md:grid-cols-3"
-                  : activeSubscriptionPlans.length === 4
-                  ? "md:grid-cols-2 lg:grid-cols-3"
-                  : "md:grid-cols-2 lg:grid-cols-3 "
-              } grid-cols-1`}
-            >
-              {/* Free Plan */}
-              <FreePlanCard />
-
-              {activeSubscriptionPlans.length > 0 ? (
-                activeSubscriptionPlans.map((plan) => {
-                  const displayPrice = plan.discountPrice
-                    ? plan.discountPrice
-                    : calculateDiscountedPrice(
-                        plan.basePrice,
-                        plan.discountPercent
-                      );
-
-                  const durationText =
-                    plan.planDuration === 30
-                      ? "per month"
-                      : plan.planDuration === 365
-                      ? "per year"
-                      : plan.planDuration === 7
-                      ? "per week"
-                      : `per ${plan.planDuration} days`;
-
-                  return (
-                    <Card
-                      key={plan._id}
-                      className="flex flex-col relative border transition-all hover:shadow-md"
-                    >
-                      {plan.discountPercent > 0 && (
-                        <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
-                          Save {plan.discountPercent}%
-                        </Badge>
-                      )}
-
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">
-                            {plan.name}
-                          </CardTitle>
-                          <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                        </div>
-                        <div className="mt-4">
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-4xl font-bold">
-                              ৳{displayPrice}
-                            </p>
-                            {plan.discountPercent > 0 && (
-                              <p className="text-lg text-muted-foreground line-through">
-                                ৳{plan.basePrice}
-                              </p>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {durationText}
-                          </p>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="flex-1">
-                        <div className="space-y-2.5">
-                          {premiumFeatures.map((feature, featureIndex) => (
-                            <div
-                              key={featureIndex}
-                              className="flex items-start gap-2.5"
-                            >
-                              <Check className="h-4 w-4 text-violet-600 dark:text-violet-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-muted-foreground">
-                                {feature}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <Button
-                          className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                          size="lg"
-                          onClick={() =>
-                            handlePurchase(plan._id, "subscription")
-                          }
-                        >
-                          Choose Plan
-                        </Button>
-                      </CardFooter>
-                    </Card>
+        <div className="mb-16">
+          <div
+            className={`mx-auto grid max-w-full justify-center gap-8 ${
+              activeSubscriptionPlans.length + activeCreditPlans.length === 1
+                ? "grid-cols-1 md:grid-cols-2"
+                : activeSubscriptionPlans.length + activeCreditPlans.length ===
+                  2
+                ? "grid-cols-1 md:grid-cols-3"
+                : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            }`}
+          >
+            <FreePlanCard />
+            {activeSubscriptionPlans.map((plan) => {
+              const displayPrice = plan.discountPrice
+                ? plan.discountPrice
+                : calculateDiscountedPrice(
+                    plan.basePrice,
+                    plan.discountPercent
                   );
-                })
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">
-                    No subscription plans available
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
 
-          <TabsContent value="credit" className="mt-0">
-            <div
-              className={`mx-auto grid max-w-full gap-8 ${
-                activeCreditPlans.length === 0
-                  ? "grid-cols-1"
-                  : activeCreditPlans.length === 1
-                  ? "grid-cols-2"
-                  : activeCreditPlans.length === 2
-                  ? "md:grid-cols-3"
-                  : "md:grid-cols-3"
-              } grid-cols-1`}
-            >
-              {/* Free Plan */}
-              <FreePlanCard />
+              const durationText =
+                plan.planDuration === 30
+                  ? "per month"
+                  : plan.planDuration === 365
+                  ? "per year"
+                  : plan.planDuration === 7
+                  ? "per week"
+                  : `per ${plan.planDuration} days`;
 
-              {activeCreditPlans.length > 0 ? (
-                activeCreditPlans.map((plan) => {
-                  const displayPrice = plan.discountPrice
-                    ? plan.discountPrice
-                    : calculateDiscountedPrice(
-                        plan.basePrice,
-                        plan.discountPercent
-                      );
+              return (
+                <Card
+                  key={plan._id}
+                  className="flex flex-col relative border transition-all hover:shadow-md"
+                >
+                  {plan.discountPercent > 0 && (
+                    <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
+                      Save {plan.discountPercent}%
+                    </Badge>
+                  )}
 
-                  // Calculate duration text
-                  const durationText =
-                    plan.planDuration === 30
-                      ? "Monthly"
-                      : plan.planDuration === 91
-                      ? "Quarterly"
-                      : plan.planDuration === 182
-                      ? "Half-Yearly"
-                      : plan.planDuration === 365
-                      ? "Yearly"
-                      : `${plan.planDuration} days`;
-
-                  // Calculate image and video counts based on credits
-                  const imageCount = (plan.credit * 5).toLocaleString();
-                  const videoCount = plan.credit.toLocaleString();
-
-                  return (
-                    <Card
-                      key={plan._id}
-                      className="flex flex-col relative border transition-all hover:shadow-md"
-                    >
-                      {plan.discountPercent > 0 && (
-                        <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
-                          Save {plan.discountPercent}%
-                        </Badge>
-                      )}
-
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-2xl">
-                            {plan.name}
-                          </CardTitle>
-                          <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="mt-4">
-                          <div className="flex items-baseline gap-2">
-                            <p className="text-4xl font-bold">
-                              ৳{displayPrice}
-                            </p>
-                            {plan.discountPercent > 0 && (
-                              <p className="text-lg text-muted-foreground line-through">
-                                ৳{plan.basePrice}
-                              </p>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {plan.credit.toLocaleString()} credits •{" "}
-                            {durationText}
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                      <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-bold">৳{displayPrice}</p>
+                        {plan.discountPercent > 0 && (
+                          <p className="text-lg text-muted-foreground line-through">
+                            ৳{plan.basePrice}
                           </p>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="flex-1">
-                        {/* Processing Capacity */}
-                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 mb-4">
-                          <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1.5">
-                            You can process:
-                          </p>
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            {imageCount} images or {videoCount} videos
-                          </p>
-                        </div>
-
-                        <div className="space-y-2.5">
-                          {creditFeatures.map((feature, featureIndex) => (
-                            <div
-                              key={featureIndex}
-                              className="flex items-start gap-2.5"
-                            >
-                              <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-muted-foreground">
-                                {feature}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <Button
-                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                          size="lg"
-                          onClick={() => handlePurchase(plan._id, "credit")}
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {durationText}
+                      </p>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <div className="space-y-2.5">
+                      {premiumFeatures.map((feature, featureIndex) => (
+                        <div
+                          key={featureIndex}
+                          className="flex items-start gap-2.5"
                         >
-                          Purchase Credits
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                          <Check className="h-4 w-4 text-violet-600 dark:text-violet-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">
+                            {feature}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                      size="lg"
+                      onClick={() => handlePurchase(plan._id, "subscription")}
+                    >
+                      Choose Plan
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+            {activeCreditPlans.map((plan) => {
+              const displayPrice = plan.discountPrice
+                ? plan.discountPrice
+                : calculateDiscountedPrice(
+                    plan.basePrice,
+                    plan.discountPercent
                   );
-                })
-              ) : (
-                <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">
-                    No credit plans available
-                  </p>
-                </div>
-              )}
+
+              const durationText =
+                plan.planDuration === 30
+                  ? "Monthly"
+                  : plan.planDuration === 91
+                  ? "Quarterly"
+                  : plan.planDuration === 182
+                  ? "Half-Yearly"
+                  : plan.planDuration === 365
+                  ? "Yearly"
+                  : `${plan.planDuration} days`;
+
+              const imageCount = (plan.credit * 5).toLocaleString();
+              const videoCount = plan.credit.toLocaleString();
+
+              return (
+                <Card
+                  key={plan._id}
+                  className="flex flex-col relative border transition-all hover:shadow-md"
+                >
+                  {plan.discountPercent > 0 && (
+                    <Badge className="absolute right-4 top-4 bg-green-600 hover:bg-green-700">
+                      Save {plan.discountPercent}%
+                    </Badge>
+                  )}
+
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                      <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="mt-4">
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-4xl font-bold">৳{displayPrice}</p>
+                        {plan.discountPercent > 0 && (
+                          <p className="text-lg text-muted-foreground line-through">
+                            ৳{plan.basePrice}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {plan.credit.toLocaleString()} credits • {durationText}
+                      </p>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 mb-4">
+                      <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1.5">
+                        You can process:
+                      </p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        {imageCount} images or {videoCount} videos
+                      </p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {creditFeatures.map((feature, featureIndex) => (
+                        <div
+                          key={featureIndex}
+                          className="flex items-start gap-2.5"
+                        >
+                          <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">
+                            {feature}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      size="lg"
+                      onClick={() => handlePurchase(plan._id, "credit")}
+                    >
+                      Purchase Credits
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* No Plans Available */}
+        {activeSubscriptionPlans.length === 0 &&
+          activeCreditPlans.length === 0 && (
+            <div className="text-center py-12">
+              <FreePlanCard className="max-w-md mx-auto" />
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
       </div>
 
       <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
