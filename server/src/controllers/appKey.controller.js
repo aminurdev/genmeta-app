@@ -145,7 +145,7 @@ const updateAppKey = asyncHandler(async (req, res) => {
     // Handle plan-specific logic
     if (newPlan.type === "free") {
       appKey.expiresAt = undefined;
-      appKey.credit = 10;
+      appKey.credit = 5;
       appKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
     } else if (
       newPlan.type === "subscription" &&
@@ -415,7 +415,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
 
   // Check if can process the request
   if (!appKey.canProcess(count)) {
-    const limit = appKey.plan.type === "free" ? 10 : appKey.credit;
+    const limit = appKey.plan.type === "free" ? 5 : appKey.credit;
 
     throw new ApiError(
       429,

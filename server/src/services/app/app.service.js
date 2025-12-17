@@ -226,7 +226,7 @@ const updatePlan = async (userId, planId) => {
             ? selectedPlan.credit
             : planType === "subscription"
               ? Infinity
-              : 10, // Free plan gets 10 credits daily
+              : 5, // Free plan gets 5 credits daily
         isActive: true,
         status: "active",
         lastCreditRefresh: today,

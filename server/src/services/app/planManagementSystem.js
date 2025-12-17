@@ -191,7 +191,7 @@ class PlanManagementSystem {
 
       if (newPlan === "free") {
         appKey.expiresAt = undefined;
-        appKey.credit = 10;
+        appKey.credit = 5;
         appKey.lastCreditRefresh = today;
 
         // Initialize daily process for today if not exists
@@ -220,7 +220,7 @@ class PlanManagementSystem {
       const currentMonth = `${today.substring(0, 7)}`;
 
       if (appKey.plan.type === "free" && appKey.lastCreditRefresh !== today) {
-        appKey.credit = 10;
+        appKey.credit = 5;
         appKey.lastCreditRefresh = today;
 
         // Initialize daily process for today if not exists
