@@ -82,17 +82,17 @@ export default function Cart({ planId }: { planId: string }) {
   const { data: pricingData, isLoading: isPricingLoading } = useAllPricing();
 
   // Derive plans from React Query data
-  const subscriptionPlans =
-    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
   const creditPlans =
     (pricingData?.success && pricingData?.data?.creditPlans) || [];
+  const subscriptionPlans =
+    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
 
   useEffect(() => {
     // Set initial plan when pricing data is loaded
     if (pricingData?.success && pricingData?.data) {
-      const { subscriptionPlans: subs, creditPlans: credits } =
+      const { creditPlans: credits, subscriptionPlans: subs } =
         pricingData.data;
-      const allPlans = [...subs, ...credits];
+      const allPlans = [...credits, ...subs];
 
       if (planId) {
         const foundPlan = allPlans.find((p) => p._id === planId);
@@ -103,13 +103,13 @@ export default function Cart({ planId }: { planId: string }) {
           setError("Plan not found. Please select a valid plan.");
         }
       } else {
-        // Default to first subscription plan
-        if (subs.length > 0) {
-          setPlan(subs[0] as PricingPlan);
-          setSelectedPlanId(subs[0]._id);
-        } else if (credits.length > 0) {
+        // Default to first credit plan
+        if (credits.length > 0) {
           setPlan(credits[0] as PricingPlan);
           setSelectedPlanId(credits[0]._id);
+        } else if (subs.length > 0) {
+          setPlan(subs[0] as PricingPlan);
+          setSelectedPlanId(subs[0]._id);
         }
       }
       setIsLoading(false);
@@ -186,7 +186,7 @@ export default function Cart({ planId }: { planId: string }) {
   };
 
   const handlePlanChange = (planId: string) => {
-    const allPlans = [...subscriptionPlans, ...creditPlans];
+    const allPlans = [...creditPlans, ...subscriptionPlans];
     const selectedPlan = allPlans.find((p) => p._id === planId);
     if (selectedPlan) {
       setPlan(selectedPlan as PricingPlan);
@@ -323,8 +323,33 @@ export default function Cart({ planId }: { planId: string }) {
                     <SelectValue placeholder="Choose a plan" />
                   </SelectTrigger>
                   <SelectContent>
-                    {subscriptionPlans.length > 0 && (
+                    {creditPlans.length > 0 && (
                       <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Credit Plans
+                      </div>
+                    )}
+                    {creditPlans.map((planOption) => (
+                      <SelectItem key={planOption._id} value={planOption._id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{planOption.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            ৳
+                            {planOption.discountPrice
+                              ? planOption.discountPrice
+                              : planOption.discountPercent > 0
+                              ? (
+                                  (planOption.basePrice *
+                                    (100 - planOption.discountPercent)) /
+                                  100
+                                ).toFixed(0)
+                              : planOption.basePrice.toFixed(0)}{" "}
+                            • {planOption.credit.toLocaleString()} credits
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {subscriptionPlans.length > 0 && (
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
                         Subscription Plans
                       </div>
                     )}
@@ -348,31 +373,6 @@ export default function Cart({ planId }: { planId: string }) {
                               : planOption.planDuration === 365
                               ? "/year"
                               : `/${planOption.planDuration} days`}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                    {creditPlans.length > 0 && (
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
-                        Credit Plans
-                      </div>
-                    )}
-                    {creditPlans.map((planOption) => (
-                      <SelectItem key={planOption._id} value={planOption._id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{planOption.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            ৳
-                            {planOption.discountPrice
-                              ? planOption.discountPrice
-                              : planOption.discountPercent > 0
-                              ? (
-                                  (planOption.basePrice *
-                                    (100 - planOption.discountPercent)) /
-                                  100
-                                ).toFixed(0)
-                              : planOption.basePrice.toFixed(0)}{" "}
-                            • {planOption.credit.toLocaleString()} credits
                           </span>
                         </div>
                       </SelectItem>
