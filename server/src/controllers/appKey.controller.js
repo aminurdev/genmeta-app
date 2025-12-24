@@ -370,7 +370,10 @@ const validateAppKey = asyncHandler(async (req, res) => {
   const version = req.header("x-app-version");
 
   if (!version) {
-    throw new ApiError(400, "Genmeta server error");
+    throw new ApiError(
+      426,
+      "Please update your app. A new version is available."
+    );
   }
 
   // Compare versions
