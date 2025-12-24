@@ -367,6 +367,28 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
 const validateAppKey = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
   const deviceId = req.header("x-device-id");
+  const version = req.header("x-app-version");
+
+  if (!version) {
+    throw new ApiError(400, "Genmeta server error");
+  }
+
+  // Compare versions
+  const currentVersion = version.split(".").map(Number);
+  const minVersion = [6, 3, 3].map(Number);
+
+  const isVersionLower =
+    currentVersion.reduce((lower, part, i) => {
+      if (lower !== null) return lower;
+      return part < minVersion[i] ? true : part > minVersion[i] ? false : null;
+    }, null) ?? false;
+
+  if (isVersionLower) {
+    throw new ApiError(
+      426,
+      "Please update your app. A new version is available."
+    );
+  }
   const { processCount } = req.body;
 
   if (!key) {
@@ -405,7 +427,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
     if (appKey.allowedDevices.length >= 2) {
       throw new ApiError(
         403,
-        "This account is already used on allowed devices."
+        "This account is already used on two devices. No more devices allowed."
       );
     }
 
