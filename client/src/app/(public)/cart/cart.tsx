@@ -40,6 +40,7 @@ import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
 import { WhatsAppButton } from "./WhatsAppButton";
+import { creditFeatures, premiumFeatures } from "../pricing/page";
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentMethod {
@@ -406,24 +407,8 @@ export default function Cart({ planId }: { planId: string }) {
                   <h3 className="font-semibold">What&apos;s included:</h3>
                   <div className="grid gap-2">
                     {(plan.type === "subscription"
-                      ? [
-                          "Unlimited Batch Processing — No daily limits",
-                          "Powerful Metadata Editor — Bulk Edits",
-                          "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
-                          "Advanced export options with customization",
-                          "Unlimited results generation",
-                          "Requires your own Gemini API key",
-                          "2,000 images or 400 videos per day - by gemini free api key",
-                          "Priority customer support",
-                        ]
-                      : [
-                          "No API key required — Hassle-free processing",
-                          "Faster processing with priority queue",
-                          "Powerful Metadata Editor — Bulk Edits",
-                          "JPG, JPEG, PNG, EPS, MP4, MOV — All formats supported",
-                          "Advanced export options with customization",
-                          "Priority customer support",
-                        ]
+                      ? premiumFeatures
+                      : creditFeatures
                     ).map((feature, index) => (
                       <div
                         key={index}

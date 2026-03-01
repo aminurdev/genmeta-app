@@ -38,6 +38,27 @@ interface FaqItem {
   answer: string;
 }
 
+const freeFeatures = [
+    "50 free credits upon signup",
+    "Requires your own Gemini API key",
+    "Limited to 25 files per day",
+  ];
+
+ export const premiumFeatures = [
+   "All formats supported",
+   "Advanced export options",
+   "Unlimited results generation",
+   "Gemini API key required (at least 5+ keys from different accounts)",
+   "3,000 images or 600 videos per day",
+ ];
+
+export const creditFeatures = [
+  "No API key required — Hassle-free",
+  "Faster processing with priority queue",
+  "All formats supported",
+  "Advanced export options",
+];
+
 const PricingContent = () => {
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -59,26 +80,7 @@ const PricingContent = () => {
     }
   }, [searchParams]);
 
-  const freeFeatures = [
-    "50 free credits upon signup",
-    "Requires your own Gemini API key",
-    "Limited to 25 files per day",
-  ];
 
-  const premiumFeatures = [
-    "All formats supported",
-    "Advanced export options",
-    "Unlimited results generation",
-    "Gemini API key required (at least 5+ keys from different accounts)",
-    "3,000 images or 600 videos per day",
-  ];
-
-  const creditFeatures = [
-    "No API key required — Hassle-free",
-    "Faster processing with priority queue",
-    "All formats supported",
-    "Advanced export options",
-  ];
 
   const faqItems: FaqItem[] = [
     {
