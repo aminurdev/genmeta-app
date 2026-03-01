@@ -32,6 +32,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Banner } from "@/components/main/banner";
 import { useAllPricing } from "@/services/queries/pricing";
+import { creditFeatures, premiumFeatures } from "./features";
 
 interface FaqItem {
   question: string;
@@ -39,24 +40,9 @@ interface FaqItem {
 }
 
 const freeFeatures = [
-    "50 free credits upon signup",
-    "Requires your own Gemini API key",
-    "Limited to 25 files per day",
-  ];
-
- export const premiumFeatures = [
-   "All formats supported",
-   "Advanced export options",
-   "Unlimited results generation",
-   "Gemini API key required (at least 5+ keys from different accounts)",
-   "3,000 images or 600 videos per day",
- ];
-
-export const creditFeatures = [
-  "No API key required — Hassle-free",
-  "Faster processing with priority queue",
-  "All formats supported",
-  "Advanced export options",
+  "50 free credits upon signup",
+  "Requires your own Gemini API key",
+  "Limited to 25 files per day",
 ];
 
 const PricingContent = () => {
@@ -79,8 +65,6 @@ const PricingContent = () => {
       }
     }
   }, [searchParams]);
-
-
 
   const faqItems: FaqItem[] = [
     {

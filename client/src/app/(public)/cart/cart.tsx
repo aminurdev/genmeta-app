@@ -40,7 +40,8 @@ import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
 import { WhatsAppButton } from "./WhatsAppButton";
-import { creditFeatures, premiumFeatures } from "../pricing/page";
+import { creditFeatures, premiumFeatures } from "../pricing/features";
+
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentMethod {
