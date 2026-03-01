@@ -1,4 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -38,6 +39,7 @@ import { useAllPricing } from "@/services/queries/pricing";
 import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
+import { WhatsAppButton } from "./WhatsAppButton";
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentMethod {
@@ -127,7 +129,7 @@ export default function Cart({ planId }: { planId: string }) {
 
   const calculateDiscountedPrice = (
     basePrice: number,
-    discountPercent: number
+    discountPercent: number,
   ) => {
     return ((basePrice * (100 - discountPercent)) / 100).toFixed(2);
   };
@@ -174,7 +176,7 @@ export default function Cart({ planId }: { planId: string }) {
 
     setValidPromo(res.data);
     toast.success(
-      `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`
+      `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`,
     );
     setIsApplyingPromo(false);
   };
@@ -200,7 +202,7 @@ export default function Cart({ planId }: { planId: string }) {
   const handleCheckout = async (
     id: string,
     type: string,
-    promoCode?: string
+    promoCode?: string,
   ) => {
     try {
       const user = await getCurrentUser();
@@ -226,7 +228,7 @@ export default function Cart({ planId }: { planId: string }) {
     } catch (error) {
       console.error("Error processing payment:", error);
       toast.error(
-        error instanceof Error ? error.message : "Payment processing failed"
+        error instanceof Error ? error.message : "Payment processing failed",
       );
     } finally {
       setIsProcessing(false);
@@ -281,17 +283,17 @@ export default function Cart({ planId }: { planId: string }) {
   const priceAfterPlanDiscount = plan.discountPrice
     ? plan.discountPrice
     : plan.discountPercent > 0
-    ? Number.parseFloat(
-        calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
-      )
-    : plan.basePrice;
+      ? Number.parseFloat(
+          calculateDiscountedPrice(plan.basePrice, plan.discountPercent),
+        )
+      : plan.basePrice;
 
   const finalPrice = validPromo
     ? Number.parseFloat(
         calculateDiscountedPrice(
           priceAfterPlanDiscount,
-          validPromo.promoCode.discountPercent
-        )
+          validPromo.promoCode.discountPercent,
+        ),
       )
     : priceAfterPlanDiscount;
 
@@ -337,12 +339,12 @@ export default function Cart({ planId }: { planId: string }) {
                             {planOption.discountPrice
                               ? planOption.discountPrice
                               : planOption.discountPercent > 0
-                              ? (
-                                  (planOption.basePrice *
-                                    (100 - planOption.discountPercent)) /
-                                  100
-                                ).toFixed(0)
-                              : planOption.basePrice.toFixed(0)}{" "}
+                                ? (
+                                    (planOption.basePrice *
+                                      (100 - planOption.discountPercent)) /
+                                    100
+                                  ).toFixed(0)
+                                : planOption.basePrice.toFixed(0)}{" "}
                             • {planOption.credit.toLocaleString()} credits
                           </span>
                         </div>
@@ -362,17 +364,17 @@ export default function Cart({ planId }: { planId: string }) {
                             {planOption.discountPrice
                               ? planOption.discountPrice
                               : planOption.discountPercent > 0
-                              ? (
-                                  (planOption.basePrice *
-                                    (100 - planOption.discountPercent)) /
-                                  100
-                                ).toFixed(0)
-                              : planOption.basePrice.toFixed(0)}
+                                ? (
+                                    (planOption.basePrice *
+                                      (100 - planOption.discountPercent)) /
+                                    100
+                                  ).toFixed(0)
+                                : planOption.basePrice.toFixed(0)}
                             {planOption.planDuration === 30
                               ? "/month"
                               : planOption.planDuration === 365
-                              ? "/year"
-                              : `/${planOption.planDuration} days`}
+                                ? "/year"
+                                : `/${planOption.planDuration} days`}
                           </span>
                         </div>
                       </SelectItem>
@@ -525,7 +527,7 @@ export default function Cart({ planId }: { planId: string }) {
                           <span>
                             -৳
                             {(plan.basePrice - priceAfterPlanDiscount).toFixed(
-                              2
+                              2,
                             )}
                           </span>
                         </div>
@@ -555,7 +557,7 @@ export default function Cart({ planId }: { planId: string }) {
                   <Separator />
 
                   {/* Payment Method */}
-                  <div className="space-y-3">
+                  {/* <div className="space-y-3">
                     <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup
                       value={selectedPaymentMethod}
@@ -616,22 +618,22 @@ export default function Cart({ planId }: { planId: string }) {
                     </RadioGroup>
                   </div>
 
-                  <Separator />
+                  <Separator /> */}
 
                   {/* Checkout Button */}
-                  <Button
+                  {/* <Button
                     className="w-full h-12 font-medium"
                     onClick={() =>
                       handleCheckout(
                         plan._id,
                         plan.type,
-                        validPromo?.promoCode.code
+                        validPromo?.promoCode.code,
                       )
                     }
                     disabled={
                       isProcessing ||
                       !paymentMethods.find(
-                        (m) => m.id === selectedPaymentMethod
+                        (m) => m.id === selectedPaymentMethod,
                       )?.available
                     }
                     size="lg"
@@ -648,7 +650,30 @@ export default function Cart({ planId }: { planId: string }) {
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </>
                     )}
-                  </Button>
+                  </Button> */}
+
+                  <div className="border p-2 rounded-md">
+                    <p className="text-muted-foreground">
+                      Please contact us on WhatsApp to complete your purchase.
+                    </p>
+                  </div>
+
+                  <WhatsAppButton
+                    phoneNumber="+8801817710493"
+                    className="w-full h-12"
+                    label="Contact in whatsapp"
+                    message={`Assalamu-Alaikum GenMeta Team! 
+I would like to purchase the following plan:
+
+*Plan Details:*
+• Plan Name: ${plan.name}
+• Plan Type: ${plan.type === "subscription" ? "Subscription" : "Credit"}
+• Duration: ${plan.planDuration} days
+${plan.type === "credit" && `• Credits: ${plan.credit?.toLocaleString()}`}
+*Total Amount: ৳${finalPrice.toFixed(2)}*
+
+Please guide me through the payment process. Thank you!`}
+                  />
                 </CardContent>
               </Card>
             </div>
