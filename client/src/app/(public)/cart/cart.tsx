@@ -655,7 +655,7 @@ I would like to purchase the following plan:
 • Plan Name: ${plan.name}
 • Plan Type: ${plan.type === "subscription" ? "Subscription" : "Credit"}
 • Duration: ${plan.planDuration} days
-${plan.type === "credit" && `• Credits: ${plan.credit?.toLocaleString()}`}
+${plan.type === "credit" ? `• Credits: ${plan.credit?.toLocaleString()}` : ""}
 *Total Amount: ৳${finalPrice.toFixed(2)}*
 
 Please guide me through the payment process. Thank you!`}
