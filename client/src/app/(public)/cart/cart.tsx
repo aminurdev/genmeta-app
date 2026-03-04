@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -543,7 +541,7 @@ export default function Cart({ planId }: { planId: string }) {
                   <Separator />
 
                   {/* Payment Method */}
-                  {/* <div className="space-y-3">
+                  <div className="space-y-3">
                     <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup
                       value={selectedPaymentMethod}
@@ -604,10 +602,10 @@ export default function Cart({ planId }: { planId: string }) {
                     </RadioGroup>
                   </div>
 
-                  <Separator /> */}
+                  <Separator />
 
                   {/* Checkout Button */}
-                  {/* <Button
+                  <Button
                     className="w-full h-12 font-medium"
                     onClick={() =>
                       handleCheckout(
@@ -636,9 +634,9 @@ export default function Cart({ planId }: { planId: string }) {
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </>
                     )}
-                  </Button> */}
+                  </Button>
 
-                  <div className="border p-2 rounded-md">
+                  <div className="border p-2 rounded-md hidden">
                     <p className="text-muted-foreground">
                       Please contact us on WhatsApp to complete your purchase.
                     </p>
@@ -646,7 +644,7 @@ export default function Cart({ planId }: { planId: string }) {
 
                   <WhatsAppButton
                     phoneNumber="+8801817710493"
-                    className="w-full h-12"
+                    className="w-full h-12 hidden"
                     label="Contact in whatsapp"
                     message={`Assalamu-Alaikum GenMeta Team! 
 I would like to purchase the following plan:
