@@ -140,10 +140,4 @@ dist
 # SvelteKit build / generate output
 .svelte-kit
 
-# Deployment artifacts
-deploy/
-deploy.tar.gz
-backups/
-*.pem
-
 # End of https://www.toptal.com/developers/gitignore/api/node
