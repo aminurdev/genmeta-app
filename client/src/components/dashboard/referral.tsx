@@ -56,7 +56,7 @@ export function ReferralDashboard() {
   } = useReferralDetailsQuery();
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [mobileNumber, setMobileNumber] = useState(
-    referralResponse?.data?.withdrawAccount || ""
+    referralResponse?.data?.withdrawAccount || "",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -129,7 +129,7 @@ export function ReferralDashboard() {
       status: "Active", // All users in earnedHistory are active
       joinDate: new Date(earning.createdAt).toISOString().split("T")[0],
       earnings: earning.amount,
-    })
+    }),
   );
 
   // Transform withdrawHistory to match UI format
@@ -141,15 +141,15 @@ export function ReferralDashboard() {
         withdrawal.status === "completed"
           ? ("Complete" as const)
           : withdrawal.status === "pending"
-          ? ("Pending" as const)
-          : ("Rejected" as const),
+            ? ("Pending" as const)
+            : ("Rejected" as const),
       requestDate: new Date(withdrawal.createdAt).toISOString().split("T")[0],
       completedDate: withdrawal.issuedAt
         ? new Date(withdrawal.issuedAt).toISOString().split("T")[0]
         : null,
       trx: withdrawal.trx,
       account: withdrawal.withdrawAccount,
-    })
+    }),
   );
 
   const earnings = {
@@ -200,6 +200,24 @@ export function ReferralDashboard() {
 
   return (
     <div className="p-4 space-y-6">
+      <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <AlertCircle className="h-6 w-6 text-orange-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-orange-800">
+              Referral Program Temporarily Unavailable
+            </h3>
+            <p className="text-sm text-orange-700">
+              For technical reasons, the referral program is currently off. We
+              apologize for the inconvenience and are working to restore it
+              soon.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
@@ -527,15 +545,15 @@ export function ReferralDashboard() {
                                 withdrawal.status === "Complete"
                                   ? "default"
                                   : withdrawal.status === "Pending"
-                                  ? "secondary"
-                                  : "destructive"
+                                    ? "secondary"
+                                    : "destructive"
                               }
                               className={`text-xs ${
                                 withdrawal.status === "Complete"
                                   ? "bg-green-100 text-green-800 hover:bg-green-100"
                                   : withdrawal.status === "Pending"
-                                  ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                  : "bg-red-100 text-red-800 hover:bg-red-100"
+                                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                    : "bg-red-100 text-red-800 hover:bg-red-100"
                               }`}
                             >
                               {withdrawal.status}
@@ -543,13 +561,13 @@ export function ReferralDashboard() {
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(
-                              withdrawal.requestDate
+                              withdrawal.requestDate,
                             ).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {withdrawal.completedDate
                               ? new Date(
-                                  withdrawal.completedDate
+                                  withdrawal.completedDate,
                                 ).toLocaleDateString()
                               : "-"}
                           </TableCell>
