@@ -162,8 +162,22 @@ const PricingContent = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Referral Notice */}
+      <div className="container mx-auto px-4 pt-20">
+        <div className="mx-auto max-w-4xl">
+          <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            <AlertDescription className="text-amber-800 dark:text-amber-400">
+              Please note: Our referral program is temporarily unavailable due
+              to technical maintenance. We appreciate your patience and will
+              notify you once it's back online.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+
       {/* Hero Section */}
-      <div className="relative overflow-hidden pt-20 pb-16 md:pt-28 md:pb-24">
+      <div className="relative overflow-hidden pt-12 pb-16 md:pt-16 md:pb-24">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background -z-10" />
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-center space-y-6 text-center max-w-4xl mx-auto">
