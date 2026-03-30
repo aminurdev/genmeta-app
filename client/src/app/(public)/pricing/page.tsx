@@ -170,7 +170,7 @@ const PricingContent = () => {
             <AlertDescription className="text-amber-800 dark:text-amber-400">
               Please note: Our referral program is temporarily unavailable due
               to technical maintenance. We appreciate your patience and will
-              notify you once it's back online.
+              notify you once it&apos;s back online.
             </AlertDescription>
           </Alert>
         </div>
