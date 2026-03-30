@@ -1,27 +1,20 @@
 module.exports = {
   apps: [
     {
-      name: "express-app",
-      script: "./server/src/index.js",
-      instances: 2, // 🔥 fully use CPU
+      name: "genmeta-app",
+      script: "./server/src/index.js", // TypeScript compiled output
+      instances: "max",
       exec_mode: "cluster",
-      max_memory_restart: "400M", // 🔥 keep tight
-      env: {
-        PORT: 5000,
-      },
-    },
-
-    {
-      name: "nextjs-app",
-      script: "npm",
-      args: "start",
-      cwd: "./client",
-      instances: 1, // 🔥 IMPORTANT: don't run 2
-      exec_mode: "fork",
-      max_memory_restart: "1000M",
-      env: {
-        PORT: 3000,
-      },
+      watch: false,
+      max_memory_restart: "500M",
+      error_file: "./logs/err.log",
+      out_file: "./logs/out.log",
+      log_file: "./logs/combined.log",
+      time: true,
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: "10s",
     },
   ],
 };
