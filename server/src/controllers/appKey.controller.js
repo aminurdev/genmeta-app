@@ -60,7 +60,7 @@ const createAppKey = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   if (planType === "free") {
-    credit = 10;
+    credit = 5;
   } else if (planType === "credit") {
     // For credit plan, use provided initial credit or default to 100
     credit = initialCredit ? parseInt(initialCredit) : 100;
@@ -145,7 +145,7 @@ const updateAppKey = asyncHandler(async (req, res) => {
     // Handle plan-specific logic
     if (newPlan.type === "free") {
       appKey.expiresAt = undefined;
-      appKey.credit = 10;
+      appKey.credit = 5;
       appKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
     } else if (
       newPlan.type === "subscription" &&
@@ -367,6 +367,31 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
 const validateAppKey = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
   const deviceId = req.header("x-device-id");
+  const version = req.header("x-app-version");
+
+  if (!version) {
+    throw new ApiError(
+      426,
+      "Please update your app. A new version is available."
+    );
+  }
+
+  // Compare versions
+  const currentVersion = version.split(".").map(Number);
+  const minVersion = [6, 3, 3].map(Number);
+
+  const isVersionLower =
+    currentVersion.reduce((lower, part, i) => {
+      if (lower !== null) return lower;
+      return part < minVersion[i] ? true : part > minVersion[i] ? false : null;
+    }, null) ?? false;
+
+  if (isVersionLower) {
+    throw new ApiError(
+      426,
+      "Please update your app. A new version is available."
+    );
+  }
   const { processCount } = req.body;
 
   if (!key) {
@@ -405,7 +430,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
     if (appKey.allowedDevices.length >= 2) {
       throw new ApiError(
         403,
-        "This account is already used on allowed devices."
+        "This account is already used on two devices. No more devices allowed."
       );
     }
 
@@ -415,7 +440,7 @@ const validateAppKey = asyncHandler(async (req, res) => {
 
   // Check if can process the request
   if (!appKey.canProcess(count)) {
-    const limit = appKey.plan.type === "free" ? 10 : appKey.credit;
+    const limit = appKey.plan.type === "free" ? 5 : appKey.credit;
 
     throw new ApiError(
       429,
@@ -484,24 +509,6 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
     appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
 
   const remainingCredit = appKey.calculateCredit();
-  console.log({
-    plan: appKey.plan,
-    username: appKey.username,
-    status: appKey.status,
-    isValid,
-    expiresAt:
-      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
-        ? appKey.expiresAt
-        : null,
-    expiresIn,
-    credit: remainingCredit,
-    totalProcess: appKey.totalProcess,
-    aiApiKey,
-    user: {
-      name: appKey.userId?.name,
-      email: appKey.userId?.email,
-    },
-  });
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     plan: appKey.plan,

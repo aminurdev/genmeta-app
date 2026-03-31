@@ -7,6 +7,8 @@ const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
   mongodb_uri: process.env.MONGODB_URI + "/" + process.env.DB_NAME,
+  mongodb_backup_uri: process.env.MONGODB_BACKUP_URI,
+  backup_db_name: process.env.BACKUP_DB_NAME || process.env.DB_NAME + "_backup",
   encoderKey: process.env.GEMINI_ENCODER_KEY,
 
   cors_origin: process.env.CORS_ORIGIN,

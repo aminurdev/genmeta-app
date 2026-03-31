@@ -21,6 +21,7 @@ import {
   Clock,
   Phone,
   Mail,
+  Database,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -122,6 +123,11 @@ const adminSidebarData = [
         title: "Scheduler",
         url: "/admin/scheduler",
         icon: Clock,
+      },
+      {
+        title: "Backup",
+        url: "/admin/backup",
+        icon: Database,
       },
     ],
   },

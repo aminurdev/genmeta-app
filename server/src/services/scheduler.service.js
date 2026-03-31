@@ -1,35 +1,48 @@
 import cron from "node-cron";
 import { CronExpressionParser } from "cron-parser";
 import { AppKey } from "../models/appKey.model.js";
+import backupService from "./backup.service.js";
 
 /**
- * Scheduler Service for Automatic Daily Maintenance
+ * Scheduler Service for Automatic Daily Maintenance and Backups
  * Runs daily at 12:00 AM (midnight) to:
  * 1. Refresh free plan credits
  * 2. Downgrade expired subscriptions
  * 3. Downgrade zero credit plans
+ * 
+ * Runs weekly backup every Friday at 12:00 PM (noon)
  */
 class SchedulerService {
   constructor() {
     this.isRunning = false;
     this.lastRun = null;
     this.cronExpression = "0 0 * * *"; // Daily at midnight UTC
+    this.backupCronExpression = "0 12 * * 5"; // Every Friday at 12:00 PM UTC
     this.dailyMaintenanceJob = null;
+    this.weeklyBackupJob = null;
     this.stats = {
       totalRuns: 0,
       successfulRuns: 0,
       failedRuns: 0,
       lastResult: null,
     };
+    this.backupStats = {
+      totalBackups: 0,
+      successfulBackups: 0,
+      failedBackups: 0,
+      lastBackup: null,
+      lastBackupResult: null,
+    };
   }
 
   /**
-   * Start the daily maintenance scheduler
-   * Runs every day at 12:00 AM (00:00)
+   * Start the daily maintenance scheduler and weekly backup scheduler
+   * Daily maintenance runs every day at 12:00 AM (00:00)
+   * Weekly backup runs every Friday at 12:00 PM (noon)
    */
   start() {
     if (this.isRunning) {
-      console.log("Scheduler is already running");
+      console.log("⚠ Scheduler already running");
       return;
     }
 
@@ -45,6 +58,18 @@ class SchedulerService {
       }
     );
 
+    // Schedule weekly backup every Friday at 12:00 PM
+    this.weeklyBackupJob = cron.schedule(
+      this.backupCronExpression,
+      async () => {
+        await this.runWeeklyBackup();
+      },
+      {
+        scheduled: true,
+        timezone: "UTC",
+      }
+    );
+
     this.isRunning = true;
 
     // Optional: Run maintenance immediately on startup if it hasn't run today
@@ -57,9 +82,14 @@ class SchedulerService {
   stop() {
     if (this.dailyMaintenanceJob) {
       this.dailyMaintenanceJob.stop();
-      this.isRunning = false;
-      console.log("Daily maintenance scheduler stopped");
     }
+
+    if (this.weeklyBackupJob) {
+      this.weeklyBackupJob.stop();
+    }
+
+    this.isRunning = false;
+    console.log("✓ Scheduler stopped");
   }
 
   /**
@@ -67,7 +97,7 @@ class SchedulerService {
    */
   async runDailyMaintenance() {
     const startTime = new Date();
-    console.log(`Starting daily maintenance at ${startTime.toISOString()}`);
+    console.log(`→ Daily maintenance started`);
 
     try {
       this.stats.totalRuns++;
@@ -77,9 +107,10 @@ class SchedulerService {
 
       if (result.success) {
         this.stats.successfulRuns++;
+        console.log(`✓ Daily maintenance completed`);
       } else {
         this.stats.failedRuns++;
-        console.error("Daily maintenance failed:", result);
+        console.error("✗ Daily maintenance failed:", result);
       }
 
       this.lastRun = startTime;
@@ -95,7 +126,47 @@ class SchedulerService {
       };
 
       this.stats.lastResult = errorResult;
-      console.error("Daily maintenance error:", error);
+      console.error("✗ Daily maintenance error:", error.message);
+
+      return errorResult;
+    }
+  }
+
+  /**
+   * Run weekly backup (every Friday at 12:00 PM)
+   */
+  async runWeeklyBackup() {
+    const startTime = new Date();
+    console.log(`→ Weekly backup started`);
+
+    try {
+      this.backupStats.totalBackups++;
+
+      // Execute the backup
+      const result = await backupService.performBackup();
+
+      if (result.success) {
+        this.backupStats.successfulBackups++;
+        console.log(`✓ Weekly backup completed`);
+      } else {
+        this.backupStats.failedBackups++;
+        console.error("✗ Weekly backup failed:", result);
+      }
+
+      this.backupStats.lastBackup = startTime;
+      this.backupStats.lastBackupResult = result;
+
+      return result;
+    } catch (error) {
+      this.backupStats.failedBackups++;
+      const errorResult = {
+        success: false,
+        error: error.message,
+        timestamp: startTime.toISOString(),
+      };
+
+      this.backupStats.lastBackupResult = errorResult;
+      console.error("✗ Weekly backup error:", error.message);
 
       return errorResult;
     }
@@ -120,6 +191,7 @@ class SchedulerService {
    */
   getStatus() {
     let nextRun = null;
+    let nextBackup = null;
 
     if (this.isRunning && this.cronExpression) {
       try {
@@ -132,13 +204,32 @@ class SchedulerService {
       }
     }
 
+    if (this.isRunning && this.backupCronExpression) {
+      try {
+        const backupInterval = CronExpressionParser.parse(this.backupCronExpression, {
+          tz: "UTC",
+        });
+        nextBackup = backupInterval.next().toISOString();
+      } catch (error) {
+        console.error("Error calculating next backup time:", error);
+      }
+    }
+
     return {
       isRunning: this.isRunning,
-      lastRun: this.lastRun,
-      nextRun: nextRun,
-      cronExpression: this.cronExpression || "0 0 * * *",
+      maintenance: {
+        lastRun: this.lastRun,
+        nextRun: nextRun,
+        cronExpression: this.cronExpression || "0 0 * * *",
+        stats: this.stats,
+      },
+      backup: {
+        lastBackup: this.backupStats.lastBackup,
+        nextBackup: nextBackup,
+        cronExpression: this.backupCronExpression || "0 12 * * 5",
+        stats: this.backupStats,
+      },
       timezone: "UTC",
-      stats: this.stats,
     };
   }
 
@@ -161,9 +252,7 @@ class SchedulerService {
       }
     );
 
-    console.log(
-      `One-time maintenance scheduled for ${scheduledTime.toISOString()}`
-    );
+    console.log(`✓ One-time maintenance scheduled for ${scheduledTime.toISOString()}`);
     return oneTimeJob;
   }
 }
