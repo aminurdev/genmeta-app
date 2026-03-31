@@ -94,10 +94,8 @@ export const getPaymentsHistory = async ({
   ApiResponse<PaymentResponse> | ApiErrorResponse
 > => {
   const result = await api.get(
-    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${
-      search ?? ""
-    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${
-      status ?? ""
+    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${search ?? ""
+    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${status ?? ""
     }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`
   );
   return result.data;
@@ -325,14 +323,29 @@ export const deletePromoCode = async (
 // Scheduler Management
 export interface SchedulerStatus {
   isRunning: boolean;
-  lastRun: string | null;
-  stats: {
-    totalRuns: number;
-    successfulRuns: number;
-    failedRuns: number;
-    lastResult: any;
+  maintenance: {
+    lastRun: string | null;
+    nextRun: string | null;
+    cronExpression: string;
+    stats: {
+      totalRuns: number;
+      successfulRuns: number;
+      failedRuns: number;
+      lastResult: any;
+    };
   };
-  nextRun: string | null;
+  backup: {
+    lastBackup: string | null;
+    nextBackup: string | null;
+    cronExpression: string;
+    stats: {
+      totalBackups: number;
+      successfulBackups: number;
+      failedBackups: number;
+      lastBackupResult: any;
+    };
+  };
+  timezone: string;
 }
 
 export interface MaintenanceStats {
