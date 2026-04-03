@@ -3,7 +3,7 @@ export const premiumFeatures = [
   "Advanced export options",
   "Unlimited results generation",
   "Gemini API key required (at least 5+ keys from different accounts)",
-  "3,000 images or 600 videos per day",
+  "1500+ images or 250+ videos per day",
 ];
 
 export const creditFeatures = [
