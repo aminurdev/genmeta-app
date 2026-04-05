@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
 
-const resend = new Resend(config.resend_api_key);
+const resend = new Resend(config.resend_api_key || "");
 
 const emailHeader = `
   <div style="font-family: Arial, sans-serif; background-color: #ffffff; padding: 20px; text-align: center;">
