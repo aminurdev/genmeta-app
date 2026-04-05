@@ -43,6 +43,4 @@ const config = {
   },
 };
 
-console.log("path: " + path.resolve(process.cwd(), ".env"));
-console.log(config);
 export default config;
