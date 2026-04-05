@@ -39,4 +39,6 @@ const config = {
     callback_url: process.env.BKASH_CALLBACK_URL,
   },
 };
+
+console.log(config);
 export default config;
