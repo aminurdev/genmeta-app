@@ -33,6 +33,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import schedulerRoutes from "./routes/scheduler.routes.js";
 import referralRoutes from "./routes/refer.route.js";
 import backupRoutes from "./routes/backup.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 
 app.use("/api/v1/users/dashboard", dashboardRoutes);
 app.use("/api/v1/admin", adminRoutes);
@@ -46,6 +47,7 @@ app.use("/api/v1/backup", backupRoutes);
 app.use("/api/v1/pricing", pricingRoutes);
 app.use("/api/v1/promo-codes", promoCodeRoutes);
 app.use("/api/v1/referral", referralRoutes);
+app.use("/api/v1/orders", orderRoutes);
 
 app.use("/api/v1/users", userRoutes);
 
