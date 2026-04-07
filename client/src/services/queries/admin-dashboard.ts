@@ -66,10 +66,14 @@ export function useDownloadPaymentHistoryQuery(
   });
 }
 
-export function useAllReferralQuery() {
+export function useAllReferralQuery(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
   return useQuery({
-    queryKey: QUERY_KEYS.allReferral,
-    queryFn: getAllReferral,
+    queryKey: QUERY_KEYS.allReferral(params),
+    queryFn: () => getAllReferral(params),
   });
 }
 
