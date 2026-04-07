@@ -41,6 +41,7 @@ import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
 import { WhatsAppButton } from "./WhatsAppButton";
 import { creditFeatures, premiumFeatures } from "../pricing/features";
+import { createWhatsAppOrder } from "@/services/orders";
 
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -659,6 +660,35 @@ ${plan.type === "credit" ? `• Credits: ${plan.credit?.toLocaleString()}` : ""}
 *Total Amount: ৳${finalPrice.toFixed(2)}*
 
 Please guide me through the payment process. Thank you!`}
+                    onBeforeRedirect={async () => {
+                      try {
+                        const user = await getCurrentUser();
+                        if (!user) {
+                          toast.error("Please login to create an order");
+                          router.push("/login?redirectPath=cart");
+                          return;
+                        }
+
+                        const orderData = {
+                          planId: plan._id,
+                          amount: finalPrice,
+                          promoCode: validPromo?.promoCode.code,
+                        };
+
+                        const result = await createWhatsAppOrder(orderData);
+
+                        if (result.success) {
+                          toast.success("Order created successfully!");
+                        } else {
+                          toast.error(
+                            result.message || "Failed to create order",
+                          );
+                        }
+                      } catch (error) {
+                        console.error("Error creating order:", error);
+                        toast.error("Failed to create order");
+                      }
+                    }}
                   />
                 </CardContent>
               </Card>

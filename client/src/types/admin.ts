@@ -175,6 +175,14 @@ export interface ReferralRes {
   pendingWithdrawals: number;
 }
 
+export interface AllReferralsResponse {
+  referrals: ReferralRes[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface Referrer {
   _id: string;
   name: string;

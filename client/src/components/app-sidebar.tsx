@@ -22,6 +22,7 @@ import {
   Phone,
   Mail,
   Database,
+  ShoppingCart,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -108,6 +109,11 @@ const adminSidebarData = [
         title: "Referral",
         url: "/admin/referral",
         icon: Users, // Referral: using Users icon
+      },
+      {
+        title: "Orders",
+        url: "/admin/orders",
+        icon: ShoppingCart,
       },
       {
         title: "Payments",

@@ -12,6 +12,10 @@ const orderSchema = new mongoose.Schema(
       ref: "AppPricing",
       required: [true, "Plan is required"],
     },
+    amount: {
+      type: Number,
+      required: [true, "Amount is required"],
+    },
     // Store minimal plan snapshot for historical reference
     planSnapshot: {
       name: { type: String, required: true },

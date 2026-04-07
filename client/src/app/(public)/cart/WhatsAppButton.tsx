@@ -48,12 +48,22 @@ export function WhatsAppButton({
   variant = "default",
   size = "default",
   className = "",
-}: WhatsAppButtonProps) {
+  onBeforeRedirect,
+}: WhatsAppButtonProps & {
+  onBeforeRedirect?: () => Promise<void>;
+}) {
+  const handleClick = async () => {
+    if (onBeforeRedirect) {
+      await onBeforeRedirect();
+    }
+    redirectToWhatsApp(phoneNumber, message);
+  };
+
   return (
     <Button
       variant={variant}
       size={size}
-      onClick={() => redirectToWhatsApp(phoneNumber, message)}
+      onClick={handleClick}
       className={`gap-2 font-semibold tracking-wide transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 ${className}`}
     >
       <svg

@@ -1,5 +1,6 @@
 import { AppKey } from "../models/appKey.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
+import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -13,7 +14,7 @@ export const getOverview = asyncHandler(async (req, res) => {
   const currentMonthKey = dayjs(now).format("YYYY-MM");
 
   // Parallel queries - optimized
-  const [appKey, user, paymentStats] = await Promise.all([
+  const [appKey, user, paymentStats, orders] = await Promise.all([
     AppKey.findOne({ userId }).select(
       "plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt"
     ),
@@ -30,22 +31,29 @@ export const getOverview = asyncHandler(async (req, res) => {
               },
             },
           ],
-          last5: [
+          recent: [
             { $sort: { createdAt: -1 } },
-            { $limit: 5 },
+            { $limit: 10 },
             {
               $project: {
                 _id: 1,
                 trxID: 1,
                 plan: 1,
                 amount: 1,
+                status: 1,
                 createdAt: 1,
+                source: { $literal: "payment" },
               },
             },
           ],
         },
       },
     ]),
+    Order.find({ userId, status: "completed" })
+      .select("planSnapshot amount status createdAt")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
   ]);
 
   if (!user) {
@@ -53,8 +61,32 @@ export const getOverview = asyncHandler(async (req, res) => {
   }
 
   // Extract payment stats
-  const totalSpent = paymentStats[0]?.totalSpent[0]?.total || 0;
-  const last5Payments = paymentStats[0]?.last5 || [];
+  const totalSpentFromPayments = paymentStats[0]?.totalSpent[0]?.total || 0;
+  const recentPayments = paymentStats[0]?.recent || [];
+
+  // Transform orders to match payment structure
+  const recentOrders = orders.map((order) => ({
+    _id: order._id,
+    trxID: order._id.toString().slice(-10), // Last 10 chars of order _id
+    plan: {
+      name: order.planSnapshot?.name || "Unknown",
+      type: order.planSnapshot?.type || "N/A",
+    },
+    amount: order.amount,
+    status: order.status,
+    createdAt: order.createdAt,
+    source: "order",
+  }));
+
+  // Combine and sort by createdAt, take last 5
+  const combinedHistory = [...recentPayments, ...recentOrders]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+
+  // Calculate total spent from completed orders
+  const totalSpentFromOrders = orders.reduce((sum, order) => sum + order.amount, 0);
+
+  const totalSpent = totalSpentFromPayments + totalSpentFromOrders;
 
   // Monthly and daily processing maps
   const monthlyProcess = appKey?.monthlyProcess || new Map();
@@ -108,7 +140,7 @@ export const getOverview = asyncHandler(async (req, res) => {
     },
     payments: {
       totalSpent,
-      last5Payments,
+      last5Payments: combinedHistory,
     },
   };
 
@@ -177,17 +209,17 @@ export const getProfile = asyncHandler(async (req, res) => {
     role: user.role,
     appKey: appKey
       ? {
-          plan: {
-            ...appKey.plan,
-            name: appKey.planName,
-          },
-          totalProcess: appKey.totalProcess,
-          credit:
-            appKey.plan?.type === "subscription" ? Infinity : appKey.credit,
-          isActive: appKey.isActive,
-          status: appKey.status,
-          expiresAt: appKey.expiresAt,
-        }
+        plan: {
+          ...appKey.plan,
+          name: appKey.planName,
+        },
+        totalProcess: appKey.totalProcess,
+        credit:
+          appKey.plan?.type === "subscription" ? Infinity : appKey.credit,
+        isActive: appKey.isActive,
+        status: appKey.status,
+        expiresAt: appKey.expiresAt,
+      }
       : null,
   };
 
