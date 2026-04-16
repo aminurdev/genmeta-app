@@ -68,9 +68,6 @@ export type AdminDashboardStats = {
     lastMonthCount: number;
     lastMonthAmount: number;
     amountGrowthPercentage: number | null;
-    completedCount: number;
-    pendingCount: number;
-    cancelledCount: number;
     monthlyOrderAmountList: Record<string, number>;
     recent: Array<{
       _id: string;
