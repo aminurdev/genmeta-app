@@ -14,7 +14,7 @@ export const getOverview = asyncHandler(async (req, res) => {
   const currentMonthKey = dayjs(now).format("YYYY-MM");
 
   // Parallel queries - optimized
-  const [appKey, user, paymentStats, orders] = await Promise.all([
+  const [appKey, user, paymentStats, orderStats] = await Promise.all([
     AppKey.findOne({ userId }).select(
       "plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt"
     ),
@@ -49,11 +49,34 @@ export const getOverview = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    Order.find({ userId, status: "completed" })
-      .select("planSnapshot amount status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
+    Order.aggregate([
+      { $match: { userId, status: "completed" } },
+      {
+        $facet: {
+          totalSpent: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: "$amount" },
+              },
+            },
+          ],
+          recent: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 10 },
+            {
+              $project: {
+                _id: 1,
+                planSnapshot: 1,
+                amount: 1,
+                status: 1,
+                createdAt: 1,
+              },
+            },
+          ],
+        },
+      },
+    ]),
   ]);
 
   if (!user) {
@@ -64,8 +87,12 @@ export const getOverview = asyncHandler(async (req, res) => {
   const totalSpentFromPayments = paymentStats[0]?.totalSpent[0]?.total || 0;
   const recentPayments = paymentStats[0]?.recent || [];
 
+  // Extract order stats
+  const totalSpentFromOrders = orderStats[0]?.totalSpent[0]?.total || 0;
+  const recentOrderDocs = orderStats[0]?.recent || [];
+
   // Transform orders to match payment structure
-  const recentOrders = orders.map((order) => ({
+  const recentOrders = recentOrderDocs.map((order) => ({
     _id: order._id,
     trxID: order._id.toString().slice(-10), // Last 10 chars of order _id
     plan: {
@@ -82,9 +109,6 @@ export const getOverview = asyncHandler(async (req, res) => {
   const combinedHistory = [...recentPayments, ...recentOrders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
-
-  // Calculate total spent from completed orders
-  const totalSpentFromOrders = orders.reduce((sum, order) => sum + order.amount, 0);
 
   const totalSpent = totalSpentFromPayments + totalSpentFromOrders;
 
