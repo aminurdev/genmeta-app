@@ -357,8 +357,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         },
       ]),
 
-      // 5. ORDER AGGREGATION
+      // 5. ORDER AGGREGATION (completed orders only)
       Order.aggregate([
+        { $match: { status: "completed" } },
         {
           $facet: {
             summary: [
@@ -407,21 +408,6 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
                         "$amount",
                         0,
                       ],
-                    },
-                  },
-                  completedCount: {
-                    $sum: {
-                      $cond: [{ $eq: ["$status", "completed"] }, 1, 0],
-                    },
-                  },
-                  pendingCount: {
-                    $sum: {
-                      $cond: [{ $eq: ["$status", "pending"] }, 1, 0],
-                    },
-                  },
-                  cancelledCount: {
-                    $sum: {
-                      $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0],
                     },
                   },
                 },
@@ -541,9 +527,6 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     currentMonthAmount: 0,
     lastMonthCount: 0,
     lastMonthAmount: 0,
-    completedCount: 0,
-    pendingCount: 0,
-    cancelledCount: 0,
   };
 
   const orderAmountGrowth =
@@ -594,9 +577,6 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         lastMonthCount: orderCounts.lastMonthCount,
         lastMonthAmount: orderCounts.lastMonthAmount,
         amountGrowthPercentage: orderAmountGrowth,
-        completedCount: orderCounts.completedCount,
-        pendingCount: orderCounts.pendingCount,
-        cancelledCount: orderCounts.cancelledCount,
         monthlyOrderAmountList,
         recent: orderStats[0].recent || [],
       },

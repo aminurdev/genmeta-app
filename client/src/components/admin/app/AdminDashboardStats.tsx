@@ -355,7 +355,7 @@ export default function DashboardStats() {
         <Card>
           <CardHeader>
             <CardTitle>Order Amount Overview</CardTitle>
-            <CardDescription>Monthly order value trends</CardDescription>
+            <CardDescription>Monthly completed order value trends</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <AreaChart
@@ -368,69 +368,28 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* Order Status Breakdown */}
+        {/* Order Month Comparison */}
         <Card>
           <CardHeader>
-            <CardTitle>Order Status Breakdown</CardTitle>
-            <CardDescription>Distribution of order statuses</CardDescription>
+            <CardTitle>Completed Orders Summary</CardTitle>
+            <CardDescription>Month-over-month comparison</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-green-500" />
-                  <span className="text-sm">Completed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{stats.orders.completedCount}</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({stats.orders.total > 0
-                      ? ((stats.orders.completedCount / stats.orders.total) * 100).toFixed(1)
-                      : 0}%)
-                  </span>
-                </div>
+              <div className="border-b pb-4">
+                <p className="text-sm text-muted-foreground mb-1">This Month</p>
+                <p className="text-2xl font-bold">{stats.orders.currentMonthCount} orders</p>
+                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.currentMonthAmount)}</p>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-yellow-500" />
-                  <span className="text-sm">Pending</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{stats.orders.pendingCount}</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({stats.orders.total > 0
-                      ? ((stats.orders.pendingCount / stats.orders.total) * 100).toFixed(1)
-                      : 0}%)
-                  </span>
-                </div>
+              <div className="border-b pb-4">
+                <p className="text-sm text-muted-foreground mb-1">Last Month</p>
+                <p className="text-2xl font-bold">{stats.orders.lastMonthCount} orders</p>
+                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.lastMonthAmount)}</p>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-red-500" />
-                  <span className="text-sm">Cancelled</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{stats.orders.cancelledCount}</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({stats.orders.total > 0
-                      ? ((stats.orders.cancelledCount / stats.orders.total) * 100).toFixed(1)
-                      : 0}%)
-                  </span>
-                </div>
-              </div>
-              <div className="border-t pt-4 mt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">This Month</span>
-                  <span className="text-sm font-medium">
-                    {stats.orders.currentMonthCount} orders · {formatCurrency(stats.orders.currentMonthAmount)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm text-muted-foreground">Last Month</span>
-                  <span className="text-sm text-muted-foreground">
-                    {stats.orders.lastMonthCount} orders · {formatCurrency(stats.orders.lastMonthAmount)}
-                  </span>
-                </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">All Time</p>
+                <p className="text-2xl font-bold">{stats.orders.total} orders</p>
+                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.totalAmount)}</p>
               </div>
             </div>
           </CardContent>
