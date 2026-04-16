@@ -62,25 +62,27 @@ export type AdminDashboardStats = {
   }>;
   orders: {
     total: number;
-    completed: number;
-    pending: number;
-    cancelled: number;
-    totalRevenue: number;
-    currentMonthRevenue: number;
+    totalAmount: number;
     currentMonthCount: number;
-    monthlyOrdersList: Record<string, number>;
-    monthlyOrderRevenue: Record<string, number>;
+    currentMonthAmount: number;
+    lastMonthCount: number;
+    lastMonthAmount: number;
+    amountGrowthPercentage: number | null;
+    completedCount: number;
+    pendingCount: number;
+    cancelledCount: number;
+    monthlyOrderAmountList: Record<string, number>;
     recent: Array<{
       _id: string;
       amount: number;
-      status: "completed" | "pending" | "cancelled";
+      status: "pending" | "completed" | "cancelled";
       createdAt: string;
-      promoCodeUsed?: string;
-      referralCode?: string;
       planSnapshot: {
         name: string;
         type: "subscription" | "credit";
       };
+      promoCodeUsed?: string;
+      referralCode?: string;
       user: {
         _id: string;
         name: string;
