@@ -203,7 +203,7 @@ export function ReferralDashboard() {
       <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <AlertCircle className="h-6 w-6 text-orange-600" />
+            <AlertCircle className="h-6 w-6 text-orange-700" />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-orange-800">

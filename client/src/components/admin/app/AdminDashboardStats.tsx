@@ -54,7 +54,7 @@ export default function DashboardStats() {
     const [year, month] = monthYear.split("-");
     return format(
       new Date(Number.parseInt(year), Number.parseInt(month) - 1),
-      "MMM yyyy"
+      "MMM yyyy",
     );
   };
 
@@ -110,14 +110,14 @@ export default function DashboardStats() {
     ([month, value]) => ({
       label: formatMonthYear(month),
       value,
-    })
+    }),
   );
 
   const processData = Object.entries(stats.appKeys.monthlyProcessList).map(
     ([month, value]) => ({
       label: formatMonthYear(month),
       value,
-    })
+    }),
   );
 
   return (
@@ -167,13 +167,13 @@ export default function DashboardStats() {
                   stats.revenue.growthPercentage > 0
                     ? "text-xs text-green-500"
                     : stats.revenue.growthPercentage < 0
-                    ? "text-xs text-red-500"
-                    : "text-xs text-muted-foreground"
+                      ? "text-xs text-red-500"
+                      : "text-xs text-muted-foreground"
                 }
               >
                 {stats.revenue.growthPercentage !== 0
                   ? `${Math.abs(stats.revenue.growthPercentage).toFixed(
-                      2
+                      2,
                     )}% from last month`
                   : "No change from last month"}
               </span>
@@ -295,6 +295,70 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Payments */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Payments</CardTitle>
+          <CardDescription>Latest payment transactions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats.payments.recent.map((payment, index) => (
+                <TableRow
+                  key={`${payment.userId?._id}-${payment.createdAt}-${index}`}
+                >
+                  <TableCell>
+                    <div className="flex gap-4">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage
+                          src={`https://avatar.vercel.sh/${payment.userId?.email}`}
+                          alt={payment.userId?.name}
+                        />
+                        <AvatarFallback>
+                          {getInitials(payment.userId?.name ?? "")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {payment.userId?.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {payment.userId?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {formatCurrency(payment.amount)}
+                  </TableCell>
+                  <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                  <TableCell>{formatTime(payment.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+              {stats.payments.recent.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-6 text-muted-foreground"
+                  >
+                    No recent payments
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <Card>
@@ -468,70 +532,6 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Payments */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Payments</CardTitle>
-          <CardDescription>Latest payment transactions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stats.payments.recent.map((payment, index) => (
-                <TableRow
-                  key={`${payment.userId?._id}-${payment.createdAt}-${index}`}
-                >
-                  <TableCell>
-                    <div className="flex gap-4">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage
-                          src={`https://avatar.vercel.sh/${payment.userId?.email}`}
-                          alt={payment.userId?.name}
-                        />
-                        <AvatarFallback>
-                          {getInitials(payment.userId?.name ?? "")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {payment.userId?.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {payment.userId?.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(payment.amount)}
-                  </TableCell>
-                  <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                  <TableCell>{formatTime(payment.createdAt)}</TableCell>
-                </TableRow>
-              ))}
-              {stats.payments.recent.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center py-6 text-muted-foreground"
-                  >
-                    No recent payments
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

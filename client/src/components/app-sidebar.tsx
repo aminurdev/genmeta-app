@@ -21,6 +21,8 @@ import {
   Clock,
   Phone,
   Mail,
+  Database,
+  ShoppingCart,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -109,6 +111,11 @@ const adminSidebarData = [
         icon: Users, // Referral: using Users icon
       },
       {
+        title: "Orders",
+        url: "/admin/orders",
+        icon: ShoppingCart,
+      },
+      {
         title: "Payments",
         url: "/admin/payments",
         icon: CreditCard,
@@ -122,6 +129,11 @@ const adminSidebarData = [
         title: "Scheduler",
         url: "/admin/scheduler",
         icon: Clock,
+      },
+      {
+        title: "Backup",
+        url: "/admin/backup",
+        icon: Database,
       },
     ],
   },

@@ -97,7 +97,9 @@ export function SchedulerDashboard() {
       }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : `Failed to ${action} scheduler`
+        error instanceof Error
+          ? error.message
+          : `Failed to ${action} scheduler`,
       );
     } finally {
       setActionLoading(null);
@@ -117,7 +119,9 @@ export function SchedulerDashboard() {
       }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to trigger maintenance"
+        error instanceof Error
+          ? error.message
+          : "Failed to trigger maintenance",
       );
     } finally {
       setActionLoading(null);
@@ -193,11 +197,11 @@ export function SchedulerDashboard() {
               {schedulerStatus && getStatusBadge(schedulerStatus.isRunning)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {schedulerStatus?.nextRun
+              {schedulerStatus?.maintenance?.nextRun
                 ? `Next run: ${format(
-                  new Date(schedulerStatus.nextRun),
-                  "PPp"
-                )}`
+                    new Date(schedulerStatus.maintenance.nextRun),
+                    "PPp",
+                  )}`
                 : "No scheduled runs"}
             </p>
           </CardContent>
@@ -210,11 +214,12 @@ export function SchedulerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {schedulerStatus?.stats.totalRuns || 0}
+              {schedulerStatus?.maintenance?.stats.totalRuns || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {schedulerStatus?.stats.successfulRuns || 0} successful,{" "}
-              {schedulerStatus?.stats.failedRuns || 0} failed
+              {schedulerStatus?.maintenance?.stats.successfulRuns || 0}{" "}
+              successful, {schedulerStatus?.maintenance?.stats.failedRuns || 0}{" "}
+              failed
             </p>
           </CardContent>
         </Card>
@@ -226,12 +231,12 @@ export function SchedulerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-sm font-medium">
-              {schedulerStatus?.lastRun
-                ? format(new Date(schedulerStatus.lastRun), "PPp")
+              {schedulerStatus?.maintenance?.lastRun
+                ? format(new Date(schedulerStatus.maintenance.lastRun), "PPp")
                 : "Never"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {schedulerStatus?.stats.lastResult?.success
+              {schedulerStatus?.maintenance?.stats.lastResult?.success
                 ? "Successful"
                 : "Failed"}
             </p>
@@ -241,7 +246,7 @@ export function SchedulerDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Maintenance Needed
+              Users Need Refresh
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -250,7 +255,7 @@ export function SchedulerDashboard() {
               {maintenanceStats?.maintenanceNeeded.total || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Users requiring maintenance
+              Require daily maintenance
             </p>
           </CardContent>
         </Card>
@@ -259,67 +264,88 @@ export function SchedulerDashboard() {
       {/* Control Panel */}
       <Card>
         <CardHeader>
-          <CardTitle>Scheduler Controls</CardTitle>
+          <CardTitle>Daily Maintenance Scheduler</CardTitle>
           <CardDescription>
-            Start, stop, or manually trigger the maintenance scheduler
+            Automatically runs at midnight (00:00 UTC) to refresh free credits,
+            downgrade expired subscriptions, and handle zero credit plans
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={() => handleSchedulerAction("start")}
-              disabled={schedulerStatus?.isRunning || actionLoading === "start"}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {actionLoading === "start" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="mr-2 h-4 w-4" />
-              )}
-              Start Scheduler
-            </Button>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <div className="font-medium">Schedule</div>
+                <div className="text-sm text-muted-foreground">
+                  Runs daily at 00:00 UTC (
+                  {schedulerStatus?.maintenance?.cronExpression || "0 0 * * *"})
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleSchedulerAction("start")}
+                  disabled={
+                    schedulerStatus?.isRunning || actionLoading === "start"
+                  }
+                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  {actionLoading === "start" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
+                  Start
+                </Button>
 
-            <Button
-              onClick={() => handleSchedulerAction("stop")}
-              disabled={!schedulerStatus?.isRunning || actionLoading === "stop"}
-              variant="destructive"
-            >
-              {actionLoading === "stop" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Square className="mr-2 h-4 w-4" />
-              )}
-              Stop Scheduler
-            </Button>
+                <Button
+                  onClick={() => handleSchedulerAction("stop")}
+                  disabled={
+                    !schedulerStatus?.isRunning || actionLoading === "stop"
+                  }
+                  variant="destructive"
+                  size="sm"
+                >
+                  {actionLoading === "stop" ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Square className="mr-2 h-4 w-4" />
+                  )}
+                  Stop
+                </Button>
+              </div>
+            </div>
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
                   disabled={actionLoading === "trigger"}
+                  className="w-full"
                 >
                   {actionLoading === "trigger" ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Zap className="mr-2 h-4 w-4" />
                   )}
-                  Trigger Now
+                  Run Maintenance Now
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Trigger Maintenance Now</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Run Maintenance Immediately?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will immediately run the daily maintenance process.
-                    This action will refresh free plan credits, downgrade
-                    expired subscriptions, and handle zero credit plans. Are you
-                    sure you want to continue?
+                    This will immediately refresh free plan credits, downgrade
+                    expired subscriptions, and handle zero credit plans. This
+                    action affects{" "}
+                    {maintenanceStats?.maintenanceNeeded.total || 0} users.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleTriggerMaintenance}>
-                    Trigger Maintenance
+                    Run Now
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -412,7 +438,7 @@ export function SchedulerDashboard() {
       </div>
 
       {/* Recent Activity */}
-      {schedulerStatus?.stats.lastResult && (
+      {schedulerStatus?.maintenance?.stats.lastResult && (
         <Card>
           <CardHeader>
             <CardTitle>Last Maintenance Result</CardTitle>
@@ -424,7 +450,7 @@ export function SchedulerDashboard() {
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <span className="text-sm font-medium">Status:</span>
-                {schedulerStatus.stats.lastResult.success ? (
+                {schedulerStatus.maintenance.stats.lastResult.success ? (
                   <Badge className="bg-green-100 text-green-800 border-green-200">
                     <CheckCircle2 className="w-3 h-3 mr-1" />
                     Success
@@ -436,13 +462,13 @@ export function SchedulerDashboard() {
                   </Badge>
                 )}
               </div>
-              {schedulerStatus.stats.lastResult.details && (
+              {schedulerStatus.maintenance.stats.lastResult.details && (
                 <div className="text-sm text-muted-foreground">
                   <pre className="whitespace-pre-wrap">
                     {JSON.stringify(
-                      schedulerStatus.stats.lastResult.details,
+                      schedulerStatus.maintenance.stats.lastResult.details,
                       null,
-                      2
+                      2,
                     )}
                   </pre>
                 </div>

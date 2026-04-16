@@ -118,9 +118,8 @@ export default function AppKeyList() {
   };
 
   // Use React Query hook
-  const { data, isLoading, error, refetch } = useAllUsersQuery(
-    buildQueryParams()
-  );
+  const { data, isLoading, error, refetch } =
+    useAllUsersQuery(buildQueryParams());
 
   // Extract data from React Query response
   const appKeys = data?.success && data.data?.users ? data.data.users : [];
@@ -200,7 +199,7 @@ export default function AppKeyList() {
 
   const handleUpdateKeyStatus = async (
     appKey: string,
-    mode: "suspend" | "reactivate"
+    mode: "suspend" | "reactivate",
   ) => {
     try {
       setProcessingKey(appKey);
@@ -213,7 +212,7 @@ export default function AppKeyList() {
           result.message ||
             `API key ${
               mode === "suspend" ? "suspended" : "reactivated"
-            } successfully`
+            } successfully`,
         );
 
         // Refresh the API keys list
@@ -293,7 +292,7 @@ export default function AppKeyList() {
       // Include credit if credit plan and value set
       if (updatePlan === "credit") {
         const creditInput = document.getElementById(
-          "credit"
+          "credit",
         ) as HTMLInputElement;
         if (creditInput && creditInput.value) {
           requestBody.credit = Number.parseInt(creditInput.value);
@@ -339,7 +338,7 @@ export default function AppKeyList() {
         requestBody.plan = "credit";
         // Get initial credit from input field
         const initialCreditInput = document.getElementById(
-          "initialCredit"
+          "initialCredit",
         ) as HTMLInputElement;
         requestBody.initialCredit = initialCreditInput
           ? Number.parseInt(initialCreditInput.value) || 100
@@ -375,7 +374,7 @@ export default function AppKeyList() {
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
-          </div>
+          </div>,
         );
 
         setCreateDialogOpen(false);
@@ -449,7 +448,7 @@ export default function AppKeyList() {
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `app-users-export-${new Date().toISOString().split("T")[0]}.csv`
+      `app-users-export-${new Date().toISOString().split("T")[0]}.csv`,
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -766,7 +765,7 @@ export default function AppKeyList() {
 
   return (
     <Card className="mt-6">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between max-md:flex-col max-md:items-start gap-4">
         <div>
           <CardTitle>App Users</CardTitle>
           <CardDescription>

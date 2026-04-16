@@ -9,7 +9,7 @@ import {
   UsersStatisticsData,
   PaymentResponse,
   DownloadPaymentHistory,
-  ReferralRes,
+  AllReferralsResponse,
   ReferralDetails,
   UpdateWithdrawalRes,
   GetPaymentsHistoryParams,
@@ -23,7 +23,7 @@ export const getAdminOverview = async (): Promise<
 };
 
 export const getAllUsers = async (
-  queryParams: string
+  queryParams: string,
 ): Promise<ApiResponse<AllUsersResponse> | ApiErrorResponse> => {
   const result = await api.get(`/admin/users/all?${queryParams}`);
   return result.data;
@@ -37,7 +37,7 @@ export const getUserStats = async (): Promise<
 };
 
 export const resetDeviceId = async (
-  userId: string
+  userId: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.put(`/app/appkey/reset-device`, {
     key: userId,
@@ -47,7 +47,7 @@ export const resetDeviceId = async (
 
 export const updateUserStats = async (
   userId: string,
-  mode: "suspend" | "reactivate"
+  mode: "suspend" | "reactivate",
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.put(`/app/appkey/update-status`, {
     key: userId,
@@ -57,14 +57,14 @@ export const updateUserStats = async (
 };
 
 export const updateUser = async (
-  requestBody: any
+  requestBody: any,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.put("/app/appkey/update", requestBody);
   return result.data;
 };
 
 export const createUser = async (
-  requestBody: any
+  requestBody: any,
 ): Promise<ApiResponse<any> | ApiErrorResponse> => {
   const result = await api.post("/app/appkey/create", requestBody);
   return result.data;
@@ -72,7 +72,7 @@ export const createUser = async (
 
 export const addCredits = async (
   key: string,
-  credits: number
+  credits: number,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.put("/app/appkey/add-credits", {
     key,
@@ -98,27 +98,40 @@ export const getPaymentsHistory = async ({
       search ?? ""
     }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${
       status ?? ""
-    }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`
+    }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`,
   );
   return result.data;
 };
 
 export const downloadPaymentHistory = async (
-  queryParams?: string
+  queryParams?: string,
 ): Promise<DownloadPaymentHistory> => {
   const result = await api.get(`/admin/paymentHistory/download?${queryParams}`);
 
   return result.data;
 };
 
-export const getAllReferral = async (): Promise<ApiResponse<ReferralRes[]>> => {
-  const result = await api.get("/admin/referral");
+export const getAllReferral = async (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<ApiResponse<AllReferralsResponse>> => {
+  const queryParams = new URLSearchParams();
+
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (params?.search) queryParams.append("search", params.search);
+
+  const queryString = queryParams.toString();
+  const result = await api.get(
+    `/admin/referral${queryString ? `?${queryString}` : ""}`,
+  );
 
   return result.data;
 };
 
 export const getAllReferralByUserId = async (
-  userId: string
+  userId: string,
 ): Promise<ApiResponse<ReferralDetails>> => {
   const result = await api.get(`/admin/referral/${userId}`);
 
@@ -129,14 +142,14 @@ export const updateWithdrawal = async (
   userId: string,
   withdrawalId: string,
   status: string,
-  trx: string
+  trx: string,
 ): Promise<ApiResponse<UpdateWithdrawalRes>> => {
   const result = await api.patch(
     `/admin/referral/${userId}/withdrawals/${withdrawalId}`,
     {
       status,
       trx,
-    }
+    },
   );
   return result.data;
 };
@@ -220,7 +233,7 @@ export const getPricingPlans = async (params?: {
 
   const queryString = queryParams.toString();
   const result = await api.get(
-    `/pricing${queryString ? `?${queryString}` : ""}`
+    `/pricing${queryString ? `?${queryString}` : ""}`,
   );
   return result.data;
 };
@@ -240,7 +253,7 @@ export const getPromoCodes = async (params?: {
 
   const queryString = queryParams.toString();
   const result = await api.get(
-    `/promo-codes${queryString ? `?${queryString}` : ""}`
+    `/promo-codes${queryString ? `?${queryString}` : ""}`,
   );
   return result.data;
 };
@@ -270,14 +283,14 @@ export const updatePricingPlan = async (
     isActive: boolean;
     planDuration: number;
     credit?: number;
-  }>
+  }>,
 ): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
   const result = await api.put(`/pricing/${id}`, data);
   return result.data;
 };
 
 export const deletePricingPlan = async (
-  id: string
+  id: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.delete(`/pricing/${id}`);
   return result.data;
@@ -309,14 +322,14 @@ export const updatePromoCode = async (
     usageLimit?: number | null;
     validFrom?: string;
     validUntil?: string;
-  }>
+  }>,
 ): Promise<ApiResponse<{ promoCode: PromoCode }> | ApiErrorResponse> => {
   const result = await api.patch(`/promo-codes/${id}`, data);
   return result.data;
 };
 
 export const deletePromoCode = async (
-  id: string
+  id: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   const result = await api.delete(`/promo-codes/${id}`);
   return result.data;
@@ -325,14 +338,29 @@ export const deletePromoCode = async (
 // Scheduler Management
 export interface SchedulerStatus {
   isRunning: boolean;
-  lastRun: string | null;
-  stats: {
-    totalRuns: number;
-    successfulRuns: number;
-    failedRuns: number;
-    lastResult: any;
+  maintenance: {
+    lastRun: string | null;
+    nextRun: string | null;
+    cronExpression: string;
+    stats: {
+      totalRuns: number;
+      successfulRuns: number;
+      failedRuns: number;
+      lastResult: any;
+    };
   };
-  nextRun: string | null;
+  backup: {
+    lastBackup: string | null;
+    nextBackup: string | null;
+    cronExpression: string;
+    stats: {
+      totalBackups: number;
+      successfulBackups: number;
+      failedBackups: number;
+      lastBackupResult: any;
+    };
+  };
+  timezone: string;
 }
 
 export interface MaintenanceStats {

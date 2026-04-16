@@ -369,8 +369,8 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     revenueData.lastMonth === 0
       ? null
       : ((revenueData.currentMonth - revenueData.lastMonth) /
-          revenueData.lastMonth) *
-        100;
+        revenueData.lastMonth) *
+      100;
 
   // Format monthly revenue
   const monthlyRevenueList = { ...monthlyKeys };
@@ -548,10 +548,10 @@ const getAllUsersOld = asyncHandler(async (req, res) => {
       // Filter by plan type if specified
       ...(planType
         ? [
-            {
-              $match: { "appKey.plan.type": planType },
-            },
-          ]
+          {
+            $match: { "appKey.plan.type": planType },
+          },
+        ]
         : []),
 
       // Project fields
@@ -618,14 +618,14 @@ const getAllUsersOld = asyncHandler(async (req, res) => {
 
         currentPlan: hasAppKey
           ? {
-              id: user.planInfo?._id?.toString() || null,
-              name: user.planInfo?.name || `${user.appKey.plan.type} Plan`,
-              type: user.appKey.plan.type,
-              status: planStatus,
-              expiresAt: user.appKey.expiresAt || null,
-              basePrice: user.planInfo?.basePrice || null,
-              discountPercent: user.planInfo?.discountPercent || 0,
-            }
+            id: user.planInfo?._id?.toString() || null,
+            name: user.planInfo?.name || `${user.appKey.plan.type} Plan`,
+            type: user.appKey.plan.type,
+            status: planStatus,
+            expiresAt: user.appKey.expiresAt || null,
+            basePrice: user.planInfo?.basePrice || null,
+            discountPercent: user.planInfo?.discountPercent || 0,
+          }
           : null,
 
         usage: {
@@ -982,10 +982,43 @@ const downloadPaymentsHistory = asyncHandler(async (req, res) => {
 });
 
 const getAllReferrals = asyncHandler(async (req, res) => {
-  const referrals = await Referral.find()
-    .populate("referrer", "name email") // get user info
+  const { page = 1, limit = 10, search = "" } = req.query;
+
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
+
+  // Build query
+  let query = {};
+
+  // Search filter - search by referral code or user name/email
+  if (search) {
+    const users = await User.find({
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ],
+    }).select("_id");
+
+    const userIds = users.map((user) => user._id);
+
+    query = {
+      $or: [
+        { referralCode: { $regex: search, $options: "i" } },
+        { referrer: { $in: userIds } },
+      ],
+    };
+  }
+
+  // Get total count
+  const total = await Referral.countDocuments(query);
+
+  // Get referrals without pagination first for custom sorting
+  const referrals = await Referral.find(query)
+    .populate("referrer", "name email")
     .lean();
 
+  // Transform and calculate values for sorting
   const data = referrals.map((ref) => {
     const totalEarned = ref.earnedHistory.reduce(
       (sum, e) => sum + (e.amount || 0),
@@ -1007,11 +1040,36 @@ const getAllReferrals = asyncHandler(async (req, res) => {
     };
   });
 
+  // Custom sort: pending withdrawals first, then total earned (high to low), then referred count
+  data.sort((a, b) => {
+    // First priority: pending withdrawals (descending)
+    if (b.pendingWithdrawals !== a.pendingWithdrawals) {
+      return b.pendingWithdrawals - a.pendingWithdrawals;
+    }
+
+    // Second priority: total earned (descending)
+    if (b.totalEarned !== a.totalEarned) {
+      return b.totalEarned - a.totalEarned;
+    }
+
+    // Third priority: referred count (descending)
+    return b.referredCount - a.referredCount;
+  });
+
+  // Apply pagination after sorting
+  const paginatedData = data.slice(skip, skip + limitNum);
+
   return new ApiResponse(
     200,
     true,
     "All referral records retrieved",
-    data
+    {
+      referrals: paginatedData,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    }
   ).send(res);
 });
 

@@ -13,7 +13,7 @@ const getTokenCookieOptions = (maxAge: number) => ({
 });
 
 export const getTokenFromCookie = async (
-  tokenType: "accessToken" | "refreshToken"
+  tokenType: "accessToken" | "refreshToken",
 ): Promise<string | null> => {
   const token = (await cookies()).get(tokenType)?.value;
   return token || null;
@@ -21,20 +21,18 @@ export const getTokenFromCookie = async (
 
 export const setTokens = async (
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<void> => {
-  console.log({ accessToken, refreshToken });
-
   const cookieStore = await cookies();
   cookieStore.set(
     "accessToken",
     accessToken,
-    getTokenCookieOptions(60 * 60 * 24 * Number(ENV.accessTokenExpiry))
+    getTokenCookieOptions(60 * 60 * 24 * Number(ENV.accessTokenExpiry)),
   );
   cookieStore.set(
     "refreshToken",
     refreshToken,
-    getTokenCookieOptions(60 * 60 * 24 * Number(ENV.refreshTokenExpiry))
+    getTokenCookieOptions(60 * 60 * 24 * Number(ENV.refreshTokenExpiry)),
   );
 };
 

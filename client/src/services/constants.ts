@@ -18,7 +18,11 @@ export const QUERY_KEYS = {
     "download",
     queryParams ?? "",
   ],
-  allReferral: ["admin", "referral", "all"],
+  allReferral: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => ["admin", "referral", "all", params],
   referralByUser: (userId: string) => ["admin", "referral", "user", userId],
   pricingPlans: (params?: {
     isActive?: boolean;

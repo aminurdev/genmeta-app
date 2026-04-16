@@ -1,15 +1,24 @@
 import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config({ path: ".env" });
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+});
 
 const config = {
   port: process.env.PORT || 5000,
   NODE_ENV: process.env.NODE_ENV || "development",
 
   mongodb_uri: process.env.MONGODB_URI + "/" + process.env.DB_NAME,
+  mongodb_backup_uri: process.env.MONGODB_BACKUP_URI,
+  backup_db_name: process.env.BACKUP_DB_NAME || process.env.DB_NAME + "_backup",
   encoderKey: process.env.GEMINI_ENCODER_KEY,
 
-  cors_origin: process.env.CORS_ORIGIN,
+  minimumRequiredAppVersion: process.env.MINIMUM_REQUIRED_APP_VERSION || "1.0.0",
+
+  cors_origin: [process.env.CORS_ORIGIN, process.env.CORS_ORIGIN_2].filter(
+    Boolean
+  ),
 
   google_client_id: process.env.GOOGLE_CLIENT_ID,
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -37,4 +46,5 @@ const config = {
     callback_url: process.env.BKASH_CALLBACK_URL,
   },
 };
+
 export default config;

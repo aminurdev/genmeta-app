@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -29,74 +29,57 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
+import PaginationView from "@/components/pagination-view";
 
 import type { ReferralRes } from "@/types/admin";
 
 interface AdminReferralDashboardProps {
   referralData: ReferralRes[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
+  onPageChange: (page: number) => void;
+  onSearchChange: (search: string) => void;
+  searchTerm: string;
 }
 
 export function AdminReferralDashboard({
   referralData,
+  pagination,
+  onPageChange,
+  onSearchChange,
+  searchTerm,
 }: AdminReferralDashboardProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<string>("");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
 
-  // Calculate statistics
-  const totalUsers = referralData.length;
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearchTerm !== searchTerm) {
+        onSearchChange(localSearchTerm);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [localSearchTerm, searchTerm, onSearchChange]);
+
+  // Calculate statistics from current page data
+  const totalUsers = pagination.total;
   const totalReferrals = referralData.reduce(
     (sum, user) => sum + user.referredCount,
-    0
+    0,
   );
   const totalEarnings = referralData.reduce(
     (sum, user) => sum + user.totalEarned,
-    0
+    0,
   );
   const totalPendingWithdrawals = referralData.reduce(
     (sum, user) => sum + user.pendingWithdrawals,
-    0
+    0,
   );
-
-  // Filter and sort data
-  const filteredData = referralData
-    .filter(
-      (user) =>
-        user.referrer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.referrer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.referralCode.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (!sortField) return 0;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const getValue = (obj: any, path: string) => {
-        return path.split(".").reduce((acc, key) => acc?.[key], obj);
-      };
-
-      let aValue = getValue(a, sortField);
-      let bValue = getValue(b, sortField);
-
-      if (typeof aValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      if (sortDirection === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-  const handleSort = (field: keyof ReferralRes | string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field as keyof ReferralRes);
-      setSortDirection("desc");
-    }
-  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -105,14 +88,6 @@ export function AdminReferralDashboard({
   const formatCurrency = (amount: number) => {
     return `৳${amount.toLocaleString()}`;
   };
-
-  //   const formatDate = (dateString: string) => {
-  //     return new Date(dateString).toLocaleDateString("en-US", {
-  //       year: "numeric",
-  //       month: "short",
-  //       day: "numeric",
-  //     });
-  //   };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -208,8 +183,8 @@ export function AdminReferralDashboard({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search by name, email, or referral code..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={localSearchTerm}
+                  onChange={(e) => setLocalSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -220,60 +195,22 @@ export function AdminReferralDashboard({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("referrer.name")}
-                    >
-                      User{" "}
-                      {sortField === "referrer.name" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
+                    <TableHead>User</TableHead>
+                    <TableHead>Referral Code</TableHead>
+                    <TableHead className="text-right">Referrals</TableHead>
+                    <TableHead className="text-right">Total Earned</TableHead>
+                    <TableHead className="text-right">
+                      Available Balance
                     </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleSort("referralCode")}
-                    >
-                      Referral Code{" "}
-                      {sortField === "referralCode" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50 text-right"
-                      onClick={() => handleSort("referredCount")}
-                    >
-                      Referrals{" "}
-                      {sortField === "referredCount" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50 text-right"
-                      onClick={() => handleSort("totalEarned")}
-                    >
-                      Total Earned{" "}
-                      {sortField === "totalEarned" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50 text-right"
-                      onClick={() => handleSort("availableBalance")}
-                    >
-                      Available Balance{" "}
-                      {sortField === "availableBalance" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
-                    </TableHead>
-                    <TableHead
-                      className="cursor-pointer hover:bg-muted/50 text-right"
-                      onClick={() => handleSort("pendingWithdrawals")}
-                    >
-                      Pending Withdrawals{" "}
-                      {sortField === "pendingWithdrawals" &&
-                        (sortDirection === "asc" ? "↑" : "↓")}
+                    <TableHead className="text-right">
+                      Pending Withdrawals
                     </TableHead>
                     <TableHead>Withdraw Account</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.length === 0 ? (
+                  {referralData.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={8}
@@ -283,7 +220,7 @@ export function AdminReferralDashboard({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredData.map((user) => (
+                    referralData.map((user) => (
                       <TableRow
                         key={user.referrer._id}
                         className="hover:bg-muted/50"
@@ -361,17 +298,23 @@ export function AdminReferralDashboard({
               </Table>
             </div>
 
-            {/* Results Summary */}
-            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-              <div>
-                Showing {filteredData.length} of {totalUsers} users
+            {/* Pagination and Results Summary */}
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {(pagination.currentPage - 1) * pagination.limit + 1} to{" "}
+                {Math.min(
+                  pagination.currentPage * pagination.limit,
+                  pagination.total,
+                )}{" "}
+                of {pagination.total} users
               </div>
-              <div>
-                Total filtered earnings:{" "}
-                {formatCurrency(
-                  filteredData.reduce((sum, user) => sum + user.totalEarned, 0)
-                )}
-              </div>
+              {pagination.totalPages > 1 && (
+                <PaginationView
+                  currentPage={pagination.currentPage}
+                  totalPages={pagination.totalPages}
+                  handlePageChange={onPageChange}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
