@@ -414,6 +414,68 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   });
 });
 
+// Admin: Create Order manually and immediately complete it
+export const adminCreateOrder = asyncHandler(async (req, res) => {
+  const { userId, planId, amount, notes } = req.body;
+
+  if (!userId || !planId) {
+    throw new ApiError(400, "Missing required fields: userId, planId");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(404, "User not found");
+
+  const plan = await AppPricing.findById(planId);
+  if (!plan) throw new ApiError(404, "Plan not found");
+  if (!plan.isActive) throw new ApiError(400, "This plan is no longer available");
+
+  const orderAmount =
+    amount !== undefined ? Number(amount) : plan.discountPrice || plan.basePrice;
+
+  const order = await Order.create({
+    userId: user._id,
+    planId: plan._id,
+    amount: orderAmount,
+    planSnapshot: { name: plan.name, type: plan.type },
+    status: "completed",
+    notes: notes || "Manually created by admin",
+  });
+
+  // Apply plan to user's AppKey immediately
+  const planUpdateSuccess = await updateUserPlan(user._id, plan._id);
+  if (!planUpdateSuccess) {
+    console.warn("[WARN]: Plan update failed for admin-created order", {
+      orderId: order._id.toString(),
+      userId: user._id.toString(),
+    });
+  }
+
+  await order.populate([
+    { path: "userId", select: "name email" },
+    { path: "planId", select: "name type credit planDuration" },
+  ]);
+
+  res.status(201).json({
+    success: true,
+    message: "Order created and activated successfully",
+    data: {
+      _id: order._id,
+      user: { _id: user._id, name: user.name, email: user.email },
+      plan: {
+        id: plan._id,
+        name: plan.name,
+        type: plan.type,
+        duration: plan.planDuration,
+        credit: plan.credit,
+      },
+      amount: order.amount,
+      status: order.status,
+      notes: order.notes,
+      createdAt: order.createdAt,
+    },
+  });
+});
+
 // Helper function to update user's plan
 const updateUserPlan = async (userId, planId) => {
   try {

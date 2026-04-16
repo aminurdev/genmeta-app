@@ -40,6 +40,43 @@ export interface OrdersResponse {
   totalPages: number;
 }
 
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface UserSearchResponse {
+  users: UserSearchResult[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalUsers: number;
+  };
+}
+
+export const searchUsers = async (params?: {
+  search?: string;
+  limit?: number;
+}): Promise<ApiResponse<UserSearchResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    const result = await api.get(`/admin/users/all?${queryParams.toString()}`);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message: err.message || "Failed to search users",
+      }
+    );
+  }
+};
+
 export const createWhatsAppOrder = async (
   orderData: CreateOrderParams,
 ): Promise<ApiResponse<Order> | ApiErrorResponse> => {
@@ -100,6 +137,31 @@ export const updateOrderStatus = async (
         success: false,
         statusCode: err.response?.status ?? 500,
         message: err.message || "Failed to update order status",
+      }
+    );
+  }
+};
+
+export interface AdminCreateOrderParams {
+  userId: string;
+  planId: string;
+  amount?: number;
+  notes?: string;
+}
+
+export const adminCreateOrder = async (
+  data: AdminCreateOrderParams,
+): Promise<ApiResponse<Order> | ApiErrorResponse> => {
+  try {
+    const result = await api.post("/orders/admin/create", data);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message: err.message || "Failed to create order",
       }
     );
   }

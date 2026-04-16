@@ -376,17 +376,23 @@ const validateAppKey = asyncHandler(async (req, res) => {
     );
   }
 
-  // Compare versions
-  const currentVersion = version.split(".").map(Number);
-  const minVersion = [6, 3, 3].map(Number);
+  // Compare versions — reject anything below the minimum required version
+  const clientVersion = version.split(".").map(Number);
+  const minimumRequiredVersion = config.minimumRequiredAppVersion
+    .split(".")
+    .map(Number);
 
-  const isVersionLower =
-    currentVersion.reduce((lower, part, i) => {
-      if (lower !== null) return lower;
-      return part < minVersion[i] ? true : part > minVersion[i] ? false : null;
+  const isClientVersionBelowMinimum =
+    clientVersion.reduce((result, part, i) => {
+      if (result !== null) return result;
+      return part < minimumRequiredVersion[i]
+        ? true
+        : part > minimumRequiredVersion[i]
+          ? false
+          : null;
     }, null) ?? false;
 
-  if (isVersionLower) {
+  if (isClientVersionBelowMinimum) {
     throw new ApiError(
       426,
       "Please update your app. A new version is available."

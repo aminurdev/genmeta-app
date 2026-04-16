@@ -50,6 +50,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getOrders, updateOrderStatus } from "@/services/orders";
+import { CreateOrderDialog } from "./create-order-dialog";
 
 export function OrdersPage() {
   const queryClient = useQueryClient();
@@ -236,6 +237,7 @@ export function OrdersPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <CreateOrderDialog />
             <Button onClick={() => refetch()} variant="outline" size="sm">
               <RefreshCw
                 className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
