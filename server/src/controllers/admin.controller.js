@@ -366,41 +366,28 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
                 $group: {
                   _id: null,
                   total: { $sum: 1 },
-                  completed: {
-                    $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
-                  },
-                  pending: {
-                    $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
-                  },
-                  cancelled: {
-                    $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
-                  },
-                  totalRevenue: {
+                  totalAmount: { $sum: "$amount" },
+                  currentMonthCount: {
                     $sum: {
-                      $cond: [{ $eq: ["$status", "completed"] }, "$amount", 0],
+                      $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
                     },
                   },
-                  currentMonthRevenue: {
+                  currentMonthAmount: {
                     $sum: {
                       $cond: [
-                        {
-                          $and: [
-                            { $eq: ["$status", "completed"] },
-                            { $gte: ["$createdAt", thisMonth] },
-                          ],
-                        },
+                        { $gte: ["$createdAt", thisMonth] },
                         "$amount",
                         0,
                       ],
                     },
                   },
-                  currentMonthCount: {
+                  lastMonthCount: {
                     $sum: {
                       $cond: [
                         {
                           $and: [
-                            { $eq: ["$status", "completed"] },
-                            { $gte: ["$createdAt", thisMonth] },
+                            { $gte: ["$createdAt", lastMonth] },
+                            { $lt: ["$createdAt", thisMonth] },
                           ],
                         },
                         1,
@@ -408,23 +395,50 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
                       ],
                     },
                   },
+                  lastMonthAmount: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $gte: ["$createdAt", lastMonth] },
+                            { $lt: ["$createdAt", thisMonth] },
+                          ],
+                        },
+                        "$amount",
+                        0,
+                      ],
+                    },
+                  },
+                  completedCount: {
+                    $sum: {
+                      $cond: [{ $eq: ["$status", "completed"] }, 1, 0],
+                    },
+                  },
+                  pendingCount: {
+                    $sum: {
+                      $cond: [{ $eq: ["$status", "pending"] }, 1, 0],
+                    },
+                  },
+                  cancelledCount: {
+                    $sum: {
+                      $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0],
+                    },
+                  },
                 },
               },
             ],
-            monthlyOrders: [
-              { $match: { status: "completed" } },
+            monthlyOrderAmount: [
               {
                 $group: {
                   _id: {
                     $dateToString: { format: "%Y-%m", date: "$createdAt" },
                   },
+                  amount: { $sum: "$amount" },
                   count: { $sum: 1 },
-                  revenue: { $sum: "$amount" },
                 },
               },
             ],
             recent: [
-              { $match: { status: "completed" } },
               { $sort: { createdAt: -1 } },
               { $limit: 5 },
               {
@@ -440,10 +454,9 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
                   amount: 1,
                   status: 1,
                   createdAt: 1,
+                  planSnapshot: 1,
                   promoCodeUsed: 1,
                   referralCode: 1,
-                  "planSnapshot.name": 1,
-                  "planSnapshot.type": 1,
                   user: {
                     $arrayElemAt: [
                       {
@@ -513,25 +526,32 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     newThisMonth: 0,
   };
 
-  // Extract order stats
-  const orderSummary = orderStats[0].summary[0] || {
-    total: 0,
-    completed: 0,
-    pending: 0,
-    cancelled: 0,
-    totalRevenue: 0,
-    currentMonthRevenue: 0,
-    currentMonthCount: 0,
-  };
-
-  const monthlyOrdersList = { ...monthlyKeys };
-  const monthlyOrderRevenue = { ...monthlyKeys };
-  orderStats[0].monthlyOrders.forEach((item) => {
-    if (item._id in monthlyOrdersList) {
-      monthlyOrdersList[item._id] = item.count;
-      monthlyOrderRevenue[item._id] = item.revenue;
+  // Format monthly order amount list
+  const monthlyOrderAmountList = { ...monthlyKeys };
+  orderStats[0].monthlyOrderAmount.forEach((item) => {
+    if (item._id in monthlyOrderAmountList) {
+      monthlyOrderAmountList[item._id] = item.amount;
     }
   });
+
+  const orderCounts = orderStats[0].summary[0] || {
+    total: 0,
+    totalAmount: 0,
+    currentMonthCount: 0,
+    currentMonthAmount: 0,
+    lastMonthCount: 0,
+    lastMonthAmount: 0,
+    completedCount: 0,
+    pendingCount: 0,
+    cancelledCount: 0,
+  };
+
+  const orderAmountGrowth =
+    orderCounts.lastMonthAmount === 0
+      ? null
+      : ((orderCounts.currentMonthAmount - orderCounts.lastMonthAmount) /
+          orderCounts.lastMonthAmount) *
+        100;
 
   // === RESPONSE ===
   return new ApiResponse(
@@ -566,19 +586,21 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         recent: paymentStats[0].recent,
         topSpenders: paymentStats[0].topSpenders || [],
       },
-      topReferrers: referralTop || [],
       orders: {
-        total: orderSummary.total,
-        completed: orderSummary.completed,
-        pending: orderSummary.pending,
-        cancelled: orderSummary.cancelled,
-        totalRevenue: orderSummary.totalRevenue,
-        currentMonthRevenue: orderSummary.currentMonthRevenue,
-        currentMonthCount: orderSummary.currentMonthCount,
-        monthlyOrdersList,
-        monthlyOrderRevenue,
+        total: orderCounts.total,
+        totalAmount: orderCounts.totalAmount,
+        currentMonthCount: orderCounts.currentMonthCount,
+        currentMonthAmount: orderCounts.currentMonthAmount,
+        lastMonthCount: orderCounts.lastMonthCount,
+        lastMonthAmount: orderCounts.lastMonthAmount,
+        amountGrowthPercentage: orderAmountGrowth,
+        completedCount: orderCounts.completedCount,
+        pendingCount: orderCounts.pendingCount,
+        cancelledCount: orderCounts.cancelledCount,
+        monthlyOrderAmountList,
         recent: orderStats[0].recent || [],
       },
+      topReferrers: referralTop || [],
     }
   ).send(res);
 });

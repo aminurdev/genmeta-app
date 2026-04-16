@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -115,6 +116,13 @@ export default function DashboardStats() {
   );
 
   const processData = Object.entries(stats.appKeys.monthlyProcessList).map(
+    ([month, value]) => ({
+      label: formatMonthYear(month),
+      value,
+    }),
+  );
+
+  const orderAmountData = Object.entries(stats.orders.monthlyOrderAmountList).map(
     ([month, value]) => ({
       label: formatMonthYear(month),
       value,
@@ -247,38 +255,48 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* Total Completed Orders Card */}
+        {/* Total Orders Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.orders?.completed ?? 0}
-            </div>
+            <div className="text-2xl font-bold">{stats.orders.total}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.orders?.pending ?? 0} pending ·{" "}
-              {stats.orders?.cancelled ?? 0} cancelled
+              {formatCurrency(stats.orders.totalAmount)} total value
             </p>
           </CardContent>
         </Card>
 
-        {/* This Month Orders Card */}
+        {/* Orders This Month Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Orders This Month
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Orders This Month</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.orders?.currentMonthCount ?? 0}
+            <div className="text-2xl font-bold">{stats.orders.currentMonthCount}</div>
+            <div className="flex items-center pt-1">
+              {(stats.orders.amountGrowthPercentage ?? 0) > 0 ? (
+                <ArrowUpIcon className="mr-1 h-3 w-3 text-green-500" />
+              ) : (stats.orders.amountGrowthPercentage ?? 0) < 0 ? (
+                <ArrowDownIcon className="mr-1 h-3 w-3 text-red-500" />
+              ) : null}
+              <span
+                className={
+                  (stats.orders.amountGrowthPercentage ?? 0) > 0
+                    ? "text-xs text-green-500"
+                    : (stats.orders.amountGrowthPercentage ?? 0) < 0
+                      ? "text-xs text-red-500"
+                      : "text-xs text-muted-foreground"
+                }
+              >
+                {stats.orders.amountGrowthPercentage !== null
+                  ? `${Math.abs(stats.orders.amountGrowthPercentage).toFixed(2)}% from last month`
+                  : "No data from last month"}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(stats.orders?.currentMonthRevenue ?? 0)} revenue
-            </p>
           </CardContent>
         </Card>
 
@@ -328,6 +346,93 @@ export default function DashboardStats() {
               tooltipLabel="Processes"
               valueFormatter={(value) => value.toLocaleString()}
             />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Order Amount Chart */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Amount Overview</CardTitle>
+            <CardDescription>Monthly order value trends</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <AreaChart
+              data={orderAmountData}
+              color="#f59e0b"
+              tooltipLabel="Order Amount"
+              valueFormatter={formatCurrency}
+              yAxisFormatter={(value) => formatCurrency(value)}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Order Status Breakdown */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Status Breakdown</CardTitle>
+            <CardDescription>Distribution of order statuses</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500" />
+                  <span className="text-sm">Completed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{stats.orders.completedCount}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({stats.orders.total > 0
+                      ? ((stats.orders.completedCount / stats.orders.total) * 100).toFixed(1)
+                      : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-yellow-500" />
+                  <span className="text-sm">Pending</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{stats.orders.pendingCount}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({stats.orders.total > 0
+                      ? ((stats.orders.pendingCount / stats.orders.total) * 100).toFixed(1)
+                      : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <span className="text-sm">Cancelled</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{stats.orders.cancelledCount}</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({stats.orders.total > 0
+                      ? ((stats.orders.cancelledCount / stats.orders.total) * 100).toFixed(1)
+                      : 0}%)
+                  </span>
+                </div>
+              </div>
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">This Month</span>
+                  <span className="text-sm font-medium">
+                    {stats.orders.currentMonthCount} orders · {formatCurrency(stats.orders.currentMonthAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm text-muted-foreground">Last Month</span>
+                  <span className="text-sm text-muted-foreground">
+                    {stats.orders.lastMonthCount} orders · {formatCurrency(stats.orders.lastMonthAmount)}
+                  </span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -388,6 +493,87 @@ export default function DashboardStats() {
                     className="text-center py-6 text-muted-foreground"
                   >
                     No recent payments
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Recent Orders */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Orders</CardTitle>
+          <CardDescription>Latest order transactions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {stats.orders.recent.map((order, index) => (
+                <TableRow key={`${order._id}-${index}`}>
+                  <TableCell>
+                    <div className="flex gap-4">
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage
+                          src={`https://avatar.vercel.sh/${order.user?.email}`}
+                          alt={order.user?.name}
+                        />
+                        <AvatarFallback>
+                          {getInitials(order.user?.name ?? "")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{order.user?.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {order.user?.email}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{order.planSnapshot?.name}</span>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {order.planSnapshot?.type}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {formatCurrency(order.amount)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        order.status === "completed"
+                          ? "default"
+                          : order.status === "pending"
+                            ? "secondary"
+                            : "destructive"
+                      }
+                    >
+                      {order.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDate(order.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+              {stats.orders.recent.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-6 text-muted-foreground"
+                  >
+                    No recent orders
                   </TableCell>
                 </TableRow>
               )}
