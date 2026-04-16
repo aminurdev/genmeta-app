@@ -14,11 +14,10 @@ const config = {
   backup_db_name: process.env.BACKUP_DB_NAME || process.env.DB_NAME + "_backup",
   encoderKey: process.env.GEMINI_ENCODER_KEY,
 
-  minimumRequiredAppVersion: process.env.MINIMUM_REQUIRED_APP_VERSION || "1.0.0",
+  minimumRequiredAppVersion:
+    process.env.MINIMUM_REQUIRED_APP_VERSION || "1.0.0",
 
-  cors_origin: [process.env.CORS_ORIGIN, process.env.CORS_ORIGIN_2].filter(
-    Boolean
-  ),
+  cors_origin: process.env.CORS_ORIGIN,
 
   google_client_id: process.env.GOOGLE_CLIENT_ID,
   google_client_secret: process.env.GOOGLE_CLIENT_SECRET,

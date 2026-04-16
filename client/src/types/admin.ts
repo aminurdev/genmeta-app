@@ -60,6 +60,34 @@ export type AdminDashboardStats = {
       email: string;
     };
   }>;
+  orders: {
+    total: number;
+    completed: number;
+    pending: number;
+    cancelled: number;
+    totalRevenue: number;
+    currentMonthRevenue: number;
+    currentMonthCount: number;
+    monthlyOrdersList: Record<string, number>;
+    monthlyOrderRevenue: Record<string, number>;
+    recent: Array<{
+      _id: string;
+      amount: number;
+      status: "completed" | "pending" | "cancelled";
+      createdAt: string;
+      promoCodeUsed?: string;
+      referralCode?: string;
+      planSnapshot: {
+        name: string;
+        type: "subscription" | "credit";
+      };
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+    }>;
+  };
 };
 
 export interface AppUsers {
