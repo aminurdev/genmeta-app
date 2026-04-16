@@ -7,6 +7,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppPricing } from "../models/appPricing.model.js";
 import { Referral } from "../models/referral.model.js";
+import { Order } from "../models/order.model.js";
 
 const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const now = new Date();
@@ -27,7 +28,7 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const currentMonthKey = formatMonthKey(thisMonth);
 
   // === AGGREGATED QUERIES (Single database round trip) ===
-  const [paymentStats, appKeyStats, userStats, referralTop] = await Promise.all(
+  const [paymentStats, appKeyStats, userStats, referralTop, orderStats] = await Promise.all(
     [
       // 1. PAYMENT AGGREGATION
       AppPayment.aggregate([
@@ -355,6 +356,116 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
           },
         },
       ]),
+
+      // 5. ORDER AGGREGATION
+      Order.aggregate([
+        {
+          $facet: {
+            summary: [
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: 1 },
+                  completed: {
+                    $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+                  },
+                  pending: {
+                    $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] },
+                  },
+                  cancelled: {
+                    $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] },
+                  },
+                  totalRevenue: {
+                    $sum: {
+                      $cond: [{ $eq: ["$status", "completed"] }, "$amount", 0],
+                    },
+                  },
+                  currentMonthRevenue: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$status", "completed"] },
+                            { $gte: ["$createdAt", thisMonth] },
+                          ],
+                        },
+                        "$amount",
+                        0,
+                      ],
+                    },
+                  },
+                  currentMonthCount: {
+                    $sum: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $eq: ["$status", "completed"] },
+                            { $gte: ["$createdAt", thisMonth] },
+                          ],
+                        },
+                        1,
+                        0,
+                      ],
+                    },
+                  },
+                },
+              },
+            ],
+            monthlyOrders: [
+              { $match: { status: "completed" } },
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: "%Y-%m", date: "$createdAt" },
+                  },
+                  count: { $sum: 1 },
+                  revenue: { $sum: "$amount" },
+                },
+              },
+            ],
+            recent: [
+              { $match: { status: "completed" } },
+              { $sort: { createdAt: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: "users",
+                  localField: "userId",
+                  foreignField: "_id",
+                  as: "user",
+                },
+              },
+              {
+                $project: {
+                  amount: 1,
+                  status: 1,
+                  createdAt: 1,
+                  promoCodeUsed: 1,
+                  referralCode: 1,
+                  "planSnapshot.name": 1,
+                  "planSnapshot.type": 1,
+                  user: {
+                    $arrayElemAt: [
+                      {
+                        $map: {
+                          input: "$user",
+                          as: "u",
+                          in: {
+                            _id: "$$u._id",
+                            name: "$$u.name",
+                            email: "$$u.email",
+                          },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]),
     ]
   );
 
@@ -402,6 +513,26 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
     newThisMonth: 0,
   };
 
+  // Extract order stats
+  const orderSummary = orderStats[0].summary[0] || {
+    total: 0,
+    completed: 0,
+    pending: 0,
+    cancelled: 0,
+    totalRevenue: 0,
+    currentMonthRevenue: 0,
+    currentMonthCount: 0,
+  };
+
+  const monthlyOrdersList = { ...monthlyKeys };
+  const monthlyOrderRevenue = { ...monthlyKeys };
+  orderStats[0].monthlyOrders.forEach((item) => {
+    if (item._id in monthlyOrdersList) {
+      monthlyOrdersList[item._id] = item.count;
+      monthlyOrderRevenue[item._id] = item.revenue;
+    }
+  });
+
   // === RESPONSE ===
   return new ApiResponse(
     200,
@@ -436,6 +567,18 @@ const getAdminDashboardStats = asyncHandler(async (req, res) => {
         topSpenders: paymentStats[0].topSpenders || [],
       },
       topReferrers: referralTop || [],
+      orders: {
+        total: orderSummary.total,
+        completed: orderSummary.completed,
+        pending: orderSummary.pending,
+        cancelled: orderSummary.cancelled,
+        totalRevenue: orderSummary.totalRevenue,
+        currentMonthRevenue: orderSummary.currentMonthRevenue,
+        currentMonthCount: orderSummary.currentMonthCount,
+        monthlyOrdersList,
+        monthlyOrderRevenue,
+        recent: orderStats[0].recent || [],
+      },
     }
   ).send(res);
 });
