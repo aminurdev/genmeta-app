@@ -129,7 +129,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [appKeyDetails, setAppKeyDetails] = useState<AppKeyDetails | null>(
-    null
+    null,
   );
   console.log(appKeyDetails);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -173,7 +173,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -197,7 +197,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setLoading(false);
@@ -266,7 +266,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         usage: count,
       }))
       .sort(
-        (a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()
+        (a, b) => new Date(a.month).getTime() - new Date(b.month).getTime(),
       );
   };
 
@@ -297,7 +297,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
       if (updatePlan === "credit") {
         const creditInput = document.getElementById(
-          "credit"
+          "credit",
         ) as HTMLInputElement;
         if (creditInput && creditInput.value) {
           requestBody.credit = Number.parseInt(creditInput.value);
@@ -331,7 +331,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsUpdating(false);
@@ -374,7 +374,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsResetting(false);
@@ -412,7 +412,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           result.message ||
             `API key ${
               mode === "suspend" ? "suspended" : "reactivated"
-            } successfully`
+            } successfully`,
         );
 
         if (appKey) {
@@ -423,7 +423,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsChangingStatus(false);
@@ -446,7 +446,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -463,7 +463,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsDeleting(false);
@@ -518,7 +518,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "An unknown error occurred"
+        err instanceof Error ? err.message : "An unknown error occurred",
       );
     } finally {
       setIsAddingCredit(false);
@@ -1001,20 +1001,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            {updatePlan === "subscription" && (
-              <div className="grid gap-2">
-                <Label htmlFor="expiryDays">Expiry Days</Label>
-                <Input
-                  id="expiryDays"
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={updateExpiryDays}
-                  onChange={(e) => setUpdateExpiryDays(e.target.value)}
-                />
-              </div>
-            )}
+            </div>{" "}
             {updatePlan === "credit" && (
               <div className="grid gap-2">
                 <Label htmlFor="credit">Credit</Label>
@@ -1024,6 +1011,19 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                   min="0"
                   placeholder="Credit amount"
                   defaultValue={appKeyDetails.credit?.toString() || "0"}
+                />
+              </div>
+            )}
+            {updatePlan !== "free" && (
+              <div className="grid gap-2">
+                <Label htmlFor="expiryDays">Expiry Days</Label>
+                <Input
+                  id="expiryDays"
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={updateExpiryDays}
+                  onChange={(e) => setUpdateExpiryDays(e.target.value)}
                 />
               </div>
             )}

@@ -71,6 +71,7 @@ import {
   XCircle,
   Loader2,
   Eye,
+  User2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -495,16 +496,16 @@ export default function AppKeyList() {
     if (appKeys.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <KeyRound className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No API keys found</h3>
+          <User2 className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium">No APP Users found</h3>
           <p className="text-muted-foreground mt-2 mb-4">
             {debouncedSearchTerm
               ? `No results found for "${debouncedSearchTerm}"`
-              : "Create your first API key to get started"}
+              : "Create your first APP User to get started"}
           </p>
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
-            Create API Key
+            Create APP User
           </Button>
         </div>
       );
@@ -920,15 +921,20 @@ export default function AppKeyList() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="expiryDays">Expiry Days</Label>
-              <Input
-                id="expiryDays"
-                type="number"
-                min="1"
-                max="365"
-                value={updateExpiryDays}
-                onChange={(e) => setUpdateExpiryDays(e.target.value)}
-              />
+              {updatePlan !== "free" && (
+                <>
+                  {" "}
+                  <Label htmlFor="expiryDays">Expiry Days</Label>
+                  <Input
+                    id="expiryDays"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={updateExpiryDays}
+                    onChange={(e) => setUpdateExpiryDays(e.target.value)}
+                  />
+                </>
+              )}
             </div>
             {updatePlan === "credit" && (
               <div className="grid gap-2">
@@ -938,7 +944,7 @@ export default function AppKeyList() {
                   type="number"
                   min="0"
                   placeholder="Credit amount"
-                  defaultValue="0"
+                  defaultValue="1000"
                 />
               </div>
             )}
