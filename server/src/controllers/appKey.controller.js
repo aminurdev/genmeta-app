@@ -516,6 +516,8 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
 
   const remainingCredit = appKey.calculateCredit();
 
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     plan: appKey.plan,
     username: appKey.username,
