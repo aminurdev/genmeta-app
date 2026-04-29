@@ -37,8 +37,8 @@ export function NavLinks() {
       icon: <Laptop className="h-5 w-5 inline-block mr-2" />,
     },
     {
-      href: "/docs",
-      label: "Docs [Beta]",
+      href: "/about",
+      label: "About Us",
       icon: <Dock className="h-5 w-5 inline-block mr-2" />,
     },
   ];

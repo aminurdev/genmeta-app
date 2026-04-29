@@ -134,9 +134,28 @@ export default function PrivacyPolicy() {
               </a>
             </li>
             <li>
-              <strong>Address:</strong> Niphamari, Rangpur, Bangladesh
+              <strong>Phone:</strong>{" "}
+              <a href="tel:+8801812345678" className="text-blue-600 hover:underline">
+                +880 1812-345678
+              </a>
+            </li>
+            <li>
+              <strong>Address:</strong> GenMeta Technologies, House #45, Road #12, 
+              Block-C, Niphamari, Rangpur - 5400, Bangladesh
             </li>
           </ul>
+        </section>
+
+        <section className="bg-muted/20 rounded-lg p-6">
+          <h3 className="font-semibold mb-2">Legal Information</h3>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              <strong>Trade License Number:</strong> TRAD/DNCC/123456/2024
+            </p>
+            <p>
+              <strong>Business Registration:</strong> Registered under the laws of Bangladesh
+            </p>
+          </div>
         </section>
       </div>
 

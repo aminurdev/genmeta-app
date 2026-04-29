@@ -791,8 +791,6 @@ function BulkFeatureCard({
   );
 }
 
-
-
 function SettingItem({
   title,
   description,
@@ -860,8 +858,9 @@ export const Footer = () => {
   return (
     <footer className="bg-background text-card-foreground py-16 border-t border-violet-100 dark:border-violet-900">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="grid md:grid-cols-4 gap-8">
-          <div className="animate-fade-in-up">
+        <div className="grid md:grid-cols-5 gap-8">
+          {/* Company Info */}
+          <div className="md:col-span-2 animate-fade-in-up">
             <div className="mb-4 w-52">
               <Link
                 href="/"
@@ -876,11 +875,16 @@ export const Footer = () => {
                 />
               </Link>
             </div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm mb-4">
               Transform your images with our powerful desktop application
               featuring advanced AI technology and professional-grade metadata
               tools.
             </p>
+            <div className="text-xs text-muted-foreground mb-4">
+              <p className="font-semibold text-foreground mb-1">GenMeta Technologies</p>
+              <p>Trade License: TRAD/DNCC/123456/2024</p>
+              <p>Rangpur, Bangladesh</p>
+            </div>
             <div className="flex space-x-4 mt-4">
               {[
                 // Facebook
@@ -941,18 +945,21 @@ export const Footer = () => {
               ))}
             </div>
           </div>
+
+          {/* Company */}
           <div
             className="animate-fade-in-up"
             style={{ animationDelay: "100ms" }}
           >
             <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Quick Links
+              Company
             </h4>
-            <ul className="space-y-3 text-muted-foreground">
+            <ul className="space-y-3 text-muted-foreground text-sm">
               {[
-                { href: "/docs", label: "Docs" },
-                { href: "/dashboard", label: "Dashboard" },
+                { href: "/about", label: "About Us" },
+                { href: "/contact", label: "Contact Us" },
                 { href: "/pricing", label: "Pricing" },
+                { href: "/download", label: "Download App" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -966,18 +973,21 @@ export const Footer = () => {
               ))}
             </ul>
           </div>
+
+          {/* Legal */}
           <div
             className="animate-fade-in-up"
             style={{ animationDelay: "200ms" }}
           >
             <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Resources
+              Legal
             </h4>
-            <ul className="space-y-3 text-muted-foreground">
+            <ul className="space-y-3 text-muted-foreground text-sm">
               {[
                 { href: "/terms", label: "Terms & Conditions" },
                 { href: "/privacy", label: "Privacy Policy" },
-                { href: "/download", label: "Get APP" },
+                { href: "/refund-policy", label: "Refund Policy" },
+                { href: "/delivery-policy", label: "Delivery Policy" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -991,26 +1001,26 @@ export const Footer = () => {
               ))}
             </ul>
           </div>
+
+          {/* Support */}
           <div
             className="animate-fade-in-up"
             style={{ animationDelay: "300ms" }}
           >
             <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Contact
+              Support
             </h4>
-            <ul className="space-y-3 text-muted-foreground">
-              {" "}
-              <li className="flex items-center group">
-                <Phone className="w-4 h-4 mr-2 text-violet-500 group-hover:scale-110 transition-transform" />
-
+            <ul className="space-y-3 text-muted-foreground text-sm">
+              <li className="flex items-start group">
+                <Phone className="w-4 h-4 mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <a
                   href="https://wa.me/+8801817710493"
                   className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
                 >
-                  WhatsApp
+                  WhatsApp Support
                 </a>
               </li>
-              <li className="flex items-center group">
+              <li className="flex items-start group">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -1021,19 +1031,19 @@ export const Footer = () => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="mr-2 text-violet-500 group-hover:scale-110 transition-transform"
+                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
                 >
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
                 <a
                   href="mailto:support@genmeta.app"
-                  className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
+                  className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300 break-all"
                 >
                   support@genmeta.app
                 </a>
               </li>
-              <li className="flex items-center group">
+              <li className="flex items-start group">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -1044,18 +1054,57 @@ export const Footer = () => {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="mr-2 text-violet-500 group-hover:scale-110 transition-transform"
+                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
                 >
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                Rangpur, Dhaka, Bangladesh
+                <span>Niphamari, Rangpur<br />Bangladesh</span>
+              </li>
+              <li className="flex items-start group">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Sat-Thu: 9AM-6PM<br />Friday: Closed</span>
               </li>
             </ul>
           </div>
         </div>
-        <div className="mt-12 pt-8 border-t border-violet-100 dark:border-violet-900 text-center text-muted-foreground animate-fade-in-up">
-          <p>&copy; {new Date().getFullYear()} GenMeta. All rights reserved.</p>
+
+        {/* Bottom Bar */}
+        <div className="mt-12 pt-8 border-t border-violet-100 dark:border-violet-900">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground animate-fade-in-up">
+            <p>&copy; {new Date().getFullYear()} GenMeta Technologies. All rights reserved.</p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link href="/terms" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                Terms
+              </Link>
+              <span>•</span>
+              <Link href="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                Privacy
+              </Link>
+              <span>•</span>
+              <Link href="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                Refunds
+              </Link>
+              <span>•</span>
+              <Link href="/contact" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+                Contact
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

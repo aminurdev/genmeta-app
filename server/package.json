@@ -34,10 +34,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.20.0",
-    "eslint": "^9.20.1",
     "globals": "^16.0.0",
-    "nodemon": "^3.1.9",
-    "prettier": "^3.5.1"
+    "nodemon": "^3.1.9"
   }
 }
