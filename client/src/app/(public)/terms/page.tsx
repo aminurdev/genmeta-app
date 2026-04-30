@@ -143,16 +143,50 @@ export default function TermsAndConditions() {
           <h2 className="text-xl font-semibold mb-4">
             10. Contact Information
           </h2>
-          <p>
+          <p className="mb-4">
             For questions or concerns regarding these Terms and Conditions,
-            please contact us at{" "}
-            <a
-              href="mailto:support@genmeta.app"
-              className="text-blue-600 hover:underline"
-            >
-              support@genmeta.app
-            </a>
+            please contact us:
           </p>
+          <ul className="space-y-2 text-muted-foreground">
+            <li>
+              <strong>Email:</strong>{" "}
+              <a
+                href="mailto:support@genmeta.app"
+                className="text-blue-600 hover:underline"
+              >
+                support@genmeta.app
+              </a>
+            </li>
+            <li>
+              <strong>Phone:</strong>{" "}
+              <a href="tel:+8801797890685" className="text-blue-600 hover:underline">
+                +880 1797-890685
+              </a>
+              {" | "}
+              <a href="tel:+8801817710493" className="text-blue-600 hover:underline">
+                +880 1817-710493
+              </a>
+            </li>
+            <li>
+              <strong>Address:</strong> GenMeta Technologies, Gayabari, 5 No. Ward, 
+              Gayabari Union, Dimla, Nilphamari, Rangpur, Bangladesh
+            </li>
+          </ul>
+        </section>
+
+        <section className="bg-muted/20 rounded-lg p-6">
+          <h3 className="font-semibold mb-2">Legal Information</h3>
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              <strong>Trade License Number:</strong> 8875151896
+            </p>
+            <p>
+              <strong>TIN:</strong> 892080214766
+            </p>
+            <p>
+              <strong>Business Registration:</strong> Registered under the laws of Bangladesh
+            </p>
+          </div>
         </section>
       </div>
 

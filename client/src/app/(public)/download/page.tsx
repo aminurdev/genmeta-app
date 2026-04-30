@@ -1,6 +1,5 @@
 import type React from "react";
-import { Download, Shield } from "lucide-react";
-import Link from "next/link";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +22,7 @@ export const getLatestRelease = async (): Promise<ReleaseInfo | null> => {
   try {
     const response = await fetch(
       `https://api.github.com/repos/aminurdev/genmeta-app/releases/latest`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 3600 } },
     );
     if (!response.ok) throw new Error("Failed to fetch release info");
     const data = await response.json();
@@ -31,7 +30,7 @@ export const getLatestRelease = async (): Promise<ReleaseInfo | null> => {
     // Find the Windows executable in the assets
     const windowsExe = data.assets.find(
       (asset: GitHubAsset) =>
-        asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe")
+        asset.name.startsWith("GenMeta-Setup-") && asset.name.endsWith(".exe"),
     );
 
     return {
@@ -266,17 +265,6 @@ export default async function DownloadPage() {
                 <Download className="w-5 h-5 mr-2" />
                 Download Free Now
               </a>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 bg-transparent"
-              asChild
-            >
-              <Link href="/docs">
-                <Shield className="w-5 h-5 mr-2" />
-                View Setup Guide
-              </Link>
             </Button>
           </div>
         </div>
