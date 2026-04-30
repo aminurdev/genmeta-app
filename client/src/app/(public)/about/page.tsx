@@ -156,13 +156,13 @@ export default function AboutUs() {
           <h2 className="text-xl font-semibold mb-4">Legal Information</h2>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              <strong>Trade License Number:</strong> TRAD/DNCC/123456/2024
+              <strong>Trade License Number:</strong> 8875151896
             </p>
             <p>
               <strong>Business Registration:</strong> Registered under the laws of Bangladesh
             </p>
             <p>
-              <strong>Tax Identification:</strong> TIN: 123456789012
+              <strong>Tax Identification Number (TIN):</strong> 892080214766
             </p>
           </div>
         </section>

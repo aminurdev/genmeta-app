@@ -25,9 +25,9 @@ export default function ContactUs() {
                 <h3 className="font-semibold mb-1">Business Address</h3>
                 <p className="text-sm text-muted-foreground">
                   GenMeta Technologies<br />
-                  House #45, Road #12, Block-C<br />
-                  Niphamari, Rangpur Sadar<br />
-                  Rangpur - 5400<br />
+                  Gayabari, 5 No. Ward<br />
+                  Gayabari Union, Dimla<br />
+                  Nilphamari, Rangpur<br />
                   Bangladesh
                 </p>
               </div>
@@ -83,19 +83,19 @@ export default function ContactUs() {
                   <p>
                     Office:{" "}
                     <a
-                      href="tel:+8801712345678"
+                      href="tel:+8801797890685"
                       className="text-blue-600 hover:underline"
                     >
-                      +880 1712-345678
+                      +880 1797-890685
                     </a>
                   </p>
                   <p>
                     Support:{" "}
                     <a
-                      href="tel:+8801812345678"
+                      href="tel:+8801817710493"
                       className="text-blue-600 hover:underline"
                     >
-                      +880 1812-345678
+                      +880 1817-710493
                     </a>
                   </p>
                   <p className="text-xs mt-2">
@@ -211,10 +211,10 @@ export default function ContactUs() {
               <h3 className="font-semibold mb-3">Legal Information</h3>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  <strong>Trade License:</strong> TRAD/DNCC/123456/2024
+                  <strong>Trade License:</strong> 8875151896
                 </p>
                 <p>
-                  <strong>TIN:</strong> 123456789012
+                  <strong>TIN:</strong> 892080214766
                 </p>
                 <p>
                   <strong>Registered:</strong> Bangladesh
@@ -234,7 +234,9 @@ export default function ContactUs() {
             We welcome visitors by appointment. Please contact us in advance to schedule a visit.
           </p>
           <p className="text-sm text-muted-foreground">
-            GenMeta Technologies, Niphamari, Rangpur - 5400, Bangladesh
+            GenMeta Technologies<br />
+            Gayabari, 5 No. Ward, Gayabari Union<br />
+            Dimla, Nilphamari, Rangpur, Bangladesh
           </p>
         </div>
       </div>

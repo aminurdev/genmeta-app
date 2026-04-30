@@ -286,8 +286,12 @@ export default function DeliveryPolicy() {
             </li>
             <li>
               <strong>Phone Support:</strong>{" "}
-              <a href="tel:+8801812345678" className="text-blue-600 hover:underline">
-                +880 1812-345678
+              <a href="tel:+8801797890685" className="text-blue-600 hover:underline">
+                +880 1797-890685
+              </a>{" "}
+              |{" "}
+              <a href="tel:+8801817710493" className="text-blue-600 hover:underline">
+                +880 1817-710493
               </a>
             </li>
             <li>
@@ -312,14 +316,17 @@ export default function DeliveryPolicy() {
           <h3 className="font-semibold mb-2">Legal Information</h3>
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>
-              <strong>Trade License Number:</strong> TRAD/DNCC/123456/2024
+              <strong>Trade License Number:</strong> 8875151896
             </p>
             <p>
-              <strong>Business Address:</strong> GenMeta Technologies, House #45, Road #12, 
-              Block-C, Niphamari, Rangpur - 5400, Bangladesh
+              <strong>TIN:</strong> 892080214766
             </p>
             <p>
-              <strong>Contact:</strong> support@genmeta.app | +880 1812-345678
+              <strong>Business Address:</strong> GenMeta Technologies, Gayabari, 5 No. Ward, 
+              Gayabari Union, Dimla, Nilphamari, Rangpur, Bangladesh
+            </p>
+            <p>
+              <strong>Contact:</strong> support@genmeta.app | +880 1797-890685 | +880 1817-710493
             </p>
           </div>
         </section>

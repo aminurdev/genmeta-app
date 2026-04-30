@@ -882,8 +882,9 @@ export const Footer = () => {
             </p>
             <div className="text-xs text-muted-foreground mb-4">
               <p className="font-semibold text-foreground mb-1">GenMeta Technologies</p>
-              <p>Trade License: TRAD/DNCC/123456/2024</p>
-              <p>Rangpur, Bangladesh</p>
+              <p>Trade License: 8875151896</p>
+              <p>TIN: 892080214766</p>
+              <p>Gayabari, Dimla, Nilphamari, Rangpur</p>
             </div>
             <div className="flex space-x-4 mt-4">
               {[
@@ -1013,12 +1014,20 @@ export const Footer = () => {
             <ul className="space-y-3 text-muted-foreground text-sm">
               <li className="flex items-start group">
                 <Phone className="w-4 h-4 mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0" />
-                <a
-                  href="https://wa.me/+8801817710493"
-                  className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
-                >
-                  WhatsApp Support
-                </a>
+                <div className="flex flex-col gap-1">
+                  <a
+                    href="tel:+8801797890685"
+                    className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
+                  >
+                    +880 1797-890685
+                  </a>
+                  <a
+                    href="https://wa.me/8801817710493"
+                    className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
+                  >
+                    +880 1817-710493 (WhatsApp)
+                  </a>
+                </div>
               </li>
               <li className="flex items-start group">
                 <svg
@@ -1059,7 +1068,7 @@ export const Footer = () => {
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span>Niphamari, Rangpur<br />Bangladesh</span>
+                <span>Gayabari, Dimla, Nilphamari<br />Rangpur, Bangladesh</span>
               </li>
               <li className="flex items-start group">
                 <svg
