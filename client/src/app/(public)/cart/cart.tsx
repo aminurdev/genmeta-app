@@ -56,10 +56,10 @@ interface PaymentMethod {
 
 const paymentMethods: PaymentMethod[] = [
   {
-    id: "bkash",
-    name: "bKash",
-    description: "Local payment method",
-    logo: "/bkash-logo.png",
+    id: "paystation",
+    name: "PayStation",
+    description: "Secure payment gateway",
+    logo: "/paystation-logo.png",
     available: true,
   },
 ];
@@ -75,7 +75,7 @@ export default function Cart({ planId }: { planId: string }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
 
   // Payment method state
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("bkash");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("paystation");
 
   // Promo code states
   const [promoCode, setPromoCode] = useState<string>("");
@@ -222,8 +222,8 @@ export default function Cart({ planId }: { planId: string }) {
         if (!data.success) {
           throw new Error(data.message || "Failed to process payment");
         }
-        if (selectedPaymentMethod === "bkash" && data.data?.bkashURL) {
-          window.location.href = data.data.bkashURL;
+        if (selectedPaymentMethod === "paystation" && data.data?.paystationURL) {
+          window.location.href = data.data.paystationURL;
         }
       } else {
         router.push("/login?redirectPath=cart?type=subscription");
@@ -544,7 +544,7 @@ export default function Cart({ planId }: { planId: string }) {
                   <Separator />
 
                   {/* Payment Method */}
-                  {/* <div className="space-y-3">
+                  <div className="space-y-3">
                     <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup
                       value={selectedPaymentMethod}
@@ -605,10 +605,10 @@ export default function Cart({ planId }: { planId: string }) {
                     </RadioGroup>
                   </div>
 
-                  <Separator /> */}
+                  <Separator />
 
                   {/* Checkout Button */}
-                  {/* <Button
+                  <Button
                     className="w-full h-12 font-medium"
                     onClick={() =>
                       handleCheckout(
@@ -637,59 +637,7 @@ export default function Cart({ planId }: { planId: string }) {
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </>
                     )}
-                  </Button> */}
-
-                  <div className="border p-2 rounded-md">
-                    <p className="text-muted-foreground">
-                      Please contact us on WhatsApp to complete your purchase.
-                    </p>
-                  </div>
-
-                  <WhatsAppButton
-                    phoneNumber="+8801817710493"
-                    className="w-full h-12"
-                    label="Contact in whatsapp"
-                    message={`Assalamu-Alaikum GenMeta Team! 
-I would like to purchase the following plan:
-
-*Plan Details:*
-• Plan Name: ${plan.name}
-• Plan Type: ${plan.type === "subscription" ? "Subscription" : "Credit"}
-• Duration: ${plan.planDuration} days
-${plan.type === "credit" ? `• Credits: ${plan.credit?.toLocaleString()}` : ""}
-*Total Amount: ৳${finalPrice.toFixed(2)}*
-
-Please guide me through the payment process. Thank you!`}
-                    onBeforeRedirect={async () => {
-                      try {
-                        const user = await getCurrentUser();
-                        if (!user) {
-                          toast.error("Please login to create an order");
-                          router.push("/login?redirectPath=cart");
-                          return;
-                        }
-
-                        const orderData = {
-                          planId: plan._id,
-                          amount: finalPrice,
-                          promoCode: validPromo?.promoCode.code,
-                        };
-
-                        const result = await createWhatsAppOrder(orderData);
-
-                        if (result.success) {
-                          toast.success("Order created successfully!");
-                        } else {
-                          toast.error(
-                            result.message || "Failed to create order",
-                          );
-                        }
-                      } catch (error) {
-                        console.error("Error creating order:", error);
-                        toast.error("Failed to create order");
-                      }
-                    }}
-                  />
+                  </Button>
                 </CardContent>
               </Card>
             </div>

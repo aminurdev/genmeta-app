@@ -42,7 +42,8 @@ export interface PromoCodeRes {
 }
 
 export type PaymentCreateResponse = {
-  bkashURL: string;
+  bkashURL?: string;
+  paystationURL?: string;
   paymentID: string;
   amount: string;
   plan: {
