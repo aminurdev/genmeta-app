@@ -41,7 +41,12 @@ export const createPayment = async ({
   ApiResponse<PaymentCreateResponse> | ApiErrorResponse
 > => {
   try {
-    const result = await api.post("/payment/create-app-payment", {
+    // Determine the endpoint based on payment method
+    const endpoint = paymentMethod === "paystation" 
+      ? "/payment/create-paystation-payment"
+      : "/payment/create-app-payment";
+    
+    const result = await api.post(endpoint, {
       planId,
       type,
       promoCode,

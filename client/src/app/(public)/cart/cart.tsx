@@ -219,11 +219,31 @@ export default function Cart({ planId }: { planId: string }) {
           paymentMethod: selectedPaymentMethod,
         });
 
+        console.log("Payment response:", data);
+
         if (!data.success) {
           throw new Error(data.message || "Failed to process payment");
         }
-        if (selectedPaymentMethod === "paystation" && data.data?.paystationURL) {
-          window.location.href = data.data.paystationURL;
+
+        // Check for PayStation payment URL
+        if (selectedPaymentMethod === "paystation") {
+          if (data.data?.paymentUrl) {
+            console.log("Redirecting to PayStation:", data.data.paymentUrl);
+            window.location.href = data.data.paymentUrl;
+          } else {
+            throw new Error("Payment URL not received from PayStation");
+          }
+        } 
+        // Check for bKash payment URL
+        else if (selectedPaymentMethod === "bkash") {
+          if (data.data?.bkashURL) {
+            console.log("Redirecting to bKash:", data.data.bkashURL);
+            window.location.href = data.data.bkashURL;
+          } else {
+            throw new Error("Payment URL not received from bKash");
+          }
+        } else {
+          throw new Error("Invalid payment method selected");
         }
       } else {
         router.push("/login?redirectPath=cart?type=subscription");
