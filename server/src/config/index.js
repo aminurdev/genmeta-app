@@ -44,6 +44,13 @@ const config = {
     password: process.env.BKASH_PASSWORD,
     callback_url: process.env.BKASH_CALLBACK_URL,
   },
+
+  paystation: {
+    base_url: process.env.PAYSTATION_BASE_URL,
+    merchant_id: process.env.PAYSTATION_MERCHANT_ID,
+    password: process.env.PAYSTATION_PASSWORD,
+    callback_url: process.env.PAYSTATION_CALLBACK_URL,
+  },
 };
 
 export default config;
