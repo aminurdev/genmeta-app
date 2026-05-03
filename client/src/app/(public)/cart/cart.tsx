@@ -208,45 +208,49 @@ export default function Cart({ planId }: { planId: string }) {
     promoCode?: string,
   ) => {
     try {
+      // Check if user is logged in
       const user = await getCurrentUser();
-      if (user) {
-        setIsProcessing(true);
+      if (!user) {
+        // Redirect to login with current cart page as redirect path
+        const currentPath = `/cart${planId ? `?planId=${planId}` : ''}`;
+        router.push(`/login?redirectPath=${encodeURIComponent(currentPath)}`);
+        return;
+      }
 
-        const data = await createPayment({
-          planId: id,
-          type,
-          promoCode,
-          paymentMethod: selectedPaymentMethod,
-        });
+      setIsProcessing(true);
 
-        console.log("Payment response:", data);
+      const data = await createPayment({
+        planId: id,
+        type,
+        promoCode,
+        paymentMethod: selectedPaymentMethod,
+      });
 
-        if (!data.success) {
-          throw new Error(data.message || "Failed to process payment");
-        }
+      console.log("Payment response:", data);
 
-        // Check for PayStation payment URL
-        if (selectedPaymentMethod === "paystation") {
-          if (data.data?.paymentUrl) {
-            console.log("Redirecting to PayStation:", data.data.paymentUrl);
-            window.location.href = data.data.paymentUrl;
-          } else {
-            throw new Error("Payment URL not received from PayStation");
-          }
-        } 
-        // Check for bKash payment URL
-        else if (selectedPaymentMethod === "bkash") {
-          if (data.data?.bkashURL) {
-            console.log("Redirecting to bKash:", data.data.bkashURL);
-            window.location.href = data.data.bkashURL;
-          } else {
-            throw new Error("Payment URL not received from bKash");
-          }
+      if (!data.success) {
+        throw new Error(data.message || "Failed to process payment");
+      }
+
+      // Check for PayStation payment URL
+      if (selectedPaymentMethod === "paystation") {
+        if (data.data?.paymentUrl) {
+          console.log("Redirecting to PayStation:", data.data.paymentUrl);
+          window.location.href = data.data.paymentUrl;
         } else {
-          throw new Error("Invalid payment method selected");
+          throw new Error("Payment URL not received from PayStation");
+        }
+      } 
+      // Check for bKash payment URL
+      else if (selectedPaymentMethod === "bkash") {
+        if (data.data?.bkashURL) {
+          console.log("Redirecting to bKash:", data.data.bkashURL);
+          window.location.href = data.data.bkashURL;
+        } else {
+          throw new Error("Payment URL not received from bKash");
         }
       } else {
-        router.push("/login?redirectPath=cart?type=subscription");
+        throw new Error("Invalid payment method selected");
       }
     } catch (error) {
       console.error("Error processing payment:", error);
