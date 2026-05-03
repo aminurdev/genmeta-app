@@ -1,6 +1,7 @@
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
 import { executePayment } from "../bkash/bkash.service.js";
+import { checkTransactionStatus } from "../paystation/paystation.service.js";
 import { User } from "../../models/user.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
 import { AppKey } from "../../models/appKey.model.js";
@@ -347,4 +348,222 @@ export const redirectToPricing = (res, message, reason = "") => {
     redirectURL += `&reason=${encodeURIComponent(reason)}`;
   }
   return res.redirect(redirectURL);
+};
+
+/**
+ * Process Successful PayStation Payment
+ * Verifies transaction status and updates user plan
+ */
+export const processSuccessfulPaystationPayment = async (invoiceNumber, res) => {
+  let transactionDetails;
+
+  try {
+    // Verify transaction status with PayStation
+    transactionDetails = await checkTransactionStatus(invoiceNumber);
+  } catch (error) {
+    logger.error("PayStation transaction verification failed", {
+      invoiceNumber,
+      error: error.message,
+    });
+    return redirectToPricing(
+      res,
+      "Payment verification failed",
+      error.message || "verification_error"
+    );
+  }
+
+  if (!transactionDetails || !transactionDetails.data) {
+    logger.error("Failed to retrieve PayStation transaction details", {
+      invoiceNumber,
+    });
+    return redirectToPricing(res, "Payment failed", "verification_failed");
+  }
+
+  const {
+    trxId,
+    trxStatus,
+    paymentAmount,
+    reference,
+    checkoutItems,
+    paymentMethod,
+    orderDateTime,
+  } = transactionDetails.data;
+
+  // Check if transaction is successful
+  if (trxStatus.toLowerCase() !== "success" && trxStatus.toLowerCase() !== "successful") {
+    logger.warn("PayStation transaction not successful", {
+      invoiceNumber,
+      trxStatus,
+    });
+    return redirectToPricing(
+      res,
+      `Payment ${trxStatus.toLowerCase()}`,
+      "payment_not_completed"
+    );
+  }
+
+  try {
+    // Parse reference to get user, plan, and promo code IDs
+    const referenceParts = reference.split("-");
+    const userId = referenceParts[0];
+    const planId = referenceParts[1];
+    const promoCodeId = referenceParts[2] || null;
+
+    // Parse checkout items
+    let parsedCheckoutItems = {};
+    try {
+      parsedCheckoutItems = typeof checkoutItems === "string" 
+        ? JSON.parse(checkoutItems) 
+        : checkoutItems;
+    } catch (parseError) {
+      logger.warn("Failed to parse checkout items", { checkoutItems });
+    }
+
+    // Fetch plan details
+    const planDetails = await AppPricing.findById(planId);
+    if (!planDetails) {
+      logger.error("Plan not found for PayStation payment", { planId, invoiceNumber });
+      return redirectToPricing(res, "Payment failed", "plan_not_found");
+    }
+
+    // Check if payment already exists
+    const existingPayment = await AppPayment.findOne({
+      $or: [
+        { paymentID: invoiceNumber },
+        { trxID: trxId }
+      ]
+    });
+
+    if (existingPayment) {
+      logger.warn("Duplicate PayStation payment detected", {
+        invoiceNumber,
+        trxId,
+        existingPaymentId: existingPayment._id,
+      });
+      
+      // Redirect to success page with existing payment details
+      return res.redirect(
+        `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}`
+      );
+    }
+
+    // Update promo code usage if applicable
+    if (promoCodeId) {
+      await PromoCode.findByIdAndUpdate(promoCodeId, {
+        $addToSet: { usedCount: userId },
+      });
+      logger.info("Promo code usage updated", { promoCodeId, userId });
+    }
+
+    // Create payment record
+    const payment = await AppPayment.create({
+      userId,
+      paymentID: invoiceNumber,
+      plan: {
+        id: planId,
+        name: planDetails.name,
+        type: planDetails.type,
+      },
+      amount: parseFloat(paymentAmount),
+      trxID: trxId || invoiceNumber,
+      paymentDetails: {
+        gateway: "paystation",
+        trxStatus,
+        paymentMethod: paymentMethod || "N/A",
+        orderDateTime: orderDateTime || new Date().toISOString(),
+        reference,
+        checkoutItems: parsedCheckoutItems,
+      },
+      createdAt: new Date(),
+    });
+
+    if (!payment) {
+      logger.error("Failed to create PayStation payment record", {
+        invoiceNumber,
+        userId,
+      });
+      return redirectToPricing(res, "Payment failed", "record_creation_failed");
+    }
+
+    logger.info("PayStation payment record created successfully", {
+      paymentId: payment._id,
+      invoiceNumber,
+      userId,
+      amount: paymentAmount,
+    });
+
+    // Update user plan
+    const updateSuccess = await updatePlan(userId, planId);
+
+    if (!updateSuccess) {
+      logger.warn("Plan update failed for PayStation payment", {
+        invoiceNumber,
+        userId,
+        planId,
+      });
+    }
+
+    // Process referral rewards
+    try {
+      const payingUser = await User.findById(userId).populate("referred");
+
+      if (!payingUser?.referred) {
+        logger.info("No referral found for this PayStation payment", { userId });
+      } else {
+        const referralDoc = await Referral.findById(payingUser.referred);
+
+        if (referralDoc) {
+          const userHistory = referralDoc.earnedHistory.filter(
+            (e) => e.user.toString() === payingUser._id.toString()
+          );
+
+          if (userHistory.length >= 1) {
+            logger.info(
+              "Referral earnings skipped (already rewarded fully)",
+              {
+                referrer: referralDoc.referrer.toString(),
+                referredUser: payingUser._id.toString(),
+              }
+            );
+          } else {
+            const rewardAmount = 50;
+
+            if (rewardAmount > 0) {
+              referralDoc.availableBalance += rewardAmount;
+              referralDoc.earnedHistory.push({
+                user: payingUser._id,
+                amount: rewardAmount,
+                createdAt: new Date(),
+              });
+
+              await referralDoc.save();
+
+              logger.info("Referral earning added for PayStation payment", {
+                referrer: referralDoc.referrer.toString(),
+                referredUser: payingUser._id.toString(),
+                amount: rewardAmount,
+              });
+            }
+          }
+        }
+      }
+    } catch (referralError) {
+      logger.error("Failed to update referral earnings for PayStation payment", {
+        error: referralError.message,
+        userId,
+      });
+    }
+
+    // Redirect to success page
+    return res.redirect(
+      `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}&gateway=paystation`
+    );
+  } catch (error) {
+    logger.error("Error processing successful PayStation payment", {
+      invoiceNumber,
+      error: error.message,
+      stack: error.stack,
+    });
+    return redirectToPricing(res, "Payment failed", "processing_error");
+  }
 };

@@ -42,8 +42,10 @@ export interface PromoCodeRes {
 }
 
 export type PaymentCreateResponse = {
-  bkashURL: string;
-  paymentID: string;
+  bkashURL?: string;
+  paymentUrl?: string;
+  paymentID?: string;
+  invoiceNumber?: string;
   amount: string;
   plan: {
     name: string;
@@ -51,4 +53,5 @@ export type PaymentCreateResponse = {
     duration?: number; // only for subscription
     credit?: number; // only for credit
   };
+  promoCode?: string | null;
 };
