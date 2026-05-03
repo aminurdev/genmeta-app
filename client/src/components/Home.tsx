@@ -896,8 +896,8 @@ export const Footer = () => {
                 <Image
                   src={
                     resolvedTheme === "dark"
-                      ? "/Assets/Payment Gateway Dark.png"
-                      : "/Assets/Payment Gateway Light.png"
+                      ? "/Assets/Payment Gateway Light.png"
+                      : "/Assets/Payment Gateway Dark.png"
                   }
                   alt="Payment Gateway"
                   width={300}
