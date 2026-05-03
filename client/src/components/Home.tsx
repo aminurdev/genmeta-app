@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banner } from "@/components/main/banner";
+import { useTheme } from "next-themes";
 
 interface Props {
   releaseInfo: {
@@ -855,6 +856,14 @@ function TestimonialCard({
 }
 
 export const Footer = () => {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch by only rendering theme-dependent content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <footer className="bg-background text-card-foreground py-16 border-t border-violet-100 dark:border-violet-900">
       <div className="max-w-7xl mx-auto px-4">
@@ -880,71 +889,25 @@ export const Footer = () => {
               featuring advanced AI technology and professional-grade metadata
               tools.
             </p>
-            <div className="text-xs text-muted-foreground mb-4">
-              <p className="font-semibold text-foreground mb-1">GenMeta Technologies</p>
-              <p>Trade License: 8875151896</p>
-              <p>TIN: 892080214766</p>
-              <p>Gayabari, Dimla, Nilphamari, Rangpur</p>
-            </div>
-            <div className="flex space-x-4 mt-4">
-              {[
-                // Facebook
-                <svg
-                  key="facebook"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-                </svg>,
-                // Twitter
-                <svg
-                  key="twitter"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
-                </svg>,
-                // Instagram
-                <svg
-                  key="instagram"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>,
-              ].map((icon, index) => (
-                <a
-                  key={index}
-                  href="#"
-                  className="text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 transform hover:scale-110 transition-all duration-300"
-                >
-                  {icon}
-                </a>
-              ))}
-            </div>
+
+            {/* Payment Gateway Images */}
+            {mounted && (
+              <div className="mb-4">
+                <Image
+                  src={
+                    resolvedTheme === "dark"
+                      ? "/Assets/Payment Gateway Dark.png"
+                      : "/Assets/Payment Gateway Light.png"
+                  }
+                  alt="Payment Gateway"
+                  width={300}
+                  height={60}
+                  className="w-full max-w-xs h-auto"
+                  priority={false}
+                  key={resolvedTheme}
+                />
+              </div>
+            )}
           </div>
 
           {/* Company */}
@@ -1068,25 +1031,11 @@ export const Footer = () => {
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
-                <span>Gayabari, Dimla, Nilphamari<br />Rangpur, Bangladesh</span>
-              </li>
-              <li className="flex items-start group">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <span>Sat-Thu: 9AM-6PM<br />Friday: Closed</span>
+                <span>
+                  Gayabari, Dimla, Nilphamari
+                  <br />
+                  Rangpur, Bangladesh
+                </span>
               </li>
             </ul>
           </div>
@@ -1095,21 +1044,36 @@ export const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-violet-100 dark:border-violet-900">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground animate-fade-in-up">
-            <p>&copy; {new Date().getFullYear()} GenMeta Technologies. All rights reserved.</p>
+            <p>
+              &copy; {new Date().getFullYear()} GenMeta Technologies. All rights
+              reserved.
+            </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link href="/terms" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              <Link
+                href="/terms"
+                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+              >
                 Terms
               </Link>
               <span>•</span>
-              <Link href="/privacy" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              <Link
+                href="/privacy"
+                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+              >
                 Privacy
               </Link>
               <span>•</span>
-              <Link href="/refund-policy" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              <Link
+                href="/refund-policy"
+                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+              >
                 Refunds
               </Link>
               <span>•</span>
-              <Link href="/contact" className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors">
+              <Link
+                href="/contact"
+                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+              >
                 Contact
               </Link>
             </div>
