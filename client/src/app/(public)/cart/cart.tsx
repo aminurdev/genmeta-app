@@ -75,7 +75,8 @@ export default function Cart({ planId }: { planId: string }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
 
   // Payment method state
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("paystation");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState("paystation");
 
   // Promo code states
   const [promoCode, setPromoCode] = useState<string>("");
@@ -212,7 +213,7 @@ export default function Cart({ planId }: { planId: string }) {
       const user = await getCurrentUser();
       if (!user) {
         // Redirect to login with current cart page as redirect path
-        const currentPath = `/cart${planId ? `?planId=${planId}` : ''}`;
+        const currentPath = `/cart${planId ? `?planId=${planId}` : ""}`;
         router.push(`/login?redirectPath=${encodeURIComponent(currentPath)}`);
         return;
       }
@@ -240,7 +241,7 @@ export default function Cart({ planId }: { planId: string }) {
         } else {
           throw new Error("Payment URL not received from PayStation");
         }
-      } 
+      }
       // Check for bKash payment URL
       else if (selectedPaymentMethod === "bkash") {
         if (data.data?.bkashURL) {
@@ -662,6 +663,57 @@ export default function Cart({ planId }: { planId: string }) {
                       </>
                     )}
                   </Button>
+                  <div className="border p-2 rounded-md">
+                    <p className="text-muted-foreground">
+                      Please contact us on WhatsApp to complete your purchase.
+                    </p>
+                  </div>
+
+                  <WhatsAppButton
+                    phoneNumber="+8801817710493"
+                    className="w-full h-12"
+                    label="Contact in whatsapp"
+                    message={`Assalamu-Alaikum GenMeta Team! 
+I would like to purchase the following plan:
+
+*Plan Details:*
+• Plan Name: ${plan.name}
+• Plan Type: ${plan.type === "subscription" ? "Subscription" : "Credit"}
+• Duration: ${plan.planDuration} days
+${plan.type === "credit" ? `• Credits: ${plan.credit?.toLocaleString()}` : ""}
+*Total Amount: ৳${finalPrice.toFixed(2)}*
+
+Please guide me through the payment process. Thank you!`}
+                    onBeforeRedirect={async () => {
+                      try {
+                        const user = await getCurrentUser();
+                        if (!user) {
+                          toast.error("Please login to create an order");
+                          router.push("/login?redirectPath=cart");
+                          return;
+                        }
+
+                        const orderData = {
+                          planId: plan._id,
+                          amount: finalPrice,
+                          promoCode: validPromo?.promoCode.code,
+                        };
+
+                        const result = await createWhatsAppOrder(orderData);
+
+                        if (result.success) {
+                          toast.success("Order created successfully!");
+                        } else {
+                          toast.error(
+                            result.message || "Failed to create order",
+                          );
+                        }
+                      } catch (error) {
+                        console.error("Error creating order:", error);
+                        toast.error("Failed to create order");
+                      }
+                    }}
+                  />
                 </CardContent>
               </Card>
             </div>
