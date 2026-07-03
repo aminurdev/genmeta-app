@@ -57,7 +57,7 @@ export async function initiatePayment({
       invoice_number: invoiceNumber,
       currency: "BDT",
       payment_amount: amount,
-      pay_with_charge: 1, // Merchant bears the charge
+      pay_with_charge: 0, // Merchant bears the charge
       reference: reference || `Payment for ${invoiceNumber}`,
       cust_name: customerName,
       cust_phone: customerPhone,
