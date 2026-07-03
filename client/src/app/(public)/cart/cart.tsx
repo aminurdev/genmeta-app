@@ -661,16 +661,11 @@ export default function Cart({ planId }: { planId: string }) {
                       </>
                     )}
                   </Button>
-                  <div className="border p-2 rounded-md">
-                    <p className="text-muted-foreground">
-                      Please contact us on WhatsApp to complete your purchase.
-                    </p>
-                  </div>
 
                   <WhatsAppButton
                     phoneNumber="+8801817710493"
-                    className="w-full h-12"
-                    label="Contact in whatsapp"
+                    className="w-full h-12 bg-[#25D366] hover:bg-[#20BA5A] text-white border-0 text-base font-semibold"
+                    label="Contact on WhatsApp"
                     message={`Assalamu-Alaikum GenMeta Team! 
 I would like to purchase the following plan:
 
