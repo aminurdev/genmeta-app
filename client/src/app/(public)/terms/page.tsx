@@ -159,17 +159,21 @@ export default function TermsAndConditions() {
             </li>
             <li>
               <strong>Phone:</strong>{" "}
-              <a href="tel:+8801797890685" className="text-blue-600 hover:underline">
-                +880 1797-890685
-              </a>
-              {" | "}
-              <a href="tel:+8801817710493" className="text-blue-600 hover:underline">
+              <a
+                href="tel:+8801817710493"
+                className="text-blue-600 hover:underline"
+              >
                 +880 1817-710493
               </a>
             </li>
             <li>
-              <strong>Address:</strong> GenMeta Technologies, Gayabari, 5 No. Ward, 
-              Gayabari Union, Dimla, Nilphamari, Rangpur, Bangladesh
+              <strong>WhatsApp:</strong>{" "}
+              <a
+                href="https://wa.me/8801817710493"
+                className="text-blue-600 hover:underline"
+              >
+                +880 1817-710493
+              </a>
             </li>
           </ul>
         </section>
@@ -184,7 +188,8 @@ export default function TermsAndConditions() {
               <strong>TIN:</strong> 892080214766
             </p>
             <p>
-              <strong>Business Registration:</strong> Registered under the laws of Bangladesh
+              <strong>Business Registration:</strong> Registered under the laws
+              of Bangladesh
             </p>
           </div>
         </section>
