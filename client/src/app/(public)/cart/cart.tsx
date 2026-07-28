@@ -37,9 +37,7 @@ import { useAllPricing } from "@/services/queries/pricing";
 import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
-import { WhatsAppButton } from "./WhatsAppButton";
 import { creditFeatures, premiumFeatures } from "../pricing/features";
-import { createWhatsAppOrder } from "@/services/orders";
 
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -662,7 +660,7 @@ export default function Cart({ planId }: { planId: string }) {
                     )}
                   </Button>
 
-                  <WhatsAppButton
+                  {/* <WhatsAppButton
                     phoneNumber="+8801817710493"
                     className="w-full h-12 bg-[#25D366] hover:bg-[#20BA5A] text-white border-0 text-base font-semibold"
                     label="Contact on WhatsApp"
@@ -706,7 +704,7 @@ Please guide me through the payment process. Thank you!`}
                         toast.error("Failed to create order");
                       }
                     }}
-                  />
+                  /> */}
                 </CardContent>
               </Card>
             </div>

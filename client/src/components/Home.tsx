@@ -678,16 +678,6 @@ export default function HomePage({ releaseInfo }: Props) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 transform hover:scale-105 transition-all duration-300"
-                asChild
-              >
-                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                  <Download className="w-5 h-5 mr-2" />
-                  Start Earning More Today
-                </a>
-              </Button>
-              <Button
-                size="lg"
                 variant="outline"
                 className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 bg-transparent transform hover:scale-105 transition-all duration-300"
                 asChild
@@ -889,25 +879,6 @@ export const Footer = () => {
               featuring advanced AI technology and professional-grade metadata
               tools.
             </p>
-
-            {/* Payment Gateway Images */}
-            {mounted && (
-              <div className="mb-4">
-                <Image
-                  src={
-                    resolvedTheme === "dark"
-                      ? "/Assets/Payment Gateway Light.png"
-                      : "/Assets/Payment Gateway Dark.png"
-                  }
-                  alt="Payment Gateway"
-                  width={300}
-                  height={60}
-                  className="w-full max-w-xs h-auto"
-                  priority={false}
-                  key={resolvedTheme}
-                />
-              </div>
-            )}
           </div>
 
           {/* Company */}
@@ -979,16 +950,10 @@ export const Footer = () => {
                 <Phone className="w-4 h-4 mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <div className="flex flex-col gap-1">
                   <a
-                    href="tel:+8801797890685"
-                    className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
-                  >
-                    +880 1797-890685
-                  </a>
-                  <a
                     href="https://wa.me/8801817710493"
                     className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
                   >
-                    +880 1817-710493 (WhatsApp)
+                    WhatsApp
                   </a>
                 </div>
               </li>
@@ -1015,29 +980,25 @@ export const Footer = () => {
                   support@genmeta.app
                 </a>
               </li>
-              <li className="flex items-start group">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
-                >
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <span>
-                  Gayabari, Dimla, Nilphamari
-                  <br />
-                  Rangpur, Bangladesh
-                </span>
-              </li>
             </ul>
+            {/* Payment Gateway Images */}
+            {mounted && (
+              <div className="mb-4 mt-2">
+                <Image
+                  src={
+                    resolvedTheme === "dark"
+                      ? "/Assets/Payment Gateway Light.png"
+                      : "/Assets/Payment Gateway Dark.png"
+                  }
+                  alt="Payment Gateway"
+                  width={300}
+                  height={60}
+                  className="w-full max-w-xs h-auto"
+                  priority={false}
+                  key={resolvedTheme}
+                />
+              </div>
+            )}
           </div>
         </div>
 
