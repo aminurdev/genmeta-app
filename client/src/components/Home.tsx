@@ -889,25 +889,6 @@ export const Footer = () => {
               featuring advanced AI technology and professional-grade metadata
               tools.
             </p>
-
-            {/* Payment Gateway Images */}
-            {mounted && (
-              <div className="mb-4">
-                <Image
-                  src={
-                    resolvedTheme === "dark"
-                      ? "/Assets/Payment Gateway Light.png"
-                      : "/Assets/Payment Gateway Dark.png"
-                  }
-                  alt="Payment Gateway"
-                  width={300}
-                  height={60}
-                  className="w-full max-w-xs h-auto"
-                  priority={false}
-                  key={resolvedTheme}
-                />
-              </div>
-            )}
           </div>
 
           {/* Company */}
@@ -1010,6 +991,24 @@ export const Footer = () => {
                 </a>
               </li>
             </ul>
+            {/* Payment Gateway Images */}
+            {mounted && (
+              <div className="mb-4">
+                <Image
+                  src={
+                    resolvedTheme === "dark"
+                      ? "/Assets/Payment Gateway Light.png"
+                      : "/Assets/Payment Gateway Dark.png"
+                  }
+                  alt="Payment Gateway"
+                  width={300}
+                  height={60}
+                  className="w-full max-w-xs h-auto"
+                  priority={false}
+                  key={resolvedTheme}
+                />
+              </div>
+            )}
           </div>
         </div>
 
