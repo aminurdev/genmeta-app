@@ -993,7 +993,7 @@ export const Footer = () => {
             </ul>
             {/* Payment Gateway Images */}
             {mounted && (
-              <div className="mb-4">
+              <div className="mb-4 mt-2">
                 <Image
                   src={
                     resolvedTheme === "dark"
