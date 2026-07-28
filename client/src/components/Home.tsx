@@ -678,16 +678,6 @@ export default function HomePage({ releaseInfo }: Props) {
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 transform hover:scale-105 transition-all duration-300"
-                asChild
-              >
-                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                  <Download className="w-5 h-5 mr-2" />
-                  Start Earning More Today
-                </a>
-              </Button>
-              <Button
-                size="lg"
                 variant="outline"
                 className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 bg-transparent transform hover:scale-105 transition-all duration-300"
                 asChild
