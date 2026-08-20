@@ -329,16 +329,26 @@ const PricingContent = () => {
                       ? "per week"
                       : `per ${plan.planDuration} days`;
 
+              // Check if plan is unavailable (3 months = 91 days, 6 months = 182 days)
+              const isUnavailable =
+                plan.planDuration === 91 || plan.planDuration === 182;
+
               return (
                 <Card
                   key={plan._id}
-                  className="flex flex-col relative border-2 transition-all hover:shadow-lg hover:border-primary/20 bg-card"
+                  className={`flex flex-col relative border-2 transition-all hover:shadow-lg hover:border-primary/20 bg-card ${
+                    isUnavailable ? "opacity-75" : ""
+                  }`}
                 >
-                  {plan.discountPercent > 0 && (
+                  {isUnavailable ? (
+                    <Badge className="absolute right-4 top-4 bg-orange-500">
+                      Unavailable now
+                    </Badge>
+                  ) : plan.discountPercent > 0 ? (
                     <Badge className="absolute right-4 top-4 bg-green-600">
                       Save {plan.discountPercent}%
                     </Badge>
-                  )}
+                  ) : null}
 
                   <CardHeader className="pb-6">
                     <div className="flex items-center justify-between mb-2">
@@ -384,8 +394,9 @@ const PricingContent = () => {
                     <Button
                       className="w-full h-11 font-medium"
                       onClick={() => handlePurchase(plan._id, "subscription")}
+                      disabled={isUnavailable}
                     >
-                      Choose Plan
+                      {isUnavailable ? "Unavailable now" : "Choose Plan"}
                     </Button>
                   </CardFooter>
                 </Card>
