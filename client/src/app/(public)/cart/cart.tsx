@@ -38,6 +38,7 @@ import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
 import { creditFeatures, premiumFeatures } from "../pricing/features";
+import { Badge } from "@/components/ui/badge";
 
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -205,6 +206,12 @@ export default function Cart({ planId }: { planId: string }) {
     promoCode?: string,
   ) => {
     try {
+      // Check if plan is unavailable
+      if (plan && (plan.planDuration === 91 || plan.planDuration === 182)) {
+        toast.error("This plan is coming soon. Please choose another plan.");
+        return;
+      }
+
       // Check if user is logged in
       const user = await getCurrentUser();
       if (!user) {
@@ -321,6 +328,10 @@ export default function Cart({ planId }: { planId: string }) {
       )
     : priceAfterPlanDiscount;
 
+  // Check if current plan is unavailable
+  const isPlanUnavailable =
+    plan.planDuration === 91 || plan.planDuration === 182;
+
   return (
     <div className="min-h-screen bg-background">
       <MaxWidthWrapper className="py-8 lg:py-12">
@@ -379,51 +390,78 @@ export default function Cart({ planId }: { planId: string }) {
                         Subscription Plans
                       </div>
                     )}
-                    {subscriptionPlans.map((planOption) => (
-                      <SelectItem key={planOption._id} value={planOption._id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{planOption.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            ৳
-                            {planOption.discountPrice
-                              ? planOption.discountPrice
-                              : planOption.discountPercent > 0
-                                ? (
-                                    (planOption.basePrice *
-                                      (100 - planOption.discountPercent)) /
-                                    100
-                                  ).toFixed(0)
-                                : planOption.basePrice.toFixed(0)}
-                            {planOption.planDuration === 30
-                              ? "/month"
-                              : planOption.planDuration === 365
-                                ? "/year"
-                                : `/${planOption.planDuration} days`}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {subscriptionPlans.map((planOption) => {
+                      const isUnavailable =
+                        planOption.planDuration === 91 ||
+                        planOption.planDuration === 182;
+                      return (
+                        <SelectItem
+                          key={planOption._id}
+                          value={planOption._id}
+                          disabled={isUnavailable}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {planOption.name}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              ৳
+                              {planOption.discountPrice
+                                ? planOption.discountPrice
+                                : planOption.discountPercent > 0
+                                  ? (
+                                      (planOption.basePrice *
+                                        (100 - planOption.discountPercent)) /
+                                      100
+                                    ).toFixed(0)
+                                  : planOption.basePrice.toFixed(0)}
+                              {planOption.planDuration === 30
+                                ? "/month"
+                                : planOption.planDuration === 365
+                                  ? "/year"
+                                  : `/${planOption.planDuration} days`}
+                            </span>
+                            {isUnavailable && (
+                              <span className="text-xs text-orange-500 font-medium">
+                                (Coming Soon)
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </CardContent>
             </Card>
 
             {/* Plan Details */}
-            <Card>
+            <Card className={isPlanUnavailable ? "opacity-75" : ""}>
               <CardHeader>
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <CardDescription>
-                  {plan.type === "subscription"
-                    ? `${plan.planDuration} days of unlimited access to all premium features`
-                    : (() => {
-                        // Calculate image and video counts based on credits
-                        const imageCount = (
-                          (plan?.credit ?? 0) * 5
-                        ).toLocaleString();
-                        const videoCount = (plan?.credit ?? 0).toLocaleString();
-                        return `${imageCount} images or ${videoCount} videos metadata generations for ${plan.planDuration} days`;
-                      })()}
-                </CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    <CardDescription>
+                      {plan.type === "subscription"
+                        ? `${plan.planDuration} days of unlimited access to all premium features`
+                        : (() => {
+                            // Calculate image and video counts based on credits
+                            const imageCount = (
+                              (plan?.credit ?? 0) * 5
+                            ).toLocaleString();
+                            const videoCount = (
+                              plan?.credit ?? 0
+                            ).toLocaleString();
+                            return `${imageCount} images or ${videoCount} videos metadata generations for ${plan.planDuration} days`;
+                          })()}
+                    </CardDescription>
+                  </div>
+                  {isPlanUnavailable && (
+                    <Badge className="bg-orange-500 shrink-0">
+                      Coming Soon
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -640,13 +678,16 @@ export default function Cart({ planId }: { planId: string }) {
                     }
                     disabled={
                       isProcessing ||
+                      isPlanUnavailable ||
                       !paymentMethods.find(
                         (m) => m.id === selectedPaymentMethod,
                       )?.available
                     }
                     size="lg"
                   >
-                    {isProcessing ? (
+                    {isPlanUnavailable ? (
+                      "Plan Coming Soon"
+                    ) : isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
