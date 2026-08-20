@@ -208,7 +208,7 @@ export default function Cart({ planId }: { planId: string }) {
     try {
       // Check if plan is unavailable
       if (plan && (plan.planDuration === 91 || plan.planDuration === 182)) {
-        toast.error("This plan is coming soon. Please choose another plan.");
+        toast.error("This plan is Unavailable now. Please choose another plan.");
         return;
       }
 
@@ -423,7 +423,7 @@ export default function Cart({ planId }: { planId: string }) {
                             </span>
                             {isUnavailable && (
                               <span className="text-xs text-orange-500 font-medium">
-                                (Coming Soon)
+                                (Unavailable now)
                               </span>
                             )}
                           </div>
@@ -458,7 +458,7 @@ export default function Cart({ planId }: { planId: string }) {
                   </div>
                   {isPlanUnavailable && (
                     <Badge className="bg-orange-500 shrink-0">
-                      Coming Soon
+                      Unavailable now
                     </Badge>
                   )}
                 </div>
@@ -686,7 +686,7 @@ export default function Cart({ planId }: { planId: string }) {
                     size="lg"
                   >
                     {isPlanUnavailable ? (
-                      "Plan Coming Soon"
+                      "Plan Unavailable now"
                     ) : isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

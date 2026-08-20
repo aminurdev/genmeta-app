@@ -342,7 +342,7 @@ const PricingContent = () => {
                 >
                   {isUnavailable ? (
                     <Badge className="absolute right-4 top-4 bg-orange-500">
-                      Coming Soon
+                      Unavailable now
                     </Badge>
                   ) : plan.discountPercent > 0 ? (
                     <Badge className="absolute right-4 top-4 bg-green-600">
@@ -396,7 +396,7 @@ const PricingContent = () => {
                       onClick={() => handlePurchase(plan._id, "subscription")}
                       disabled={isUnavailable}
                     >
-                      {isUnavailable ? "Coming Soon" : "Choose Plan"}
+                      {isUnavailable ? "Unavailable now" : "Choose Plan"}
                     </Button>
                   </CardFooter>
                 </Card>
