@@ -396,7 +396,7 @@ const PricingContent = () => {
                       onClick={() => handlePurchase(plan._id, "subscription")}
                       disabled={isUnavailable}
                     >
-                      {isUnavailable ? "Unavailable now" : "Choose Plan"}
+                     Choose Plan
                     </Button>
                   </CardFooter>
                 </Card>
