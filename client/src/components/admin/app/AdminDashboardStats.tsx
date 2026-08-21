@@ -21,10 +21,10 @@ import { AreaChart } from "@/components/ui/area-chart";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  CreditCard,
   DollarSign,
   Key,
   RefreshCw,
-  ShoppingCart,
   Users,
   XCircle,
 } from "lucide-react";
@@ -255,53 +255,10 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* Total Orders Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.orders.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(stats.orders.totalAmount)} total value
-            </p>
-          </CardContent>
-        </Card>
 
-        {/* Orders This Month Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Orders This Month</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.orders.currentMonthCount}</div>
-            <div className="flex items-center pt-1">
-              {(stats.orders.amountGrowthPercentage ?? 0) > 0 ? (
-                <ArrowUpIcon className="mr-1 h-3 w-3 text-green-500" />
-              ) : (stats.orders.amountGrowthPercentage ?? 0) < 0 ? (
-                <ArrowDownIcon className="mr-1 h-3 w-3 text-red-500" />
-              ) : null}
-              <span
-                className={
-                  (stats.orders.amountGrowthPercentage ?? 0) > 0
-                    ? "text-xs text-green-500"
-                    : (stats.orders.amountGrowthPercentage ?? 0) < 0
-                      ? "text-xs text-red-500"
-                      : "text-xs text-muted-foreground"
-                }
-              >
-                {stats.orders.amountGrowthPercentage !== null
-                  ? `${Math.abs(stats.orders.amountGrowthPercentage).toFixed(2)}% from last month`
-                  : "No data from last month"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Payments Card */}
-        {/* <Card>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Payments</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -312,7 +269,7 @@ export default function DashboardStats() {
               +{stats.payments.newThisMonth} new this month
             </p>
           </CardContent>
-        </Card> */}
+        </Card>
       </div>
 
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -346,52 +303,6 @@ export default function DashboardStats() {
               tooltipLabel="Processes"
               valueFormatter={(value) => value.toLocaleString()}
             />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Order Amount Chart */}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Amount Overview</CardTitle>
-            <CardDescription>Monthly completed order value trends</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <AreaChart
-              data={orderAmountData}
-              color="#f59e0b"
-              tooltipLabel="Order Amount"
-              valueFormatter={formatCurrency}
-              yAxisFormatter={(value) => formatCurrency(value)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Order Month Comparison */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Completed Orders Summary</CardTitle>
-            <CardDescription>Month-over-month comparison</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 pt-2">
-              <div className="border-b pb-4">
-                <p className="text-sm text-muted-foreground mb-1">This Month</p>
-                <p className="text-2xl font-bold">{stats.orders.currentMonthCount} orders</p>
-                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.currentMonthAmount)}</p>
-              </div>
-              <div className="border-b pb-4">
-                <p className="text-sm text-muted-foreground mb-1">Last Month</p>
-                <p className="text-2xl font-bold">{stats.orders.lastMonthCount} orders</p>
-                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.lastMonthAmount)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">All Time</p>
-                <p className="text-2xl font-bold">{stats.orders.total} orders</p>
-                <p className="text-sm text-muted-foreground">{formatCurrency(stats.orders.totalAmount)}</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
