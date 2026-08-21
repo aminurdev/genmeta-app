@@ -122,13 +122,6 @@ export default function DashboardStats() {
     }),
   );
 
-  const orderAmountData = Object.entries(stats.orders.monthlyOrderAmountList).map(
-    ([month, value]) => ({
-      label: formatMonthYear(month),
-      value,
-    }),
-  );
-
   return (
     <div className=" space-y-6">
       <div className="flex items-center justify-between">
