@@ -200,23 +200,6 @@ export function ReferralDashboard() {
 
   return (
     <div className="p-4 space-y-6">
-      <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <AlertCircle className="h-6 w-6 text-orange-700" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-orange-800">
-              Referral Program Temporarily Unavailable
-            </h3>
-            <p className="text-sm text-orange-700">
-              For technical reasons, the referral program is currently off. We
-              apologize for the inconvenience and are working to restore it
-              soon.
-            </p>
-          </div>
-        </div>
-      </div>
 
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-3">
