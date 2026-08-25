@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -364,86 +363,6 @@ export default function DashboardStats() {
         </CardContent>
       </Card>
 
-      {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
-          <CardDescription>Latest order transactions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {stats.orders.recent.map((order, index) => (
-                <TableRow key={`${order._id}-${index}`}>
-                  <TableCell>
-                    <div className="flex gap-4">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage
-                          src={`https://avatar.vercel.sh/${order.user?.email}`}
-                          alt={order.user?.name}
-                        />
-                        <AvatarFallback>
-                          {getInitials(order.user?.name ?? "")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{order.user?.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {order.user?.email}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{order.planSnapshot?.name}</span>
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {order.planSnapshot?.type}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(order.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        order.status === "completed"
-                          ? "default"
-                          : order.status === "pending"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                    >
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(order.createdAt)}</TableCell>
-                </TableRow>
-              ))}
-              {stats.orders.recent.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-6 text-muted-foreground"
-                  >
-                    No recent orders
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
         <Card>
