@@ -330,7 +330,7 @@ export default function Cart({ planId }: { planId: string }) {
 
   // Check if current plan is unavailable
   const isPlanUnavailable =
-   plan.type=== "credit" && (plan.planDuration === 91 || plan.planDuration === 182);
+   plan.type=== "subscription" && (plan.planDuration === 91 || plan.planDuration === 182);
 
   return (
     <div className="min-h-screen bg-background">
