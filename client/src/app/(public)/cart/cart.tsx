@@ -38,7 +38,6 @@ import { createPayment, validPromoCode } from "@/services/pricing";
 import { PromoCodeRes } from "@/types/pricing";
 import { PricingPlan } from "@/services/admin-dashboard";
 import { creditFeatures, premiumFeatures } from "../pricing/features";
-import { Badge } from "@/components/ui/badge";
 
 // import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
