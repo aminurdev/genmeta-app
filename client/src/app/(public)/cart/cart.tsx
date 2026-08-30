@@ -206,12 +206,6 @@ export default function Cart({ planId }: { planId: string }) {
     promoCode?: string,
   ) => {
     try {
-      // Check if plan is unavailable
-      if (plan && (plan.planDuration === 91 || plan.planDuration === 182)) {
-        toast.error("This plan is Unavailable now. Please choose another plan.");
-        return;
-      }
-
       // Check if user is logged in
       const user = await getCurrentUser();
       if (!user) {
@@ -328,10 +322,6 @@ export default function Cart({ planId }: { planId: string }) {
       )
     : priceAfterPlanDiscount;
 
-  // Check if current plan is unavailable
-  const isPlanUnavailable =
-   plan.type=== "subscription" && (plan.planDuration === 91 || plan.planDuration === 182);
-
   return (
     <div className="min-h-screen bg-background">
       <MaxWidthWrapper className="py-8 lg:py-12">
@@ -391,14 +381,10 @@ export default function Cart({ planId }: { planId: string }) {
                       </div>
                     )}
                     {subscriptionPlans.map((planOption) => {
-                      const isUnavailable =
-                        planOption.planDuration === 91 ||
-                        planOption.planDuration === 182;
                       return (
                         <SelectItem
                           key={planOption._id}
                           value={planOption._id}
-                          disabled={isUnavailable}
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-medium">
@@ -421,11 +407,6 @@ export default function Cart({ planId }: { planId: string }) {
                                   ? "/year"
                                   : `/${planOption.planDuration} days`}
                             </span>
-                            {isUnavailable && (
-                              <span className="text-xs text-orange-500 font-medium">
-                                (Unavailable now)
-                              </span>
-                            )}
                           </div>
                         </SelectItem>
                       );
@@ -436,7 +417,7 @@ export default function Cart({ planId }: { planId: string }) {
             </Card>
 
             {/* Plan Details */}
-            <Card className={isPlanUnavailable ? "opacity-75" : ""}>
+            <Card>
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -456,11 +437,6 @@ export default function Cart({ planId }: { planId: string }) {
                           })()}
                     </CardDescription>
                   </div>
-                  {isPlanUnavailable && (
-                    <Badge className="bg-orange-500 shrink-0">
-                      Unavailable now
-                    </Badge>
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -678,16 +654,13 @@ export default function Cart({ planId }: { planId: string }) {
                     }
                     disabled={
                       isProcessing ||
-                      isPlanUnavailable ||
                       !paymentMethods.find(
                         (m) => m.id === selectedPaymentMethod,
                       )?.available
                     }
                     size="lg"
                   >
-                    {isPlanUnavailable ? (
-                      "Plan Unavailable now"
-                    ) : isProcessing ? (
+                    {isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
