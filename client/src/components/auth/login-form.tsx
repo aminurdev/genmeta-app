@@ -238,7 +238,7 @@ const LoginForm = () => {
                 </Link>
                 {" and "}
                 <Link
-                  href="/privacy"
+                  href="/privacy-policy"
                   className="underline hover:text-foreground transition-colors"
                 >
                   Privacy Policy
