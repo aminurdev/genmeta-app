@@ -1,147 +1,180 @@
 import Link from "next/link";
-import { Mail, Phone, Clock, MessageSquare } from "lucide-react";
+import { Mail, Phone, Github, MessageCircle, User } from "lucide-react";
 
 export default function ContactUs() {
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl border-b border-muted/20">
-      <h1 className="text-4xl font-bold mb-8 text-center">Contact Us</h1>
-
-      <div className="grid md:grid-cols-2 gap-8 mb-12">
-        {/* Contact Information */}
-        <div className="bg-background rounded-lg shadow-md p-6 md:p-8">
-          <h2 className="text-2xl font-semibold mb-6">Get in Touch</h2>
-          <p className="text-muted-foreground mb-8">
-            We&apos;re here to help! Reach out to us through any of the
-            following channels, and our team will get back to you as soon as
-            possible.
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="container mx-auto px-4 py-16 max-w-6xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 animate-gradient-x">
+            Contact Us
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Get in touch with our team
           </p>
+        </div>
 
-          <div className="space-y-6">
-            {/* Email */}
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Email Address</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    General Inquiries:{" "}
-                    <a
-                      href="mailto:info@genmeta.app"
-                      className="text-blue-600 hover:underline"
-                    >
-                      info@genmeta.app
-                    </a>
-                  </p>
-                  <p>
-                    Support:{" "}
-                    <a
-                      href="mailto:support@genmeta.app"
-                      className="text-blue-600 hover:underline"
-                    >
-                      support@genmeta.app
-                    </a>
-                  </p>
-                  <p>
-                    Sales:{" "}
-                    <a
-                      href="mailto:sales@genmeta.app"
-                      className="text-blue-600 hover:underline"
-                    >
-                      sales@genmeta.app
-                    </a>
-                  </p>
+        <div className="grid md:grid-cols-2 gap-8 mb-12">
+          {/* Business Contact */}
+          <div className="bg-card rounded-lg shadow-lg border p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Business Contact</h2>
+            <p className="text-muted-foreground mb-8">
+              For support, sales inquiries, or general questions about GenMeta
+            </p>
+
+            <div className="space-y-6">
+              {/* Email */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Mail className="w-6 h-6 text-primary" />
                 </div>
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Phone className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Phone Number</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Office:{" "}
-                    <a
-                      href="tel:+8801817710493"
-                      className="text-blue-600 hover:underline"
-                    >
-                      +880 1817-710493
-                    </a>
-                  </p>
-                  <p>
-                    Support:{" "}
-                    <a
-                      href="tel:+8801817710493"
-                      className="text-blue-600 hover:underline"
-                    >
-                      +880 1817-710493
-                    </a>
-                  </p>
-                  <p>
-                    WhatsApp:{" "}
-                    <a
-                      href="https://wa.me/+8801817710493"
-                      className="text-blue-600 hover:underline"
-                    >
-                      +880 1817-710493
-                    </a>
-                  </p>
-                  <p className="text-xs mt-2">available on support number</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Business Hours */}
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Business Hours</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>Saturday - Thursday: 9:00 AM - 6:00 PM (BST)</p>
-                  <p>Friday: Closed</p>
-                  <p className="text-xs mt-2">Email support available 24/7</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Social Media */}
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/10 p-3 rounded-lg">
-                <MessageSquare className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Follow Us</h3>
-                <div className="flex gap-4 mt-2">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">Email</h3>
                   <a
-                    href="https://facebook.com/genmeta"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
+                    href="mailto:support@genmeta.app"
+                    className="text-primary hover:underline font-medium"
                   >
-                    Facebook
+                    support@genmeta.app
                   </a>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Phone className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">Phone</h3>
                   <a
-                    href="https://twitter.com/genmeta"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
+                    href="tel:+8801817710493"
+                    className="text-primary hover:underline font-medium"
                   >
-                    Twitter
+                    +880 1817-710493
                   </a>
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <MessageCircle className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">WhatsApp</h3>
                   <a
-                    href="https://linkedin.com/company/genmeta"
+                    href="https://wa.me/8801817710493"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
+                    className="text-primary hover:underline font-medium"
                   >
-                    LinkedIn
+                    +880 1817-710493
+                  </a>
+                </div>
+              </div>
+
+              {/* Legal Info */}
+              <div className="bg-muted/50 rounded-lg p-6 mt-8">
+                <h3 className="font-semibold text-foreground mb-4">Legal Information</h3>
+                <div className="space-y-2 text-sm text-foreground">
+                  <p>
+                    <strong>Trade License:</strong> 8875151896
+                  </p>
+                  <p>
+                    <strong>TIN:</strong> 892080214766
+                  </p>
+                  <p>
+                    <strong>Registered:</strong> Bangladesh
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Developer Contact */}
+          <div className="bg-card rounded-lg shadow-lg border p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Developer Contact</h2>
+            <p className="text-muted-foreground mb-8">
+              For technical discussions, collaboration, or development inquiries
+            </p>
+
+            <div className="space-y-6">
+              {/* Developer Name */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">Developer</h3>
+                  <p className="text-foreground font-medium">Aminur Rahman</p>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Mail className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">Email</h3>
+                  <a
+                    href="mailto:aminurrahman.me@gmail.com"
+                    className="text-primary hover:underline font-medium break-all"
+                  >
+                    aminurrahman.me@gmail.com
+                  </a>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Phone className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">Phone</h3>
+                  <a
+                    href="tel:+8801755143182"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    +880 1755-143182
+                  </a>
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <MessageCircle className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">WhatsApp</h3>
+                  <a
+                    href="https://wa.me/8801755143182"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    +880 1755-143182
+                  </a>
+                </div>
+              </div>
+
+              {/* GitHub */}
+              <div className="flex items-start gap-4">
+                <div className="bg-primary/10 p-3 rounded-lg">
+                  <Github className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground mb-2">GitHub</h3>
+                  <a
+                    href="https://github.com/aminurdev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    github.com/aminurdev
                   </a>
                 </div>
               </div>
@@ -149,77 +182,57 @@ export default function ContactUs() {
           </div>
         </div>
 
-        {/* Contact Form or Additional Info */}
-        <div className="bg-background rounded-lg shadow-md p-6 md:p-8">
-          <h2 className="text-2xl font-semibold mb-6">Quick Support</h2>
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-card rounded-lg shadow-lg border p-6 text-center">
+            <h3 className="font-semibold text-foreground mb-3">Technical Support</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Need help with the app or have a technical issue?
+            </p>
+            <a
+              href="mailto:support@genmeta.app?subject=Technical Support"
+              className="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Get Support
+            </a>
+          </div>
 
-          <div className="space-y-6">
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold mb-3">Technical Support</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                For technical issues, bug reports, or feature requests, please
-                email our support team with detailed information about your
-                issue.
-              </p>
-              <a
-                href="mailto:support@genmeta.app?subject=Technical Support Request"
-                className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                Email Support
-              </a>
-            </div>
+          <div className="bg-card rounded-lg shadow-lg border p-6 text-center">
+            <h3 className="font-semibold text-foreground mb-3">Sales Inquiry</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Interested in our plans or have questions about pricing?
+            </p>
+            <a
+              href="mailto:support@genmeta.app?subject=Sales Inquiry"
+              className="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Contact Sales
+            </a>
+          </div>
 
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold mb-3">Sales Inquiries</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Interested in our enterprise plans or have questions about
-                pricing? Our sales team is ready to help you find the perfect
-                solution.
-              </p>
-              <a
-                href="mailto:sales@genmeta.app?subject=Sales Inquiry"
-                className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                Contact Sales
-              </a>
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-6">
-              <h3 className="font-semibold mb-3">Partnership Opportunities</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Interested in partnering with GenMeta? We&apos;re always looking
-                for strategic partnerships and collaboration opportunities.
-              </p>
-              <a
-                href="mailto:info@genmeta.app?subject=Partnership Inquiry"
-                className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                Discuss Partnership
-              </a>
-            </div>
-
-            <div className="border border-muted rounded-lg p-6">
-              <h3 className="font-semibold mb-3">Legal Information</h3>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  <strong>Trade License:</strong> 8875151896
-                </p>
-                <p>
-                  <strong>TIN:</strong> 892080214766
-                </p>
-                <p>
-                  <strong>Registered:</strong> Bangladesh
-                </p>
-              </div>
-            </div>
+          <div className="bg-card rounded-lg shadow-lg border p-6 text-center">
+            <h3 className="font-semibold text-foreground mb-3">General Inquiry</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Have a question or feedback? We&apos;d love to hear from you
+            </p>
+            <a
+              href="mailto:support@genmeta.app?subject=General Inquiry"
+              className="inline-block bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Send Message
+            </a>
           </div>
         </div>
-      </div>
 
-      <div className="mt-8 text-center">
-        <Link href="/" className="text-blue-600 hover:underline">
-          Return to Home
-        </Link>
+        {/* Back to Home Link */}
+        <div className="text-center">
+          <Link 
+            href="/" 
+            className="inline-flex items-center text-primary hover:underline font-medium text-lg"
+          >
+            ← Back to Home
+          </Link>
+        </div>
       </div>
     </div>
   );

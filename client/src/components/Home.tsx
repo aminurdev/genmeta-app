@@ -920,7 +920,7 @@ export const Footer = () => {
             <ul className="space-y-3 text-muted-foreground text-sm">
               {[
                 { href: "/terms", label: "Terms & Conditions" },
-                { href: "/privacy", label: "Privacy Policy" },
+                { href: "/privacy-policy", label: "Privacy Policy" },
                 { href: "/refund-policy", label: "Refund Policy" },
                 { href: "/delivery-policy", label: "Delivery Policy" },
               ].map((link) => (
@@ -1018,7 +1018,7 @@ export const Footer = () => {
               </Link>
               <span>•</span>
               <Link
-                href="/privacy"
+                href="/privacy-policy"
                 className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
               >
                 Privacy
