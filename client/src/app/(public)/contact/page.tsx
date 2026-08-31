@@ -7,7 +7,7 @@ export default function ContactUs() {
       <div className="container mx-auto px-4 py-16 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 animate-gradient-x">
             Contact Us
           </h1>
           <p className="text-muted-foreground text-lg">

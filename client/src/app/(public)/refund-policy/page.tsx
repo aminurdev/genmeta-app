@@ -6,7 +6,7 @@ export default function RefundPolicy() {
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 animate-gradient-x">
             Refund Policy
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -19,21 +19,29 @@ export default function RefundPolicy() {
           {/* Introduction */}
           <section>
             <p className="text-foreground leading-relaxed">
-              At GenMeta, we are committed to customer satisfaction. This Refund Policy outlines the terms and conditions for refunds on our services and products.
+              At GenMeta, we are committed to customer satisfaction. This Refund
+              Policy outlines the terms and conditions for refunds on our
+              services and products.
             </p>
           </section>
 
           {/* 1. Refund Eligibility */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">1. Refund Eligibility</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              1. Refund Eligibility
+            </h2>
             <p className="text-foreground leading-relaxed mb-4">
               We offer refunds under the following conditions:
             </p>
-            
+
             <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-6 mb-4">
-              <h3 className="text-xl font-semibold text-foreground mb-3">7-Day Money-Back Guarantee</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-3">
+                7-Day Money-Back Guarantee
+              </h3>
               <p className="text-foreground leading-relaxed mb-3">
-                If you contact us within <strong>7 days</strong> of your purchase, we will provide an instant refund if you have not used more than <strong>30% of your allocated credits</strong>.
+                If you contact us within <strong>7 days</strong> of your
+                purchase, we will provide an instant refund if you have not used
+                more than <strong>30% of your allocated credits</strong>.
               </p>
               <ul className="space-y-2 list-disc list-inside text-foreground ml-4">
                 <li>Applies to all subscription plans and credit packages</li>
@@ -46,9 +54,12 @@ export default function RefundPolicy() {
 
           {/* 2. Non-Refundable Situations */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">2. Non-Refundable Situations</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              2. Non-Refundable Situations
+            </h2>
             <p className="text-foreground leading-relaxed mb-3">
-              Refunds will <strong>NOT</strong> be granted in the following situations:
+              Refunds will <strong>NOT</strong> be granted in the following
+              situations:
             </p>
             <ul className="space-y-3 list-disc list-inside text-foreground ml-4">
               <li className="leading-relaxed">
@@ -68,7 +79,9 @@ export default function RefundPolicy() {
 
           {/* 3. How to Request a Refund */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">3. How to Request a Refund</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              3. How to Request a Refund
+            </h2>
             <p className="text-foreground leading-relaxed mb-4">
               To request a refund, please follow these simple steps:
             </p>
@@ -95,7 +108,8 @@ export default function RefundPolicy() {
               <li className="text-foreground leading-relaxed">
                 <strong className="text-lg">3. Receive Instant Refund</strong>
                 <p className="mt-2">
-                  If you meet the eligibility criteria, your refund will be processed instantly
+                  If you meet the eligibility criteria, your refund will be
+                  processed instantly
                 </p>
               </li>
             </ol>
@@ -103,13 +117,17 @@ export default function RefundPolicy() {
 
           {/* 4. Refund Processing */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">4. Refund Processing</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              4. Refund Processing
+            </h2>
             <p className="text-foreground leading-relaxed mb-4">
-              Once your refund is approved, it will be processed to your original payment method. Processing times may vary:
+              Once your refund is approved, it will be processed to your
+              original payment method. Processing times may vary:
             </p>
             <ul className="space-y-3 list-disc list-inside text-foreground ml-4">
               <li className="leading-relaxed">
-                <strong>Mobile Banking (bKash, Nagad, Rocket):</strong> 1-2 business days
+                <strong>Mobile Banking (bKash, Nagad, Rocket):</strong> 1-2
+                business days
               </li>
               <li className="leading-relaxed">
                 <strong>Credit/Debit Card:</strong> 3-5 business days
@@ -119,23 +137,32 @@ export default function RefundPolicy() {
               </li>
             </ul>
             <p className="text-sm text-muted-foreground mt-4">
-              Note: Processing times may vary depending on your financial institution.
+              Note: Processing times may vary depending on your financial
+              institution.
             </p>
           </section>
 
           {/* 5. Changes to This Policy */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">5. Changes to This Policy</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              5. Changes to This Policy
+            </h2>
             <p className="text-foreground leading-relaxed">
-              GenMeta reserves the right to modify this Refund Policy at any time. Changes will be effective immediately upon posting on our website. Your continued use of our services after changes are posted constitutes acceptance of the updated policy.
+              GenMeta reserves the right to modify this Refund Policy at any
+              time. Changes will be effective immediately upon posting on our
+              website. Your continued use of our services after changes are
+              posted constitutes acceptance of the updated policy.
             </p>
           </section>
 
           {/* 6. Contact Information */}
           <section>
-            <h2 className="text-2xl font-bold text-foreground mb-4">6. Contact Information</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
+              6. Contact Information
+            </h2>
             <p className="text-foreground leading-relaxed mb-4">
-              For refund requests or questions about this policy, please contact us:
+              For refund requests or questions about this policy, please contact
+              us:
             </p>
             <div className="bg-muted/50 rounded-lg p-6 space-y-3">
               <p className="text-foreground">
@@ -173,7 +200,9 @@ export default function RefundPolicy() {
           {/* Legal Information */}
           <section>
             <div className="bg-muted/50 rounded-lg p-6">
-              <h3 className="text-xl font-semibold text-foreground mb-4">Legal Information</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-4">
+                Legal Information
+              </h3>
               <div className="space-y-2">
                 <p className="text-foreground">
                   <strong>Trade License Number:</strong> 8875151896
@@ -182,7 +211,8 @@ export default function RefundPolicy() {
                   <strong>TIN:</strong> 892080214766
                 </p>
                 <p className="text-foreground">
-                  <strong>Business Registration:</strong> Registered under the laws of Bangladesh
+                  <strong>Business Registration:</strong> Registered under the
+                  laws of Bangladesh
                 </p>
               </div>
             </div>
@@ -191,8 +221,8 @@ export default function RefundPolicy() {
 
         {/* Back to Home Link */}
         <div className="text-center mt-12">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="inline-flex items-center text-primary hover:underline font-medium text-lg"
           >
             ← Back to Home
