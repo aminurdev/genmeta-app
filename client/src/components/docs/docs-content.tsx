@@ -26,10 +26,10 @@ import {
   Github,
   ImageIcon,
 } from "lucide-react";
-import { getLatestRelease, ReleaseInfo } from "@/app/(public)/download/page";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
+import { getLatestRelease, ReleaseInfo } from "@/lib/release-info";
 
 export function DocsContent() {
   const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);

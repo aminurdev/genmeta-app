@@ -33,8 +33,8 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <UserCircle className="cursor-pointer" />
+        <Button variant="outline" size="icon" className="h-9 w-9 ">
+          <UserCircle className="cursor-pointer w-5 h-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">

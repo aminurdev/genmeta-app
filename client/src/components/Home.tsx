@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type React from "react";
@@ -6,7 +5,6 @@ import { useEffect, useState } from "react";
 import {
   SparklesIcon,
   DocumentTextIcon,
-  ShieldCheckIcon,
   ArrowPathIcon,
   Cog6ToothIcon,
   ListBulletIcon,
@@ -18,7 +16,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banner } from "@/components/main/banner";
 import { useTheme } from "next-themes";
 
@@ -33,7 +30,6 @@ export default function HomePage({ releaseInfo }: Props) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Simulate loading and trigger animations
     const loadData = async () => {
       setTimeout(() => setIsLoaded(true), 100);
     };
@@ -41,90 +37,64 @@ export default function HomePage({ releaseInfo }: Props) {
   }, []);
 
   const downloadUrl = releaseInfo?.downloadUrl;
-  const version = releaseInfo?.version;
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative pt-24 pb-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
-        <div className="max-w-7xl mx-auto text-center px-4 relative">
+      <section className="relative pt-24 pb-32">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-background -z-10" />
+        <div className="max-w-7xl mx-auto text-center px-4">
           <div
-            className={`transform transition-all duration-1000 ease-out ${
+            className={`transform transition-all duration-1000 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
-            <Badge
-              variant="outline"
-              className="mb-6 px-3 py-1 bg-background/80 backdrop-blur-sm border-violet-200 dark:border-violet-800 animate-fade-in-up"
-              style={{ animationDelay: "0.2s" }}
-            >
-              <span className="text-violet-600 dark:text-violet-400 mr-1">
-                New
-              </span>
-              <span>Version {version} now available</span>
+            <Badge variant="outline" className="mb-6 inline-flex items-center gap-2">
+              <SparklesIcon className="w-4 h-4" />
+              AI-Powered Metadata Generator
             </Badge>
           </div>
 
           <div
-            className={`transform transition-all duration-1000 ease-out delay-300 ${
-              isLoaded
-                ? "translate-y-0 opacity-100"
-                : "translate-y-12 opacity-0"
+            className={`transform transition-all duration-1000 delay-200 ${
+              isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 tracking-tight max-w-6xl">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight">
               Boost Your{" "}
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 animate-gradient-x">
                 Microstock Sales
-              </span>{" "}
-              with AI Powered Metadata
+              </span> {" "}
+              with <br/> AI Powered Metadata
             </h1>
           </div>
 
           <div
-            className={`transform transition-all duration-1000 ease-out delay-500 ${
+            className={`transform transition-all duration-1000 delay-400 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
-            <p className="text-muted-foreground mb-10 max-w-3xl mx-auto ">
+            <p className="text-muted-foreground text-lg mb-10 max-w-3xl mx-auto">
               Generate SEO-optimized titles, descriptions, and keywords for
               Adobe Stock, Shutterstock, Freepik, and other microstock
               platforms. Increase your visibility and sales with AI-powered
-              metadata
-              <br /> that buyers actually search for.
+              metadata that buyers actually search for.
             </p>
           </div>
 
           <div
-            className={`transform transition-all duration-1000 ease-out delay-700 ${
+            className={`transform transition-all duration-1000 delay-600 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 group transform hover:scale-105 transition-all duration-300"
-                asChild
-              >
+              <Button size="lg" className="group" asChild>
                 <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                  <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-                  Download for Windows
-                  <Badge
-                    variant="outline"
-                    className="ml-2 bg-white/20 border-white/30 text-white"
-                  >
-                    v{version}
-                  </Badge>
+                  <Download className="w-5 h-5 mr-2" />
+                  Download GenMeta Free
                 </a>
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 group bg-transparent transform hover:scale-105 transition-all duration-300"
-                asChild
-              >
+              <Button size="lg" variant="outline" className="group" asChild>
                 <Link href="/pricing">
                   <Crown className="w-4 h-4 mr-2" />
                   Upgrade to Pro
@@ -135,7 +105,7 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
 
           <div
-            className={`transform transition-all duration-1000 ease-out delay-900 ${
+            className={`transform transition-all duration-1000 delay-800 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
             }`}
           >
@@ -149,539 +119,265 @@ export default function HomePage({ releaseInfo }: Props) {
       </section>
 
       {/* Features Section */}
-      <AnimatedSection delay={1000}>
-        <section className="py-24 bg-background">
+      <AnimatedSection delay={200}>
+        <section className="py-24 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-16">
-              <Badge
-                variant="outline"
-                className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
-              >
-                Features
+              <Badge variant="outline" className="mb-4">
+                Key Features
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Maximize Your Microstock Revenue
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Powerful Features for{" "}
+                <span className="text-primary">Efficient Workflow</span>
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Professional tools designed specifically for stock photographers
-                to increase discoverability and sales on major platforms
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Everything you need to create professional metadata that ranks
+                higher and sells more.
               </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  title: "Microstock-Optimized AI",
-                  description:
-                    "Generate titles, descriptions, and keywords specifically optimized for Adobe Stock, Shutterstock, and Freepik algorithms to maximize your sales potential.",
-                  icon: SparklesIcon,
-                },
-                {
-                  title: "Bulk Files Processing",
-                  description:
-                    "Process thousands of stock images at once with platform-specific metadata templates. Perfect for large files uploads and files optimization.",
-                  icon: ArrowPathIcon,
-                },
-                {
-                  title: "Secure & Private",
-                  description:
-                    "Your valuable stock images never leave your computer. All AI processing happens locally with secure API connections, protecting your intellectual property.",
-                  icon: ShieldCheckIcon,
-                },
-                {
-                  title: "High-Converting Keywords",
-                  description:
-                    "Generate trending keywords that buyers actually search for on microstock platforms. Increase your image visibility and download rates.",
-                  icon: ListBulletIcon,
-                },
-                {
-                  title: "Platform-Specific Settings",
-                  description:
-                    "Customize metadata output for different platforms with Adobe Stock's 50-keyword limit, Shutterstock's requirements, and Freepik's optimization needs.",
-                  icon: Cog6ToothIcon,
-                },
-                {
-                  title: "Professional Export",
-                  description:
-                    "Export ready-to-upload CSV files or embed metadata directly into images. Streamline your microstock submission workflow.",
-                  icon: DocumentTextIcon,
-                },
-              ].map((feature, index) => (
-                <FeatureCard
-                  key={feature.title}
-                  title={feature.title}
-                  description={feature.description}
-                  icon={feature.icon}
-                  delay={index * 100}
-                />
-              ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={<SparklesIcon className="w-6 h-6" />}
+                title="AI Generation"
+                description="State-of-the-art vision models generate tags and descriptions with incredible accuracy."
+              />
+              <FeatureCard
+                icon={<ListBulletIcon className="w-6 h-6" />}
+                title="Batch Processing"
+                description="Process entire folders of content at once. Save presets for different stock agencies."
+              />
+              <FeatureCard
+                icon={<DocumentTextIcon className="w-6 h-6" />}
+                title="Universal Support"
+                description="Perfect for photos, 4K videos, and vector illustrations."
+              />
+              <FeatureCard
+                icon={<ChartBarIcon className="w-6 h-6" />}
+                title="Smart Keywords"
+                description="Keywords are sorted by relevance and relevance score for the best ranking results."
+              />
+              <FeatureCard
+                icon={<Cog6ToothIcon className="w-6 h-6" />}
+                title="Custom Instructions"
+                description="Tailor the AI behavior to match specific agency requirements or your personal style."
+              />
+              <FeatureCard
+                icon={<Download className="w-6 h-6" />}
+                title="Direct Export"
+                description="Export to CSV, or write metadata directly into XMP sidecar files."
+              />
             </div>
           </div>
         </section>
       </AnimatedSection>
 
-      {/* Quick Setup Guide Section */}
-      <AnimatedSection delay={1300}>
-        <section className="py-24 bg-gradient-to-b from-background to-violet-50/30 dark:to-violet-950/10">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="text-center mb-20">
-              <Badge
-                variant="outline"
-                className="mb-6 px-4 py-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 animate-fade-in-up"
-              >
-                <SparklesIcon className="w-4 h-4 mr-2 text-violet-600 dark:text-violet-400" />
-                Quick Setup Guide
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 animate-fade-in-up">
-                Start Generating Professional Metadata in{" "}
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400">
-                  5 Minutes
-                </span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in-up">
-                Transform your microstock workflow with our streamlined setup
-                process. From installation to your first AI-generated metadata
-                in just a few clicks.
-              </p>
-            </div>
-
-            <div className="space-y-8">
-              {[
-                {
-                  step: "01",
-                  title: "Download & Install GenMeta",
-                  description:
-                    "Download GenMeta-Setup-5.3.2.exe and run the installer. Windows Defender may show a security warning - click 'Run anyway' to proceed with the installation.",
-                  details: [
-                    "Windows security bypass",
-                    "One-click installer",
-                    "Desktop shortcut created",
-                  ],
-                  icon: Download,
-                  color: "from-blue-500 to-cyan-500",
-                  image: "/Assets/quick-setup/2.png",
-                },
-                {
-                  step: "02",
-                  title: "Configure API Settings",
-                  description:
-                    "Open GenMeta and navigate to Settings > System Configuration. Enter your Gemini API key in the API Configuration section to enable AI metadata generation.",
-                  details: [
-                    "Secure API integration",
-                    "Up to 5 API keys supported",
-                    "Automatic quota rotation",
-                  ],
-                  icon: Cog6ToothIcon,
-                  color: "from-violet-500 to-purple-500",
-                  image: "/Assets/quick-setup/3.png",
-                },
-                {
-                  step: "03",
-                  title: "Install Ghostscript (Optional)",
-                  description:
-                    "For EPS file processing, install Ghostscript by clicking the 'Install Ghostscript' button in the settings. This enables full support for vector graphics and EPS files.",
-                  details: [
-                    "EPS file support",
-                    "Vector graphics processing",
-                    "Automatic detection",
-                  ],
-                  icon: ShieldCheckIcon,
-                  color: "from-emerald-500 to-teal-500",
-                  image: "/Assets/quick-setup/3.png",
-                },
-                {
-                  step: "04",
-                  title: "Select Your Image Files",
-                  description:
-                    "Click 'Select Files' or 'Select Folder' to choose your images. GenMeta supports EPS, PNG, JPG and other formats. Select multiple files for batch processing.",
-                  details: [
-                    "Multiple format support",
-                    "Batch file selection",
-                    "Folder processing",
-                  ],
-                  icon: SparklesIcon,
-                  color: "from-orange-500 to-red-500",
-                  image: "/Assets/quick-setup/4.png",
-                },
-                {
-                  step: "05",
-                  title: "Generate & Review Metadata",
-                  description:
-                    "Click 'Generate Metadata' and watch AI create optimized titles, descriptions, and keywords. Review results, make edits, and export for Adobe Stock, Shutterstock, and other platforms.",
-                  details: [
-                    "AI-powered generation",
-                    "Editable results",
-                    "Multi-platform export",
-                  ],
-                  icon: DocumentTextIcon,
-                  color: "from-pink-500 to-rose-500",
-                  image: "/Assets/quick-setup/5.png",
-                },
-              ].map((item, index) => (
-                <div
-                  key={item.step}
-                  className={`group relative transform transition-all duration-700 ease-out ${
-                    index % 2 === 0
-                      ? "animate-fade-in-left"
-                      : "animate-fade-in-right"
-                  }`}
-                  style={{ animationDelay: `${index * 200}ms` }}
-                >
-                  <div className="relative bg-white dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                    {/* Step number gradient background */}
-                    <div
-                      className={`absolute top-0 left-0 w-full h-2 bg-gradient-to-r ${item.color}`}
-                    ></div>
-
-                    <div className="p-8 md:p-10">
-                      <div className="flex flex-col lg:flex-row lg:items-start gap-8">
-                        {/* Content Section */}
-                        <div className="flex-1 space-y-6">
-                          <div className="flex items-center gap-4">
-                            <div
-                              className={`flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r ${item.color} shadow-lg`}
-                            >
-                              <item.icon className="w-8 h-8 text-white" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-semibold text-muted-foreground tracking-wider uppercase">
-                                Step {item.step}
-                              </div>
-                              <h3 className="text-2xl md:text-3xl font-bold text-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                                {item.title}
-                              </h3>
-                            </div>
-                          </div>
-
-                          <p className="text-lg text-muted-foreground leading-relaxed">
-                            {item.description}
-                          </p>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            {item.details.map((detail, detailIndex) => (
-                              <div
-                                key={detailIndex}
-                                className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2"
-                              >
-                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                <span>{detail}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="lg:w-96 xl:w-[500px]">
-                          <div className="relative rounded-xl overflow-hidden shadow-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                            <img
-                              src={item.image || "/placeholder.svg"}
-                              alt={`Step ${item.step}: ${item.title}`}
-                              className="w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02] bg-white dark:bg-gray-900"
-                              style={{ minHeight: "280px" }}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Connection line for desktop */}
-                  {index < 4 && (
-                    <div className="hidden lg:block absolute left-8 -bottom-4 w-0.5 h-8 bg-gradient-to-b from-gray-300 to-transparent dark:from-gray-600"></div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-16 text-center">
-              <div className="bg-gradient-to-r from-violet-600/10 to-indigo-600/10 dark:from-violet-400/10 dark:to-indigo-400/10 rounded-2xl p-8 border border-violet-200 dark:border-violet-800">
-                <h3 className="text-2xl font-bold text-foreground mb-4">
-                  Ready to Transform Your Microstock Business?
-                </h3>
-                <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-                  Join thousands of stock photographers who have increased their
-                  earnings with AI-powered metadata optimization.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20 transform hover:scale-105 transition-all duration-300"
-                    asChild
-                  >
-                    <a
-                      href={downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download className="w-5 h-5 mr-2" />
-                      Download GenMeta Now
-                      <Badge
-                        variant="outline"
-                        className="ml-2 bg-white/20 border-white/30 text-white"
-                      >
-                        Free
-                      </Badge>
-                    </a>
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 transform hover:scale-105 transition-all duration-300 bg-transparent"
-                    asChild
-                  >
-                    <Link href="/pricing">
-                      <Crown className="w-5 h-5 mr-2" />
-                      View Pro Features
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </AnimatedSection>
-
-      {/* Settings Section */}
-      <AnimatedSection delay={1400}>
-        <section className="py-24 bg-background">
+      {/* Workflow Section */}
+      <AnimatedSection delay={400}>
+        <section className="py-24">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-16">
-              <Badge
-                variant="outline"
-                className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
-              >
-                Customization
+              <Badge variant="outline" className="mb-4">
+                Simple Workflow
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Flexible Configuration Options
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                From upload to export in seconds
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Tailor GenMeta desktop app to your specific workflow needs
-              </p>
             </div>
-            <div className="animate-fade-in-up">
-              <Tabs defaultValue="api" className="w-full max-w-4xl mx-auto">
-                <TabsList className="grid w-full grid-cols-2 mb-8">
-                  <TabsTrigger
-                    value="api"
-                    className="transition-all duration-300 hover:scale-105"
-                  >
-                    API Configuration
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="output"
-                    className="transition-all duration-300 hover:scale-105"
-                  >
-                    Output Settings
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent
-                  value="api"
-                  className="p-6 bg-card rounded-xl border border-border shadow-sm transform transition-all duration-500 hover:shadow-md"
-                >
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-foreground flex items-center">
-                      <ShieldCheckIcon className="w-6 h-6 text-violet-500 mr-2" />
-                      API Configuration
-                    </h3>
-                    <div className="grid gap-4">
-                      <SettingItem
-                        title="Gemini API Key"
-                        description="Connect to Google's powerful Gemini AI for image analysis"
-                        icon={
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        }
-                      />
-                      <SettingItem
-                        title="Secure Processing"
-                        description="All API calls are made securely from your desktop application"
-                        icon={
-                          <ShieldCheckIcon className="w-5 h-5 text-violet-500" />
-                        }
-                      />
-                      <SettingItem
-                        title="Rate Limiting"
-                        description="Built-in rate limiting to respect API quotas and limits"
-                        icon={
-                          <ChartBarIcon className="w-5 h-5 text-violet-500" />
-                        }
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent
-                  value="output"
-                  className="p-6 bg-card rounded-xl border border-border shadow-sm transform transition-all duration-500 hover:shadow-md"
-                >
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-foreground flex items-center">
-                      <DocumentTextIcon className="w-6 h-6 text-violet-500 mr-2" />
-                      Output Settings
-                    </h3>
-                    <div className="grid gap-4">
-                      <SettingItem
-                        title="Title Length"
-                        description="Set the optimal length for generated titles (short, medium, long)"
-                        icon={
-                          <DocumentTextIcon className="w-5 h-5 text-violet-500" />
-                        }
-                      />
-                      <SettingItem
-                        title="Description Depth"
-                        description="Control the detail level in your image descriptions"
-                        icon={
-                          <DocumentTextIcon className="w-5 h-5 text-violet-500" />
-                        }
-                      />
-                      <SettingItem
-                        title="Keyword Count"
-                        description="Specify how many keywords to generate per image"
-                        icon={
-                          <ListBulletIcon className="w-5 h-5 text-violet-500" />
-                        }
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <WorkflowStep
+                number="01"
+                icon={<Download className="w-8 h-8" />}
+                title="Download App"
+                description="Install the lightweight desktop application for macOS or Windows."
+              />
+              <WorkflowStep
+                number="02"
+                icon={<DocumentTextIcon className="w-8 h-8" />}
+                title="Add Files"
+                description="Drag and drop your images, videos, or vectors into the workspace."
+              />
+              <WorkflowStep
+                number="03"
+                icon={<SparklesIcon className="w-8 h-8" />}
+                title="Generate"
+                description="Hit generate and watch as the AI creates high-quality metadata."
+              />
+              <WorkflowStep
+                number="04"
+                icon={<CheckCircle className="w-8 h-8" />}
+                title="Review & Export"
+                description="Fine-tune your results and export in your preferred format."
+              />
             </div>
           </div>
         </section>
       </AnimatedSection>
+
+      {/* Creator Types Section */}
+      <AnimatedSection delay={600}>
+        <section className="py-24 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center mb-16">
+              <Badge variant="outline" className="mb-4">
+                For All Creators
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Made for every type of stock creator
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <CreatorCard
+                icon={
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                }
+                title="Stock Photographers"
+                description="Generate accurate titles and keywords for your photo collections quickly."
+              />
+              <CreatorCard
+                icon={
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                    />
+                  </svg>
+                }
+                title="Vector Designers"
+                description="Describe illustrations and icons with precise, searchable metadata."
+              />
+              <CreatorCard
+                icon={
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                }
+                title="Video Creators"
+                description="Create compelling descriptions for your footage and motion content."
+              />
+              <CreatorCard
+                icon={
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
+                  </svg>
+                }
+                title="Content Publishers"
+                description="Scale your catalog with consistent, high-quality metadata at volume."
+              />
+            </div>
+          </div>
+        </section>
+      </AnimatedSection>
+
 
       {/* Bulk Operations Section */}
-      <AnimatedSection delay={1600}>
-        <section className="py-24 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
+      <AnimatedSection delay={1000}>
+        <section className="py-24 bg-muted/30">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-16">
-              <Badge
-                variant="outline"
-                className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
-              >
+              <Badge variant="outline" className="mb-4">
                 Desktop Power
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Scale Your Microstock Business
               </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Professional portfolio management tools designed for serious
                 stock photographers and content creators
               </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  title: "Unlimited Files Processing",
-                  description:
-                    "Process your entire stock files with no image limits. Scale from hundreds to hundreds of thousands of images for maximum earning potential.",
-                  icon: ArrowPathIcon,
-                },
-                {
-                  title: "Multi-Platform Export",
-                  description:
-                    "Export optimized metadata for Adobe Stock, Shutterstock, Freepik, and other platforms simultaneously. Save hours of manual work.",
-                  icon: DocumentTextIcon,
-                },
-                {
-                  title: "Trending Keywords Database",
-                  description:
-                    "Access AI-curated trending keywords and add your own high-performing terms to boost discoverability across all platforms.",
-                  icon: ListBulletIcon,
-                },
-              ].map((feature, index) => (
-                <BulkFeatureCard
-                  key={feature.title}
-                  title={feature.title}
-                  description={feature.description}
-                  icon={feature.icon}
-                  delay={index * 100}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      </AnimatedSection>
 
-      {/* Testimonials Section */}
-      <AnimatedSection delay={1800}>
-        <section className="py-24 bg-background">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-16">
-              <Badge
-                variant="outline"
-                className="mb-4 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
-              >
-                Testimonials
-              </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 animate-fade-in-up">
-                Real Results from Stock Photographers
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in-up">
-                Join thousands of successful contributors who have boosted their
-                microstock earnings with AI-powered metadata
-              </p>
-            </div>
             <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  quote:
-                    "My Adobe Stock earnings increased by 45% in just 3 months! GenMeta's AI generates keywords that buyers actually search for. It's like having a microstock expert on my team.",
-                  author: "Sarah J.",
-                  role: "Adobe Stock Contributor",
-                },
-                {
-                  quote:
-                    "I went from 200 to 2,000 downloads per month on Shutterstock after using GenMeta. The platform-specific optimization really works - my images now rank higher in search results.",
-                  author: "Michael T.",
-                  role: "Professional Stock Photographer",
-                },
-                {
-                  quote:
-                    "Processing 5,000+ images for my Freepik portfolio used to take weeks. Now it takes hours, and my acceptance rate improved from 60% to 95%. This tool pays for itself!",
-                  author: "Elena R.",
-                  role: "Digital Content Creator",
-                },
-              ].map((testimonial, index) => (
-                <TestimonialCard
-                  key={testimonial.author}
-                  quote={testimonial.quote}
-                  author={testimonial.author}
-                  role={testimonial.role}
-                  delay={index * 150}
-                />
-              ))}
+              <BulkFeatureCard
+                title="Unlimited Files Processing"
+                description="Process your entire stock files with no image limits. Scale from hundreds to hundreds of thousands of images for maximum earning potential."
+                icon={ArrowPathIcon}
+              />
+              <BulkFeatureCard
+                title="Multi-Platform Export"
+                description="Export optimized metadata for Adobe Stock, Shutterstock, Freepik, and other platforms simultaneously. Save hours of manual work."
+                icon={DocumentTextIcon}
+              />
+              <BulkFeatureCard
+                title="Trending Keywords Database"
+                description="Access AI-curated trending keywords and add your own high-performing terms to boost discoverability across all platforms."
+                icon={ListBulletIcon}
+              />
             </div>
           </div>
         </section>
       </AnimatedSection>
 
       {/* CTA Section */}
-      <AnimatedSection delay={2000}>
-        <section className="py-24 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background -z-10"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
+      <AnimatedSection delay={1200}>
+        <section className="py-24">
           <div className="max-w-4xl mx-auto text-center px-4">
-            <Badge
-              variant="outline"
-              className="mb-6 px-3 py-1 border-violet-200 dark:border-violet-800 animate-fade-in-up"
-            >
+            <Badge variant="outline" className="mb-6">
               Get Started Today
             </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-foreground animate-fade-in-up">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
               Ready to Boost Your Microstock Revenue?
             </h2>
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto animate-fade-in-up">
+            <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">
               Join thousands of successful stock photographers earning more with
               AI-optimized metadata. Start your free trial and see results in
               your first week.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/30 bg-transparent transform hover:scale-105 transition-all duration-300"
-                asChild
-              >
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" className="group" asChild>
+                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                  <Download className="w-5 h-5 mr-2" />
+                  Download GenMeta Free
+                </a>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
                 <Link href="/pricing">
                   <Crown className="w-5 h-5 mr-2" />
                   View Pricing Plans
@@ -715,7 +411,7 @@ function AnimatedSection({
 
   return (
     <div
-      className={`transform transition-all duration-1000 ease-out ${
+      className={`transform transition-all duration-1000 ${
         isVisible ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
       }`}
     >
@@ -724,172 +420,140 @@ function AnimatedSection({
   );
 }
 
+// Feature Card Component
 function FeatureCard({
-  title,
-  description,
-  icon: Icon,
-  delay = 0,
-}: {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  delay?: number;
-}) {
-  return (
-    <Card
-      className="overflow-hidden group hover:shadow-lg transition-all duration-500 border-violet-100 dark:border-violet-900 h-full transform hover:scale-105 animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <CardContent className="p-6">
-        <div className="w-12 h-12 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-all duration-300 group-hover:scale-110">
-          <Icon className="w-6 h-6 text-violet-600 dark:text-violet-400 group-hover:text-white transition-colors duration-300" />
-        </div>
-        <h3 className="text-xl font-semibold mb-2 text-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors duration-300">
-          {title}
-        </h3>
-        <p className="text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function BulkFeatureCard({
-  title,
-  description,
-  icon: Icon,
-  delay = 0,
-}: {
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  delay?: number;
-}) {
-  return (
-    <Card
-      className="overflow-hidden group hover:shadow-lg transition-all duration-500 border-violet-100 dark:border-violet-900 h-full bg-gradient-to-br from-white to-violet-50 dark:from-background dark:to-violet-950/20 transform hover:scale-105 animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <CardContent className="p-6">
-        <div className="w-12 h-12 rounded-lg bg-violet-500/10 flex items-center justify-center mb-4 group-hover:bg-violet-500 transition-all duration-300 group-hover:scale-110">
-          <Icon className="w-6 h-6 text-violet-600 dark:text-violet-400 group-hover:text-white transition-colors duration-300" />
-        </div>
-        <h3 className="text-xl font-semibold mb-2 text-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors duration-300">
-          {title}
-        </h3>
-        <p className="text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SettingItem({
-  title,
-  description,
   icon,
+  title,
+  description,
 }: {
+  icon: React.ReactNode;
   title: string;
   description: string;
-  icon: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-all duration-300 hover:scale-105">
-      <div className="mt-1">{icon}</div>
-      <div>
-        <h4 className="font-medium text-foreground">{title}</h4>
+    <Card className="group hover:shadow-lg hover:border-primary/50 transition-all duration-300">
+      <CardContent className="p-6">
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform duration-300">
+          {icon}
+        </div>
+        <h3 className="text-lg font-semibold mb-2">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Workflow Step Component
+function WorkflowStep({
+  number,
+  icon,
+  title,
+  description,
+}: {
+  number: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center group">
+      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary group-hover:scale-110 transition-transform duration-300">
+        {icon}
       </div>
+      <div className="text-sm font-semibold text-primary mb-2">{number}</div>
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   );
 }
 
-function TestimonialCard({
-  quote,
-  author,
-  role,
-  delay = 0,
+// Creator Card Component
+function CreatorCard({
+  icon,
+  title,
+  description,
 }: {
-  quote: string;
-  author: string;
-  role: string;
-  delay?: number;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
 }) {
   return (
-    <Card
-      className="overflow-hidden hover:shadow-lg transition-all duration-500 border-violet-100 dark:border-violet-900 h-full transform hover:scale-105 animate-fade-in-up"
-      style={{ animationDelay: `${delay}ms` }}
-    >
+    <Card className="group hover:shadow-lg hover:border-primary/50 transition-all duration-300">
       <CardContent className="p-6">
-        <div className="text-violet-500 mb-4 transform hover:scale-110 transition-transform duration-300">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
-            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
-          </svg>
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 text-primary group-hover:scale-110 transition-transform duration-300">
+          {icon}
         </div>
-        <p className="text-foreground mb-6 italic">{quote}</p>
-        <div className="mt-auto">
-          <p className="font-semibold text-foreground">{author}</p>
-          <p className="text-sm text-muted-foreground">{role}</p>
-        </div>
+        <h3 className="text-lg font-semibold mb-2">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   );
 }
 
+// Bulk Feature Card Component
+function BulkFeatureCard({
+  title,
+  description,
+  icon: Icon,
+}: {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <Card className="group hover:shadow-lg hover:border-primary/50 transition-all duration-300">
+      <CardContent className="p-6">
+        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors duration-300">
+          <Icon className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors duration-300" />
+        </div>
+        <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors duration-300">
+          {title}
+        </h3>
+        <p className="text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+
+// Footer Component
 export const Footer = () => {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch by only rendering theme-dependent content after mount
   useEffect(() => {
     setMounted(true);
   }, []);
 
   return (
-    <footer className="bg-background text-card-foreground py-16 border-t border-violet-100 dark:border-violet-900">
+    <footer className="bg-muted/30 border-t py-16">
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid md:grid-cols-5 gap-8">
           {/* Company Info */}
-          <div className="md:col-span-2 animate-fade-in-up">
-            <div className="mb-4 w-52">
-              <Link
-                href="/"
-                className="transform hover:scale-105 transition-transform duration-300 inline-block"
-              >
+          <div className="md:col-span-2">
+            <div className="mb-4">
+              <Link href="/" className="inline-block hover:opacity-80 transition-opacity">
                 <Image
-                  src={"/Assets/SVG/logo.svg"}
-                  className="h-16 py-2 w-auto"
+                  src="/Assets/SVG/logo.svg"
+                  className="h-16 w-auto"
                   alt="GenMeta logo"
                   width={128}
                   height={128}
                 />
               </Link>
             </div>
-            <p className="text-muted-foreground text-sm mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Transform your images with our powerful desktop application
               featuring advanced AI technology and professional-grade metadata
               tools.
             </p>
           </div>
 
-          {/* Company */}
-          <div
-            className="animate-fade-in-up"
-            style={{ animationDelay: "100ms" }}
-          >
-            <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Company
-            </h4>
-            <ul className="space-y-3 text-muted-foreground text-sm">
+          {/* Company Links */}
+          <div>
+            <h4 className="font-semibold mb-4">Company</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
               {[
                 { href: "/about", label: "About Us" },
                 { href: "/contact", label: "Contact Us" },
@@ -899,9 +563,9 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="hover:text-violet-600 dark:hover:text-violet-400 transition-all duration-300 flex items-center group"
+                    className="hover:text-primary transition-colors flex items-center gap-2 group"
                   >
-                    <ArrowRight className="w-3 h-3 mr-2 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     {link.label}
                   </Link>
                 </li>
@@ -909,15 +573,10 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Legal */}
-          <div
-            className="animate-fade-in-up"
-            style={{ animationDelay: "200ms" }}
-          >
-            <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Legal
-            </h4>
-            <ul className="space-y-3 text-muted-foreground text-sm">
+          {/* Legal Links */}
+          <div>
+            <h4 className="font-semibold mb-4">Legal</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
               {[
                 { href: "/terms", label: "Terms & Conditions" },
                 { href: "/privacy-policy", label: "Privacy Policy" },
@@ -927,9 +586,9 @@ export const Footer = () => {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="hover:text-violet-600 dark:hover:text-violet-400 transition-all duration-300 flex items-center group"
+                    className="hover:text-primary transition-colors flex items-center gap-2 group"
                   >
-                    <ArrowRight className="w-3 h-3 mr-2 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                     {link.label}
                   </Link>
                 </li>
@@ -938,52 +597,43 @@ export const Footer = () => {
           </div>
 
           {/* Support */}
-          <div
-            className="animate-fade-in-up"
-            style={{ animationDelay: "300ms" }}
-          >
-            <h4 className="text-lg font-semibold mb-4 text-foreground">
-              Support
-            </h4>
-            <ul className="space-y-3 text-muted-foreground text-sm">
-              <li className="flex items-start group">
-                <Phone className="w-4 h-4 mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0" />
-                <div className="flex flex-col gap-1">
-                  <a
-                    href="https://wa.me/8801817710493"
-                    className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300"
-                  >
-                    WhatsApp
-                  </a>
-                </div>
+          <div>
+            <h4 className="font-semibold mb-4">Support</h4>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <Phone className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+                <a
+                  href="https://wa.me/8801817710493"
+                  className="text-primary hover:underline"
+                >
+                  WhatsApp
+                </a>
               </li>
-              <li className="flex items-start group">
+              <li className="flex items-start gap-2">
                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
+                  className="w-4 h-4 mt-0.5 text-primary flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-2 mt-0.5 text-violet-500 group-hover:scale-110 transition-transform flex-shrink-0"
+                  viewBox="0 0 24 24"
                 >
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                  />
+                  <polyline points="22,6 12,13 2,6" />
                 </svg>
                 <a
                   href="mailto:support@genmeta.app"
-                  className="text-violet-600 dark:text-violet-400 hover:underline transition-all duration-300 break-all"
+                  className="text-primary hover:underline break-all"
                 >
                   support@genmeta.app
                 </a>
               </li>
             </ul>
-            {/* Payment Gateway Images */}
             {mounted && (
-              <div className="mb-4 mt-2">
+              <div className="mt-4">
                 <Image
                   src={
                     resolvedTheme === "dark"
@@ -1003,38 +653,26 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-violet-100 dark:border-violet-900">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground animate-fade-in-up">
+        <div className="mt-12 pt-8 border-t">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
             <p>
               &copy; {new Date().getFullYear()} GenMeta Technologies. All rights
               reserved.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link
-                href="/terms"
-                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-              >
+              <Link href="/terms" className="hover:text-primary transition-colors">
                 Terms
               </Link>
               <span>•</span>
-              <Link
-                href="/privacy-policy"
-                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-              >
+              <Link href="/privacy-policy" className="hover:text-primary transition-colors">
                 Privacy
               </Link>
               <span>•</span>
-              <Link
-                href="/refund-policy"
-                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-              >
+              <Link href="/refund-policy" className="hover:text-primary transition-colors">
                 Refunds
               </Link>
               <span>•</span>
-              <Link
-                href="/contact"
-                className="hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-              >
+              <Link href="/contact" className="hover:text-primary transition-colors">
                 Contact
               </Link>
             </div>

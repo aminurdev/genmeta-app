@@ -271,3 +271,30 @@ button {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+.glass {
+  background: rgba(252, 252, 252, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.raycast-shadow {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+.hero-gradient {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(0, 0, 0, 0.03) 0%,
+    rgba(252, 252, 252, 0) 50%
+  );
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
