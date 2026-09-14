@@ -102,7 +102,7 @@ export function Navigation({ propUser }: NavigationProps) {
           className={`mx-auto flex items-center justify-between px-4 transition-all duration-500 ease-out ${
             isScrolled
               ? "h-12 md:h-12 max-w-screen-xl"
-              : "h-20 md:h-24 max-w-screen-2xl"
+              : "h-14 md:h-16 max-w-screen-2xl"
           }`}
         >
           {/* Logo */}
@@ -114,7 +114,7 @@ export function Navigation({ propUser }: NavigationProps) {
               <Image
                 src="/Assets/SVG/logo.svg"
                 className={`py-2 w-auto transition-all duration-500 ease-out ${
-                  isScrolled ? "h-12" : "h-16"
+                  isScrolled ? "h-12" : "h-12"
                 }`}
                 alt="GenMeta logo"
                 width={128}
@@ -142,7 +142,7 @@ export function Navigation({ propUser }: NavigationProps) {
                 isLoading={isLoading}
               />
             ) : (
-              <span className="hidden lg:flex items-center gap-4">
+              <span className="flex items-center gap-4 h-8">
                 <Button
                   variant="outline"
                   asChild
@@ -155,7 +155,7 @@ export function Navigation({ propUser }: NavigationProps) {
 
             <Button
               asChild
-              className="transition-all duration-300 hover:scale-105 hover:shadow-md"
+              className="transition-all duration-300 hover:scale-105 hover:shadow-md h-8"
             >
               <Link
                 className="hidden md:flex items-center gap-2"

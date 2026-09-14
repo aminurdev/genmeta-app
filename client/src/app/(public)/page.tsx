@@ -1,5 +1,5 @@
 import HomePage from "@/components/Home";
-import { getLatestRelease } from "./download/page";
+import { getLatestRelease } from "@/lib/release-info";
 
 export default async function Home() {
   const data = await getLatestRelease();
