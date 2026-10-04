@@ -1,0 +1,64 @@
+/* Scoped design tokens for the homepage. Nothing here leaks to other routes. */
+.landing {
+  --lp-bg: #f5f3ee;
+  --lp-surface: #ffffff;
+  --lp-ink: #15140f;
+  --lp-muted: #6b675d;
+  --lp-line: #dcd8cc;
+  --lp-accent: #d9400f;
+  --lp-accent-ink: #ffffff;
+  --lp-invert: #15140f;
+  --lp-invert-ink: #f5f3ee;
+
+  background: var(--lp-bg);
+  color: var(--lp-ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.dark .landing {
+  --lp-bg: #0f0e0b;
+  --lp-surface: #181712;
+  --lp-ink: #efece4;
+  --lp-muted: #9a958a;
+  --lp-line: #2b2923;
+  --lp-accent: #ff6a3d;
+  --lp-accent-ink: #15140f;
+  --lp-invert: #efece4;
+  --lp-invert-ink: #15140f;
+}
+
+.landing ::selection {
+  background: var(--lp-accent);
+  color: var(--lp-accent-ink);
+}
+
+/* Subtle scroll reveal. Respects reduced motion. */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lp-reveal[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Hairline grid texture used behind the hero. */
+.lp-grid {
+  background-image:
+    linear-gradient(to right, var(--lp-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--lp-line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  opacity: 0.45;
+}

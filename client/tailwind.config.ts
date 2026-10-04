@@ -9,7 +9,22 @@ export default {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			display: ['var(--font-display)', 'Georgia', 'serif'],
+  			lpmono: ['var(--font-mono)', 'ui-monospace', 'monospace']
+  		},
   		colors: {
+  			lp: {
+  				bg: 'var(--lp-bg)',
+  				surface: 'var(--lp-surface)',
+  				ink: 'var(--lp-ink)',
+  				muted: 'var(--lp-muted)',
+  				line: 'var(--lp-line)',
+  				accent: 'var(--lp-accent)',
+  				'accent-ink': 'var(--lp-accent-ink)',
+  				invert: 'var(--lp-invert)',
+  				'invert-ink': 'var(--lp-invert-ink)'
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
