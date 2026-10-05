@@ -97,33 +97,7 @@ function Section({
   );
 }
 
-function SectionHeader({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="grid gap-6 px-6 py-14 md:grid-cols-2 md:items-end md:px-12 md:py-20">
-      <div>
-        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          {eyebrow}
-        </p>
-        <h2 className="mt-4 max-w-lg text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
-          {title}
-        </h2>
-      </div>
-      {description && (
-        <p className="max-w-md text-pretty leading-relaxed text-muted-foreground md:justify-self-end">
-          {description}
-        </p>
-      )}
-    </div>
-  );
-}
+
 
 interface PlanCardProps {
   name: string;

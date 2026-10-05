@@ -1,5 +1,4 @@
 import {
-  A,
   B,
   Facts,
   LEGAL_INFO,
