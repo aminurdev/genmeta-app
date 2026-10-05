@@ -1,632 +1,468 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, Suspense } from "react";
-import {
-  Check,
-  Sparkles,
-  Shield,
-  Zap,
-  AlertCircle,
-  XCircle,
-  ArrowRight,
-  Download,
-  BarChart3,
-} from "lucide-react";
+import { Suspense, memo, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertCircle, ArrowUpRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Banner } from "@/components/main/banner";
+import { cn } from "@/lib/utils";
 import { useAllPricing } from "@/services/queries/pricing";
+import { WindowsIcon } from "@/components/Home";
 import { creditFeatures, premiumFeatures } from "./features";
 
-interface FaqItem {
-  question: string;
-  answer: string;
-}
+/* -------------------------------------------------------------------------- */
+/*                                   Content                                  */
+/* -------------------------------------------------------------------------- */
 
-const freeFeatures = [
+const FREE_FEATURES = [
   "50 free credits upon signup",
   "Requires your own Gemini API key",
   "Limited to 25 files per day",
 ];
 
-const PricingContent = () => {
+const FAQ_ITEMS = [
+  {
+    question: "How does the free plan work?",
+    answer:
+      "The free plan gives you access to basic AI image processing with a limit of 25 images per day. You can process images, generate basic metadata, and export results with standard features. Perfect for trying out the platform before committing to a paid plan.",
+  },
+  {
+    question: "Can I upgrade from free to premium anytime?",
+    answer:
+      "Yes. You can upgrade from the free plan to any paid plan at any time and your account is upgraded immediately. You can also switch between subscription and credit plans as needed.",
+  },
+  {
+    question: "Do I need my own API key?",
+    answer:
+      "Subscription plans use your own Gemini API key for unlimited processing. Credit plans include built-in API access, so no external key is required — ideal if you want a hassle-free experience.",
+  },
+  {
+    question: "What file formats are supported?",
+    answer:
+      "JPG, JPEG, PNG, EPS, MP4 and MOV. GenMeta generates titles, descriptions and keywords for each file, ready to export for your agency.",
+  },
+];
+
+const DURATION_LABELS: Record<number, string> = {
+  7: "per week",
+  30: "per month",
+  365: "per year",
+};
+
+const CREDIT_DURATION_LABELS: Record<number, string> = {
+  30: "Monthly",
+  91: "91 days",
+  182: "Half-yearly",
+  365: "Yearly",
+};
+
+interface PlanLike {
+  basePrice: number;
+  discountPercent: number;
+  discountPrice?: number;
+}
+
+const finalPrice = (plan: PlanLike) =>
+  plan.discountPrice
+    ? plan.discountPrice
+    : Math.round(plan.basePrice * (1 - plan.discountPercent / 100));
+
+/* -------------------------------------------------------------------------- */
+/*                                 Primitives                                 */
+/* -------------------------------------------------------------------------- */
+
+function Section({
+  children,
+  className,
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
+  return (
+    <section id={id} className={cn("relative border-t", className)}>
+      <span aria-hidden className="lp-cross -left-[7px] -top-[7px] z-10 hidden md:block" />
+      <span aria-hidden className="lp-cross -right-[7px] -top-[7px] z-10 hidden md:block" />
+      {children}
+    </section>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="grid gap-6 px-6 py-14 md:grid-cols-2 md:items-end md:px-12 md:py-20">
+      <div>
+        <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          {eyebrow}
+        </p>
+        <h2 className="mt-4 max-w-lg text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+          {title}
+        </h2>
+      </div>
+      {description && (
+        <p className="max-w-md text-pretty leading-relaxed text-muted-foreground md:justify-self-end">
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
+interface PlanCardProps {
+  name: string;
+  tag?: string;
+  price: string;
+  originalPrice?: string;
+  caption: string;
+  note?: string;
+  features: string[];
+  cta: string;
+  onSelect: () => void;
+  variant?: "default" | "outline";
+  highlight?: boolean;
+}
+
+const PlanCard = memo(function PlanCard({
+  name,
+  tag,
+  price,
+  originalPrice,
+  caption,
+  note,
+  features,
+  cta,
+  onSelect,
+  variant = "outline",
+  highlight,
+}: PlanCardProps) {
+  return (
+    <div className="group relative flex flex-col bg-background p-6 transition-colors hover:bg-muted/40 md:p-10">
+      {highlight && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-foreground/[0.03] to-transparent"
+        />
+      )}
+      <div className="relative flex items-center justify-between gap-3">
+        <h3 className="text-[15px] font-medium tracking-tight">{name}</h3>
+        {tag && (
+          <span className="rounded-full border bg-background px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+            {tag}
+          </span>
+        )}
+      </div>
+
+      <div className="relative mt-6 flex items-baseline gap-2">
+        <span className="text-5xl font-semibold tracking-[-0.04em]">{price}</span>
+        {originalPrice && (
+          <span className="text-lg text-muted-foreground line-through">
+            {originalPrice}
+          </span>
+        )}
+      </div>
+      <p className="relative mt-2 text-sm text-muted-foreground">{caption}</p>
+
+      {note && (
+        <p className="relative mt-5 rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs text-muted-foreground">
+          {note}
+        </p>
+      )}
+
+      <ul className="relative mt-6 flex-1 space-y-3 border-t pt-6">
+        {features.map((feature) => (
+          <li key={feature} className="flex items-start gap-3 text-sm">
+            <Check
+              className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+              strokeWidth={1.75}
+            />
+            <span className="leading-relaxed">{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <Button
+        variant={variant}
+        onClick={onSelect}
+        className="relative mt-8 h-11 w-full rounded-full font-medium"
+      >
+        {cta}
+      </Button>
+    </div>
+  );
+});
+
+function PlanCardSkeleton() {
+  return (
+    <div className="bg-background p-6 md:p-10">
+      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      <div className="mt-6 h-12 w-32 animate-pulse rounded bg-muted" />
+      <div className="mt-3 h-4 w-40 animate-pulse rounded bg-muted" />
+      <div className="mt-8 space-y-3 border-t pt-6">
+        {[0, 1, 2, 3].map((j) => (
+          <div key={j} className="h-4 w-full animate-pulse rounded bg-muted" />
+        ))}
+      </div>
+      <div className="mt-8 h-11 w-full animate-pulse rounded-full bg-muted" />
+    </div>
+  );
+}
+
+/** Isolated so useSearchParams suspending never blanks the whole page. */
+function ErrorBanner() {
   const searchParams = useSearchParams();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  const errorMessage = useMemo(() => {
+    const message = searchParams?.get("message");
+    return message ? decodeURIComponent(message) : null;
+  }, [searchParams]);
+
+  if (!errorMessage || dismissed) return null;
+
+  return (
+    <div className="border-t px-6 py-6 md:px-12">
+      <Alert variant="destructive" className="relative">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription className="pr-8">{errorMessage}</AlertDescription>
+        <button
+          onClick={() => setDismissed(true)}
+          className="absolute right-3 top-3 rounded-sm opacity-70 transition-opacity hover:opacity-100"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </Alert>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Page                                    */
+/* -------------------------------------------------------------------------- */
+
+function PricingContent() {
   const router = useRouter();
 
   const { data: pricingData, isLoading } = useAllPricing();
 
-  const subscriptionPlans =
-    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
-  const creditPlans =
-    (pricingData?.success && pricingData?.data?.creditPlans) || [];
+  const { creditPlans, subscriptionPlans } = useMemo(() => {
+    const data = pricingData?.success ? pricingData.data : undefined;
+    return {
+      creditPlans: (data?.creditPlans ?? [])
+        .filter((p) => p.isActive)
+        .sort((a, b) => a.credit - b.credit),
+      subscriptionPlans: (data?.subscriptionPlans ?? [])
+        .filter((p) => p.isActive)
+        .sort((a, b) => a.planDuration - b.planDuration),
+    };
+  }, [pricingData]);
 
-  useEffect(() => {
-    if (searchParams) {
-      const message = searchParams.get("message");
-      if (message) {
-        setErrorMessage(decodeURIComponent(message));
-      }
-    }
-  }, [searchParams]);
-
-  const faqItems: FaqItem[] = [
-    {
-      question: "How does the free plan work?",
-      answer:
-        "The free plan gives you access to basic AI image processing with a limit of 25 images per day. You can process images, generate basic metadata, and export results with standard features. Perfect for trying out our platform before committing to a paid plan.",
-    },
-    {
-      question: "Can I upgrade from free to premium anytime?",
-      answer:
-        "Yes, you can upgrade from the free plan to any premium plan at any time. Your account will be upgraded immediately and you'll have access to all premium features. You can also switch between subscription and credit plans as needed.",
-    },
-    {
-      question: "Do I need my own API key?",
-      answer:
-        "For subscription plans, you can use your own Gemini API key for unlimited processing. Credit plans include built-in API access, so no external API key is required. This makes credit plans perfect for users who want a hassle-free experience.",
-    },
-    {
-      question: "What file formats are supported?",
-      answer:
-        "We support JPG, JPEG, PNG, EPS, MP4, and MOV formats. Our AI can process images of various sizes and generate comprehensive metadata including titles, descriptions, keywords, and alt text for better SEO and accessibility.",
-    },
-  ];
-
-  const handlePurchase = (id: string, type: string) => {
+  const goToCart = (id: string, type: "credit" | "subscription") =>
     router.push(`/cart?planId=${id}&planType=${type}`);
-  };
-
-  const handleDownloadFree = () => {
-    router.push("/signup?plan=free");
-  };
-
-  const calculateDiscountedPrice = (
-    basePrice: number,
-    discountPercent: number,
-  ) => {
-    return Math.round(basePrice * (1 - discountPercent / 100));
-  };
-
-  const activeCreditPlans = creditPlans
-    .filter((plan) => plan.isActive)
-    .sort((a, b) => a.credit - b.credit);
-
-  const activeSubscriptionPlans = subscriptionPlans
-    .filter((plan) => plan.isActive)
-    .sort((a, b) => a.planDuration - b.planDuration);
-
-  const FreePlanCard = ({ className }: { className?: string }) => (
-    <Card
-      className={`flex flex-col border-2 transition-all hover:shadow-lg hover:border-primary/20 bg-card ${className}`}
-    >
-      <CardHeader className="pb-6">
-        <div className="flex items-center justify-between mb-2">
-          <CardTitle className="text-xl font-semibold">Free</CardTitle>
-          <Badge variant="secondary" className="text-xs">
-            Forever
-          </Badge>
-        </div>
-        <div className="mt-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-5xl font-bold tracking-tight">৳0</span>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Perfect for getting started
-          </p>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 pt-0">
-        <div className="space-y-3">
-          {freeFeatures.map((feature, index) => (
-            <div key={index} className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-primary/10 p-0.5">
-                <Check className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <span className="text-sm leading-relaxed">{feature}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter className="pt-6">
-        <Button
-          variant="outline"
-          className="w-full h-11 font-medium"
-          onClick={handleDownloadFree}
-        >
-          Get Started
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-
-  if (isLoading) {
-    return <PricingLoading />;
-  }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden pt-12 pb-16 md:pt-16 md:pb-24">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background -z-10" />
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col items-center justify-center space-y-6 text-center max-w-4xl mx-auto">
-            <Badge variant="secondary" className="px-4 py-1.5">
-              <Sparkles className="h-3.5 w-3.5 mr-2" />
-              Simple, transparent pricing
-            </Badge>
-
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Choose the <span className="text-primary">Perfect Plan</span>
-              <br className="hidden sm:inline" />
-              for Your Workflow
-            </h1>
-
-            <p className="max-w-2xl text-lg text-muted-foreground leading-relaxed">
-              Transform your image metadata workflow with our AI-powered
-              platform. Start free and scale as your needs grow.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {errorMessage && (
-        <div className="container mx-auto px-4 mb-8">
-          <div className="mx-auto max-w-2xl">
-            <Alert variant="destructive" className="relative">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="pr-8">
-                {errorMessage}
-              </AlertDescription>
-              <button
-                onClick={() => setErrorMessage(null)}
-                className="absolute right-3 top-3 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
-                aria-label="Close"
-              >
-                <XCircle className="h-4 w-4" />
-              </button>
-            </Alert>
-          </div>
-        </div>
-      )}
-
-      {/* Pricing Cards */}
-      <div className="container mx-auto px-4 pb-20" id="premium">
-        <div className="max-w-7xl mx-auto">
+    <div className="bg-background text-foreground">
+      <div className="mx-auto max-w-[1300px] md:border-x">
+        {/* ------------------------------ Hero ------------------------------ */}
+        <section className="relative overflow-hidden">
           <div
-            className={`grid gap-6 ${
-              activeSubscriptionPlans.length + activeCreditPlans.length === 1
-                ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto"
-                : activeSubscriptionPlans.length + activeCreditPlans.length ===
-                    2
-                  ? "grid-cols-1 md:grid-cols-3 max-w-5xl mx-auto"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-            }`}
-          >
-            <FreePlanCard />
-            {activeCreditPlans.map((plan) => {
-              const displayPrice = plan.discountPrice
-                ? plan.discountPrice
-                : calculateDiscountedPrice(
-                    plan.basePrice,
-                    plan.discountPercent,
-                  );
-
-              const durationText =
-                plan.planDuration === 30
-                  ? "Monthly"
-                  : plan.planDuration === 91
-                    ? "91 Days"
-                    : plan.planDuration === 182
-                      ? "Half-Yearly"
-                      : plan.planDuration === 365
-                        ? "Yearly"
-                        : `${plan.planDuration} days`;
-
-              const imageCount = (plan.credit * 5).toLocaleString();
-              const videoCount = plan.credit.toLocaleString();
-
-              return (
-                <Card
-                  key={plan._id}
-                  className="flex flex-col relative border-2 transition-all hover:shadow-lg hover:border-primary/20 bg-card"
-                >
-                  <Badge className="absolute right-4 top-4 bg-primary">
-                    No API Key
-                  </Badge>
-
-                  <CardHeader className="pb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <CardTitle className="text-xl font-semibold">
-                        {plan.name}
-                      </CardTitle>
-                      <Zap className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-bold tracking-tight">
-                          ৳{displayPrice}
-                        </span>
-                        {plan.discountPercent > 0 && (
-                          <span className="text-xl text-muted-foreground line-through">
-                            ৳{plan.basePrice}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {plan.credit.toLocaleString()} credits • {durationText}
-                      </p>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 pt-0">
-                    <div className="bg-primary/5 rounded-lg p-4 mb-6 border border-primary/10">
-                      <p className="text-xs font-medium text-muted-foreground mb-1.5">
-                        Processing capacity:
-                      </p>
-                      <p className="text-sm font-medium">
-                        {imageCount} images or {videoCount} videos
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      {creditFeatures.map((feature, featureIndex) => (
-                        <div
-                          key={featureIndex}
-                          className="flex items-start gap-3"
-                        >
-                          <div className="mt-0.5 rounded-full bg-primary/10 p-0.5">
-                            <Check className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          <span className="text-sm leading-relaxed">
-                            {feature}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-6">
-                    <Button
-                      className="w-full h-11 font-medium"
-                      onClick={() => handlePurchase(plan._id, "credit")}
-                    >
-                      Purchase Credits
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-            {activeSubscriptionPlans.map((plan) => {
-              const displayPrice = plan.discountPrice
-                ? plan.discountPrice
-                : calculateDiscountedPrice(
-                    plan.basePrice,
-                    plan.discountPercent,
-                  );
-
-              const durationText =
-                plan.planDuration === 30
-                  ? "per month"
-                  : plan.planDuration === 365
-                    ? "per year"
-                    : plan.planDuration === 7
-                      ? "per week"
-                      : `per ${plan.planDuration} days`;
-
-              return (
-                <Card
-                  key={plan._id}
-                  className="flex flex-col relative border-2 transition-all hover:shadow-lg hover:border-primary/20 bg-card"
-                >
-                  {plan.discountPercent > 0 ? (
-                    <Badge className="absolute right-4 top-4 bg-green-600">
-                      Save {plan.discountPercent}%
-                    </Badge>
-                  ) : null}
-
-                  <CardHeader className="pb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <CardTitle className="text-xl font-semibold">
-                        {plan.name}
-                      </CardTitle>
-                      <Sparkles className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="mt-4">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-bold tracking-tight">
-                          ৳{displayPrice}
-                        </span>
-                        {plan.discountPercent > 0 && (
-                          <span className="text-xl text-muted-foreground line-through">
-                            ৳{plan.basePrice}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {durationText}
-                      </p>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-1 pt-0">
-                    <div className="space-y-3">
-                      {premiumFeatures.map((feature, featureIndex) => (
-                        <div
-                          key={featureIndex}
-                          className="flex items-start gap-3"
-                        >
-                          <div className="mt-0.5 rounded-full bg-primary/10 p-0.5">
-                            <Check className="h-3.5 w-3.5 text-primary" />
-                          </div>
-                          <span className="text-sm leading-relaxed">
-                            {feature}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-6">
-                    <Button
-                      className="w-full h-11 font-medium"
-                      onClick={() => handlePurchase(plan._id, "subscription")}
-                    >
-                     Choose Plan
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* No Plans Available */}
-        {activeCreditPlans.length === 0 &&
-          activeSubscriptionPlans.length === 0 && (
-            <div className="text-center py-12">
-              <FreePlanCard className="max-w-md mx-auto" />
-            </div>
-          )}
-      </div>
-
-      {/* Features Section */}
-      <div className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-6xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold tracking-tight mb-4">
-                Powerful AI-Driven Experience
-              </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Everything you need to streamline your image metadata workflow
-              </p>
-            </div>
-
-            <div className="mb-12">
-              <Banner />
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="group rounded-xl bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 border">
-                <div className="mb-4 rounded-full bg-primary/10 p-3 w-fit group-hover:scale-110 transition-transform duration-300">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">Powerful AI</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Process images with state-of-the-art AI technology for
-                  accurate and fast results. Generate metadata that improves
-                  discoverability.
-                </p>
-              </div>
-
-              <div className="group rounded-xl bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 border">
-                <div className="mb-4 rounded-full bg-primary/10 p-3 w-fit group-hover:scale-110 transition-transform duration-300">
-                  <Shield className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">
-                  Secure Processing
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Your data is processed securely with enterprise-grade
-                  encryption. We never store your images or personal data.
-                </p>
-              </div>
-
-              <div className="group rounded-xl bg-card p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 border">
-                <div className="mb-4 rounded-full bg-primary/10 p-3 w-fit group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">
-                  Advanced Workflow
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  Streamline your image processing with batch operations, custom
-                  metadata editing, and flexible export options for any project.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* FAQ Section */}
-      <div className="container mx-auto px-4 py-20">
-        <div className="mx-auto max-w-3xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight mb-4">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-muted-foreground">
-              Everything you need to know about our pricing plans
+            aria-hidden
+            className="lp-grid-bg pointer-events-none absolute inset-0"
+          />
+          <div className="relative px-6 pb-16 pt-16 md:px-12 md:pb-20 md:pt-24">
+            <p
+              className="lp-rise font-mono text-xs uppercase tracking-wider text-muted-foreground"
+            >
+              Pricing
+            </p>
+            <h1
+              className="lp-rise mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl md:leading-[1.05]"
+              style={{ animationDelay: "60ms" }}
+            >
+              Simple pricing. Start free, scale when you upload more.
+            </h1>
+            <p
+              className="lp-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg"
+              style={{ animationDelay: "120ms" }}
+            >
+              Bring your own Gemini key on a subscription, or buy credits and
+              skip the setup entirely. No hidden fees.
             </p>
           </div>
+        </section>
 
-          <Accordion type="single" collapsible className="w-full space-y-4">
-            {faqItems.map((item, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="border rounded-lg px-6 bg-card"
-              >
-                <AccordionTrigger className="text-left hover:no-underline py-4">
-                  <span className="font-medium">{item.question}</span>
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground pb-4">
-                  {item.answer}
-                </AccordionContent>
-              </AccordionItem>
+        {/* ------------------------------ Error ----------------------------- */}
+        <Suspense fallback={null}>
+          <ErrorBanner />
+        </Suspense>
+
+        {/* ------------------------------ Plans ----------------------------- */}
+        <Section id="premium">
+          <div className="grid gap-px border-b bg-border md:grid-cols-2 lg:grid-cols-3">
+            <PlanCard
+              name="Free"
+              tag="Forever"
+              price="৳0"
+              caption="Perfect for getting started"
+              features={FREE_FEATURES}
+              cta="Get started"
+              onSelect={() => router.push("/signup?plan=free")}
+            />
+
+            {isLoading && (
+              <>
+                <PlanCardSkeleton />
+                <PlanCardSkeleton />
+              </>
+            )}
+
+            {creditPlans.map((plan) => {
+              const duration =
+                CREDIT_DURATION_LABELS[plan.planDuration] ??
+                `${plan.planDuration} days`;
+              return (
+                <PlanCard
+                  key={plan._id}
+                  name={plan.name}
+                  tag="No API key"
+                  price={`৳${finalPrice(plan)}`}
+                  originalPrice={
+                    plan.discountPercent > 0 ? `৳${plan.basePrice}` : undefined
+                  }
+                  caption={`${plan.credit.toLocaleString()} credits · ${duration}`}
+                  note={`${(plan.credit * 5).toLocaleString()} images or ${plan.credit.toLocaleString()} videos`}
+                  features={creditFeatures}
+                  cta="Purchase credits"
+                  variant="default"
+                  onSelect={() => goToCart(plan._id, "credit")}
+                />
+              );
+            })}
+
+            {subscriptionPlans.map((plan) => (
+              <PlanCard
+                key={plan._id}
+                name={plan.name}
+                tag={
+                  plan.discountPercent > 0
+                    ? `Save ${plan.discountPercent}%`
+                    : undefined
+                }
+                price={`৳${finalPrice(plan)}`}
+                originalPrice={
+                  plan.discountPercent > 0 ? `৳${plan.basePrice}` : undefined
+                }
+                caption={
+                  DURATION_LABELS[plan.planDuration] ??
+                  `per ${plan.planDuration} days`
+                }
+                features={premiumFeatures}
+                cta="Choose plan"
+                variant="default"
+                highlight
+                onSelect={() => goToCart(plan._id, "subscription")}
+              />
             ))}
-          </Accordion>
-        </div>
-      </div>
+          </div>
+        </Section>
 
-      {/* CTA Section */}
-      <div className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-4xl rounded-2xl bg-primary/5 p-8 md:p-12 border border-primary/10">
-            <div className="text-center">
-              <Badge variant="secondary" className="mb-4">
-                Start Free Today
-              </Badge>
-              <h2 className="mb-4 text-3xl md:text-4xl font-bold tracking-tight">
-                Ready to transform your workflow?
-              </h2>
-              <p className="mb-8 text-muted-foreground max-w-2xl mx-auto">
-                Join thousands of professionals who use our AI-powered platform
-                to streamline their image metadata workflow. Start free and
-                upgrade when you need more.
+        {/* ------------------------------- FAQ ------------------------------ */}
+        <Section>
+          <div className="grid lg:grid-cols-2">
+            <div className="border-b px-6 py-14 md:px-12 md:py-20 lg:border-b-0 lg:border-r">
+              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                FAQ
               </p>
-
-              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto px-8 h-11 font-medium"
-                  asChild
+              <h2 className="mt-4 max-w-md text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                Questions about pricing.
+              </h2>
+              <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                Can&apos;t find what you need?{" "}
+                <Link
+                  href="/contact"
+                  className="text-foreground underline underline-offset-4"
                 >
-                  <a href="#premium">
-                    Get Premium
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto px-8 h-11 font-medium"
-                  onClick={handleDownloadFree}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Start Free
-                </Button>
-              </div>
+                  Contact us
+                </Link>
+                .
+              </p>
+            </div>
+            <div className="bg-muted/30 px-6 py-10 md:px-12 md:py-16">
+              <Accordion type="single" collapsible className="w-full">
+                {FAQ_ITEMS.map((item, i) => (
+                  <AccordionItem key={item.question} value={`item-${i}`}>
+                    <AccordionTrigger className="py-4 text-left text-[15px] font-medium tracking-tight hover:no-underline">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                      {item.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+        </Section>
 
-// Skeleton components for loading states
-const PricingCardSkeleton = () => (
-  <Card className="flex flex-col relative overflow-hidden">
-    <CardHeader className="pb-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="h-6 w-24 bg-muted rounded animate-pulse" />
-        <div className="h-5 w-16 bg-muted rounded animate-pulse" />
-      </div>
-      <div className="mt-4 space-y-2">
-        <div className="h-12 w-32 bg-muted rounded animate-pulse" />
-        <div className="h-4 w-40 bg-muted rounded animate-pulse" />
-      </div>
-    </CardHeader>
-    <CardContent className="space-y-3 flex-1 pt-0">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex items-center gap-3">
-          <div className="h-4 w-4 bg-muted rounded-full animate-pulse" />
-          <div className="h-4 flex-1 bg-muted rounded animate-pulse" />
-        </div>
-      ))}
-    </CardContent>
-    <CardFooter className="pt-6">
-      <div className="h-11 w-full bg-muted rounded animate-pulse" />
-    </CardFooter>
-  </Card>
-);
-
-const HeroSkeleton = () => (
-  <div className="relative overflow-hidden pt-20 pb-16 md:pt-28 md:pb-24">
-    <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background -z-10" />
-    <div className="container mx-auto px-4">
-      <div className="flex flex-col items-center justify-center space-y-6 text-center max-w-4xl mx-auto">
-        <div className="h-8 w-64 bg-muted rounded-full animate-pulse" />
-        <div className="space-y-4">
-          <div className="h-14 w-96 bg-muted rounded animate-pulse mx-auto" />
-          <div className="h-14 w-80 bg-muted rounded animate-pulse mx-auto" />
-        </div>
-        <div className="h-6 w-[500px] bg-muted rounded animate-pulse" />
-      </div>
-    </div>
-  </div>
-);
-
-const PricingLoading = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <HeroSkeleton />
-      <div className="container mx-auto px-4 pb-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <PricingCardSkeleton />
-          <PricingCardSkeleton />
-          <PricingCardSkeleton />
-        </div>
-      </div>
-      <div className="bg-muted/30 py-20">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-6xl">
-            <div className="h-8 w-64 bg-muted rounded animate-pulse mx-auto mb-8" />
-            <div className="h-64 w-full bg-muted rounded-lg animate-pulse mb-12" />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl bg-card p-6 shadow-sm border"
-                >
-                  <div className="h-12 w-12 bg-muted rounded-full animate-pulse mb-4" />
-                  <div className="h-6 w-32 bg-muted rounded animate-pulse mb-2" />
-                  <div className="space-y-2">
-                    <div className="h-4 w-full bg-muted rounded animate-pulse" />
-                    <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
-                  </div>
-                </div>
-              ))}
+        {/* ------------------------------- CTA ------------------------------ */}
+        <Section className="overflow-hidden">
+          <div
+            aria-hidden
+            className="lp-grid-bg pointer-events-none absolute inset-0 opacity-70"
+          />
+          <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
+            <div>
+              <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Tag your next upload in minutes.
+              </h2>
+              <p className="mt-4 max-w-md text-muted-foreground">
+                Start on the free plan. Upgrade when you need unlimited
+                processing and every export format.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg" className="h-11 gap-2 rounded-full px-6">
+                <Link href="/download">
+                  <WindowsIcon className="h-4 w-4" />
+                  Download free
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-11 gap-1 rounded-full px-6"
+              >
+                <a href="#premium">
+                  View plans
+                  <ArrowUpRight className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
           </div>
-        </div>
+        </Section>
       </div>
     </div>
   );
-};
+}
 
-const PricingPage = () => {
-  return (
-    <Suspense fallback={<PricingLoading />}>
-      <PricingContent />
-    </Suspense>
-  );
-};
-
-export default PricingPage;
+export default function PricingPage() {
+  return <PricingContent />;
+}
