@@ -102,7 +102,7 @@ export function Navigation({ propUser }: NavigationProps) {
         }`}
       >
         {/* Inner wrapper — matches home page max-width & border */}
-        <div className="mx-auto max-w-[1200px] md:border-x border-border">
+        <div className="mx-auto max-w-[1300px] md:border-x border-border">
           <div
             className={`flex items-center justify-between px-6 transition-all duration-300 md:px-12 ${
               isScrolled ? "h-12" : "h-14"
@@ -252,7 +252,7 @@ function GenMetaLogo() {
       {/* Icon — inline SVG so it inherits colour correctly */}
       <svg
         viewBox="0 0 106.37 106.37"
-        className="h-7 w-7 shrink-0"
+        className="h-6 w-6 shrink-0"
         aria-hidden
       >
         <defs>
