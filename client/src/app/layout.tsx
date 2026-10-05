@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -10,20 +10,26 @@ import {
   PageViewTracker,
 } from "@/lib/analytics";
 
-const inter = Inter({
+const geistSans = Geist({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-geist-sans",
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-plus-jakarta-sans",
+  variable: "--font-geist-mono",
 });
 
 export const metadata: Metadata = {
-  title: "GenMeta - APP",
-  description: "Generate Metadata and Make image seo friendly",
+  title: "GenMeta – AI Metadata for Microstock",
+  description:
+    "Generate titles, descriptions and keywords for your microstock photos, videos and vectors. Formatted for Adobe Stock, Shutterstock, Freepik and more.",
+  icons: {
+    icon: "/Assets/SVG/icon.svg",
+    shortcut: "/Assets/SVG/icon.svg",
+  },
 };
+
 
 export default function RootLayout({
   children,
@@ -33,13 +39,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${plusJakartaSans.variable} h-full scroll-smooth antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
       suppressHydrationWarning
     >
       <head>
         <AnalyticsScripts />
       </head>
-      <body className="flex min-h-full flex-col bg-secondary-50">
+      <body className="flex min-h-full flex-col bg-background font-sans">
         <AnalyticsNoScript />
         <ThemeProvider
           attribute="class"

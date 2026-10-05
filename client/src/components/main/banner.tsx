@@ -1,25 +1,27 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import Image from "next/image";
 
 export const Banner = () => {
-  const { theme } = useTheme();
   return (
-    <div className="mt-16 relative">
-      <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl blur-sm opacity-50"></div>
-      <div className="relative bg-card rounded-xl overflow-hidden shadow-2xl border border-violet-200 dark:border-violet-800">
+    <div className="mt-16 rounded-xl border bg-muted/50 p-1.5 md:p-2">
+      <div className="overflow-hidden rounded-lg border bg-background">
         <Image
-          src={
-            theme === "dark" ? "/Assets/app-dark.png" : "/Assets/app-light.png"
-          }
+          src="/Assets/app-light.png"
           alt="GenMeta App Preview"
           width={2000}
           height={1200}
-          className="w-full h-auto"
+          className="h-auto w-full dark:hidden"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 hover:opacity-20 dark:hover:opacity-100 transition-opacity duration-300"></div>
+        <Image
+          src="/Assets/app-dark.png"
+          alt="GenMeta App Preview"
+          width={2000}
+          height={1200}
+          className="hidden h-auto w-full dark:block"
+          priority
+        />
       </div>
     </div>
   );

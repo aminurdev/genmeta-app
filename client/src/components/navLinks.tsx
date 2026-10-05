@@ -9,7 +9,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { Button } from "./ui/button";
 import Link from "next/link";
 
 export function NavLinks() {
@@ -46,24 +45,17 @@ export function NavLinks() {
   return (
     <>
       {links.map((link) => (
-        <Button
-          className="h-8 rounded-sm hover:bg-muted/50 p-2"
-          variant={"ghost"}
-          size={"sm"}
-          asChild
+        <Link
           key={link.href}
+          href={link.href}
+          className={`inline-flex items-center px-3 py-1.5 text-sm transition-colors rounded-md hover:bg-muted/50 ${
+            pathname === link.href
+              ? "text-foreground font-medium"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
-          <Link
-            href={link.href}
-            className={`flex items-center ${
-              pathname === link.href
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {link.icon} {link.label}
-          </Link>
-        </Button>
+          {link.label}
+        </Link>
       ))}
     </>
   );
