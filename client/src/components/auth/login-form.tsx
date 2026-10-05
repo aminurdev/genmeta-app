@@ -2,14 +2,6 @@
 
 import { useState, useTransition, Suspense } from "react";
 import type * as z from "zod";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -71,202 +63,203 @@ const LoginForm = () => {
         }
       } catch (err: unknown) {
         console.error(err);
+        setError("Failed to sign in. Please try again.");
       }
     });
   };
 
+  const signupHref = redirect
+    ? `/signup?redirectPath=${encodeURIComponent(redirect)}`
+    : "/signup";
+
   return (
-    <div className="flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-4 w-full">
-      <div className="w-full max-w-lg">
-        <Card className="shadow-md border bg-white/80 dark:bg-background/80 backdrop-blur-sm p-6">
-          <CardHeader className="space-y-4 pb-8">
-            <div className="text-center">
-              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                Welcome Back
-              </CardTitle>
-              <CardDescription className="text-base text-muted-foreground mt-2">
-                Sign in to your GenMeta account
-              </CardDescription>
-            </div>
-          </CardHeader>
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+      {/* Heading */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+          Welcome back
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Sign in to your GenMeta account to continue
+        </p>
+      </div>
 
-          <CardContent className="space-y-6">
-            {/* Social Login Section - Moved to Top */}
-            <div className="space-y-4">
-              <Social />
+      {/* Social login */}
+      <Social />
 
-              <div className="relative flex justify-center items-center">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-muted-foreground/20" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-4 text-muted-foreground font-medium">
-                    Or continue with email
-                  </span>
-                </div>
-              </div>
-            </div>
+      {/* Divider */}
+      <div className="relative my-6 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <span className="relative bg-card px-3 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+          or continue with email
+        </span>
+      </div>
 
-            {/* Form Section */}
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-5"
-              >
-                <FormField
-                  name="email"
-                  control={form.control}
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-sm font-medium text-foreground">
-                        Email Address
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            type="email"
-                            placeholder="Enter your email"
-                            className="pl-11 h-12 border-muted-foreground/20 focus:border-violet-500 focus:ring-violet-500/20 focus-visible:ring-0 transition-all duration-200"
-                          />
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+      {/* Form */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            name="email"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-medium text-foreground">
+                  Email address
+                </FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="name@example.com"
+                      className="pl-10 h-11 rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
+                    />
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
 
-                <FormField
-                  name="password"
-                  control={form.control}
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-sm font-medium text-foreground">
-                        Password
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            type={isShow ? "text" : "password"}
-                            placeholder="Enter your password"
-                            className="pl-11 pr-11 h-12 border-muted-foreground/20 focus:border-violet-500 focus:ring-violet-500/20 focus-visible:ring-0 transition-all duration-200"
-                          />
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
-                            onClick={() => setIsShow((prev) => !prev)}
-                          >
-                            {isShow ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                            )}
-                            <span className="sr-only">
-                              {isShow ? "Hide password" : "Show password"}
-                            </span>
-                          </Button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex items-center justify-end">
+          <FormField
+            name="password"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-xs font-medium text-foreground">
+                    Password
+                  </FormLabel>
                   <Link
                     href="/reset-password"
-                    className="text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium hover:underline transition-colors"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
                   >
                     Forgot password?
                   </Link>
                 </div>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      disabled={isPending}
+                      type={isShow ? "text" : "password"}
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      className="pl-10 pr-10 h-11 rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
+                    />
+                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                      onClick={() => setIsShow((prev) => !prev)}
+                    >
+                      {isShow ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                      <span className="sr-only">
+                        {isShow ? "Hide password" : "Show password"}
+                      </span>
+                    </Button>
+                  </div>
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
 
-                <FormError message={error} />
-                <FormSuccess message={success} />
+          <FormError message={error} />
+          <FormSuccess message={success} />
 
-                <Button
-                  disabled={isPending}
-                  type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-medium shadow-lg shadow-violet-500/20 transition-all duration-200 group"
-                >
-                  {!isPending ? (
-                    <>
-                      Sign In
-                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  ) : (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
+          <Button
+            disabled={isPending}
+            type="submit"
+            className="group w-full h-11 rounded-full font-medium mt-2 gap-2"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <span>Sign in</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
+          </Button>
+        </form>
+      </Form>
 
-          <CardFooter className="flex flex-col space-y-4 pt-6">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Don&apos;t have an account?{" "}
-                <Link
-                  href={
-                    redirect ? `/signup?redirectPath=${redirect}` : "/signup"
-                  }
-                  className="text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-medium hover:underline transition-colors"
-                >
-                  Create account
-                </Link>
-              </p>
-            </div>
+      {/* Switch link */}
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href={signupHref}
+          className="font-medium text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity"
+        >
+          Sign up
+        </Link>
+      </p>
 
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                By signing in, you agree to our{" "}
-                <Link
-                  href="/terms"
-                  className="underline hover:text-foreground transition-colors"
-                >
-                  Terms of Service
-                </Link>
-                {" and "}
-                <Link
-                  href="/privacy-policy"
-                  className="underline hover:text-foreground transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
+      {/* Legal disclaimer */}
+      <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/80">
+        By continuing, you agree to our{" "}
+        <Link
+          href="/terms"
+          className="underline underline-offset-2 hover:text-foreground transition-colors"
+        >
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="/privacy-policy"
+          className="underline underline-offset-2 hover:text-foreground transition-colors"
+        >
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 };
 
-const LoginFormWrapper = () => (
-  <Suspense
-    fallback={
-      <div className=" flex items-center justify-center bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 w-full">
-        <Card className="w-full max-w-lg shadow-md border-0 bg-white/80 dark:bg-background/80 backdrop-blur-sm">
-          <CardContent className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-          </CardContent>
-        </Card>
+function LoginFormSkeleton() {
+  return (
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 animate-pulse space-y-6">
+      <div className="space-y-2">
+        <div className="h-6 w-36 rounded bg-muted" />
+        <div className="h-4 w-56 rounded bg-muted" />
       </div>
-    }
-  >
-    <LoginForm />
-  </Suspense>
-);
+      <div className="h-11 w-full rounded-full bg-muted" />
+      <div className="h-px w-full bg-border" />
+      <div className="space-y-4">
+        <div className="space-y-1.5">
+          <div className="h-3.5 w-20 rounded bg-muted" />
+          <div className="h-11 w-full rounded-lg bg-muted" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-3.5 w-16 rounded bg-muted" />
+          <div className="h-11 w-full rounded-lg bg-muted" />
+        </div>
+        <div className="h-11 w-full rounded-full bg-muted pt-2" />
+      </div>
+    </div>
+  );
+}
 
-export default LoginFormWrapper;
+export default function LoginFormWrapper() {
+  return (
+    <Suspense fallback={<LoginFormSkeleton />}>
+      <LoginForm />
+    </Suspense>
+  );
+}

@@ -1,15 +1,16 @@
 import LoginForm from "@/components/auth/login-form";
-import Navbar from "@/components/auth/navbar";
-import React from "react";
-const Login = () => {
-  return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="flex justify-center items-center my-5">
-        <LoginForm />
-      </div>
-    </div>
-  );
+import { AuthShell } from "@/components/auth/auth-shell";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Log In | GenMeta",
+  description: "Sign in to your GenMeta account.",
 };
 
-export default Login;
+export default function LoginPage() {
+  return (
+    <AuthShell mode="login">
+      <LoginForm />
+    </AuthShell>
+  );
+}

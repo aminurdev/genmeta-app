@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WindowsIcon } from "@/components/Home";
 import { getLatestRelease } from "@/lib/release-info";
@@ -25,6 +27,7 @@ export default async function DownloadPage() {
   return (
     <div className="bg-background text-foreground">
       <div className="mx-auto max-w-[1300px] md:border-x">
+        {/* Hero Section */}
         <section className="relative overflow-hidden">
           <div
             aria-hidden
@@ -59,7 +62,6 @@ export default async function DownloadPage() {
                   Unavailable right now
                 </Button>
               )}
-
             </div>
 
             <p
@@ -83,6 +85,71 @@ export default async function DownloadPage() {
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* ------------------------------- CTA ------------------------------ */}
+        <section className="relative border-t overflow-hidden">
+          <span
+            aria-hidden
+            className="lp-cross -left-[7px] -top-[7px] z-10 hidden md:block"
+          />
+          <span
+            aria-hidden
+            className="lp-cross -right-[7px] -top-[7px] z-10 hidden md:block"
+          />
+          <div
+            aria-hidden
+            className="lp-grid-bg pointer-events-none absolute inset-0 opacity-70"
+          />
+          <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
+            <div>
+              <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Tag your next upload in minutes.
+              </h2>
+              <p className="mt-4 max-w-md text-muted-foreground">
+                Start on the free plan. Upgrade when you need unlimited
+                processing and every export format.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {downloadUrl ? (
+                <Button
+                  asChild
+                  size="lg"
+                  className="h-11 gap-2 rounded-full px-6"
+                >
+                  <a
+                    href={downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <WindowsIcon className="h-4 w-4" />
+                    Download free
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  disabled
+                  className="h-11 gap-2 rounded-full px-6"
+                >
+                  <WindowsIcon className="h-4 w-4" />
+                  Unavailable right now
+                </Button>
+              )}
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-11 gap-1 rounded-full px-6"
+              >
+                <Link href="/pricing">
+                  Compare plans
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </section>
       </div>
     </div>
