@@ -1,14 +1,16 @@
 /* Scoped design tokens for the homepage. Nothing here leaks to other routes. */
 .landing {
-  --lp-bg: #f5f3ee;
+  /* Brand: icon.svg blue #2563ec + slate #a3b4d2 */
+  --lp-bg: #f4f7fc;
   --lp-surface: #ffffff;
-  --lp-ink: #15140f;
-  --lp-muted: #6b675d;
-  --lp-line: #dcd8cc;
-  --lp-accent: #d9400f;
+  --lp-ink: #0e1730;
+  --lp-muted: #5b6785;
+  --lp-line: #d6deee;
+  --lp-accent: #2563ec;
   --lp-accent-ink: #ffffff;
-  --lp-invert: #15140f;
-  --lp-invert-ink: #f5f3ee;
+  --lp-invert: #0e1730;
+  --lp-invert-ink: #f4f7fc;
+  --lp-slate: #a3b4d2;
 
   background: var(--lp-bg);
   color: var(--lp-ink);
@@ -16,15 +18,15 @@
 }
 
 .dark .landing {
-  --lp-bg: #0f0e0b;
-  --lp-surface: #181712;
-  --lp-ink: #efece4;
-  --lp-muted: #9a958a;
-  --lp-line: #2b2923;
-  --lp-accent: #ff6a3d;
-  --lp-accent-ink: #15140f;
-  --lp-invert: #efece4;
-  --lp-invert-ink: #15140f;
+  --lp-bg: #080d1a;
+  --lp-surface: #0f1629;
+  --lp-ink: #e8eefb;
+  --lp-muted: #8d9bbd;
+  --lp-line: #1e2a47;
+  --lp-accent: #5b8cff;
+  --lp-accent-ink: #080d1a;
+  --lp-invert: #e8eefb;
+  --lp-invert-ink: #080d1a;
 }
 
 .landing ::selection {

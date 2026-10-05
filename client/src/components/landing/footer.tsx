@@ -29,23 +29,34 @@ const columns = [
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-lp-line bg-lp-surface">
+    <footer className="relative border-t border-lp-line bg-lp-surface">
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lp-accent to-transparent"
+      />
       <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-5">
-            <Link href="/" aria-label="GenMeta home">
+            <Link href="/" aria-label="GenMeta home" className="inline-block">
               <Image
                 src="/Assets/SVG/logo.svg"
                 alt="GenMeta"
                 width={128}
                 height={128}
-                className="h-12 w-auto"
+                className="h-10 w-auto"
               />
             </Link>
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-lp-muted">
               AI metadata for microstock contributors. Titles, descriptions and
               keywords, generated on your desktop.
             </p>
+            <Link
+              href="/download"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-lp-accent px-5 py-2.5 text-sm font-medium text-lp-accent-ink transition-opacity hover:opacity-90"
+            >
+              Download for Windows
+              <span aria-hidden>→</span>
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-4 md:col-span-7">
@@ -89,7 +100,10 @@ export function LandingFooter() {
         </div>
 
         <div className="mt-14 flex flex-col gap-4 border-t border-lp-line pt-6 text-sm text-lp-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} GenMeta Technologies. All rights reserved.</p>
+          <div className="flex items-center gap-3">
+            <Image src="/Assets/SVG/icon.svg" alt="" width={20} height={20} />
+            <p>&copy; {new Date().getFullYear()} GenMeta Technologies. All rights reserved.</p>
+          </div>
           <div className="flex items-center gap-3">
             <Image
               src="/Assets/Payment Gateway Dark.png"
