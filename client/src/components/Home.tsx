@@ -360,11 +360,8 @@ export default function HomePage({ releaseInfo }: Props) {
               className="lp-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg"
               style={{ animationDelay: "120ms" }}
             >
-              Generate accurate titles, descriptions, keywords, and categories for
-              your stock images, vectors, and videos in seconds. GenMeta helps
-              microstock creators turn large batches of creative files into
-              organized, stock-ready metadata without spending hours keywording each
-              file manually.
+              GenMeta generates relevance-ranked titles, descriptions, and keywords for your photos, videos, and vectors optimized for Adobe Stock, Shutterstock, Freepik, and more.
+
             </p>
 
             <div
@@ -383,7 +380,7 @@ export default function HomePage({ releaseInfo }: Props) {
                     : {})}
                 >
                   <WindowsIcon className="h-4 w-4" />
-                  Download for Windows
+                  Download Free for Windows
                 </a>
               </Button>
               <Button
@@ -400,7 +397,7 @@ export default function HomePage({ releaseInfo }: Props) {
               className="lp-rise mt-6 font-mono text-xs text-muted-foreground"
               style={{ animationDelay: "240ms" }}
             >
-              Windows 10/11 · 64-bit · Free plan available
+              Windows 10/11 · Free Plan Available · No Credit Card Required
             </p>
           </div>
 
@@ -592,27 +589,26 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
-        {/* ------------------- Stop Keywording ------------------- */}
+        {/* ------------------- Better Metadata & Free Plan ------------------- */}
         <Section id="overview">
           <div className="px-6 py-14 md:px-12 md:py-20">
             <div className="max-w-3xl">
               <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Stock Contributor Efficiency
+                Engineered for Contributor Success
               </p>
               <h2 className="mt-4 text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Stop Keywording. Start Creating.
+                Better Metadata. Higher Acceptance. Free to Start.
               </h2>
               <p className="mt-6 text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-                Preparing stock content shouldn&apos;t mean spending hours writing
-                titles, descriptions, and keyword lists one file at a time.
-                GenMeta uses AI to analyze your creative files and generate
-                relevant stock metadata in seconds. Process individual files or
-                entire batches, review the results, and prepare your content for
-                submission to your favorite stock platforms.
+                Nobody keywords manually anymore — but generic AI tools flood
+                your files with hallucinated, spammy tags that review teams
+                reject and search algorithms bury. GenMeta is built specifically
+                for microstock marketplaces, producing cleaner, relevance-ranked
+                metadata that helps buyers find your content.
               </p>
               <p className="mt-4 text-pretty text-base font-medium text-foreground">
-                Spend less time on repetitive metadata work and more time creating
-                content.
+                Start completely free. Download for Windows and get 50 free credits
+                instantly — no credit card required.
               </p>
             </div>
 
@@ -622,12 +618,12 @@ export default function HomePage({ releaseInfo }: Props) {
                   01
                 </div>
                 <h3 className="mt-4 text-base font-semibold tracking-tight">
-                  No Spreadsheet Bottlenecks
+                  True Relevance Ranking
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Replace manual copy-pasting and blank-document fatigue with
-                  automated batch keywording that generates complete metadata sets
-                  instantly.
+                  Agencies like Adobe Stock prioritize the first 5 to 10 keywords.
+                  GenMeta puts primary subjects first instead of random or
+                  alphabetized filler.
                 </p>
               </div>
 
@@ -636,12 +632,12 @@ export default function HomePage({ releaseInfo }: Props) {
                   02
                 </div>
                 <h3 className="mt-4 text-base font-semibold tracking-tight">
-                  Targeted Marketplace Search
+                  Zero Hallucinations & Spam
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Generate relevance-ordered keyword lists tailored for marketplace
-                  algorithms without irrelevant filler terms that hurt review
-                  approval rates.
+                  Trained on stock visual criteria to tag genuine subjects,
+                  styles, and moods without adding irrelevant terms that cause
+                  review rejections.
                 </p>
               </div>
 
@@ -728,7 +724,8 @@ export default function HomePage({ releaseInfo }: Props) {
           <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
             <div>
               <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Boost Your Microstock Sales with AI Powered Metadata.              </h2>
+                Boost Your Microstock Sales with AI Powered Metadata.
+              </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
                 Start on the free plan. Upgrade when you need unlimited
                 processing and every export format.

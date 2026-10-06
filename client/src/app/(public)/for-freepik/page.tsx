@@ -106,8 +106,8 @@ export default async function ForFreepikPage() {
     <LandingPageLayout
       badge="Freepik Contributor Tool"
       h1="AI Metadata Generator for Freepik"
-      description="Generate titles, descriptions, and relevant tags for your Freepik vectors, PSDs, and stock photos with GenMeta. Streamline your contributor workflow with desktop batch generation and CSV export."
-      secondaryCopy="Spend less time writing repetitive tags for your illustration packs and more time creating standout designs."
+      description="Generate high-converting titles, descriptions, and tags tailored for Freepik vectors, PSDs, and stock photos with superior visual recognition."
+      secondaryCopy="Get started free: download for Windows with 50 credits included upon signup, no credit card required."
       breadcrumbName="Freepik Metadata"
       currentPath="/for-freepik"
       downloadUrl={releaseInfo?.downloadUrl ?? "/download"}
