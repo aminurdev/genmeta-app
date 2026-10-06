@@ -404,8 +404,7 @@ function PricingContent() {
           <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
             <div>
               <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Tag your next upload in minutes.
-              </h2>
+Boost Your Microstock Sales with AI Powered Metadata.              </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
                 Start on the free plan. Upgrade when you need unlimited
                 processing and every export format.

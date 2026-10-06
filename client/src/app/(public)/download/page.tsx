@@ -3,6 +3,22 @@ import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WindowsIcon } from "@/components/Home";
 import { getLatestRelease } from "@/lib/release-info";
+import { createMetadata } from "@/lib/seo";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = createMetadata({
+  title: "Download GenMeta for Windows — AI Stock Metadata Generator",
+  description:
+    "Download the GenMeta desktop app for Windows 10/11. Batch generate titles, descriptions, and keywords for stock photos, vectors, and footage with local file privacy.",
+  path: "/download",
+  keywords: [
+    "download GenMeta",
+    "desktop stock metadata generator",
+    "offline stock metadata generator",
+    "Windows stock metadata generator",
+    "microstock desktop software",
+  ],
+});
 
 const STEPS = [
   "Run the installer",
@@ -104,7 +120,7 @@ export default async function DownloadPage() {
           <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
             <div>
               <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Tag your next upload in minutes.
+                Boost Your Microstock Sales with AI Powered Metadata.
               </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
                 Start on the free plan. Upgrade when you need unlimited

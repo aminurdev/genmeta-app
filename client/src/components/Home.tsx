@@ -10,13 +10,24 @@ import {
   FileSpreadsheet,
   FileText,
   FolderOpen,
-  Layers,
+  HardDrive,
   ListOrdered,
+  Lock,
   PenTool,
+  ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
+  Tag,
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { getFaqSchema } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -31,41 +42,134 @@ interface Props {
 /* -------------------------------------------------------------------------- */
 
 const FEATURES = [
-
   {
-    icon: FolderOpen,
-    title: "Unlimited batch processing",
+    icon: Sparkles,
+    title: "AI Metadata Generator",
     description:
-      "Point GenMeta at a folder and process hundreds or thousands of files in one run. No per-image limits.",
+      "Generate titles, descriptions, keywords, and categories from your images, vectors, and videos using state-of-the-art vision models.",
     wide: true,
   },
   {
-    icon: Layers,
-    title: "Photos, video and vectors",
+    icon: FolderOpen,
+    title: "Bulk Metadata Generation",
     description:
-      "One workflow for stills, 4K footage and illustrations. No separate tools for each asset type.",
+      "Process large batches of hundreds or thousands of creative files in a single pass instead of writing metadata one file at a time.",
     wide: false,
   },
   {
     icon: ListOrdered,
-    title: "Relevance-ranked keywords",
+    title: "Stock Photo Keyword Generator",
     description:
-      "Keywords are ordered by relevance, so the terms agencies weight most heavily come first.",
+      "Create relevant, ordered keywords designed for stock content, placing critical marketplace search terms first.",
+    wide: false,
+  },
+  {
+    icon: PenTool,
+    title: "Vector Metadata Generation",
+    description:
+      "Generate accurate tags and descriptions for vector illustrations, EPS and SVG artwork without manually describing every layer.",
+    wide: false,
+  },
+  {
+    icon: Video,
+    title: "Stock Video Metadata",
+    description:
+      "Generate titles, descriptions, and keywords for your stock footage and video clips covering framing, motion, and resolution.",
+    wide: false,
+  },
+  {
+    icon: Tag,
+    title: "Metadata Embedding",
+    description:
+      "Embed generated metadata directly into supported files via EXIF, IPTC and XMP so your titles and tags travel with your files.",
     wide: false,
   },
   {
     icon: SlidersHorizontal,
-    title: "Custom instructions",
+    title: "Custom AI Instructions",
     description:
-      "Set length limits, banned words or a house style once and apply them to every generation.",
+      "Add your own prompts and rules to control keyword limits, exclude banned terms, and match your agency submission style.",
     wide: false,
   },
   {
     icon: FileSpreadsheet,
-    title: "CSV and XMP export",
+    title: "CSV & Agency Export",
     description:
-      "Export agency-ready CSV files or write metadata straight into XMP sidecars and embedded fields.",
+      "Export agency-ready CSV spreadsheets formatted for Adobe Stock, Shutterstock, Freepik, Getty/iStock, and Alamy.",
     wide: false,
+  },
+];
+
+const HOME_FAQS = [
+  {
+    question: "What is an AI metadata generator?",
+    answer:
+      "An AI metadata generator analyzes visual media (images, vector illustrations, footage) using computer vision and machine learning models to automatically write accurate titles, detailed descriptions, categorized keywords, and tags tailored for stock marketplaces.",
+  },
+  {
+    question: "What is a stock metadata generator?",
+    answer:
+      "A stock metadata generator is specialized software designed for stock photography, vector art, and videography. It formats titles and keywords to comply with agency criteria (such as Adobe Stock, Shutterstock, and Freepik), ensuring assets are indexed properly by marketplace search engines.",
+  },
+  {
+    question: "How do I generate keywords for stock photos?",
+    answer:
+      "With GenMeta, simply drag a folder of photos into the desktop application. GenMeta's AI inspects each photo, identifies key subjects, mood, background, and concepts, and generates 40-50 relevance-ordered keywords, titles, and descriptions ready for submission.",
+  },
+  {
+    question: "Can AI generate Adobe Stock keywords?",
+    answer:
+      "Yes. GenMeta arranges the most important keywords in the first 5-10 positions as recommended by Adobe Stock contributor guidelines, and formats titles up to Adobe Stock's optimal character limits.",
+  },
+  {
+    question: "Can GenMeta generate metadata for vector illustrations?",
+    answer:
+      "Yes. GenMeta supports vector files including SVG and preview renders for EPS/AI files, generating precise artistic style tags, color palettes, and commercial concepts without requiring manual typing.",
+  },
+  {
+    question: "Can GenMeta generate metadata for stock videos?",
+    answer:
+      "Yes. GenMeta analyzes video clips and motion footage, generating descriptive titles and relevant stock footage keywords covering framing, action, lighting, and resolution.",
+  },
+  {
+    question: "Can I generate metadata for multiple files at once?",
+    answer:
+      "Yes. GenMeta is built specifically for bulk and batch processing. You can load dozens, hundreds, or thousands of creative files in a single pass without processing them one by one.",
+  },
+  {
+    question: "Does GenMeta embed metadata into image files?",
+    answer:
+      "Yes. GenMeta can embed titles, descriptions, and keywords directly into EXIF, IPTC, and XMP metadata fields within your files, so your metadata travels wherever your assets go.",
+  },
+  {
+    question: "Does GenMeta support EPS and SVG files?",
+    answer:
+      "Yes. GenMeta natively processes SVG files and vector preview files, extracting metadata and writing accompanying sidecars or export CSVs compatible with major stock agencies.",
+  },
+  {
+    question: "Can I export stock metadata as CSV?",
+    answer:
+      "Yes. GenMeta exports agency-ready CSV spreadsheets formatted for major microstock platforms including Adobe Stock, Shutterstock, Freepik, and Getty/iStock.",
+  },
+  {
+    question: "Which stock platforms does GenMeta support?",
+    answer:
+      "GenMeta supports all leading microstock agencies including Adobe Stock, Shutterstock, Freepik, Getty Images, iStock, Alamy, Pond5, Depositphotos, 123RF, and Dreamstime.",
+  },
+  {
+    question: "Is GenMeta available for Windows?",
+    answer:
+      "Yes. GenMeta is built natively as a lightweight, optimized desktop application for Windows 10 and Windows 11 (64-bit).",
+  },
+  {
+    question: "Does GenMeta upload my original files to the cloud?",
+    answer:
+      "No. GenMeta runs locally as a Windows desktop application. Your high-resolution files stay securely on your computer. Only lightweight visual representations are processed for AI analysis, keeping your original catalog completely private.",
+  },
+  {
+    question: "Can I customize the AI-generated metadata?",
+    answer:
+      "Yes. You can supply custom prompt instructions, define keyword limits, exclude banned terms, enforce specific branding, and edit generated titles and keywords inline before exporting.",
   },
 ];
 
@@ -249,16 +353,18 @@ export default function HomePage({ releaseInfo }: Props) {
               className="lp-rise max-w-3xl text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl md:leading-[1.05]"
               style={{ animationDelay: "60ms" }}
             >
-             Boost Your Microstock Sales with AI Powered Metadata.
+              AI Metadata for Your Stock Content
             </h1>
 
             <p
               className="lp-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg"
               style={{ animationDelay: "120ms" }}
             >
-              GenMeta looks at your photos, videos and vectors and writes the
-              titles, descriptions and keywords buyers search for — formatted
-              for Adobe Stock, Shutterstock, Freepik and more.
+              Generate accurate titles, descriptions, keywords, and categories for
+              your stock images, vectors, and videos in seconds. GenMeta helps
+              microstock creators turn large batches of creative files into
+              organized, stock-ready metadata without spending hours keywording each
+              file manually.
             </p>
 
             <div
@@ -327,7 +433,7 @@ export default function HomePage({ releaseInfo }: Props) {
         <Section>
           <div className="overflow-hidden">
             <div className="border-b px-6 py-4 text-sm text-muted-foreground md:px-12">
-              Formatted for
+              Formatted for major stock marketplaces
             </div>
             <div className="relative flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
               <div className="flex animate-[ticker_28s_linear_infinite] shrink-0">
@@ -359,6 +465,8 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
+
+
         {/* ---------------------------- Features (Bento) -------------------- */}
         <Section id="features">
           <SectionHeader
@@ -367,7 +475,7 @@ export default function HomePage({ releaseInfo }: Props) {
             description="GenMeta replaces the spreadsheet, the keyword tool and the manual copy-paste with a single desktop app."
           />
 
-          {/* Bento grid — original 6 features */}
+          {/* Bento grid — 8 SEO features */}
           <div className="grid gap-px border-t bg-border sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon, title, description, wide }) => (
               <BentoCell
@@ -427,6 +535,133 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
+        {/* -------------------- Section 14: Privacy Section ----------------- */}
+        <Section id="privacy">
+          <div className="grid lg:grid-cols-2">
+            <div className="border-b px-6 py-14 md:px-12 md:py-20 lg:border-b-0 lg:border-r">
+              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                Privacy & Desktop Control
+              </p>
+              <h2 className="mt-4 max-w-lg text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                Your Files Stay on Your Computer.
+              </h2>
+              <p className="mt-6 text-pretty text-base leading-relaxed text-muted-foreground">
+                GenMeta is built as a desktop application, giving creators more
+                control over their workflow. Your original creative files can
+                remain on your computer while you generate and manage metadata.
+              </p>
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                Unlike web browser tools that require uploading gigabytes of
+                creative assets over slow connections, GenMeta processes files
+                locally on your machine and communicates only lightweight visual
+                data for AI analysis.
+              </p>
+            </div>
+            <div className="flex flex-col justify-center gap-5 bg-muted/20 p-6 md:p-12">
+              <div className="flex gap-4 rounded-xl border bg-background p-5">
+                <Lock className="h-6 w-6 shrink-0 text-foreground" />
+                <div>
+                  <h3 className="text-base font-medium">Local-First Desktop App</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Your full-resolution images, RAW captures, vectors, and master
+                    videos are never uploaded to remote storage.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 rounded-xl border bg-background p-5">
+                <HardDrive className="h-6 w-6 shrink-0 text-foreground" />
+                <div>
+                  <h3 className="text-base font-medium">Fast Folder Batch Scanning</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Scan thousands of creative files directly from your SSD or
+                    external drive with zero bandwidth bottlenecks.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 rounded-xl border bg-background p-5">
+                <ShieldCheck className="h-6 w-6 shrink-0 text-foreground" />
+                <div>
+                  <h3 className="text-base font-medium">Direct Metadata Embedding</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Embed EXIF, IPTC and XMP tags directly to your local files so
+                    metadata stays attached wherever your assets travel.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        {/* ------------------- Stop Keywording ------------------- */}
+        <Section id="overview">
+          <div className="px-6 py-14 md:px-12 md:py-20">
+            <div className="max-w-3xl">
+              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                Stock Contributor Efficiency
+              </p>
+              <h2 className="mt-4 text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
+                Stop Keywording. Start Creating.
+              </h2>
+              <p className="mt-6 text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
+                Preparing stock content shouldn&apos;t mean spending hours writing
+                titles, descriptions, and keyword lists one file at a time.
+                GenMeta uses AI to analyze your creative files and generate
+                relevant stock metadata in seconds. Process individual files or
+                entire batches, review the results, and prepare your content for
+                submission to your favorite stock platforms.
+              </p>
+              <p className="mt-4 text-pretty text-base font-medium text-foreground">
+                Spend less time on repetitive metadata work and more time creating
+                content.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-6 sm:grid-cols-3">
+              <div className="rounded-xl border bg-background p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted/40 font-mono text-sm font-semibold">
+                  01
+                </div>
+                <h3 className="mt-4 text-base font-semibold tracking-tight">
+                  No Spreadsheet Bottlenecks
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Replace manual copy-pasting and blank-document fatigue with
+                  automated batch keywording that generates complete metadata sets
+                  instantly.
+                </p>
+              </div>
+
+              <div className="rounded-xl border bg-background p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted/40 font-mono text-sm font-semibold">
+                  02
+                </div>
+                <h3 className="mt-4 text-base font-semibold tracking-tight">
+                  Targeted Marketplace Search
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Generate relevance-ordered keyword lists tailored for marketplace
+                  algorithms without irrelevant filler terms that hurt review
+                  approval rates.
+                </p>
+              </div>
+
+              <div className="rounded-xl border bg-background p-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-muted/40 font-mono text-sm font-semibold">
+                  03
+                </div>
+                <h3 className="mt-4 text-base font-semibold tracking-tight">
+                  Multi-Agency CSV & Embed
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Prepare assets simultaneously for Adobe Stock, Shutterstock,
+                  Freepik, and major microstock distributors in their required
+                  formats.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* ---------------------------- Creators ---------------------------- */}
         <Section>
           <SectionHeader
@@ -451,6 +686,39 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
+        {/* ---------------------- Section 16: FAQ Section ------------------- */}
+        <Section id="faq">
+          <SectionHeader
+            eyebrow="Frequently Asked Questions"
+            title="Answers to common questions about stock metadata."
+            description="Everything microstock contributors need to know about AI metadata generation, keyword ordering, formats, and desktop processing."
+          />
+          <div className="border-t px-6 py-8 md:px-12 md:py-12">
+            <Accordion type="single" collapsible className="mx-auto max-w-4xl space-y-4">
+              {HOME_FAQS.map((faq, idx) => (
+                <AccordionItem
+                  key={idx}
+                  value={`faq-${idx}`}
+                  className="rounded-xl border bg-background px-6 py-2"
+                >
+                  <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(getFaqSchema(HOME_FAQS)),
+            }}
+          />
+        </Section>
+
         {/* ------------------------------- CTA ------------------------------ */}
         <Section className="overflow-hidden">
           <div
@@ -460,8 +728,7 @@ export default function HomePage({ releaseInfo }: Props) {
           <div className="relative flex flex-col items-start justify-between gap-8 px-6 py-16 md:flex-row md:items-end md:px-12 md:py-24">
             <div>
               <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-[-0.03em] md:text-5xl">
-                Tag your next upload in minutes.
-              </h2>
+                Boost Your Microstock Sales with AI Powered Metadata.              </h2>
               <p className="mt-4 max-w-md text-muted-foreground">
                 Start on the free plan. Upgrade when you need unlimited
                 processing and every export format.
@@ -693,23 +960,36 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
   {
     heading: "Product",
     links: [
-      { href: "/download", label: "Download" },
-      { href: "/pricing", label: "Pricing" },
+      { href: "/download", label: "Download for Windows" },
+      { href: "/pricing", label: "Pricing & Plans" },
       { href: "/docs", label: "Documentation" },
       { href: "/dashboard", label: "Dashboard" },
     ],
   },
   {
-    heading: "Company",
+    heading: "Marketplaces",
     links: [
-      { href: "/about", label: "About" },
-      { href: "/contact", label: "Contact" },
+      { href: "/for-adobe-stock", label: "Adobe Stock Metadata" },
+      { href: "/for-shutterstock", label: "Shutterstock Metadata" },
+      { href: "/for-freepik", label: "Freepik Metadata" },
+      { href: "/microstock-metadata-generator", label: "Microstock Creators" },
     ],
   },
   {
-    heading: "Legal",
+    heading: "Solutions",
     links: [
-      { href: "/terms", label: "Terms & Conditions" },
+      { href: "/ai-metadata-generator", label: "AI Metadata Generator" },
+      { href: "/ai-stock-keyword-generator", label: "Stock Keyword Generator" },
+      { href: "/for-vectors", label: "Vector Metadata" },
+      { href: "/for-stock-video", label: "Stock Video Metadata" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { href: "/about", label: "About Us" },
+      { href: "/contact", label: "Contact & Support" },
+      { href: "/terms", label: "Terms of Service" },
       { href: "/privacy-policy", label: "Privacy Policy" },
       { href: "/refund-policy", label: "Refund Policy" },
     ],
@@ -720,8 +1000,8 @@ export const Footer = () => {
   return (
     <footer className="border-t bg-background">
       <div className="mx-auto max-w-[1300px] px-6 py-14 md:border-x md:px-12">
-        <div className="grid gap-10 md:grid-cols-5">
-          <div className="md:col-span-2">
+        <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-6">
+          <div className="sm:col-span-2 md:col-span-2">
             <Link href="/" className="inline-flex items-center gap-2.5 transition-opacity hover:opacity-80">
               <svg viewBox="0 0 106.37 106.37" className="h-8 w-8 shrink-0" aria-hidden>
                 <defs>

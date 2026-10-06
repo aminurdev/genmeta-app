@@ -8,10 +8,14 @@ import {
   Sec,
   UL,
 } from "@/components/legal/legal";
+import { createMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "About | GenMeta",
-};
+export const metadata = createMetadata({
+  title: "About Us — AI Metadata for Microstock Contributors | GenMeta",
+  description:
+    "Learn about GenMeta, the team behind the AI-powered desktop metadata generator for microstock photographers, illustrators, and footage creators.",
+  path: "/about",
+});
 
 export default function AboutUs() {
   return (
