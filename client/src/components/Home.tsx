@@ -102,74 +102,34 @@ const FEATURES = [
 
 const HOME_FAQS = [
   {
-    question: "What is an AI metadata generator?",
+    question: "Why is GenMeta's metadata better than generic AI?",
     answer:
-      "An AI metadata generator analyzes visual media (images, vector illustrations, footage) using computer vision and machine learning models to automatically write accurate titles, detailed descriptions, categorized keywords, and tags tailored for stock marketplaces.",
+      "Generic AI chatbots flood files with hallucinated, spammy keywords that review teams reject and search algorithms bury. GenMeta is engineered specifically for stock marketplaces, producing clean, relevance-ranked metadata with top keywords in the first 5 to 10 positions where agencies look first.",
   },
   {
-    question: "What is a stock metadata generator?",
+    question: "Can I use GenMeta for free?",
     answer:
-      "A stock metadata generator is specialized software designed for stock photography, vector art, and videography. It formats titles and keywords to comply with agency criteria (such as Adobe Stock, Shutterstock, and Freepik), ensuring assets are indexed properly by marketplace search engines.",
+      "Yes. GenMeta includes a free plan with 50 credits upon signup with no credit card required. You can process up to 25 files per day, inspect the quality, and export results before choosing an optional subscription or pay-as-you-go credit pack.",
   },
   {
-    question: "How do I generate keywords for stock photos?",
+    question: "Can AI generate Adobe Stock keywords with relevance ranking?",
     answer:
-      "With GenMeta, simply drag a folder of photos into the desktop application. GenMeta's AI inspects each photo, identifies key subjects, mood, background, and concepts, and generates 40-50 relevance-ordered keywords, titles, and descriptions ready for submission.",
+      "Yes. GenMeta arranges the most important keywords in the first 5 to 10 positions as required by Adobe Stock's search algorithm, and formats commercial titles within optimal length limits.",
   },
   {
-    question: "Can AI generate Adobe Stock keywords?",
+    question: "Does GenMeta support vectors and stock videos?",
     answer:
-      "Yes. GenMeta arranges the most important keywords in the first 5-10 positions as recommended by Adobe Stock contributor guidelines, and formats titles up to Adobe Stock's optimal character limits.",
+      "Yes. GenMeta supports vector files including SVG and preview renders for EPS/AI files, as well as stock footage clips, generating precise style tags, color palettes, and motion keywords.",
   },
   {
-    question: "Can GenMeta generate metadata for vector illustrations?",
+    question: "Does GenMeta embed metadata into files or export CSV?",
     answer:
-      "Yes. GenMeta supports vector files including SVG and preview renders for EPS/AI files, generating precise artistic style tags, color palettes, and commercial concepts without requiring manual typing.",
-  },
-  {
-    question: "Can GenMeta generate metadata for stock videos?",
-    answer:
-      "Yes. GenMeta analyzes video clips and motion footage, generating descriptive titles and relevant stock footage keywords covering framing, action, lighting, and resolution.",
-  },
-  {
-    question: "Can I generate metadata for multiple files at once?",
-    answer:
-      "Yes. GenMeta is built specifically for bulk and batch processing. You can load dozens, hundreds, or thousands of creative files in a single pass without processing them one by one.",
-  },
-  {
-    question: "Does GenMeta embed metadata into image files?",
-    answer:
-      "Yes. GenMeta can embed titles, descriptions, and keywords directly into EXIF, IPTC, and XMP metadata fields within your files, so your metadata travels wherever your assets go.",
-  },
-  {
-    question: "Does GenMeta support EPS and SVG files?",
-    answer:
-      "Yes. GenMeta natively processes SVG files and vector preview files, extracting metadata and writing accompanying sidecars or export CSVs compatible with major stock agencies.",
-  },
-  {
-    question: "Can I export stock metadata as CSV?",
-    answer:
-      "Yes. GenMeta exports agency-ready CSV spreadsheets formatted for major microstock platforms including Adobe Stock, Shutterstock, Freepik, and Getty/iStock.",
-  },
-  {
-    question: "Which stock platforms does GenMeta support?",
-    answer:
-      "GenMeta supports all leading microstock agencies including Adobe Stock, Shutterstock, Freepik, Getty Images, iStock, Alamy, Pond5, Depositphotos, 123RF, and Dreamstime.",
-  },
-  {
-    question: "Is GenMeta available for Windows?",
-    answer:
-      "Yes. GenMeta is built natively as a lightweight, optimized desktop application for Windows 10 and Windows 11 (64-bit).",
+      "Both. GenMeta can embed titles, descriptions, and keywords directly into EXIF, IPTC, and XMP metadata fields within your files, or export agency-ready CSV spreadsheets formatted for major microstock platforms.",
   },
   {
     question: "Does GenMeta upload my original files to the cloud?",
     answer:
       "No. GenMeta runs locally as a Windows desktop application. Your high-resolution files stay securely on your computer. Only lightweight visual representations are processed for AI analysis, keeping your original catalog completely private.",
-  },
-  {
-    question: "Can I customize the AI-generated metadata?",
-    answer:
-      "Yes. You can supply custom prompt instructions, define keyword limits, exclude banned terms, enforce specific branding, and edit generated titles and keywords inline before exporting.",
   },
 ];
 
@@ -682,30 +642,41 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
-        {/* ---------------------- Section 16: FAQ Section ------------------- */}
+        {/* ------------------------------- FAQ ------------------------------ */}
         <Section id="faq">
-          <SectionHeader
-            eyebrow="Frequently Asked Questions"
-            title="Answers to common questions about stock metadata."
-            description="Everything microstock contributors need to know about AI metadata generation, keyword ordering, formats, and desktop processing."
-          />
-          <div className="border-t px-6 py-8 md:px-12 md:py-12">
-            <Accordion type="single" collapsible className="mx-auto max-w-4xl space-y-4">
-              {HOME_FAQS.map((faq, idx) => (
-                <AccordionItem
-                  key={idx}
-                  value={`faq-${idx}`}
-                  className="rounded-xl border bg-background px-6 py-2"
+          <div className="grid lg:grid-cols-2">
+            <div className="border-b px-6 py-14 md:px-12 md:py-20 lg:border-b-0 lg:border-r">
+              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                FAQ
+              </p>
+              <h2 className="mt-4 max-w-md text-balance text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
+                Questions about AI metadata.
+              </h2>
+              <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                Can&apos;t find what you need?{" "}
+                <Link
+                  href="/contact"
+                  className="text-foreground underline underline-offset-4"
                 >
-                  <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                  Contact us
+                </Link>
+                .
+              </p>
+            </div>
+            <div className="bg-muted/30 px-6 py-10 md:px-12 md:py-16">
+              <Accordion type="single" collapsible className="w-full">
+                {HOME_FAQS.map((item, i) => (
+                  <AccordionItem key={item.question} value={`item-${i}`}>
+                    <AccordionTrigger className="py-4 text-left text-[15px] font-medium tracking-tight hover:no-underline">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
+                      {item.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
           </div>
           <script
             type="application/ld+json"
