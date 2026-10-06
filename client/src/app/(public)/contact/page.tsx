@@ -7,10 +7,14 @@ import {
   Sec,
   SUPPORT_CONTACT,
 } from "@/components/legal/legal";
+import { createMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Contact | GenMeta",
-};
+export const metadata = createMetadata({
+  title: "Contact & Support — Get in Touch | GenMeta",
+  description:
+    "Contact the GenMeta support team for assistance with desktop app installation, billing, account queries, or partnership opportunities.",
+  path: "/contact",
+});
 
 export default function ContactUs() {
   return (
