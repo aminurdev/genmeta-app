@@ -285,10 +285,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   if (!user.loginProvider.includes("email")) {
-    throw new ApiError(
-      403,
-      "This email is registered with google login provider, try 'Continue with Google'"
-    );
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
