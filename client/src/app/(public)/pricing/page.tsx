@@ -1,11 +1,12 @@
 "use client";
 
 import type React from "react";
-import { Suspense, memo, useMemo, useState } from "react";
+import { Suspense, memo, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowUpRight, Check, X } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Check, Globe, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Accordion,
   AccordionContent,
@@ -16,6 +17,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useAllPricing } from "@/services/queries/pricing";
 import { WindowsIcon } from "@/components/Home";
+import {
+  Currency,
+  detectVisitorCountry,
+  formatPlanPrice,
+  getInitialCurrencyFromTimezone,
+  getSavedCurrency,
+  saveCurrency,
+} from "@/lib/currency";
 import { creditFeatures, premiumFeatures } from "./features";
 
 /* -------------------------------------------------------------------------- */
@@ -23,7 +32,7 @@ import { creditFeatures, premiumFeatures } from "./features";
 /* -------------------------------------------------------------------------- */
 
 const FREE_FEATURES = [
-  "50 free credits upon signup",
+  "10 free credits upon signup",
   "Requires your own Gemini API key",
   "Limited to 25 files per day",
 ];
@@ -137,7 +146,14 @@ const PlanCard = memo(function PlanCard({
       <div className="relative flex items-center justify-between gap-3">
         <h3 className="text-[15px] font-medium tracking-tight">{name}</h3>
         {tag && (
-          <span className="rounded-full border bg-background px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+          <span
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 font-mono text-[11px]",
+              highlight
+                ? "border-foreground/20 bg-foreground text-background font-medium"
+                : "border-border bg-background text-muted-foreground"
+            )}
+          >
             {tag}
           </span>
         )}
@@ -234,6 +250,46 @@ function ErrorBanner() {
 function PricingContent() {
   const router = useRouter();
 
+  type DurationFilter = "1" | "3" | "6";
+  const [selectedDuration, setSelectedDuration] = useState<DurationFilter>("1");
+  const [currency, setCurrency] = useState<Currency>("BDT");
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 1. Check if user already picked a preference
+    const saved = getSavedCurrency();
+    if (saved) {
+      setCurrency(saved);
+      return;
+    }
+
+    // 2. Synchronous timezone check for instant best-guess
+    const tzCurrency = getInitialCurrencyFromTimezone();
+    setCurrency(tzCurrency);
+
+    // 3. Country detection: BD -> BDT, other countries -> USD
+    let isCancelled = false;
+    detectVisitorCountry().then((country) => {
+      if (isCancelled || !country) return;
+      setDetectedCountry(country);
+
+      // Only apply auto-detected currency if user hasn't manually set a preference
+      const currentSaved = getSavedCurrency();
+      if (!currentSaved) {
+        setCurrency(country === "BD" ? "BDT" : "USD");
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const handleCurrencyChange = (newCurrency: Currency) => {
+    setCurrency(newCurrency);
+    saveCurrency(newCurrency);
+  };
+
   const { data: pricingData, isLoading } = useAllPricing();
 
   const { creditPlans, subscriptionPlans } = useMemo(() => {
@@ -248,8 +304,34 @@ function PricingContent() {
     };
   }, [pricingData]);
 
+  const filteredCreditPlans = useMemo(() => {
+    if (selectedDuration === "1") {
+      return creditPlans.filter((p) => p.planDuration >= 28 && p.planDuration <= 31);
+    }
+    if (selectedDuration === "3") {
+      return creditPlans.filter((p) => p.planDuration >= 85 && p.planDuration <= 95);
+    }
+    if (selectedDuration === "6") {
+      return creditPlans.filter((p) => p.planDuration >= 170 && p.planDuration <= 190);
+    }
+    return creditPlans;
+  }, [creditPlans, selectedDuration]);
+
+  const filteredSubscriptionPlans = useMemo(() => {
+    if (selectedDuration === "1") {
+      return subscriptionPlans.filter((p) => p.planDuration >= 28 && p.planDuration <= 31);
+    }
+    if (selectedDuration === "3") {
+      return subscriptionPlans.filter((p) => p.planDuration >= 85 && p.planDuration <= 95);
+    }
+    if (selectedDuration === "6") {
+      return subscriptionPlans.filter((p) => p.planDuration >= 170 && p.planDuration <= 190);
+    }
+    return subscriptionPlans;
+  }, [subscriptionPlans, selectedDuration]);
+
   const goToCart = (id: string, type: "credit" | "subscription") =>
-    router.push(`/cart?planId=${id}&planType=${type}`);
+    router.push(`/cart?planId=${id}&planType=${type}&currency=${currency.toLowerCase()}`);
 
   return (
     <div className="bg-background text-foreground">
@@ -289,11 +371,67 @@ function PricingContent() {
 
         {/* ------------------------------ Plans ----------------------------- */}
         <Section id="premium">
+          {/* ------------------- Filter & Currency Bar ------------------- */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b bg-muted/15 px-6 py-4 md:px-12 backdrop-blur-xs">
+            {/* Duration Filter */}
+            <div className="inline-flex items-center gap-1 rounded-full border bg-background/90 p-1 shadow-xs backdrop-blur-sm">
+              {[
+                { id: "1", label: "1 Month" },
+                { id: "3", label: "3 Month" },
+                { id: "6", label: "6 Month" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() =>
+                    setSelectedDuration(tab.id as DurationFilter)
+                  }
+                  className={cn(
+                    "rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                    selectedDuration === tab.id
+                      ? "bg-foreground text-background shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Currency Switcher */}
+            <div className="inline-flex items-center gap-1 rounded-full border bg-background/90 p-1 shadow-xs backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => handleCurrencyChange("USD")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                  currency === "USD"
+                    ? "bg-foreground text-background shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="font-semibold text-xs">$</span> USD
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCurrencyChange("BDT")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                  currency === "BDT"
+                    ? "bg-foreground text-background shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className="font-semibold text-xs">৳</span> BDT
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-px border-b bg-border md:grid-cols-2 lg:grid-cols-3">
             <PlanCard
               name="Free"
               tag="Forever"
-              price="৳0"
+              price={formatPlanPrice(0, currency)}
               caption="Perfect for getting started"
               features={FREE_FEATURES}
               cta="Get started"
@@ -307,7 +445,7 @@ function PricingContent() {
               </>
             )}
 
-            {creditPlans.map((plan) => {
+            {filteredCreditPlans.map((plan) => {
               const duration =
                 CREDIT_DURATION_LABELS[plan.planDuration] ??
                 `${plan.planDuration} days`;
@@ -315,22 +453,25 @@ function PricingContent() {
                 <PlanCard
                   key={plan._id}
                   name={plan.name}
-                  tag="No API key"
-                  price={`৳${finalPrice(plan)}`}
+                  tag="Recommended"
+                  price={formatPlanPrice(finalPrice(plan), currency)}
                   originalPrice={
-                    plan.discountPercent > 0 ? `৳${plan.basePrice}` : undefined
+                    plan.discountPercent > 0
+                      ? formatPlanPrice(plan.basePrice, currency)
+                      : undefined
                   }
                   caption={`${plan.credit.toLocaleString()} credits · ${duration}`}
                   note={`${(plan.credit * 5).toLocaleString()} images or ${plan.credit.toLocaleString()} videos`}
                   features={creditFeatures}
                   cta="Purchase credits"
                   variant="default"
+                  highlight
                   onSelect={() => goToCart(plan._id, "credit")}
                 />
               );
             })}
 
-            {subscriptionPlans.map((plan) => (
+            {filteredSubscriptionPlans.map((plan) => (
               <PlanCard
                 key={plan._id}
                 name={plan.name}
@@ -339,9 +480,11 @@ function PricingContent() {
                     ? `Save ${plan.discountPercent}%`
                     : undefined
                 }
-                price={`৳${finalPrice(plan)}`}
+                price={formatPlanPrice(finalPrice(plan), currency)}
                 originalPrice={
-                  plan.discountPercent > 0 ? `৳${plan.basePrice}` : undefined
+                  plan.discountPercent > 0
+                    ? formatPlanPrice(plan.basePrice, currency)
+                    : undefined
                 }
                 caption={
                   DURATION_LABELS[plan.planDuration] ??
@@ -350,7 +493,6 @@ function PricingContent() {
                 features={premiumFeatures}
                 cta="Choose plan"
                 variant="default"
-                highlight
                 onSelect={() => goToCart(plan._id, "subscription")}
               />
             ))}
