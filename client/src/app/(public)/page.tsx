@@ -9,6 +9,7 @@ export const metadata: Metadata = createMetadata({
     "Generate titles, descriptions, keywords and categories for stock images, vectors and videos with GenMeta. Batch process your files and prepare metadata for leading microstock platforms.",
   path: "/",
   keywords: [
+    "Free AI metadata generator",
     "AI metadata generator",
     "stock metadata generator",
     "microstock metadata generator",
