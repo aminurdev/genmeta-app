@@ -4,9 +4,8 @@ import type React from "react";
 import { Suspense, memo, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowUpRight, Check, Globe, X } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Accordion,
   AccordionContent,
@@ -253,7 +252,6 @@ function PricingContent() {
   type DurationFilter = "1" | "3" | "6";
   const [selectedDuration, setSelectedDuration] = useState<DurationFilter>("1");
   const [currency, setCurrency] = useState<Currency>("BDT");
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Check if user already picked a preference
@@ -271,7 +269,6 @@ function PricingContent() {
     let isCancelled = false;
     detectVisitorCountry().then((country) => {
       if (isCancelled || !country) return;
-      setDetectedCountry(country);
 
       // Only apply auto-detected currency if user hasn't manually set a preference
       const currentSaved = getSavedCurrency();

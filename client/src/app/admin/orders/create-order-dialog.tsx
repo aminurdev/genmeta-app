@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -92,7 +92,7 @@ export function CreateOrderDialog() {
     enabled: open,
   });
 
-  const plans = plansData ?? [];
+  const plans = useMemo(() => plansData ?? [], [plansData]);
   const users = usersData ?? [];
 
   // Auto-fill amount when plan changes
