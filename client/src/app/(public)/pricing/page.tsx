@@ -330,6 +330,62 @@ function PricingContent() {
   const goToCart = (id: string, type: "credit" | "subscription") =>
     router.push(`/cart?planId=${id}&planType=${type}&currency=${currency.toLowerCase()}`);
 
+  const redirectToWhatsApp = (message: string) => {
+    const whatsappUrl = `https://wa.me/8801817710493?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleSelectCreditPlan = (plan: (typeof creditPlans)[number]) => {
+    if (currency === "USD") {
+      const duration =
+        CREDIT_DURATION_LABELS[plan.planDuration] ?? `${plan.planDuration} days`;
+      const priceUsd = formatPlanPrice(finalPrice(plan), "USD");
+      const priceBdt = formatPlanPrice(finalPrice(plan), "BDT");
+
+      const message = `Hello GenMeta Team! 👋
+
+I would like to purchase the following plan:
+
+📦 Plan Details:
+• Plan Type: Credit Plan
+• Duration: ${duration}
+• Credits: ${plan.credit.toLocaleString()} credits (${(plan.credit * 5).toLocaleString()} images or ${plan.credit.toLocaleString()} videos)
+• Price: ${priceUsd} (${priceBdt})
+
+Please provide payment instructions for international payment. Thank you!`;
+
+      redirectToWhatsApp(message);
+      return;
+    }
+
+    goToCart(plan._id, "credit");
+  };
+
+  const handleSelectSubscriptionPlan = (plan: (typeof subscriptionPlans)[number]) => {
+    if (currency === "USD") {
+      const duration =
+        DURATION_LABELS[plan.planDuration] ?? `per ${plan.planDuration} days`;
+      const priceUsd = formatPlanPrice(finalPrice(plan), "USD");
+      const priceBdt = formatPlanPrice(finalPrice(plan), "BDT");
+
+      const message = `Hello GenMeta Team! 👋
+
+I would like to purchase the following plan:
+
+📦 Plan Details:
+• Plan Type: Subscription Plan (Unlimited Generations)
+• Duration: ${duration}
+• Price: ${priceUsd} (${priceBdt})
+
+Please provide payment instructions for international payment. Thank you!`;
+
+      redirectToWhatsApp(message);
+      return;
+    }
+
+    goToCart(plan._id, "subscription");
+  };
+
   return (
     <div className="bg-background text-foreground">
       <div className="mx-auto max-w-[1300px] md:border-x">
@@ -463,7 +519,7 @@ function PricingContent() {
                   cta="Purchase credits"
                   variant="default"
                   highlight
-                  onSelect={() => goToCart(plan._id, "credit")}
+                  onSelect={() => handleSelectCreditPlan(plan)}
                 />
               );
             })}
@@ -490,7 +546,7 @@ function PricingContent() {
                 features={premiumFeatures}
                 cta="Choose plan"
                 variant="default"
-                onSelect={() => goToCart(plan._id, "subscription")}
+                onSelect={() => handleSelectSubscriptionPlan(plan)}
               />
             ))}
           </div>
