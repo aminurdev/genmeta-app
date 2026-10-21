@@ -425,9 +425,9 @@ Please provide payment instructions for international payment. Thank you!`;
         {/* ------------------------------ Plans ----------------------------- */}
         <Section id="premium">
           {/* ------------------- Filter & Currency Bar ------------------- */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b bg-muted/15 px-6 py-4 md:px-12 backdrop-blur-xs">
+          <div className="flex items-center justify-between gap-2 border-b bg-muted/15 px-3 py-4 sm:gap-4 sm:px-6 md:px-12 backdrop-blur-xs">
             {/* Duration Filter */}
-            <div className="inline-flex items-center gap-1 rounded-full border bg-background/90 p-1 shadow-xs backdrop-blur-sm">
+            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-xs backdrop-blur-sm sm:gap-1 sm:p-1">
               {[
                 { id: "1", label: "1 Month" },
                 { id: "3", label: "3 Month" },
@@ -440,7 +440,7 @@ Please provide payment instructions for international payment. Thank you!`;
                     setSelectedDuration(tab.id as DurationFilter)
                   }
                   className={cn(
-                    "rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                    "rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:px-3.5 sm:text-sm",
                     selectedDuration === tab.id
                       ? "bg-foreground text-background shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
@@ -452,12 +452,12 @@ Please provide payment instructions for international payment. Thank you!`;
             </div>
 
             {/* Currency Switcher */}
-            <div className="inline-flex items-center gap-1 rounded-full border bg-background/90 p-1 shadow-xs backdrop-blur-sm">
+            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-xs backdrop-blur-sm sm:gap-1 sm:p-1">
               <button
                 type="button"
                 onClick={() => handleCurrencyChange("USD")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                  "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:gap-1.5 sm:px-3.5 sm:text-sm",
                   currency === "USD"
                     ? "bg-foreground text-background shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -469,7 +469,7 @@ Please provide payment instructions for international payment. Thank you!`;
                 type="button"
                 onClick={() => handleCurrencyChange("BDT")}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all cursor-pointer",
+                  "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:gap-1.5 sm:px-3.5 sm:text-sm",
                   currency === "BDT"
                     ? "bg-foreground text-background shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
