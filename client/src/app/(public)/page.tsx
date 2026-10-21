@@ -4,7 +4,7 @@ import { createMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = createMetadata({
-  title: "GenMeta — AI Metadata Generator for Stock Images & Vectors",
+  title: "GenMeta — AI Metadata Generator for Adobe Stock & Microstock",
   description:
     "Generate titles, descriptions, keywords and categories for stock images, vectors and videos with GenMeta. Batch process your files and prepare metadata for leading microstock platforms.",
   path: "/",
