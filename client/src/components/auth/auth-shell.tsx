@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 
 interface AuthShellProps {
   children: React.ReactNode;
-  mode: "login" | "signup";
+  mode: "login" | "signup" | "reset";
 }
 
-function SwitchLink({ mode }: { mode: "login" | "signup" }) {
+function SwitchLink({ mode }: { mode: "login" | "signup" | "reset" }) {
   const searchParams = useSearchParams();
   const redirect = searchParams?.get("redirectPath");
 
@@ -34,12 +34,31 @@ function SwitchLink({ mode }: { mode: "login" | "signup" }) {
     );
   }
 
+  if (mode === "signup") {
+    const loginHref = redirect
+      ? `/login?redirectPath=${encodeURIComponent(redirect)}`
+      : "/login";
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="hidden sm:inline">Already have an account?</span>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="h-8 rounded-full px-3.5 text-xs font-medium"
+        >
+          <Link href={loginHref}>Log in</Link>
+        </Button>
+      </div>
+    );
+  }
+
   const loginHref = redirect
     ? `/login?redirectPath=${encodeURIComponent(redirect)}`
     : "/login";
   return (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span className="hidden sm:inline">Already have an account?</span>
+      <span className="hidden sm:inline">Remember your password?</span>
       <Button
         asChild
         variant="outline"

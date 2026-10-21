@@ -383,10 +383,21 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
   const user = await User.findById(req.user?._id);
-  const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
+  if (!user) throw new ApiError(404, "User not found");
 
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Invalid old password");
+  if (user.password) {
+    if (!currentPassword) {
+      throw new ApiError(400, "Current password is required");
+    }
+    const isPasswordCorrect = await user.isPasswordCorrect(currentPassword);
+
+    if (!isPasswordCorrect) {
+      throw new ApiError(400, "Invalid old password");
+    }
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    throw new ApiError(400, "New password must be at least 6 characters");
   }
 
   if (newPassword !== confirmPassword) {
@@ -394,6 +405,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword;
+  if (!user.loginProvider.includes("email")) {
+    user.loginProvider.push("email");
+  }
   await user.save({ validateBeforeSave: false });
 
   return new ApiResponse(200, true, "Password changed successfully").send(res);
@@ -403,12 +417,12 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) throw new ApiError(400, "Email is required");
 
-  const user = await User.findOne({
-    email,
-    isVerified: true,
-    loginProvider: { $in: ["email"] },
-  });
+  const user = await User.findOne({ email });
   if (!user) throw new ApiError(404, "User not found");
+
+  if (!user.isVerified) {
+    throw new ApiError(400, "Email is not verified");
+  }
 
   const { otp, otpToken } = generateOtpAndOtpToken(user._id);
 
@@ -478,6 +492,9 @@ const resetPassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword;
+  if (!user.loginProvider.includes("email")) {
+    user.loginProvider.push("email");
+  }
   await user.save();
   return new ApiResponse(200, true, "Password reset successful").send(res);
 });
