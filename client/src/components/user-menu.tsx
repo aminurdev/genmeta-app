@@ -34,7 +34,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="h-9 w-9 ">
-          <UserCircle className="cursor-pointer w-5 h-5" />
+          <UserCircle className="cursor-pointer w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56">

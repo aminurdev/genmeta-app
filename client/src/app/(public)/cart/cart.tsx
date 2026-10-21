@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -6,13 +7,21 @@ import {
   ArrowLeft,
   Loader2,
   ChevronRight,
+  ChevronDown,
   X,
   CheckCircle,
   CreditCard,
   Check,
+  Tag,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Card,
   CardContent,
@@ -79,6 +88,7 @@ export default function Cart({ planId }: { planId: string }) {
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [validPromo, setValidPromo] = useState<PromoCodeRes | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [isPromoOpen, setIsPromoOpen] = useState(false);
 
   // Use React Query hook instead of manual fetching
   const { data: pricingData, isLoading: isPricingLoading } = useAllPricing();
@@ -466,69 +476,98 @@ export default function Cart({ planId }: { planId: string }) {
               <Card>
                 <CardContent className="space-y-5 pt-6">
                   {/* Promo Code */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold">Have a Promo Code?</h3>
-                    {validPromo ? (
-                      <div className="flex items-center justify-between p-2 border rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                          <div>
-                            <p className="font-medium">
-                              {validPromo.promoCode.code}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {validPromo.promoCode.discountPercent}% discount
-                              applied
-                            </p>
+                  <Collapsible
+                    open={isPromoOpen || !!validPromo}
+                    onOpenChange={setIsPromoOpen}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+                        >
+                          <Tag className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                          <span>Have a promo code?</span>
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform duration-200",
+                              (isPromoOpen || !!validPromo) && "rotate-180"
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+                      {validPromo && (
+                        <span className="text-xs font-semibold text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
+                          Applied
+                        </span>
+                      )}
+                    </div>
+
+                    <CollapsibleContent className="space-y-3 pt-1">
+                      {validPromo ? (
+                        <div className="flex items-center justify-between p-2.5 border rounded-lg bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
+                            <div>
+                              <p className="font-medium font-mono text-sm">
+                                {validPromo.promoCode.code}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {validPromo.promoCode.discountPercent}% discount
+                                applied
+                              </p>
+                            </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={handleClearPromoCode}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleClearPromoCode}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleApplyPromoCode();
-                        }}
-                        className="flex gap-2"
-                      >
-                        <Input
-                          placeholder="Enter promo code"
-                          value={promoCode}
-                          onChange={(e) => {
-                            setPromoCode(e.target.value.toUpperCase());
-                            if (promoError) setPromoError(null);
+                      ) : (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleApplyPromoCode();
                           }}
-                          className="font-mono"
-                        />
-                        <Button
-                          type="submit"
-                          disabled={isApplyingPromo || !promoCode.trim()}
+                          className="flex gap-2"
                         >
-                          {isApplyingPromo ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            "Apply"
-                          )}
-                        </Button>
-                      </form>
-                    )}
-                    {promoError && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                        <X
-                          className="h-4 w-4 flex-shrink-0 hover:cursor-pointer"
-                          onClick={() => setPromoError(null)}
-                        />
-                        <p>{promoError}</p>
-                      </div>
-                    )}
-                  </div>
+                          <Input
+                            placeholder="Enter promo code"
+                            value={promoCode}
+                            onChange={(e) => {
+                              setPromoCode(e.target.value.toUpperCase());
+                              if (promoError) setPromoError(null);
+                            }}
+                            className="font-mono text-sm"
+                          />
+                          <Button
+                            type="submit"
+                            disabled={isApplyingPromo || !promoCode.trim()}
+                          >
+                            {isApplyingPromo ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Apply"
+                            )}
+                          </Button>
+                        </form>
+                      )}
+                      {promoError && (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                          <X
+                            className="h-4 w-4 flex-shrink-0 hover:cursor-pointer"
+                            onClick={() => setPromoError(null)}
+                          />
+                          <p>{promoError}</p>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
 
                   <Separator />
 

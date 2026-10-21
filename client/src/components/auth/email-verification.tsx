@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ArrowLeft, Mail, Lock, EyeOff, Eye } from "lucide-react";
+  ArrowLeft,
+  ArrowRight,
+  Mail,
+  Lock,
+  EyeOff,
+  Eye,
+  Loader2,
+  Shield,
+  KeyRound,
+  CheckCircle2,
+  Check,
+} from "lucide-react";
 import { FormError } from "@/components/auth/form-error";
 import { FormSuccess } from "@/components/auth/form-success";
 import {
@@ -21,57 +26,108 @@ import {
   resetPassword,
 } from "@/services/auth-services";
 
-export default function EmailVerification() {
+const calculatePasswordStrength = (password: string) => {
+  let score = 0;
+  const checks = {
+    length: password.length >= 6,
+    lowercase: /[a-z]/.test(password),
+    uppercase: /[A-Z]/.test(password),
+    numbers: /\d/.test(password),
+    symbols: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
+  };
+
+  if (checks.length) score += 20;
+  if (checks.lowercase) score += 20;
+  if (checks.uppercase) score += 20;
+  if (checks.numbers) score += 20;
+  if (checks.symbols) score += 20;
+
+  if (password.length >= 8) score += 10;
+  if (password.length >= 12) score += 10;
+
+  let strength: "weak" | "medium" | "strong";
+  if (score < 40) strength = "weak";
+  else if (score < 80) strength = "medium";
+  else strength = "strong";
+
+  return { score, strength, checks };
+};
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get step and tokens from URL params
   const stepParam = searchParams?.get("step");
+  const emailParam = searchParams?.get("email") || "";
   const otpTokenParam = searchParams?.get("otpToken") || "";
-  const tempTokenParam = searchParams?.get("tempToken");
+  const tempTokenParam = searchParams?.get("tempToken") || "";
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam);
   const [otp, setOtp] = useState("");
-  const [otpToken, setOtpToken] = useState(otpTokenParam || "");
-  const [tempToken, setTempToken] = useState(tempTokenParam || "");
+  const [otpToken, setOtpToken] = useState(otpTokenParam);
+  const [tempToken, setTempToken] = useState(tempTokenParam);
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [step, setStep] = useState(stepParam ? Number.parseInt(stepParam) : 1);
+  const [step, setStep] = useState(stepParam ? Number.parseInt(stepParam, 10) : 1);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    strength: "weak" | "medium" | "strong";
+    checks: Record<string, boolean>;
+  } | null>(null);
 
-  // Update URL when step or tokens change
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  // Countdown timer for 60s resend code
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  // Focus OTP input when step 2 is active
+  useEffect(() => {
+    if (step === 2 && otpInputRef.current) {
+      otpInputRef.current.focus();
+    }
+  }, [step]);
+
+  // Sync state with URL params
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("step", step.toString());
-
+    if (email) params.set("email", email);
     if (otpToken) params.set("otpToken", otpToken);
     if (tempToken) params.set("tempToken", tempToken);
 
-    router.replace(`/reset-password?${params.toString()}`);
-  }, [step, otpToken, tempToken, router]);
+    router.replace(`/reset-password?${params.toString()}`, { scroll: false });
+  }, [step, email, otpToken, tempToken, router]);
 
-  const handleRequestAgain = () => {
-    setNewPassword("");
-    setConfirmNewPassword("");
-    setOtp("");
-    setOtpToken("");
-    setStep(1);
-  };
-
-  // Request OTP
+  // Request OTP (Step 1)
   const handleRequestOTP = async () => {
     if (!email) {
       setError("Please enter your email address");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
     setError("");
+    setSuccess("");
     setIsLoading(true);
 
     try {
@@ -79,27 +135,57 @@ export default function EmailVerification() {
 
       if (result.success) {
         setOtpToken(result.data?.otpToken || "");
-        setSuccess("OTP sent to your email address");
+        setSuccess("Verification code sent to your email");
+        setResendTimer(60);
         setStep(2);
       } else {
-        setError(result.message || "Failed to send OTP. Please try again.");
+        setError(result.message || "Failed to send code. Please try again.");
       }
     } catch (err) {
-      setError("An error occurred. Please try again later.");
       console.error(err);
+      setError("An error occurred. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Verify OTP
+  // Resend OTP (Step 2)
+  const handleResendOTP = async () => {
+    if (resendTimer > 0 || !email) return;
+
+    setError("");
+    setSuccess("");
+    setIsResending(true);
+
+    try {
+      const result = await requestPasswordReset(email);
+
+      if (result.success) {
+        setOtpToken(result.data?.otpToken || "");
+        setSuccess("A new verification code has been sent!");
+        setResendTimer(60);
+        setOtp("");
+        setTimeout(() => setSuccess(""), 4000);
+      } else {
+        setError(result.message || "Failed to resend code. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred. Please try again later.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  // Verify OTP (Step 2)
   const handleVerifyOTP = async () => {
-    if (!otp) {
-      setError("Please enter the OTP sent to your email");
+    if (!otp || otp.length !== 6) {
+      setError("Please enter the 6-digit verification code");
       return;
     }
 
     setError("");
+    setSuccess("");
     setIsLoading(true);
 
     try {
@@ -107,28 +193,23 @@ export default function EmailVerification() {
 
       if (result.success) {
         setTempToken(result.data?.tempToken || "");
-        setSuccess("OTP verified successfully");
+        setSuccess("Code verified successfully");
         setStep(3);
       } else {
-        setError(result.message || "Invalid OTP. Please try again.");
+        setError(result.message || "Invalid verification code. Please try again.");
       }
     } catch (err) {
-      setError("An error occurred. Please try again later.");
       console.error(err);
+      setError("An error occurred. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Reset Password
+  // Reset Password (Step 3)
   const handleResetPassword = async () => {
     if (!newPassword || !confirmNewPassword) {
-      setError("Please enter and confirm your new password");
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setError("Passwords do not match");
+      setError("Please fill in both password fields");
       return;
     }
 
@@ -137,7 +218,13 @@ export default function EmailVerification() {
       return;
     }
 
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setError("");
+    setSuccess("");
     setIsLoading(true);
 
     try {
@@ -149,260 +236,498 @@ export default function EmailVerification() {
 
       if (result.success) {
         setSuccess("Password reset successful");
-        setStep(4); // Move to success screen
+        setStep(4);
       } else {
         setError(
           result.message || "Failed to reset password. Please try again."
         );
       }
     } catch (err) {
-      setError("An error occurred. Please try again later.");
       console.error(err);
+      setError("An error occurred. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const goBack = () => {
-    if (step > 1 && step < 4) {
-      setStep(step - 1);
+  const handleBackToEmail = () => {
+    setOtp("");
+    setOtpToken("");
+    setError("");
+    setSuccess("");
+    setResendTimer(0);
+    setStep(1);
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setNewPassword(value);
+    setError("");
+    if (value) {
+      setPasswordStrength(calculatePasswordStrength(value));
     } else {
-      router.push("/login");
+      setPasswordStrength(null);
     }
   };
 
   return (
-    <div className=" w-full h-screen flex items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <div className="flex items-center mb-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={goBack}
-              className="mr-2"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <CardTitle className="text-xl">Reset Password</CardTitle>
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+      {/* Step 1: Email Form */}
+      {step === 1 && (
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted/40">
+            <KeyRound className="h-5 w-5 text-foreground" />
           </div>
-          <CardDescription>
-            {step === 1 && "Enter your email to receive a verification code"}
-            {step === 2 && "Enter the verification code sent to your email"}
-            {step === 3 && "Create a new password for your account"}
-            {step === 4 && "Password reset successful!"}
-          </CardDescription>
-        </CardHeader>
 
-        <CardContent>
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    type="email"
-                    autoComplete="email"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            Reset your password
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Enter the email address associated with your account and we&apos;ll send you a verification code.
+          </p>
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="otp" className="text-sm font-medium">
-                  Verification Code
-                </label>
+          <div className="mt-6 space-y-4 text-left">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-xs font-medium text-foreground">
+                Email address
+              </label>
+              <div className="relative">
                 <Input
-                  id="otp"
-                  placeholder="Enter 6-digit code"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  maxLength={6}
-                  className="text-center tracking-widest text-lg"
-                  inputMode="numeric"
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
+                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleRequestOTP();
+                    }
+                  }}
+                  className="pl-10 h-11 rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
                 />
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Didn&apos;t receive a code?
-                <Button
-                  variant="link"
-                  className="p-0 h-auto ml-1"
-                  onClick={handleRequestAgain}
-                >
-                  Request again
-                </Button>
-              </p>
             </div>
-          )}
 
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="newPassword" className="text-sm font-medium">
-                  New Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="newPassword"
-                    placeholder="Enter new password"
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    autoComplete="new-password"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    aria-label={
-                      showNewPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showNewPassword ? <EyeOff /> : <Eye />}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="confirmNewPassword"
-                  className="text-sm font-medium"
-                >
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="confirmNewPassword"
-                    placeholder="Confirm new password"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                    autoComplete="new-password"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showConfirmPassword ? <EyeOff /> : <Eye />}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Password must be at least 6 characters long
-              </p>
-            </div>
-          )}
-          {step === 4 && (
-            <div className="space-y-6 py-4">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-medium text-green-600 mb-2">
-                  Password Reset Successful!
-                </h3>
-                <p className="text-muted-foreground">
-                  Your password has been reset successfully. You can now log in
-                  with your new password.
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
+            <FormError message={error} />
+            <FormSuccess message={success} />
 
-        <CardFooter className="block">
-          <FormError message={error} />
-          <FormSuccess message={success} />
-          {step < 4 ? (
             <Button
-              className="w-full mt-4"
-              onClick={
-                step === 1
-                  ? handleRequestOTP
-                  : step === 2
-                  ? handleVerifyOTP
-                  : handleResetPassword
-              }
-              disabled={isLoading}
+              disabled={isLoading || !email}
+              onClick={handleRequestOTP}
+              className="group w-full h-11 rounded-full font-medium mt-2 gap-2"
             >
               {isLoading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Processing...
-                </span>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Sending code...</span>
+                </>
               ) : (
                 <>
-                  {step === 1 && "Send Verification Code"}
-                  {step === 2 && "Verify Code"}
-                  {step === 3 && "Reset Password"}
+                  <span>Send verification code</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
             </Button>
-          ) : (
-            <Button
-              className="w-full mt-4"
-              onClick={() => router.push("/login")}
+          </div>
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Remember your password?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity"
             >
-              Go to Login
+              Log in
+            </Link>
+          </p>
+
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/80">
+            Need help?{" "}
+            <Link
+              href="/contact"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Contact support
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {/* Step 2: OTP Verification */}
+      {step === 2 && (
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted/40">
+            <Shield className="h-5 w-5 text-foreground" />
+          </div>
+
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            Verify your email
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            We sent a 6-digit verification code to
+          </p>
+          <p className="mt-1 font-mono text-xs font-medium text-foreground bg-muted/50 rounded-md py-1 px-2.5 inline-block">
+            {email}
+          </p>
+
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Input
+                ref={otpInputRef}
+                id="otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="••••••"
+                value={otp}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setOtp(clean);
+                  setError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && otp.length === 6 && !isLoading) {
+                    e.preventDefault();
+                    handleVerifyOTP();
+                  }
+                }}
+                className="h-12 text-center font-mono text-2xl tracking-[0.4em] rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20"
+                maxLength={6}
+                disabled={isLoading}
+              />
+            </div>
+
+            <FormError message={error} />
+            <FormSuccess message={success} />
+
+            <Button
+              onClick={handleVerifyOTP}
+              disabled={otp.length !== 6 || isLoading}
+              className="w-full h-11 rounded-full font-medium"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <span>Verify and continue</span>
+              )}
             </Button>
-          )}
-        </CardFooter>
-      </Card>
+
+            <div className="pt-2 flex flex-col items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                Didn&apos;t receive the code?{" "}
+                {resendTimer > 0 ? (
+                  <span className="font-mono text-foreground font-medium">
+                    Resend in {resendTimer}s
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="font-medium text-foreground underline underline-offset-4 hover:opacity-80 transition-opacity"
+                    onClick={handleResendOTP}
+                    disabled={isResending}
+                  >
+                    {isResending ? "Sending..." : "Resend code"}
+                  </button>
+                )}
+              </p>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToEmail}
+                className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Change email
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: New Password */}
+      {step === 3 && (
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted/40">
+            <Lock className="h-5 w-5 text-foreground" />
+          </div>
+
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            Set new password
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Choose a strong password with at least 6 characters.
+          </p>
+
+          <div className="mt-6 space-y-4 text-left">
+            {/* New Password */}
+            <div className="space-y-1.5">
+              <label htmlFor="newPassword" className="text-xs font-medium text-foreground">
+                New password
+              </label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  className="pl-10 pr-10 h-11 rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
+                />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">
+                    {showNewPassword ? "Hide password" : "Show password"}
+                  </span>
+                </Button>
+              </div>
+
+              {/* Password strength meter */}
+              {passwordStrength && (
+                <div className="pt-2 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 grid grid-cols-4 gap-1">
+                      <div
+                        className={`h-1 rounded-full transition-colors ${
+                          passwordStrength.score >= 20
+                            ? passwordStrength.strength === "weak"
+                              ? "bg-destructive"
+                              : passwordStrength.strength === "medium"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                            : "bg-muted"
+                        }`}
+                      />
+                      <div
+                        className={`h-1 rounded-full transition-colors ${
+                          passwordStrength.score >= 50
+                            ? passwordStrength.strength === "medium"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                            : "bg-muted"
+                        }`}
+                      />
+                      <div
+                        className={`h-1 rounded-full transition-colors ${
+                          passwordStrength.score >= 70
+                            ? "bg-emerald-500"
+                            : "bg-muted"
+                        }`}
+                      />
+                      <div
+                        className={`h-1 rounded-full transition-colors ${
+                          passwordStrength.score >= 90
+                            ? "bg-emerald-500"
+                            : "bg-muted"
+                        }`}
+                      />
+                    </div>
+                    <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                      {passwordStrength.strength}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        passwordStrength.checks.length
+                          ? "text-foreground"
+                          : "opacity-60"
+                      }`}
+                    >
+                      <Check className="h-3 w-3" /> 6+ chars
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        passwordStrength.checks.uppercase
+                          ? "text-foreground"
+                          : "opacity-60"
+                      }`}
+                    >
+                      <Check className="h-3 w-3" /> Uppercase
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        passwordStrength.checks.numbers
+                          ? "text-foreground"
+                          : "opacity-60"
+                      }`}
+                    >
+                      <Check className="h-3 w-3" /> Number
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 ${
+                        passwordStrength.checks.symbols
+                          ? "text-foreground"
+                          : "opacity-60"
+                      }`}
+                    >
+                      <Check className="h-3 w-3" /> Symbol
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="confirmNewPassword"
+                className="text-xs font-medium text-foreground"
+              >
+                Confirm new password
+              </label>
+              <div className="relative">
+                <Input
+                  id="confirmNewPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm new password"
+                  value={confirmNewPassword}
+                  onChange={(e) => {
+                    setConfirmNewPassword(e.target.value);
+                    setError("");
+                  }}
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      e.preventDefault();
+                      handleResetPassword();
+                    }
+                  }}
+                  className="pl-10 pr-10 h-11 rounded-lg border-border bg-background focus-visible:ring-1 focus-visible:ring-foreground/20 text-sm"
+                />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">
+                    {showConfirmPassword ? "Hide password" : "Show password"}
+                  </span>
+                </Button>
+              </div>
+            </div>
+
+            <FormError message={error} />
+            <FormSuccess message={success} />
+
+            <Button
+              onClick={handleResetPassword}
+              disabled={isLoading || !newPassword || !confirmNewPassword}
+              className="group w-full h-11 rounded-full font-medium mt-2 gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Resetting password...</span>
+                </>
+              ) : (
+                <>
+                  <span>Reset password</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </>
+              )}
+            </Button>
+
+            <div className="pt-2 flex justify-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep(2)}
+                className="text-xs text-muted-foreground hover:text-foreground gap-1.5 h-8"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back to verification
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Success Screen */}
+      {step === 4 && (
+        <div className="text-center py-2">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500">
+            <CheckCircle2 className="h-7 w-7" />
+          </div>
+
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
+            Password reset successful!
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
+            Your password has been reset successfully. You can now log in with your new password.
+          </p>
+
+          <Button
+            asChild
+            className="group w-full h-11 rounded-full font-medium mt-6 gap-2"
+          >
+            <Link href="/login">
+              <span>Continue to log in</span>
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
+  );
+}
+
+function ResetPasswordSkeleton() {
+  return (
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 animate-pulse space-y-6">
+      <div className="mx-auto h-12 w-12 rounded-full bg-muted" />
+      <div className="space-y-2 text-center">
+        <div className="mx-auto h-6 w-44 rounded bg-muted" />
+        <div className="mx-auto h-4 w-60 rounded bg-muted" />
+      </div>
+      <div className="space-y-4 pt-2">
+        <div className="space-y-1.5">
+          <div className="h-3.5 w-20 rounded bg-muted" />
+          <div className="h-11 w-full rounded-lg bg-muted" />
+        </div>
+        <div className="h-11 w-full rounded-full bg-muted pt-2" />
+      </div>
+    </div>
+  );
+}
+
+export default function EmailVerification() {
+  return (
+    <Suspense fallback={<ResetPasswordSkeleton />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

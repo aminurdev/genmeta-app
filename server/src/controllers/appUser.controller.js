@@ -474,10 +474,10 @@ const appUserLogin = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
   if (!user || !user.isVerified) throw new ApiError(404, "User not found");
   if (!user.loginProvider.includes("email"))
-    throw new ApiError(403, "Use social login");
+     throw new ApiError(401, "Invalid email or password");
 
   const isPasswordValid = await user.isPasswordCorrect(password);
-  if (!isPasswordValid) throw new ApiError(401, "Invalid credentials");
+  if (!isPasswordValid) throw new ApiError(401, "Invalid email or password");
 
   const appKeyDoc = await findOrCreateAppKey(user);
 
@@ -522,7 +522,7 @@ const findOrCreateAppKey = async (user) => {
       username: user.email,
       key,
       plan,
-      credit: 50,
+      credit: 10,
       lastCreditRefresh: new Date().toISOString().split("T")[0],
     });
 

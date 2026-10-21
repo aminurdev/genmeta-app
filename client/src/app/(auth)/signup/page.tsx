@@ -1,16 +1,16 @@
-import Navbar from "@/components/auth/navbar";
 import SignUpForm from "@/components/auth/signup-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+import type { Metadata } from "next";
 
-import React from "react";
-const SignUp = () => {
-  return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="flex justify-center items-center my-5">
-        <SignUpForm />
-      </div>
-    </div>
-  );
+export const metadata: Metadata = {
+  title: "Sign Up | GenMeta",
+  description: "Create your free GenMeta account.",
 };
 
-export default SignUp;
+export default function SignUpPage() {
+  return (
+    <AuthShell mode="signup">
+      <SignUpForm />
+    </AuthShell>
+  );
+}

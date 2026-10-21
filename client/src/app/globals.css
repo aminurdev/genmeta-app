@@ -3,81 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* Vercel / Geist palette — light */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 0 0% 9%; /* #171717 */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Changing primary to violet */
-    --primary: 265 89% 78%; /* violet-600 */
+    --primary: 0 0% 9%; /* #171717 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 265 91% 98%; /* violet-50 */
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --secondary: 0 0% 95%; /* #f2f2f2 */
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%; /* #f5f5f5 */
+    --muted-foreground: 0 0% 40%; /* #666666 */
+    --accent: 0 0% 95%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 358 75% 59%; /* #e5484d */
+    --destructive-foreground: 0 0% 100%;
 
-    /* Custom border colors for violet theme */
-    --border: 265 91% 92%; /* violet-100 */
-    --input: 265 91% 92%; /* violet-100 */
-    --ring: 265 89% 78%; /* violet-600 */
+    --border: 0 0% 92%; /* #ebebeb */
+    --input: 0 0% 92%;
+    --ring: 212 100% 48%; /* #0070f3 Vercel blue */
+
+    --brand: 212 100% 48%;
+    --success: 142 71% 40%;
 
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --input: 265 91% 92%; /* violet-100 */
-    --ring: 265 89% 78%; /* violet-600 */
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 98%; /* #fafafa */
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 0 0% 9%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 92%;
+    --sidebar-ring: 212 100% 48%;
   }
 
+  /* Vercel / Geist palette — dark */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --background: 0 0% 4%; /* #0a0a0a */
+    --foreground: 0 0% 93%; /* #ededed */
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 93%;
 
-    /* Changing primary to violet for dark mode */
-    --primary: 265 83% 68%; /* violet-400 */
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 93%; /* #ededed */
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 265 83% 28%; /* violet-900 or violet-950/20 in the original */
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --secondary: 0 0% 10%; /* #1a1a1a */
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 9%; /* #171717 */
+    --muted-foreground: 0 0% 63%; /* #a1a1a1 */
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 358 75% 59%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Custom border colors for dark violet theme */
-    --border: 265 83% 28%; /* violet-900 */
-    --input: 265 83% 28%; /* violet-900 */
-    --ring: 265 83% 68%; /* violet-400 */
+    --border: 0 0% 15%; /* #262626 */
+    --input: 0 0% 18%;
+    --ring: 212 100% 48%;
 
-    --sidebar-background: 224.2 84% 4.9%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%; /* violet-400 */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%; /* violet-900 */
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --input: 265 83% 28%; /* violet-900 */
-    --ring: 265 83% 68%; /* violet-400 */
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --brand: 212 100% 55%;
+    --success: 142 69% 50%;
+
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 93%;
+    --sidebar-primary: 0 0% 93%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 93%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 212 100% 48%;
   }
 }
 
@@ -298,3 +298,72 @@ details > summary {
 details > summary::-webkit-details-marker {
   display: none;
 }
+
+/* ---------- Landing page utilities (Vercel style) ---------- */
+
+/* Faint square grid that fades out from the top */
+.lp-grid-bg {
+  background-image:
+    linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+
+/* "+" marker that sits on rail intersections */
+.lp-cross {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  pointer-events: none;
+}
+.lp-cross::before,
+.lp-cross::after {
+  content: "";
+  position: absolute;
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+.lp-cross::before {
+  left: 6px;
+  top: 0;
+  width: 1px;
+  height: 13px;
+}
+.lp-cross::after {
+  top: 6px;
+  left: 0;
+  height: 1px;
+  width: 13px;
+}
+
+@keyframes lp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.lp-rise {
+  opacity: 0;
+  animation: lp-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-rise {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker { animation: none; }
+}
+
