@@ -79,7 +79,7 @@ export function UserMenu({
             </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        {user?.role === "admin" && (
+        {(user?.role === "admin" || user?.role === "superAdmin") && (
           <>
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>

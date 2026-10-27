@@ -1,4 +1,3 @@
-"use server";
 
 import { ApiErrorResponse, ApiResponse } from "@/types";
 import { api } from "./api-client";

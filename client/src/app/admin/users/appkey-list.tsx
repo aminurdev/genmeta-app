@@ -123,10 +123,10 @@ export default function AppKeyList() {
     useAllUsersQuery(buildQueryParams());
 
   // Extract data from React Query response
-  const appKeys = data?.success && data.data?.users ? data.data.users : [];
-  const totalPages =
-    data?.success && data.data?.totalPages ? data.data.totalPages : 1;
-  const totalKeys = data?.success && data.data?.total ? data.data.total : 0;
+  const responseData = data && data.success ? data.data : undefined;
+  const appKeys = responseData?.users ?? [];
+  const totalPages = responseData?.totalPages ?? ((data as unknown as Record<string, Record<string, { totalPages?: number }>>)?.data?.pagination?.totalPages || 1);
+  const totalKeys = responseData?.total ?? ((data as unknown as Record<string, Record<string, { total?: number }>>)?.data?.pagination?.total || 0);
 
   // Action states
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
@@ -532,21 +532,10 @@ export default function AppKeyList() {
         <TableBody>
           {appKeys.map((appKey) => (
             <TableRow key={appKey._id}>
-              <TableCell className="font-medium">{appKey.username}</TableCell>
+              <TableCell className="font-medium">{appKey.username || appKey.email || appKey.name || "User"}</TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
-                  <span className="font-mono text-xs">
-                    {appKey.key.substring(0, 8)}...
-                    {appKey.key.substring(appKey.key.length - 8)}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => copyToClipboard(appKey.key)}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
+                  {appKey.key ? (<><span className="font-mono text-xs">{appKey.key.length > 16 ? `${appKey.key.substring(0, 8)}...${appKey.key.substring(appKey.key.length - 8)}` : appKey.key}</span><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(appKey.key)}><Copy className="h-3.5 w-3.5" /></Button></>) : (<span className="text-xs text-muted-foreground italic">No API Key</span>)}
                 </div>
               </TableCell>
               <TableCell>
@@ -595,7 +584,7 @@ export default function AppKeyList() {
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/users/${appKey.key}`}>
+                  <Link href={`/admin/users/${appKey.key || appKey._id}`}>
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View user details</span>
                   </Link>

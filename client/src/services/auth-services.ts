@@ -3,7 +3,7 @@ import { FieldValues } from "react-hook-form";
 import {
   deleteTokens,
   getAccessToken,
-  getTokenFromCookie,
+  getRefreshToken,
   setTokens,
 } from "@/lib/cookies";
 import { ENV } from "@/lib/env";
@@ -25,7 +25,8 @@ export interface User {
   userId: string;
   name: string;
   email: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "superAdmin";
+  avatar?: string;
   iat: number;
   exp: number;
 }
@@ -34,25 +35,27 @@ export const getBaseApi = async () => {
   return ENV.apiBaseUrl;
 };
 
+const formatApiError = (error: unknown, defaultMsg: string): ApiErrorResponse => {
+  const err = error as AxiosApiError;
+  return (
+    err.response?.data ?? {
+      success: false,
+      statusCode: err.response?.status ?? 500,
+      message: err.response?.data?.message || err.message || defaultMsg,
+    }
+  );
+};
+
 export const registerUser = async (
   userData: FieldValues,
   referral: string | null
 ): Promise<ApiResponse<OtpResponse> | ApiErrorResponse> => {
   try {
     if (referral) userData.referralCode = referral;
-
     const result = await api.post("/users/register", userData);
-
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Registration failed");
   }
 };
 
@@ -63,17 +66,9 @@ export const resendVerificationEmail = async (
     const result = await api.post("/users/resend-verification-email", {
       email,
     });
-
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Failed to resend verification email");
   }
 };
 
@@ -90,23 +85,16 @@ export const verifyEmail = async (
       }
     );
 
-    if (result.data.success) {
-      const accessToken = result.data.data?.user.accessToken;
-      const refreshToken = result.data.data?.user.refreshToken;
-      if (accessToken && refreshToken)
+    if (result.data.success && result.data.data?.user) {
+      const { accessToken, refreshToken } = result.data.data.user;
+      if (accessToken && refreshToken) {
         await setTokens(accessToken, refreshToken);
+      }
     }
 
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Verification failed");
   }
 };
 
@@ -119,23 +107,16 @@ export const loginUser = async (
       userData
     );
 
-    if (result.data.success) {
-      const accessToken = result.data.data?.user.accessToken;
-      const refreshToken = result.data.data?.user.refreshToken;
-      if (accessToken && refreshToken)
+    if (result.data.success && result.data.data?.user) {
+      const { accessToken, refreshToken } = result.data.data.user;
+      if (accessToken && refreshToken) {
         await setTokens(accessToken, refreshToken);
+      }
     }
 
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Login failed");
   }
 };
 
@@ -152,9 +133,8 @@ export const verifyGoogleToken = async (
       }
     );
 
-    if (result.data.success) {
-      const accessToken = result.data.data?.user.accessToken;
-      const refreshToken = result.data.data?.user.refreshToken;
+    if (result.data.success && result.data.data?.user) {
+      const { accessToken, refreshToken } = result.data.data.user;
       if (accessToken && refreshToken) {
         await setTokens(accessToken, refreshToken);
       }
@@ -162,14 +142,7 @@ export const verifyGoogleToken = async (
 
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Google verification failed");
   }
 };
 
@@ -177,7 +150,7 @@ export const refreshAccessToken = async (): Promise<
   ApiResponse<RefreshAccessTokenResponse> | ApiErrorResponse
 > => {
   try {
-    const refreshToken = await getTokenFromCookie("refreshToken");
+    const refreshToken = await getRefreshToken();
 
     if (!refreshToken) {
       return {
@@ -194,66 +167,20 @@ export const refreshAccessToken = async (): Promise<
       }
     );
 
-    if (result.data.success) {
-      const accessToken = result.data.data?.accessToken;
-      const refreshToken = result.data.data?.refreshToken;
-      if (accessToken && refreshToken) {
-        await setTokens(accessToken, refreshToken);
+    if (result.data.success && result.data.data) {
+      const { accessToken, refreshToken: newRefreshToken } = result.data.data;
+      if (accessToken && newRefreshToken) {
+        await setTokens(accessToken, newRefreshToken);
       }
     }
 
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Token refresh failed");
   }
 };
 
-const getAccessTokenOrRefreshAccessToken = async () => {
-  let accessToken = await getTokenFromCookie("accessToken");
-
-  if (!accessToken) {
-    // No access token found, try to refresh
-    const refreshResult = await refreshAccessToken();
-
-    if (refreshResult.success) {
-      accessToken = refreshResult.data?.accessToken || null;
-    } else {
-      return null;
-    }
-  } else {
-    // Check if token is expired
-    const isTokenExpired = (token: string): boolean => {
-      try {
-        const decoded = jwtDecode<User>(token);
-        const currentTime = Date.now() / 1000;
-        return decoded.exp < currentTime;
-      } catch {
-        return true;
-      }
-    };
-
-    if (isTokenExpired(accessToken)) {
-      const refreshResult = await refreshAccessToken();
-
-      if (refreshResult.success) {
-        accessToken = refreshResult.data?.accessToken || null;
-      } else {
-        return null;
-      }
-    }
-  }
-
-  return accessToken;
-};
-
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (): Promise<User | null> => {
   const accessToken = await getAccessToken();
 
   if (!accessToken) {
@@ -261,39 +188,37 @@ export const getCurrentUser = async () => {
   }
 
   try {
-    const decodedData = jwtDecode<User>(accessToken);
-    return decodedData;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.log(error.message);
+    const decoded = jwtDecode<User>(accessToken);
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp < now) {
+      // Token is expired, try to refresh
+      const refreshed = await refreshAccessToken();
+      if (refreshed.success && refreshed.data?.accessToken) {
+        return jwtDecode<User>(refreshed.data.accessToken);
+      }
+      return null;
+    }
+    return decoded;
+  } catch (error) {
+    console.warn("Failed to decode user token:", error);
     return null;
   }
 };
 
-export const getCurrentUserWithRefresh = async () => {
-  const accessToken = await getAccessTokenOrRefreshAccessToken();
-
-  if (!accessToken) {
-    return null;
-  }
-
-  try {
-    const decodedData = jwtDecode<User>(accessToken);
-    return decodedData;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.log(error.message);
-    return null;
-  }
-};
+export const getCurrentUserWithRefresh = getCurrentUser;
 
 export const logout = async () => {
   try {
+    try {
+      await api.post("/users/logout");
+    } catch {
+      // Non-blocking if server logout fails
+    }
     await deleteTokens();
-    return { success: true, message: "SuccessFully logout." };
+    return { success: true, message: "Successfully logged out." };
   } catch (error) {
     console.error("Error during logout:", error);
-    return { success: false, message: "An unexpected error occurred." };
+    return { success: false, message: "An unexpected error occurred during logout." };
   }
 };
 
@@ -301,19 +226,10 @@ export const requestPasswordReset = async (
   email: string
 ): Promise<ApiResponse<OtpResponse> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/users/request-password-reset", {
-      email,
-    });
+    const result = await api.post("/users/request-password-reset", { email });
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Failed to request password reset");
   }
 };
 
@@ -322,20 +238,10 @@ export const verifyOTP = async (
   otpToken: string
 ): Promise<ApiResponse<TempTokenResponse> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/users/verify-otp", {
-      otp,
-      otpToken,
-    });
+    const result = await api.post("/users/verify-otp", { otp, otpToken });
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "OTP verification failed");
   }
 };
 
@@ -352,14 +258,7 @@ export const resetPassword = async (
     });
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Failed to reset password");
   }
 };
 
@@ -376,13 +275,6 @@ export const changePassword = async (
     });
     return result.data;
   } catch (error) {
-    const err = error as AxiosApiError;
-    return (
-      err.response?.data ?? {
-        success: false,
-        statusCode: err.response?.status ?? 500,
-        message: err.message || "Unexpected error occurred",
-      }
-    );
+    return formatApiError(error, "Failed to change password");
   }
 };

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use server";
 
 import { ApiErrorResponse, ApiResponse } from "@/types";
 import { api } from "./api-client";

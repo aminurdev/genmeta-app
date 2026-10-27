@@ -162,7 +162,8 @@ export function AppSidebar({ user, type }: AppSidebarProps) {
       <SidebarContent>
         {sidebarData.map((section) => {
           const visibleItems = section.items.filter(() => {
-            return !section.isForAdmin || user?.role === "admin";
+            const isAdmin = user?.role === "admin" || user?.role === "superAdmin";
+            return !section.isForAdmin || isAdmin;
           });
 
           if (visibleItems.length === 0) return null;

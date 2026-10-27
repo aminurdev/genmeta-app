@@ -123,6 +123,36 @@ export const getOverview = asyncHandler(async (req, res) => {
     last6MonthProcess,
     last7DaysProcess,
     recentHistory: combinedHistory,
+    // Backward compatibility objects
+    appKey: {
+      exists: !!appKey,
+      key: appKey?.key || null,
+      totalProcess: appKey?.totalProcess || 0,
+      todayUsage: dailyProcess.get(todayStr) || 0,
+      thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
+      last6MonthProcess,
+      last7DaysProcess,
+      creditRemaining: appKey?.credit ?? 0,
+      planType: appKey?.plan?.type || "free",
+      planId: appKey?.plan?.id || null,
+      expiresAt: appKey?.expiresAt || null,
+      daysLeft: remainingDays,
+      isSuspended: appKey?.status === "suspended",
+      isManuallyDisabled: appKey ? !appKey.isActive : false,
+    },
+    payments: {
+      totalSpent,
+      last5Payments: recentPayments.map((p) => ({
+        id: p._id,
+        trxID: p.trxID,
+        plan: {
+          id: p.plan?._id || "",
+          type: p.plan?.type || "subscription",
+        },
+        amount: p.amount,
+        createdAt: p.createdAt,
+      })),
+    },
   }).send(res);
 });
 
@@ -135,10 +165,15 @@ export const getProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  const appKey = await AppKey.findOne({ userId: user._id }).select("key plan credit status expiresAt");
+  const appKey = await AppKey.findOne({ userId: user._id }).select(
+    "key plan credit status expiresAt"
+  );
+
+  const userObj = user.toObject();
 
   return new ApiResponse(200, true, "Profile retrieved successfully", {
-    user,
+    ...userObj,
+    user: userObj,
     appKey,
   }).send(res);
 });

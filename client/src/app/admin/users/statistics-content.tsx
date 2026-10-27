@@ -48,7 +48,16 @@ export default function StatisticsContent() {
     );
   }
 
-  const statistics = data.data;
+  const stats = data.data;
+  const totalUsers = stats.totalUsers ?? 0;
+  const activeUsers = stats.activeUsers ?? totalUsers;
+  const suspendedUsers = stats.suspendedUsers ?? 0;
+  const totalProcesses = stats.totalProcesses ?? 0;
+  const avgProcessesPerUser = stats.avgProcessesPerUser ?? (totalUsers > 0 ? totalProcesses / totalUsers : 0);
+  const dailyNewUsers = Array.isArray(stats.dailyNewUsers) ? stats.dailyNewUsers : [];
+  const latestCount = dailyNewUsers.length > 0 ? dailyNewUsers[0].count : 0;
+  const latestDate = dailyNewUsers.length > 0 ? new Date(dailyNewUsers[0].date).toLocaleDateString() : "Recent";
+  const usersByPlan = stats.usersByPlan || { free: totalUsers };
 
   return (
     <div className="grid gap-6">
@@ -61,10 +70,9 @@ export default function StatisticsContent() {
             <KeyRound className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalUsers}</div>
+            <div className="text-2xl font-bold">{totalUsers.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {statistics.activeUsers} active, {statistics.suspendedUsers}{" "}
-              suspended
+              {activeUsers} active, {suspendedUsers} suspended
             </p>
           </CardContent>
         </Card>
@@ -77,16 +85,9 @@ export default function StatisticsContent() {
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.dailyNewUsers.length > 0
-                ? statistics.dailyNewUsers[0].count
-                : 0}
-            </div>
+            <div className="text-2xl font-bold">{latestCount}</div>
             <p className="text-xs text-muted-foreground">
-              on{" "}
-              {statistics.dailyNewUsers.length > 0
-                ? new Date(statistics.dailyNewUsers[0].date).toLocaleDateString()
-                : "N/A"}
+              on {latestDate}
             </p>
           </CardContent>
         </Card>
@@ -100,10 +101,10 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.totalProcesses}
+              {totalProcesses.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {statistics.avgProcessesPerUser.toFixed(1)} avg per user
+              {avgProcessesPerUser.toFixed(1)} avg per user
             </p>
           </CardContent>
         </Card>
@@ -117,10 +118,10 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.avgProcessesPerUser.toFixed(1)}
+              {avgProcessesPerUser.toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {statistics.totalProcesses} total processes
+              {totalProcesses.toLocaleString()} total processes
             </p>
           </CardContent>
         </Card>
@@ -133,27 +134,27 @@ export default function StatisticsContent() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Object.entries(statistics.usersByPlan).map(([plan, count]) => (
-                <div key={plan} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-primary" />
-                      <span className="capitalize">
-                        {plan.replace("_", " ")}
-                      </span>
+              {Object.entries(usersByPlan).map(([plan, count]) => {
+                const numericCount = typeof count === "number" ? count : 0;
+                const percentage = totalUsers > 0 ? (numericCount / totalUsers) * 100 : 0;
+                return (
+                  <div key={plan} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-primary" />
+                        <span className="capitalize">
+                          {plan.replace("_", " ")}
+                        </span>
+                      </div>
+                      <span className="font-medium">{numericCount}</span>
                     </div>
-                    <span className="font-medium">{count}</span>
+                    <Progress value={percentage} className="h-2" />
+                    <p className="text-xs text-muted-foreground">
+                      {percentage.toFixed(1)}% of total users
+                    </p>
                   </div>
-                  <Progress
-                    value={(count / statistics.totalUsers) * 100}
-                    className="h-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {((count / statistics.totalUsers) * 100).toFixed(1)}% of
-                    total users
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

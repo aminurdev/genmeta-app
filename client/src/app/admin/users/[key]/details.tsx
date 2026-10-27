@@ -48,7 +48,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { getBaseApi } from "@/services/auth-services";
 import {
   ArrowLeft,
   Copy,
@@ -73,7 +72,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Link from "next/link";
-import { getAccessToken } from "@/lib/cookies";
+import { api } from "@/services/api-client";
 
 interface UserDetails {
   id: string;
@@ -162,25 +161,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const fetchAppKeyDetails = async (key: string) => {
     try {
       setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(
-        `${baseApi}/app/appkey/user/details/${key}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch API key details");
-      }
-
-      const result = await response.json();
+      const response = await api.get(`/app/appkey/user/details/${key}`);
+      const result = response.data;
 
       if (result.success) {
         const responseData: AppKeyDetailsResponse = result.data;
@@ -275,9 +257,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsUpdating(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
       const requestBody: {
         username: string;
         plan?: string;
@@ -304,20 +283,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         }
       }
 
-      const response = await fetch(`${baseApi}/app/appkey/update`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update app user");
-      }
-
-      const result = await response.json();
+      const response = await api.put("/app/appkey/update", requestBody);
+      const result = response.data;
 
       if (result.success) {
         toast("App user updated successfully");
@@ -343,25 +310,10 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsResetting(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/reset-device`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-        }),
+      const response = await api.put("/app/appkey/reset-device", {
+        key: appKeyDetails.key,
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to reset device ID");
-      }
+      const result = response.data;
 
       if (result.success) {
         toast("Device ID reset successfully");
@@ -386,26 +338,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsChangingStatus(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/update-status`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-          mode,
-        }),
+      const response = await api.put("/app/appkey/update-status", {
+        key: appKeyDetails.key,
+        mode,
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || `Failed to ${mode} API key`);
-      }
+      const result = response.data;
 
       if (result.success) {
         toast(
@@ -435,25 +372,10 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsDeleting(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(
-        `${baseApi}/app/appkey/delete/${appKeyDetails.username}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
+      const response = await api.delete(
+        `/app/appkey/delete/${appKeyDetails.username}`
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete API key");
-      }
-
-      const result = await response.json();
+      const result = response.data;
 
       if (result.success) {
         toast("API key deleted successfully");
@@ -483,26 +405,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsAddingCredit(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/add-credits`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-          credits: Number.parseInt(creditAmount),
-        }),
+      const response = await api.put("/app/appkey/add-credits", {
+        key: appKeyDetails.key,
+        credits: Number.parseInt(creditAmount),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to add credits");
-      }
+      const result = response.data;
 
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);

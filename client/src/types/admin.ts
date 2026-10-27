@@ -5,6 +5,7 @@ export type AdminDashboardStats = {
     lastMonth: number;
     growthPercentage: number;
     monthlyRevenueList: Record<string, number>;
+    monthlyBreakdown?: Record<string, number> | Array<Record<string, unknown>>;
   };
   appKeys: {
     total: number;
@@ -35,6 +36,7 @@ export type AdminDashboardStats = {
       _id: string;
       amount: number;
       createdAt: string;
+      plan?: { name?: string; type?: string } | string;
       userId: {
         _id: string;
         name: string;
@@ -87,12 +89,18 @@ export type AdminDashboardStats = {
       };
     }>;
   };
+  recentPayments?: Record<string, unknown>[];
+  monthlyBreakdown?: unknown;
+  processes?: unknown;
+  ordersSummary?: unknown;
 };
 
 export interface AppUsers {
   _id: string;
   userId: string;
   username: string;
+  email?: string;
+  name?: string;
   key: string;
   credit: number | null;
   isActive: boolean;

@@ -18,6 +18,7 @@ import {
   Shield,
   AlertTriangle,
   DollarSign,
+  Clock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,25 +35,33 @@ const Overview = () => {
       style: "currency",
       currency: "BDT",
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
-  const formatCredit = (credit: number | null) => {
-    if (credit === null) {
-      return <Infinity className="h-6 w-6 text-primary" />;
+  const formatCredit = (credit: number | null | undefined, planType: string) => {
+    if (planType === "subscription") {
+      return (
+        <span className="flex items-center gap-1 text-primary">
+          <Infinity className="h-5 w-5" />
+          <span className="text-xs font-normal text-muted-foreground ml-1">(Subscription)</span>
+        </span>
+      );
     }
-    return credit.toLocaleString();
+    return (credit ?? 0).toLocaleString();
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string) => {
+    if (!name) return "GM";
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -68,7 +77,7 @@ const Overview = () => {
   // Error state
   if (isError || !overview?.success) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
+      <div className="flex flex-1 flex-col items-center justify-center p-4 min-h-[300px]">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-destructive mb-2">
             Failed to load overview
@@ -76,19 +85,18 @@ const Overview = () => {
           <p className="text-muted-foreground">
             {overview?.message ||
               (error as Error)?.message ||
-              "An error occurred"}
+              "An error occurred loading dashboard data"}
           </p>
         </div>
       </div>
     );
   }
 
-  const { data } = overview;
+  const data = overview.data;
 
-  // Safety check for data
   if (!data) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
+      <div className="flex flex-1 flex-col items-center justify-center p-4 min-h-[300px]">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-destructive mb-2">
             No data available
@@ -99,22 +107,65 @@ const Overview = () => {
     );
   }
 
+  // Extract normalized data supporting both modern and legacy server payload structures
+  const user = data.user || { name: "User", email: "", isVerified: false };
+  const planType = data.plan?.type || data.appKey?.planType || "free";
+  const planName = data.plan?.name || (planType === "subscription" ? "Pro Plan" : planType === "credit" ? "Credit Pack" : "Free Plan");
+  const totalProcess = data.totalProcess ?? data.appKey?.totalProcess ?? 0;
+  const thisMonthUsage = data.currentMonthProcess ?? data.appKey?.thisMonthUsage ?? 0;
+  const todayUsage = data.todayProcess ?? data.appKey?.todayUsage ?? 0;
+  const credit = data.credit ?? data.appKey?.creditRemaining ?? 0;
+  const daysLeft = data.remainingDays ?? data.appKey?.daysLeft ?? null;
+  const totalSpent = data.totalSpent ?? data.payments?.totalSpent ?? 0;
+  const isSuspended = data.appKey?.isSuspended ?? false;
+  const isManuallyDisabled = data.appKey?.isManuallyDisabled ?? false;
+  const expiresAt = data.appKey?.expiresAt ?? null;
+
+  const rawLast6Month = data.last6MonthProcess ?? data.appKey?.last6MonthProcess ?? [];
+  const rawLast7Days = data.last7DaysProcess ?? data.appKey?.last7DaysProcess ?? [];
+
+  const last6MonthProcess = rawLast6Month.map((item) => ({
+    month: item.month,
+    count: item.count || 0,
+  }));
+
+  const last7DaysProcess = rawLast7Days.map((item) => ({
+    day: item.day || item.date || "",
+    count: item.count || 0,
+  }));
+
+  const payments =
+    data.recentHistory?.map((p) => ({
+      id: p._id,
+      trxID: p.trxID,
+      plan: {
+        id: p.plan.id || "",
+        type: p.plan.type || "plan",
+      },
+      amount: p.amount,
+      createdAt: p.createdAt,
+    })) ||
+    data.payments?.last5Payments ||
+    [];
+
+  const loginProviders = Array.isArray(user.loginProvider) && user.loginProvider.length > 0
+    ? user.loginProvider
+    : ["email"];
+
   const getStatusColor = () => {
-    if (data.appKey.isSuspended || data.appKey.isManuallyDisabled)
-      return "destructive";
-    if (data.appKey.daysLeft !== null && data.appKey.daysLeft <= 7)
-      return "secondary";
+    if (isSuspended || isManuallyDisabled) return "destructive";
+    if (daysLeft !== null && daysLeft <= 7) return "secondary";
     return "default";
   };
 
   const getStatusText = () => {
-    if (data.appKey.isSuspended) return "Suspended";
-    if (data.appKey.isManuallyDisabled) return "Disabled";
+    if (isSuspended) return "Suspended";
+    if (isManuallyDisabled) return "Disabled";
     return "Active";
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pt-0 w-full">
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6 p-3 sm:p-4 lg:p-6 pt-0 w-full max-w-7xl mx-auto">
       {/* Header with User Info */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
         <div className="flex flex-col gap-1 sm:gap-2">
@@ -122,31 +173,31 @@ const Overview = () => {
             Overview
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Monitor your usage, credits, and payment history
+            Monitor your API usage, credits, subscription, and payments
           </p>
         </div>
         <Card className="w-full sm:w-fit border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardContent className="flex items-center gap-3 p-3 sm:p-4">
             <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-primary/10">
               <AvatarImage
-                src={`https://avatar.vercel.sh/${data.user.email}`}
-                alt={data.user.name}
+                src={user.avatar || `https://avatar.vercel.sh/${user.email || "user"}`}
+                alt={user.name || "User"}
               />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {getInitials(data.user.name)}
+                {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm sm:text-base truncate">
-                  {data.user.name}
+                  {user.name || "GenMeta User"}
                 </span>
-                {data.user.isVerified && (
+                {user.isVerified && (
                   <Shield className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                 )}
               </div>
               <span className="text-xs sm:text-sm text-muted-foreground truncate">
-                {data.user.email}
+                {user.email}
               </span>
             </div>
           </CardContent>
@@ -159,7 +210,7 @@ const Overview = () => {
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Total Generate
+              Total Generates
             </CardTitle>
             <div className="rounded-full bg-blue-500/10 p-1.5 sm:p-2">
               <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
@@ -167,10 +218,10 @@ const Overview = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {data.appKey.totalProcess.toLocaleString()}
+              {totalProcess.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              All time generates
+              All-time generations
             </p>
           </CardContent>
         </Card>
@@ -187,10 +238,10 @@ const Overview = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {data.appKey.thisMonthUsage.toLocaleString()}
+              {thisMonthUsage.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Monthly generates
+              Monthly volume
             </p>
           </CardContent>
         </Card>
@@ -207,19 +258,20 @@ const Overview = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {data.appKey.todayUsage.toLocaleString()}
+              {todayUsage.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Generate today</p>
+            <p className="text-xs text-muted-foreground mt-1">Processed today</p>
           </CardContent>
         </Card>
 
+        {/* App Credits */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
               App Credits
             </CardTitle>
             <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
-              {data.appKey.creditRemaining === null ? (
+              {planType === "subscription" ? (
                 <Infinity className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
               ) : (
                 <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
@@ -228,41 +280,36 @@ const Overview = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {formatCredit(data.appKey.creditRemaining)}
+              {formatCredit(credit, planType)}
             </div>
             <div className="flex items-center pt-1">
-              {data.appKey.creditRemaining === null ? (
-                <p className="text-xs text-muted-foreground">
-                  Subscription Plan (Unlimited)
-                </p>
+              {planType === "subscription" ? (
+                <p className="text-xs text-muted-foreground">Unlimited active plan</p>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  Credits remaining
-                </p>
+                <p className="text-xs text-muted-foreground">Credits available</p>
               )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Days Remaining */}
         <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-              Day Remaining
+              Days Remaining
             </CardTitle>
-            <div className="rounded-full bg-amber-500/10 p-1.5 sm:p-2">
-              {data.appKey.daysLeft === null ? (
-                <Infinity className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
-              ) : (
-                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
-              )}
+            <div className="rounded-full bg-indigo-500/10 p-1.5 sm:p-2">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600" />
             </div>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {data.appKey.daysLeft}
+              {daysLeft !== null ? daysLeft : "Lifetime"}
             </div>
             <div className="flex items-center pt-1">
-              <p className="text-xs text-muted-foreground">Days remaining</p>
+              <p className="text-xs text-muted-foreground">
+                {daysLeft !== null ? "Until plan expires" : "No expiration"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -279,16 +326,16 @@ const Overview = () => {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              {formatCurrency(data.payments.totalSpent)}
+              {formatCurrency(totalSpent)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Lifetime payments
+              Lifetime purchases
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Charts & Recent Activity */}
       <Tabs defaultValue="monthly" className="w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
           <div>
@@ -296,7 +343,7 @@ const Overview = () => {
               Analytics Overview
             </h2>
             <p className="text-sm text-muted-foreground">
-              Track your processing activity and payments
+              Track your generation activity and recent transactions
             </p>
           </div>
           <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-muted/50">
@@ -311,73 +358,57 @@ const Overview = () => {
 
         <TabsContent value="monthly" className="space-y-4 sm:space-y-6">
           <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-2">
-            {/* Monthly Process Chart */}
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg font-semibold">
                   Monthly Processing Activity
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  Last 6 months processing volume
+                  Volume over the last 6 months
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[250px] sm:h-[300px] lg:h-[350px]">
-                <ProcessChart
-                  data={data.appKey.last6MonthProcess}
-                  type="monthly"
-                />
+                <ProcessChart data={last6MonthProcess} type="monthly" />
               </CardContent>
             </Card>
 
-            {/* Recent Payments */}
             <div className="xl:min-h-0">
-              <PaymentsTable
-                payments={data.payments.last5Payments}
-                totalSpent={data.payments.totalSpent}
-              />
+              <PaymentsTable payments={payments} totalSpent={totalSpent} />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="daily" className="space-y-4 sm:space-y-6">
           <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-2">
-            {/* Daily Process Chart */}
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg font-semibold">
                   Daily Processing Activity
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  Last 7 days processing volume
+                  Volume over the last 7 days
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[250px] sm:h-[300px] lg:h-[350px]">
-                <ProcessChart
-                  data={data.appKey.last7DaysProcess}
-                  type="daily"
-                />
+                <ProcessChart data={last7DaysProcess} type="daily" />
               </CardContent>
             </Card>
 
-            {/* Recent Payments */}
             <div className="xl:min-h-0">
-              <PaymentsTable
-                payments={data.payments.last5Payments}
-                totalSpent={data.payments.totalSpent}
-              />
+              <PaymentsTable payments={payments} totalSpent={totalSpent} />
             </div>
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Plan Details */}
+      {/* Account & Plan Details */}
       <div className="space-y-4 sm:space-y-6">
         <div>
           <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-1">
             Account Information
           </h2>
           <p className="text-sm text-muted-foreground">
-            Manage your subscription and account details
+            Manage your subscription tier and account status
           </p>
         </div>
 
@@ -392,16 +423,16 @@ const Overview = () => {
                 </Badge>
               </CardTitle>
               <CardDescription className="text-sm">
-                Your current subscription information
+                Your current active subscription package
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
-                  Plan Type
+                  Plan Tier
                 </span>
                 <Badge variant="secondary" className="capitalize w-fit">
-                  {data.appKey.planType}
+                  {planName}
                 </Badge>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -409,9 +440,7 @@ const Overview = () => {
                   Expires At
                 </span>
                 <span className="text-sm font-medium">
-                  {data.appKey.expiresAt
-                    ? formatDate(data.appKey.expiresAt)
-                    : "N/A"}
+                  {expiresAt ? formatDate(expiresAt) : "No Expiration Date"}
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
@@ -419,14 +448,11 @@ const Overview = () => {
                   Days Remaining
                 </span>
                 <div className="flex items-center gap-2">
-                  {data.appKey.daysLeft !== null &&
-                    data.appKey.daysLeft <= 7 &&
-                    (data.appKey.planType === "subscription" ||
-                      data.appKey.planType === "credit") && (
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
-                    )}
+                  {daysLeft !== null && daysLeft <= 7 && (
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  )}
                   <span className="text-sm font-medium">
-                    {data.appKey.daysLeft ?? 365} days
+                    {daysLeft !== null ? `${daysLeft} days` : "Unlimited"}
                   </span>
                 </div>
               </div>
@@ -440,7 +466,7 @@ const Overview = () => {
                 Account Summary
               </CardTitle>
               <CardDescription className="text-sm">
-                Quick overview of your account
+                Security and verification details
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -449,7 +475,7 @@ const Overview = () => {
                   Total Spent
                 </span>
                 <span className="text-sm font-bold text-foreground">
-                  {formatCurrency(data.payments.totalSpent)}
+                  {formatCurrency(totalSpent)}
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
@@ -457,7 +483,7 @@ const Overview = () => {
                   Login Methods
                 </span>
                 <div className="flex flex-wrap gap-1">
-                  {data.user.loginProvider.map((provider: string) => (
+                  {loginProviders.map((provider: string) => (
                     <Badge
                       key={provider}
                       variant="outline"
@@ -473,7 +499,7 @@ const Overview = () => {
                   Account Verified
                 </span>
                 <div className="flex items-center gap-1">
-                  {data.user.isVerified ? (
+                  {user.isVerified ? (
                     <>
                       <Shield className="h-4 w-4 text-emerald-500" />
                       <span className="text-sm text-emerald-600 font-medium">
@@ -489,12 +515,12 @@ const Overview = () => {
               </div>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
-                  Last Payment
+                  Latest Transaction
                 </span>
                 <span className="text-sm font-medium">
-                  {data.payments.last5Payments.length > 0
-                    ? formatCurrency(data.payments.last5Payments[0].amount)
-                    : "No payments yet"}
+                  {payments.length > 0
+                    ? formatCurrency(payments[0].amount)
+                    : "No transactions yet"}
                 </span>
               </div>
             </CardContent>
