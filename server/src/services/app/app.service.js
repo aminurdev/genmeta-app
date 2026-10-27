@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
 import { executePayment } from "../bkash/bkash.service.js";
@@ -5,12 +6,11 @@ import { checkTransactionStatus } from "../paystation/paystation.service.js";
 import { User } from "../../models/user.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
 import { AppKey } from "../../models/appKey.model.js";
-import { generateAppKey } from "../../controllers/appKey.controller.js";
-import { PromoCode } from "../../models/promocode.model.js";
 import { AppPricing } from "../../models/appPricing.model.js";
-import { Referral } from "../../models/referral.model.js";
+import planService from "../plan.service.js";
+import { PAYMENT_GATEWAYS } from "../../constants/index.js";
 
-// Logger Utility
+// Structured Logger
 export const logger = {
   info: (message, data = {}) => console.log(`[INFO]: ${message}`, data),
   warn: (message, data = {}) => console.warn(`[WARN]: ${message}`, data),
@@ -22,35 +22,37 @@ export const fetchAppUserData = async (username) => {
     if (!username) {
       throw new ApiError(400, "Username is required");
     }
-
     const appKey = await AppKey.findOne({ username }).select(
       "username key expiresAt isActive createdAt status"
     );
-
     return appKey;
   } catch (error) {
     throw new ApiError(
-      error.response?.status || 500,
-      error.response?.data?.message || "Failed to fetch app user data"
+      error.statusCode || 500,
+      error.message || "Failed to fetch app user data"
     );
   }
 };
 
+export const redirectToPricing = (res, message, reason = "") => {
+  let redirectURL = `${config.cors_origin}/pricing?message=${encodeURIComponent(message)}`;
+  if (reason) {
+    redirectURL += `&reason=${encodeURIComponent(reason)}`;
+  }
+  return res.redirect(redirectURL);
+};
+
+/**
+ * Process Successful bKash Payment
+ */
 export const processSuccessfulPayment = async (paymentID, res) => {
   let paymentDetails;
 
   try {
     paymentDetails = await executePayment(paymentID);
   } catch (error) {
-    logger.error("Payment execution failed", {
-      paymentID,
-      error: error.message,
-    });
-    return redirectToPricing(
-      res,
-      "Payment execution failed",
-      error.message || "execution_error"
-    );
+    logger.error("Payment execution failed", { paymentID, error: error.message });
+    return redirectToPricing(res, "Payment execution failed", error.message || "execution_error");
   }
 
   if (!paymentDetails) {
@@ -65,317 +67,89 @@ export const processSuccessfulPayment = async (paymentID, res) => {
     payerReference,
     merchantInvoiceNumber,
   } = paymentDetails;
-  const plan = merchantInvoiceNumber.split("-")[0];
+  const planName = merchantInvoiceNumber?.split("-")[0] || "plan";
 
   try {
-    const userId = payerReference.split("-")[0];
-    const planId = payerReference.split("-")[1];
-    const promoCode = payerReference.split("-")[2];
+    const parts = (payerReference || "").split("-");
+    const userId = parts[0];
+    const planId = parts[1];
+    const promoCodeId = parts[2] || null;
+
+    if (!userId || !planId) {
+      logger.error("Invalid payerReference structure in bKash callback", { payerReference });
+      return redirectToPricing(res, "Payment verification error", "invalid_reference");
+    }
 
     const planDetails = await AppPricing.findById(planId);
 
-    if (promoCode) {
-      await PromoCode.findByIdAndUpdate(promoCode, {
-        $addToSet: { usedCount: userId },
-      });
-    }
-
-    const payment = await AppPayment.create({
-      userId,
-      paymentID,
-      plan: {
-        id: planId,
-        name: planDetails?.name || plan,
-        type: planDetails?.type,
-      },
-      amount,
-      trxID,
-      paymentDetails,
-      status: transactionStatus,
-      createdAt: new Date(),
+    // Prevent duplicate processing
+    let payment = await AppPayment.findOne({
+      $or: [{ paymentID }, { trxID }],
     });
 
-    if (!payment) {
-      logger.error("Failed to create payment record", {
-        paymentID,
-        payerReference,
-      });
-      return redirectToPricing(res, "Payment failed", "record_creation_failed");
+    if (payment) {
+      logger.info("Payment already processed:", { paymentID, trxID });
+      return res.redirect(
+        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${planName}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
+      );
     }
 
-    if (transactionStatus === "Completed") {
-      await payment.save();
+    // Create payment record
+    payment = await AppPayment.create({
+      userId,
+      paymentID,
+      trxID,
+      amount: parseFloat(amount),
+      gateway: PAYMENT_GATEWAYS.BKASH,
+      plan: {
+        id: planId,
+        name: planDetails?.name || planName,
+        type: planDetails?.type || "unknown",
+      },
+      paymentDetails,
+      status: transactionStatus,
+    });
 
-      const updateSuccess = await updatePlan(userId, planId);
+    if (transactionStatus === "Completed" || transactionStatus === "Successful") {
+      // 1. Update user plan
+      await planService.updateUserPlan(userId, planId);
 
-      if (!updateSuccess) {
-        logger.warn("Plan update failed after retries", {
-          paymentID,
-          payerReference,
-        });
-      }
+      // 2. Distribute referral commission if applicable
+      await planService.processReferralReward(userId, { paymentId: payment._id });
 
-      try {
-        const payingUser = await User.findById(userId).populate("referred");
-
-        if (!payingUser?.referred) {
-          logger.info("No referral found for this payment", { userId });
-        } else {
-          const referralDoc = await Referral.findById(payingUser.referred);
-
-          if (referralDoc) {
-            const userHistory = referralDoc.earnedHistory.filter(
-              (e) => e.user.toString() === payingUser._id.toString()
-            );
-
-            if (userHistory.length >= 1) {
-              logger.info(
-                "Referral earnings skipped (already rewarded fully)",
-                {
-                  referrer: referralDoc.referrer.toString(),
-                  referredUser: payingUser._id.toString(),
-                }
-              );
-              return;
-            }
-
-            const rewardAmount = 50;
-
-            if (rewardAmount > 0) {
-              referralDoc.availableBalance += rewardAmount;
-              referralDoc.earnedHistory.push({
-                user: payingUser._id,
-                amount: rewardAmount,
-                createdAt: new Date(),
-              });
-
-              await referralDoc.save();
-
-              logger.info("Referral earning added", {
-                referrer: referralDoc.referrer.toString(),
-                referredUser: payingUser._id.toString(),
-                amount: rewardAmount,
-              });
-            }
-          }
-        }
-      } catch (referralError) {
-        logger.error("Failed to update referral earnings", {
-          error: referralError.message,
-          userId,
-        });
+      // 3. Record promo code usage
+      if (promoCodeId) {
+        await planService.recordPromoCodeUsage(userId, promoCodeId, { paymentId: payment._id });
       }
 
       return res.redirect(
-        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${plan}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
+        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${planName}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
       );
     } else {
-      logger.warn("Payment incomplete", { paymentID, transactionStatus });
+      logger.warn("Payment status not completed", { paymentID, transactionStatus });
       return redirectToPricing(res, "Payment incomplete", "pending_completion");
     }
   } catch (error) {
-    logger.error("Error processing successful payment", {
-      paymentID,
-      error: error.message,
-    });
-    return redirectToPricing(res, "Payment failed", "processing_error");
+    logger.error("Error processing successful bKash payment", { paymentID, error: error.message });
+    return redirectToPricing(res, "Payment processing error", "processing_error");
   }
-};
-
-const updatePlan = async (userId, planId) => {
-  try {
-    const user = await User.findById(userId);
-    if (!user) {
-      logger.error("User not found for plan update", { userId });
-      return false;
-    }
-
-    const selectedPlan = await AppPricing.findById(planId);
-    if (!selectedPlan || !selectedPlan.isActive) {
-      logger.error("Selected plan not found or inactive", { planId });
-      return false;
-    }
-
-    const planType = selectedPlan.type; // subscription or credit
-    const now = new Date();
-    let expirationDate;
-
-    if (selectedPlan.planDuration) {
-      expirationDate = new Date(now);
-      expirationDate.setDate(now.getDate() + selectedPlan.planDuration);
-      expirationDate.setHours(23, 59, 59, 999);
-    }
-
-    let appKey = await AppKey.findOne({ userId });
-
-    if (!appKey) {
-      // Create new API key if one doesn't exist
-      const newAppKey = generateAppKey();
-      const today = new Date().toISOString().split("T")[0];
-
-      appKey = await AppKey.create({
-        userId: user._id,
-        username: user.email || user.name,
-        key: newAppKey,
-        plan: {
-          type: planType,
-          id: selectedPlan._id.toString(),
-        },
-        expiresAt: expirationDate,
-        credit:
-          planType === "credit"
-            ? selectedPlan.credit
-            : planType === "subscription"
-              ? Infinity
-              : 5, // Free plan gets 5 credits daily
-        isActive: true,
-        status: "active",
-        lastCreditRefresh: today,
-      });
-
-      logger.info("New API key created with plan", {
-        userId: user._id.toString(),
-        email: user.email,
-        planType,
-        planName: selectedPlan.name,
-      });
-    } else {
-      // Update existing API key
-      const previousPlanType = appKey.plan.type; // Track previous plan type
-
-      if (planType === "subscription") {
-        // SUBSCRIPTION PLAN LOGIC
-        if (previousPlanType === "subscription") {
-          // Subscription → Subscription: Extend expiry date
-          const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
-
-          if (isExpired) {
-            // If expired, set new expiration from now
-            appKey.expiresAt = expirationDate;
-          } else if (appKey.expiresAt && selectedPlan.planDuration) {
-            // If still valid, extend the current expiration date
-            const newExpiresAt = new Date(appKey.expiresAt);
-            newExpiresAt.setDate(
-              newExpiresAt.getDate() + selectedPlan.planDuration
-            );
-            newExpiresAt.setHours(23, 59, 59, 999);
-            appKey.expiresAt = newExpiresAt;
-          }
-        } else {
-          // Free/Credit → Subscription: Start fresh expiry
-          appKey.expiresAt = expirationDate;
-        }
-
-        appKey.credit = Infinity;
-      } else if (planType === "credit") {
-        // CREDIT PLAN LOGIC
-
-        if (previousPlanType === "free") {
-          // Free → Credit: Replace credits (don't add), set fresh expiry
-          appKey.credit = selectedPlan.credit || 0;
-          appKey.expiresAt = expirationDate;
-        } else if (previousPlanType === "subscription") {
-          // Subscription → Credit: Start fresh expiry, replace credits
-          appKey.credit = selectedPlan.credit || 0;
-          appKey.expiresAt = expirationDate;
-        } else if (previousPlanType === "credit") {
-          // Credit → Credit: Add credits and extend expiry
-          const currentCredit = isFinite(appKey.credit) ? appKey.credit : 0;
-          appKey.credit = currentCredit + (selectedPlan.credit || 0);
-
-          // Extend expiration date
-          if (expirationDate) {
-            const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
-
-            if (isExpired) {
-              // If expired, set new expiration from now
-              appKey.expiresAt = expirationDate;
-            } else if (appKey.expiresAt && selectedPlan.planDuration) {
-              // If still valid, extend the current expiration date
-              const newExpiresAt = new Date(appKey.expiresAt);
-              newExpiresAt.setDate(
-                newExpiresAt.getDate() + selectedPlan.planDuration
-              );
-              newExpiresAt.setHours(23, 59, 59, 999);
-              appKey.expiresAt = newExpiresAt;
-            }
-          }
-        }
-      }
-
-      // Update plan details
-      appKey.plan = {
-        type: planType,
-        id: selectedPlan._id.toString(),
-      };
-
-      // Ensure API key is active
-      appKey.isActive = true;
-      appKey.status = "active";
-
-      // If previously suspended, clear suspension
-      if (appKey.suspendedAt) {
-        appKey.suspendedAt = null;
-      }
-
-      await appKey.save();
-
-      logger.info("Existing API key updated with new plan", {
-        userId: user._id.toString(),
-        email: user.email,
-        planType,
-        planName: selectedPlan.name,
-        credit: appKey.credit,
-        expiresAt: appKey.expiresAt,
-      });
-    }
-
-    return true;
-  } catch (error) {
-    logger.error("Plan update failed", {
-      userId,
-      planId,
-      error: error.message,
-      stack: error.stack,
-    });
-    return false;
-  }
-};
-
-export const redirectToPricing = (res, message, reason = "") => {
-  let redirectURL = `${config.cors_origin}/pricing?message=${encodeURIComponent(message)}`;
-  if (reason) {
-    redirectURL += `&reason=${encodeURIComponent(reason)}`;
-  }
-  return res.redirect(redirectURL);
 };
 
 /**
  * Process Successful PayStation Payment
- * Verifies transaction status and updates user plan
  */
 export const processSuccessfulPaystationPayment = async (invoiceNumber, res) => {
   let transactionDetails;
 
   try {
-    // Verify transaction status with PayStation
     transactionDetails = await checkTransactionStatus(invoiceNumber);
   } catch (error) {
-    logger.error("PayStation transaction verification failed", {
-      invoiceNumber,
-      error: error.message,
-    });
-    return redirectToPricing(
-      res,
-      "Payment verification failed",
-      error.message || "verification_error"
-    );
+    logger.error("PayStation verification failed", { invoiceNumber, error: error.message });
+    return redirectToPricing(res, "Payment verification failed", error.message || "verification_error");
   }
 
   if (!transactionDetails || !transactionDetails.data) {
-    logger.error("Failed to retrieve PayStation transaction details", {
-      invoiceNumber,
-    });
+    logger.error("Missing PayStation transaction data", { invoiceNumber });
     return redirectToPricing(res, "Payment failed", "verification_failed");
   }
 
@@ -385,185 +159,71 @@ export const processSuccessfulPaystationPayment = async (invoiceNumber, res) => 
     paymentAmount,
     reference,
     checkoutItems,
-    paymentMethod,
-    orderDateTime,
   } = transactionDetails.data;
 
-  // Check if transaction is successful
-  if (trxStatus.toLowerCase() !== "success" && trxStatus.toLowerCase() !== "successful") {
-    logger.warn("PayStation transaction not successful", {
-      invoiceNumber,
-      trxStatus,
-    });
-    return redirectToPricing(
-      res,
-      `Payment ${trxStatus.toLowerCase()}`,
-      "payment_not_completed"
-    );
+  const isSuccess =
+    trxStatus?.toLowerCase() === "success" ||
+    trxStatus?.toLowerCase() === "successful";
+
+  if (!isSuccess) {
+    logger.warn("PayStation transaction unsuccessful", { invoiceNumber, trxStatus });
+    return redirectToPricing(res, `Payment ${trxStatus || "failed"}`, "payment_not_completed");
   }
 
   try {
-    // Parse reference to get user, plan, and promo code IDs
-    const referenceParts = reference.split("-");
-    const userId = referenceParts[0];
-    const planId = referenceParts[1];
-    const promoCodeId = referenceParts[2] || null;
+    const parts = (reference || "").split("-");
+    const userId = parts[0];
+    const planId = parts[1];
+    const promoCodeId = parts[2] || null;
 
-    // Parse checkout items
-    let parsedCheckoutItems = {};
-    try {
-      parsedCheckoutItems = typeof checkoutItems === "string" 
-        ? JSON.parse(checkoutItems) 
-        : checkoutItems;
-    } catch (parseError) {
-      logger.warn("Failed to parse checkout items", { checkoutItems });
-    }
-
-    // Fetch plan details
     const planDetails = await AppPricing.findById(planId);
     if (!planDetails) {
-      logger.error("Plan not found for PayStation payment", { planId, invoiceNumber });
+      logger.error("Plan not found for PayStation invoice", { planId, invoiceNumber });
       return redirectToPricing(res, "Payment failed", "plan_not_found");
     }
 
-    // Check if payment already exists
+    // Check if duplicate
     const existingPayment = await AppPayment.findOne({
-      $or: [
-        { paymentID: invoiceNumber },
-        { trxID: trxId }
-      ]
+      $or: [{ paymentID: invoiceNumber }, { trxID: trxId }],
     });
 
     if (existingPayment) {
-      logger.warn("Duplicate PayStation payment detected", {
-        invoiceNumber,
-        trxId,
-        existingPaymentId: existingPayment._id,
-      });
-      
-      // Redirect to success page with existing payment details
       return res.redirect(
         `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}`
       );
     }
 
-    // Update promo code usage if applicable
-    if (promoCodeId) {
-      await PromoCode.findByIdAndUpdate(promoCodeId, {
-        $addToSet: { usedCount: userId },
-      });
-      logger.info("Promo code usage updated", { promoCodeId, userId });
-    }
-
-    // Create payment record
     const payment = await AppPayment.create({
       userId,
       paymentID: invoiceNumber,
+      trxID: trxId,
+      amount: parseFloat(paymentAmount),
+      gateway: PAYMENT_GATEWAYS.PAYSTATION,
       plan: {
         id: planId,
         name: planDetails.name,
         type: planDetails.type,
       },
-      amount: parseFloat(paymentAmount),
-      trxID: trxId || invoiceNumber,
-      paymentDetails: {
-        gateway: "paystation",
-        trxStatus,
-        paymentMethod: paymentMethod || "N/A",
-        orderDateTime: orderDateTime || new Date().toISOString(),
-        reference,
-        checkoutItems: parsedCheckoutItems,
-      },
-      createdAt: new Date(),
+      paymentDetails: transactionDetails.data,
+      status: "Completed",
     });
 
-    if (!payment) {
-      logger.error("Failed to create PayStation payment record", {
-        invoiceNumber,
-        userId,
-      });
-      return redirectToPricing(res, "Payment failed", "record_creation_failed");
+    // 1. Update plan
+    await planService.updateUserPlan(userId, planId);
+
+    // 2. Referral rewards
+    await planService.processReferralReward(userId, { paymentId: payment._id });
+
+    // 3. Promo code redemption
+    if (promoCodeId) {
+      await planService.recordPromoCodeUsage(userId, promoCodeId, { paymentId: payment._id });
     }
 
-    logger.info("PayStation payment record created successfully", {
-      paymentId: payment._id,
-      invoiceNumber,
-      userId,
-      amount: paymentAmount,
-    });
-
-    // Update user plan
-    const updateSuccess = await updatePlan(userId, planId);
-
-    if (!updateSuccess) {
-      logger.warn("Plan update failed for PayStation payment", {
-        invoiceNumber,
-        userId,
-        planId,
-      });
-    }
-
-    // Process referral rewards
-    try {
-      const payingUser = await User.findById(userId).populate("referred");
-
-      if (!payingUser?.referred) {
-        logger.info("No referral found for this PayStation payment", { userId });
-      } else {
-        const referralDoc = await Referral.findById(payingUser.referred);
-
-        if (referralDoc) {
-          const userHistory = referralDoc.earnedHistory.filter(
-            (e) => e.user.toString() === payingUser._id.toString()
-          );
-
-          if (userHistory.length >= 1) {
-            logger.info(
-              "Referral earnings skipped (already rewarded fully)",
-              {
-                referrer: referralDoc.referrer.toString(),
-                referredUser: payingUser._id.toString(),
-              }
-            );
-          } else {
-            const rewardAmount = 50;
-
-            if (rewardAmount > 0) {
-              referralDoc.availableBalance += rewardAmount;
-              referralDoc.earnedHistory.push({
-                user: payingUser._id,
-                amount: rewardAmount,
-                createdAt: new Date(),
-              });
-
-              await referralDoc.save();
-
-              logger.info("Referral earning added for PayStation payment", {
-                referrer: referralDoc.referrer.toString(),
-                referredUser: payingUser._id.toString(),
-                amount: rewardAmount,
-              });
-            }
-          }
-        }
-      }
-    } catch (referralError) {
-      logger.error("Failed to update referral earnings for PayStation payment", {
-        error: referralError.message,
-        userId,
-      });
-    }
-
-    // Redirect to success page
     return res.redirect(
-      `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}&gateway=paystation`
+      `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}`
     );
   } catch (error) {
-    logger.error("Error processing successful PayStation payment", {
-      invoiceNumber,
-      error: error.message,
-      stack: error.stack,
-    });
-    return redirectToPricing(res, "Payment failed", "processing_error");
+    logger.error("Error finalizing PayStation payment", { invoiceNumber, error: error.message });
+    return redirectToPricing(res, "Payment processing error", "processing_error");
   }
 };

@@ -1,137 +1,398 @@
 import mongoose from "mongoose";
+import { PLAN_TYPES } from "../constants/index.js";
 
-const appKeySchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  username: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  key: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  expiresAt: {
-    type: Date,
-  },
-  credit: {
-    type: Number,
-    default: 0,
-  },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-  status: {
-    type: String,
-    enum: ["active", "suspended"],
-    default: "active",
-  },
-  suspendedAt: {
-    type: Date,
-    default: null,
-  },
-  allowedDevices: {
-    type: [String],
-    default: [],
-  },
-  plan: {
-    type: {
+const appKeySchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "User ID is required"],
+      index: true,
+    },
+    username: {
       type: String,
-      enum: ["free", "credit", "subscription"],
-      default: "free",
+      required: [true, "Username (email) is required"],
+      trim: true,
+      index: true,
     },
-    id: {
+    key: {
       type: String,
+      required: [true, "API key is required"],
+      unique: true,
+      index: true,
+    },
+    expiresAt: {
+      type: Date,
+      index: true,
+    },
+    credit: {
+      type: Number,
+      default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+      index: true,
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    allowedDevices: {
+      type: [String],
+      default: [],
+    },
+    plan: {
+      type: {
+        type: String,
+        enum: Object.values(PLAN_TYPES),
+        default: PLAN_TYPES.FREE,
+        index: true,
+      },
+      id: {
+        type: String,
+        default: null,
+      },
+    },
+    totalProcess: {
+      type: Number,
+      default: 0,
+    },
+    monthlyProcess: {
+      type: Map,
+      of: Number,
+      default: () => new Map(),
+    },
+    dailyProcess: {
+      type: Map,
+      of: Number,
+      default: () => new Map(),
+    },
+    lastCreditRefresh: {
+      type: String,
+      index: true,
+    },
+    lastPlanChange: {
+      type: Date,
+      default: Date.now,
+    },
+    planHistory: [
+      {
+        planType: String,
+        changedAt: { type: Date, default: Date.now },
+        reason: String,
+      },
+    ],
+    failedProcess: {
+      type: Map,
+      of: {
+        count: { type: Number, default: 0 },
+        errorMessages: { type: [String], default: [] },
+      },
+      default: () => new Map(),
+    },
+    totalFailedProcess: {
+      type: Number,
+      default: 0,
     },
   },
-  totalProcess: {
-    type: Number,
-    default: 0,
-  },
-  monthlyProcess: {
-    type: Map,
-    of: Number,
-    default: {},
-  },
-  dailyProcess: {
-    type: Map,
-    of: Number,
-    default: {},
-  },
-  lastCreditRefresh: {
-    type: String,
-  },
+  {
+    timestamps: true,
+  }
+);
 
-  lastPlanChange: {
-    type: Date,
-    default: Date.now,
-  },
-  planHistory: [
-    {
-      planType: String,
-      changedAt: Date,
-      reason: String,
-    },
-  ],
-  // ✅ NEW failure tracking fields
-  failedProcess: {
-    type: Map,
-    of: {
-      count: { type: Number, default: 0 },
-      errorMessages: { type: [String], default: [] },
-    },
-    default: {},
-  },
-  totalFailedProcess: {
-    type: Number,
-    default: 0,
-  },
-});
-
-// Enhanced refresh daily credits for free plan
+// Method: Refresh daily credits for free plan
 appKeySchema.methods.refreshDailyCredits = function () {
   const today = new Date().toISOString().split("T")[0];
-  const currentMonth = `${today.substring(0, 7)}`;
+  const currentMonth = today.substring(0, 7);
 
   if (
-    this.plan.type === "free" &&
+    this.plan?.type === PLAN_TYPES.FREE &&
     this.lastCreditRefresh !== today &&
     this.credit < 5
   ) {
     this.credit = 5;
     this.lastCreditRefresh = today;
 
-    // Initialize daily process for today if not exists
+    if (!this.dailyProcess) this.dailyProcess = new Map();
+    if (!this.monthlyProcess) this.monthlyProcess = new Map();
+
     if (!this.dailyProcess.has(today)) {
       this.dailyProcess.set(today, 0);
     }
-
-    // Initialize monthly process if not exists
     if (!this.monthlyProcess.has(currentMonth)) {
       this.monthlyProcess.set(currentMonth, 0);
     }
   }
 };
 
-// Static method for automatic daily maintenance at 12 AM
+// Method: Downgrade plan
+appKeySchema.methods.downgradeToPlan = function (newPlan = PLAN_TYPES.FREE, reason = "manual") {
+  const oldPlan = this.plan?.type || PLAN_TYPES.FREE;
+
+  if (!this.planHistory) this.planHistory = [];
+  this.planHistory.push({
+    planType: oldPlan,
+    changedAt: new Date(),
+    reason,
+  });
+
+  this.plan = { type: newPlan, id: null };
+  this.lastPlanChange = new Date();
+
+  if (newPlan === PLAN_TYPES.FREE) {
+    this.expiresAt = undefined;
+    this.credit = 5;
+    const today = new Date().toISOString().split("T")[0];
+    const currentMonth = today.substring(0, 7);
+    this.lastCreditRefresh = today;
+
+    if (!this.dailyProcess) this.dailyProcess = new Map();
+    if (!this.monthlyProcess) this.monthlyProcess = new Map();
+
+    if (!this.dailyProcess.has(today)) {
+      this.dailyProcess.set(today, 0);
+    }
+    if (!this.monthlyProcess.has(currentMonth)) {
+      this.monthlyProcess.set(currentMonth, 0);
+    }
+  }
+};
+
+// Method: Check validity and perform auto-downgrades if expired
+appKeySchema.methods.isValid = function () {
+  if (!this.isActive || this.status !== "active") return false;
+
+  const now = new Date();
+
+  // Auto-downgrade expired subscriptions
+  if (
+    this.plan?.type === PLAN_TYPES.SUBSCRIPTION &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "subscription_expired");
+  }
+
+  // Auto-downgrade expired credit plans
+  if (
+    this.plan?.type === PLAN_TYPES.CREDIT &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "credit_plan_expired");
+  }
+
+  // Auto-downgrade zero credit plans
+  if (this.plan?.type === PLAN_TYPES.CREDIT && this.credit <= 0) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit");
+  }
+
+  this.refreshDailyCredits();
+  return true;
+};
+
+// Method: Verify if requested count can be processed
+appKeySchema.methods.canProcess = function (count = 1) {
+  if (!count || count < 1) return false;
+
+  const now = new Date();
+
+  if (
+    this.plan?.type === PLAN_TYPES.SUBSCRIPTION &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "subscription_expired");
+  }
+
+  if (
+    this.plan?.type === PLAN_TYPES.CREDIT &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "credit_plan_expired");
+  }
+
+  if (this.plan?.type === PLAN_TYPES.CREDIT && this.credit <= 0) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit");
+  }
+
+  this.refreshDailyCredits();
+
+  if (this.plan?.type === PLAN_TYPES.SUBSCRIPTION) return true;
+
+  if (this.plan?.type === PLAN_TYPES.FREE || this.plan?.type === PLAN_TYPES.CREDIT) {
+    return this.credit >= count;
+  }
+
+  return false;
+};
+
+// Method: Deduct credit and increment process count
+appKeySchema.methods.useCredit = async function (creditUsed = 1, processFileCount = 1) {
+  creditUsed = Math.max(1, parseInt(creditUsed, 10) || 1);
+  processFileCount = Math.max(1, parseInt(processFileCount, 10) || 1);
+
+  if (this.plan?.type === PLAN_TYPES.FREE || this.plan?.type === PLAN_TYPES.CREDIT) {
+    this.credit -= creditUsed;
+
+    if (this.credit <= 0 && this.plan.type === PLAN_TYPES.CREDIT) {
+      this.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit");
+    }
+  }
+
+  await this.incrementProcessCount(processFileCount);
+};
+
+// Method: Increment process counts and update rolling window
+appKeySchema.methods.incrementProcessCount = async function (count = 1) {
+  this.totalProcess += count;
+
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const dayKey = now.toISOString().split("T")[0];
+
+  if (!this.monthlyProcess) this.monthlyProcess = new Map();
+  if (!this.dailyProcess) this.dailyProcess = new Map();
+
+  const currentMonthly = this.monthlyProcess.get(monthKey) || 0;
+  this.monthlyProcess.set(monthKey, currentMonthly + count);
+
+  const currentDaily = this.dailyProcess.get(dayKey) || 0;
+  this.dailyProcess.set(dayKey, currentDaily + count);
+
+  this.cleanupOldDailyData();
+  this.cleanupOldMonthlyData();
+
+  await this.save();
+};
+
+appKeySchema.methods.cleanupOldDailyData = function () {
+  if (!this.dailyProcess) return;
+  const now = new Date();
+  const recentDays = new Set();
+
+  for (let i = 0; i < 3; i++) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    recentDays.add(d.toISOString().split("T")[0]);
+  }
+
+  for (const key of this.dailyProcess.keys()) {
+    if (!recentDays.has(key)) {
+      this.dailyProcess.delete(key);
+    }
+  }
+};
+
+appKeySchema.methods.cleanupOldMonthlyData = function () {
+  if (!this.monthlyProcess) return;
+  const now = new Date();
+  const recentMonths = new Set();
+
+  for (let i = 0; i < 12; i++) {
+    const d = new Date();
+    d.setMonth(now.getMonth() - i);
+    recentMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  for (const key of this.monthlyProcess.keys()) {
+    if (!recentMonths.has(key)) {
+      this.monthlyProcess.delete(key);
+    }
+  }
+};
+
+appKeySchema.methods.calculateCredit = function () {
+  const now = new Date();
+
+  if (
+    this.plan?.type === PLAN_TYPES.SUBSCRIPTION &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "subscription_expired");
+  }
+
+  if (
+    this.plan?.type === PLAN_TYPES.CREDIT &&
+    this.expiresAt &&
+    now >= this.expiresAt
+  ) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "credit_plan_expired");
+  }
+
+  if (this.plan?.type === PLAN_TYPES.CREDIT && this.credit <= 0) {
+    this.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit");
+  }
+
+  if (this.plan?.type === PLAN_TYPES.CREDIT) {
+    return this.credit;
+  }
+  if (this.plan?.type === PLAN_TYPES.SUBSCRIPTION) {
+    return Infinity;
+  }
+
+  this.refreshDailyCredits();
+  return this.credit;
+};
+
+appKeySchema.methods.getPlanStatus = function () {
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+
+  return {
+    planType: this.plan?.type || PLAN_TYPES.FREE,
+    credit: this.credit,
+    isExpired: Boolean(this.expiresAt && now >= this.expiresAt),
+    daysUntilExpiry: this.expiresAt
+      ? Math.ceil((this.expiresAt - now) / (1000 * 60 * 60 * 24))
+      : null,
+    lastRefresh: this.lastCreditRefresh,
+    needsRefresh:
+      this.plan?.type === PLAN_TYPES.FREE &&
+      this.lastCreditRefresh !== today,
+  };
+};
+
+appKeySchema.methods.upgradePlan = function (newPlan, expiresAt = null, credits = null) {
+  const oldPlan = this.plan?.type || PLAN_TYPES.FREE;
+
+  if (!this.planHistory) this.planHistory = [];
+  this.planHistory.push({
+    planType: oldPlan,
+    changedAt: new Date(),
+    reason: "upgrade",
+  });
+
+  this.plan = { type: newPlan, id: this.plan?.id || null };
+  this.lastPlanChange = new Date();
+
+  if (newPlan === PLAN_TYPES.SUBSCRIPTION) {
+    this.expiresAt = expiresAt;
+    this.credit = Infinity;
+  } else if (newPlan === PLAN_TYPES.CREDIT) {
+    this.credit = credits !== null ? credits : this.credit;
+    this.expiresAt = expiresAt || undefined;
+  }
+};
+
+// Static: Daily maintenance batch runner
 appKeySchema.statics.performDailyMaintenance = async function () {
   const today = new Date().toISOString().split("T")[0];
   const now = new Date();
 
   try {
-    // 1. Refresh credits for all free plan users
+    // 1. Refresh credits for free users
     const freeUsers = await this.find({
-      "plan.type": "free",
+      "plan.type": PLAN_TYPES.FREE,
       isActive: true,
       status: "active",
       credit: { $lte: 5 },
@@ -143,42 +404,42 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       await appKey.save();
     }
 
-    // 2. Downgrade expired subscription plans
+    // 2. Downgrade expired subscriptions
     const expiredSubscriptions = await this.find({
-      "plan.type": "subscription",
+      "plan.type": PLAN_TYPES.SUBSCRIPTION,
       isActive: true,
       status: "active",
       expiresAt: { $lte: now },
     });
 
     for (const appKey of expiredSubscriptions) {
-      appKey.downgradeToPlan("free", "subscription_expired_auto");
+      appKey.downgradeToPlan(PLAN_TYPES.FREE, "subscription_expired_auto");
       await appKey.save();
     }
 
     // 3. Downgrade zero credit plans
     const zeroCreditPlans = await this.find({
-      "plan.type": "credit",
+      "plan.type": PLAN_TYPES.CREDIT,
       isActive: true,
       status: "active",
       credit: { $lte: 0 },
     });
 
     for (const appKey of zeroCreditPlans) {
-      appKey.downgradeToPlan("free", "zero_credit_auto");
+      appKey.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit_auto");
       await appKey.save();
     }
 
-    // 4. Downgrade expired credit plans (credit plan with expiry date that has passed)
+    // 4. Downgrade expired credit plans
     const expiredCreditPlans = await this.find({
-      "plan.type": "credit",
+      "plan.type": PLAN_TYPES.CREDIT,
       isActive: true,
       status: "active",
       expiresAt: { $lte: now },
     });
 
     for (const appKey of expiredCreditPlans) {
-      appKey.downgradeToPlan("free", "credit_plan_expired_auto");
+      appKey.downgradeToPlan(PLAN_TYPES.FREE, "credit_plan_expired_auto");
       await appKey.save();
     }
 
@@ -191,7 +452,7 @@ appKeySchema.statics.performDailyMaintenance = async function () {
       timestamp: now.toISOString(),
     };
   } catch (error) {
-    console.error("Daily maintenance failed:", error);
+    console.error("Daily maintenance error:", error);
     return {
       success: false,
       error: error.message,
@@ -200,285 +461,12 @@ appKeySchema.statics.performDailyMaintenance = async function () {
   }
 };
 
-// Enhanced validity check with auto-management
-appKeySchema.methods.isValid = function () {
-  if (!this.isActive || this.status !== "active") return false;
-
-  // Auto-downgrade expired subscriptions
-  if (
-    this.plan.type === "subscription" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "subscription_expired");
-  }
-
-  // Auto-downgrade expired credit plans
-  if (
-    this.plan.type === "credit" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "credit_plan_expired");
-  }
-
-  // Auto-downgrade zero credit plans
-  if (this.plan.type === "credit" && this.credit <= 0) {
-    this.downgradeToPlan("free", "zero_credit");
-  }
-
-  this.refreshDailyCredits();
-  return true;
-};
-
-// Enhanced downgrade plan with reason tracking
-appKeySchema.methods.downgradeToPlan = function (newPlan, reason = "manual") {
-  const oldPlan = this.plan.type;
-
-  // Record plan change in history
-  this.planHistory.push({
-    planType: oldPlan,
-    changedAt: new Date(),
-    reason: reason,
-  });
-
-  this.plan = { type: newPlan };
-  this.lastPlanChange = new Date();
-
-  if (newPlan === "free") {
-    this.expiresAt = undefined;
-    this.credit = 5;
-    this.lastCreditRefresh = new Date().toISOString().split("T")[0];
-
-    // Initialize tracking for current period
-    const today = new Date().toISOString().split("T")[0];
-    const currentMonth = `${today.substring(0, 7)}`;
-
-    if (!this.dailyProcess.has(today)) {
-      this.dailyProcess.set(today, 0);
-    }
-
-    if (!this.monthlyProcess.has(currentMonth)) {
-      this.monthlyProcess.set(currentMonth, 0);
-    }
-  }
-};
-
-// Enhanced canProcess with auto-management
-appKeySchema.methods.canProcess = function (count = 1) {
-  if (!count || count < 1) return false;
-
-  // Auto-downgrade expired subscriptions
-  if (
-    this.plan.type === "subscription" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "subscription_expired");
-  }
-
-  // Auto-downgrade expired credit plans
-  if (
-    this.plan.type === "credit" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "credit_plan_expired");
-  }
-
-  // Auto-downgrade zero credit plans
-  if (this.plan.type === "credit" && this.credit <= 0) {
-    this.downgradeToPlan("free", "zero_credit");
-  }
-
-  this.refreshDailyCredits();
-
-  if (this.plan.type === "subscription") return true;
-
-  if (this.plan.type === "free" || this.plan.type === "credit") {
-    return this.credit >= count;
-  }
-
-  return false;
-};
-
-// Enhanced useCredit with better error handling
-appKeySchema.methods.useCredit = async function (
-  creditUsed = 1,
-  processFileCount = 1
-) {
-  // Ensure we're using a valid count
-  creditUsed = Math.max(1, parseInt(creditUsed) || 1);
-  processFileCount = Math.max(1, parseInt(processFileCount) || 1);
-
-  if (this.plan.type === "free" || this.plan.type === "credit") {
-    this.credit -= creditUsed;
-
-    // Auto-downgrade if credit reaches zero
-    if (this.credit <= 0 && this.plan.type === "credit") {
-      this.downgradeToPlan("free", "zero_credit");
-    }
-  }
-
-  await this.incrementProcessCount(processFileCount);
-};
-
-// Enhanced incrementProcessCount with better Map handling
-appKeySchema.methods.incrementProcessCount = async function (count = 1) {
-  this.totalProcess += count;
-
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const dayKey = now.toISOString().split("T")[0];
-
-  // Initialize maps if they don't exist
-  if (!this.monthlyProcess) {
-    this.monthlyProcess = new Map();
-  }
-
-  if (!this.dailyProcess) {
-    this.dailyProcess = new Map();
-  }
-
-  const currentMonthly = this.monthlyProcess.get(monthKey) || 0;
-  this.monthlyProcess.set(monthKey, currentMonthly + count);
-
-  const currentDaily = this.dailyProcess.get(dayKey) || 0;
-  this.dailyProcess.set(dayKey, currentDaily + count);
-
-  // Keep last 3 days only for daily process
-  this.cleanupOldDailyData();
-
-  // Keep last 12 months for monthly process
-  this.cleanupOldMonthlyData();
-
-  await this.save();
-};
-
-// New method to clean up old daily data
-appKeySchema.methods.cleanupOldDailyData = function () {
-  const now = new Date();
-  const recentDays = new Set();
-
-  for (let i = 0; i < 3; i++) {
-    const date = new Date();
-    date.setDate(now.getDate() - i);
-    recentDays.add(date.toISOString().split("T")[0]);
-  }
-
-  for (const key of this.dailyProcess.keys()) {
-    if (!recentDays.has(key)) {
-      this.dailyProcess.delete(key);
-    }
-  }
-};
-
-// New method to clean up old monthly data
-appKeySchema.methods.cleanupOldMonthlyData = function () {
-  const now = new Date();
-  const recentMonths = new Set();
-
-  for (let i = 0; i < 12; i++) {
-    const date = new Date();
-    date.setMonth(now.getMonth() - i);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    recentMonths.add(monthKey);
-  }
-
-  for (const key of this.monthlyProcess.keys()) {
-    if (!recentMonths.has(key)) {
-      this.monthlyProcess.delete(key);
-    }
-  }
-};
-
-// Enhanced calculateCredit with auto-management
-appKeySchema.methods.calculateCredit = function () {
-  // Auto-check for expired subscriptions
-  if (
-    this.plan.type === "subscription" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "subscription_expired");
-  }
-
-  // Auto-check for expired credit plans
-  if (
-    this.plan.type === "credit" &&
-    this.expiresAt &&
-    new Date() >= this.expiresAt
-  ) {
-    this.downgradeToPlan("free", "credit_plan_expired");
-  }
-
-  // Auto-check for zero credit plans
-  if (this.plan.type === "credit" && this.credit <= 0) {
-    this.downgradeToPlan("free", "zero_credit");
-  }
-
-  if (this.plan.type === "credit") {
-    return this.credit;
-  } else if (this.plan.type === "subscription") {
-    return Infinity;
-  } else {
-    // For free plan, refresh daily credits first
-    this.refreshDailyCredits();
-    return this.credit;
-  }
-};
-
-// New method to get plan status with expiry info
-appKeySchema.methods.getPlanStatus = function () {
-  const now = new Date();
-
-  return {
-    planType: this.plan.type,
-    credit: this.credit,
-    isExpired: this.expiresAt && now >= this.expiresAt,
-    daysUntilExpiry: this.expiresAt
-      ? Math.ceil((this.expiresAt - now) / (1000 * 60 * 60 * 24))
-      : null,
-    lastRefresh: this.lastCreditRefresh,
-    needsRefresh:
-      this.plan.type === "free" &&
-      this.lastCreditRefresh !== new Date().toISOString().split("T")[0],
-  };
-};
-
-// New method to upgrade plan
-appKeySchema.methods.upgradePlan = function (
-  newPlan,
-  expiresAt = null,
-  credits = null
-) {
-  const oldPlan = this.plan.type;
-
-  // Record plan change in history
-  this.planHistory.push({
-    planType: oldPlan,
-    changedAt: new Date(),
-    reason: "upgrade",
-  });
-
-  this.plan = { type: newPlan };
-  this.lastPlanChange = new Date();
-
-  if (newPlan === "subscription") {
-    this.expiresAt = expiresAt;
-    this.credit = Infinity; // Unlimited for subscription
-  } else if (newPlan === "credit") {
-    this.credit = credits || this.credit;
-    this.expiresAt = undefined;
-  }
-};
-
-// Index for better query performance
+// Optimized compound indexes
 appKeySchema.index({ "plan.type": 1, expiresAt: 1 });
 appKeySchema.index({ "plan.type": 1, credit: 1 });
 appKeySchema.index({ "plan.type": 1, lastCreditRefresh: 1 });
 appKeySchema.index({ isActive: 1, status: 1 });
-appKeySchema.index({ createdAt: -1 });
-appKeySchema.index({ username: 1 });
+appKeySchema.index({ userId: 1, isActive: 1 });
 
 export const AppKey = mongoose.model("AppKey", appKeySchema);
+export default AppKey;

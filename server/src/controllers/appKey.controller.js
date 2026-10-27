@@ -1,87 +1,65 @@
-import crypto from "crypto";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
-import { v4 as uuidv4 } from "uuid";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
-import config from "../config/index.js";
 import { AppKey } from "../models/appKey.model.js";
+import { ApiUsageLog } from "../models/apiUsageLog.model.js";
+import config from "../config/index.js";
+import { generateAppKey, compareVersions } from "../utils/index.js";
+import { PLAN_TYPES } from "../constants/index.js";
 
-export function generateAppKey() {
-  const buffer = crypto.randomBytes(32);
-  const timestamp = Date.now().toString();
-  const uuid = uuidv4();
+export { generateAppKey };
 
-  // Combine the random bytes, timestamp, and UUID
-  const combined = buffer.toString("hex") + timestamp + uuid;
-
-  // Create a hash of the combined string
-  return crypto.createHash("sha256").update(combined).digest("hex");
-}
-
-const createAppKey = asyncHandler(async (req, res) => {
-  const { username, expiryDays = 3, plan = "free", initialCredit } = req.body;
+export const createAppKey = asyncHandler(async (req, res) => {
+  const { username, expiryDays = 3, plan = PLAN_TYPES.FREE, initialCredit } = req.body;
 
   if (!username) {
     throw new ApiError(400, "Username (email) is required.");
   }
 
-  // Find user by email
-  const user = await User.findOne({ email: username });
+  const user = await User.findOne({ email: username.toLowerCase() });
   if (!user) {
     throw new ApiError(404, "No user found with the provided email.");
   }
 
   const userId = user._id;
 
-  // Prevent duplicate API key for user
   const existingAppKey = await AppKey.findOne({ userId });
   if (existingAppKey) {
     throw new ApiError(400, "This user already has an API key.");
   }
 
-  // Normalize plan
   const planObject = typeof plan === "object" ? plan : { type: plan };
-  const planType = planObject.type;
+  const planType = planObject.type || PLAN_TYPES.FREE;
 
-  // Validate plan type
-  if (!["free", "credit", "subscription"].includes(planType)) {
-    throw new ApiError(
-      400,
-      "Invalid plan type. Must be 'free', 'credit', or 'subscription'."
-    );
+  if (!Object.values(PLAN_TYPES).includes(planType)) {
+    throw new ApiError(400, "Invalid plan type. Must be 'free', 'credit', or 'subscription'.");
   }
 
-  // Initialize credit and expiry
   let credit = 0;
   let expiresAt = undefined;
   const today = new Date().toISOString().split("T")[0];
 
-  if (planType === "free") {
+  if (planType === PLAN_TYPES.FREE) {
     credit = 5;
-  } else if (planType === "credit") {
-    // For credit plan, use provided initial credit or default to 100
-    credit = initialCredit ? parseInt(initialCredit) : 100;
-
-    // Only set expiry for credit plan if specified
-    if (expiryDays && parseInt(expiryDays) > 0) {
+  } else if (planType === PLAN_TYPES.CREDIT) {
+    credit = initialCredit ? parseInt(initialCredit, 10) : 100;
+    if (expiryDays && parseInt(expiryDays, 10) > 0) {
       const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
+      expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays, 10));
       expiryDate.setHours(23, 59, 59, 999);
       expiresAt = expiryDate;
     }
-  } else if (planType === "subscription") {
-    // For subscription plan, set unlimited credit and always set expiry
-    credit = 0; // Unlimited for subscription
+  } else if (planType === PLAN_TYPES.SUBSCRIPTION) {
+    credit = 0;
     const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays));
+    expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays, 10));
     expiryDate.setHours(23, 59, 59, 999);
     expiresAt = expiryDate;
   }
 
-  // Create new API key document
   const newAppKey = new AppKey({
     userId,
     username,
@@ -90,7 +68,6 @@ const createAppKey = asyncHandler(async (req, res) => {
     plan: planObject,
     credit,
     lastCreditRefresh: today,
-    // Initialize monthly and daily process
     monthlyProcess: new Map([[today.substring(0, 7), 0]]),
     dailyProcess: new Map([[today, 0]]),
   });
@@ -107,7 +84,7 @@ const createAppKey = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const updateAppKey = asyncHandler(async (req, res) => {
+export const updateAppKey = asyncHandler(async (req, res) => {
   const { username, plan, expiryDays, credit } = req.body;
 
   if (!username) {
@@ -115,88 +92,45 @@ const updateAppKey = asyncHandler(async (req, res) => {
   }
 
   if (!plan && !expiryDays && credit === undefined) {
-    throw new ApiError(
-      400,
-      "At least one of plan, expiryDays, or credit is required"
-    );
+    throw new ApiError(400, "At least one of plan, expiryDays, or credit is required");
   }
 
   const appKey = await AppKey.findOne({ username });
   if (!appKey) {
-    throw new ApiError(404, "App user not found");
+    throw new ApiError(404, "API key not found");
   }
 
-  // Update plan if provided
   if (plan) {
-    // Validate plan type
-    const planType = typeof plan === "object" ? plan.type : plan;
-    if (!["free", "credit", "subscription"].includes(planType)) {
-      throw new ApiError(
-        400,
-        "Invalid plan type. Must be 'free', 'credit', or 'subscription'."
-      );
-    }
-
-    // Format the plan object correctly
-    const newPlan = typeof plan === "object" ? plan : { type: plan };
-    const oldPlanType = appKey.plan.type;
-    appKey.plan = newPlan;
-
-    // Handle plan-specific logic
-    if (newPlan.type === "free") {
-      appKey.expiresAt = undefined;
-      appKey.credit = 5;
-      appKey.lastCreditRefresh = new Date().toISOString().split("T")[0];
-    } else if (
-      newPlan.type === "subscription" &&
-      oldPlanType !== "subscription"
-    ) {
-      // When upgrading to subscription, set unlimited credit
-      appKey.credit = 0;
-    } else if (newPlan.type === "credit" && oldPlanType !== "credit") {
-      // When changing to credit plan, set default credit if not specified
-      if (credit === undefined) {
-        appKey.credit = 100;
-      }
-    }
+    const planObj = typeof plan === "object" ? plan : { type: plan };
+    appKey.plan = planObj;
   }
 
-  // Update expiry date if provided and not a free plan
-  if (expiryDays && appKey.plan.type !== "free") {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + parseInt(expiryDays));
-    expiresAt.setHours(23, 59, 59, 999);
-    appKey.expiresAt = expiresAt;
+  if (expiryDays !== undefined) {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays, 10));
+    expiryDate.setHours(23, 59, 59, 999);
+    appKey.expiresAt = expiryDate;
   }
 
-  // Update credit if provided (and not subscription plan)
-  if (credit !== undefined && appKey.plan.type !== "subscription") {
-    appKey.credit = parseInt(credit);
+  if (credit !== undefined) {
+    appKey.credit = parseInt(credit, 10);
   }
 
   await appKey.save();
 
-  return new ApiResponse(200, true, "App user updated successfully", {
-    appKey: appKey.key,
-    expiresAt: appKey.expiresAt,
-    plan: appKey.plan,
-    username: appKey.username,
-    isActive: appKey.isActive,
-    credit: appKey.credit,
+  return new ApiResponse(200, true, "API key updated successfully", {
+    appKey,
   }).send(res);
 });
 
-const deleteAppKey = asyncHandler(async (req, res) => {
+export const deleteAppKey = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
   if (!username) {
     throw new ApiError(400, "Username is required");
   }
 
-  const appKey = await AppKey.findOneAndDelete({
-    username,
-  });
-
+  const appKey = await AppKey.findOneAndDelete({ username });
   if (!appKey) {
     throw new ApiError(404, "API key not found");
   }
@@ -204,7 +138,7 @@ const deleteAppKey = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "API key deleted successfully").send(res);
 });
 
-const resetDevice = asyncHandler(async (req, res) => {
+export const resetDevice = asyncHandler(async (req, res) => {
   const { key } = req.body;
 
   if (!key) {
@@ -212,7 +146,6 @@ const resetDevice = asyncHandler(async (req, res) => {
   }
 
   const appKey = await AppKey.findOne({ key });
-
   if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
@@ -223,7 +156,7 @@ const resetDevice = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "Device ID reset successfully.").send(res);
 });
 
-const updateAppKeyStatus = asyncHandler(async (req, res) => {
+export const updateAppKeyStatus = asyncHandler(async (req, res) => {
   const { key, mode } = req.body;
 
   if (!key || !mode) {
@@ -231,7 +164,6 @@ const updateAppKeyStatus = asyncHandler(async (req, res) => {
   }
 
   const appKey = await AppKey.findOne({ key });
-
   if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
@@ -243,9 +175,7 @@ const updateAppKeyStatus = asyncHandler(async (req, res) => {
     appKey.status = "suspended";
     appKey.suspendedAt = new Date();
     await appKey.save();
-    return new ApiResponse(200, true, "API key suspended successfully.").send(
-      res
-    );
+    return new ApiResponse(200, true, "API key suspended successfully.").send(res);
   }
 
   if (mode === "reactivate") {
@@ -255,15 +185,13 @@ const updateAppKeyStatus = asyncHandler(async (req, res) => {
     appKey.status = "active";
     appKey.suspendedAt = null;
     await appKey.save();
-    return new ApiResponse(200, true, "API key reactivated successfully.").send(
-      res
-    );
+    return new ApiResponse(200, true, "API key reactivated successfully.").send(res);
   }
 
   throw new ApiError(400, "Invalid mode. Use 'suspend' or 'reactivate'.");
 });
 
-const addCredits = asyncHandler(async (req, res) => {
+export const addCredits = asyncHandler(async (req, res) => {
   const { key, credits } = req.body;
 
   if (!key || credits === undefined) {
@@ -271,12 +199,11 @@ const addCredits = asyncHandler(async (req, res) => {
   }
 
   const appKey = await AppKey.findOne({ key });
-
   if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
-  appKey.credit += parseInt(credits);
+  appKey.credit += parseInt(credits, 10);
   await appKey.save();
 
   return new ApiResponse(
@@ -286,14 +213,13 @@ const addCredits = asyncHandler(async (req, res) => {
   ).send(res);
 });
 
-const getUserDetailsByKey = asyncHandler(async (req, res) => {
+export const getUserDetailsByKey = asyncHandler(async (req, res) => {
   const { key } = req.params;
 
   if (!key) {
     throw new ApiError(400, "API key is required");
   }
 
-  // Fetch AppKey and user details
   const appKey = await AppKey.findOne({ key })
     .populate("userId", "name email role createdAt")
     .exec();
@@ -304,15 +230,11 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
 
   const user = appKey.userId;
 
-  // Fetch payments in parallel
-  const [payments] = await Promise.all([
-    AppPayment.find({ userId: user._id })
-      .sort({ createdAt: -1 })
-      .select("trxID plan amount createdAt")
-      .lean(),
-  ]);
+  const payments = await AppPayment.find({ userId: user._id })
+    .sort({ createdAt: -1 })
+    .select("trxID plan amount createdAt")
+    .lean();
 
-  // Format payments
   const formattedPayments = payments.map((payment) => ({
     id: payment._id,
     trxID: payment.trxID,
@@ -321,7 +243,6 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
     createdAt: payment.createdAt,
   }));
 
-  // Calculate remaining credit & validity
   const remainingCredit =
     typeof appKey.calculateCredit === "function"
       ? appKey.calculateCredit()
@@ -330,15 +251,13 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
   const isValid =
     typeof appKey.isValid === "function" ? appKey.isValid() : appKey.isActive;
 
-  // ✅ Format monthly usage from Map → plain object
   const monthlyUsage = {};
   if (appKey.monthlyProcess && appKey.monthlyProcess.size > 0) {
     appKey.monthlyProcess.forEach((count, month) => {
-      monthlyUsage[month] = count; // e.g. { "2025-09": 120, "2025-08": 90 }
+      monthlyUsage[month] = count;
     });
   }
 
-  // Final response payload
   const data = {
     user: {
       id: user._id,
@@ -351,54 +270,28 @@ const getUserDetailsByKey = asyncHandler(async (req, res) => {
       ...appKey.toObject(),
       remainingCredit,
       isValid,
-      monthlyUsage, // 👈 added here
+      monthlyUsage,
     },
     payments: formattedPayments,
   };
 
-  return new ApiResponse(
-    200,
-    true,
-    "User details fetched successfully",
-    data
-  ).send(res);
+  return new ApiResponse(200, true, "User details fetched successfully", data).send(res);
 });
 
-const validateAppKey = asyncHandler(async (req, res) => {
+export const validateAppKey = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
   const deviceId = req.header("x-device-id");
   const version = req.header("x-app-version");
 
   if (!version) {
-    throw new ApiError(
-      426,
-      "Please update your app. A new version is available."
-    );
+    throw new ApiError(426, "Please update your app. A new version is available.");
   }
 
-  // Compare versions — reject anything below the minimum required version
-  const clientVersion = version.split(".").map(Number);
-  const minimumRequiredVersion = config.minimumRequiredAppVersion
-    .split(".")
-    .map(Number);
-
-  const isClientVersionBelowMinimum =
-    clientVersion.reduce((result, part, i) => {
-      if (result !== null) return result;
-      return part < minimumRequiredVersion[i]
-        ? true
-        : part > minimumRequiredVersion[i]
-          ? false
-          : null;
-    }, null) ?? false;
-
-  if (isClientVersionBelowMinimum) {
-    throw new ApiError(
-      426,
-      "Please update your app. A new version is available."
-    );
+  if (compareVersions(version, config.minimumRequiredAppVersion) < 0) {
+    throw new ApiError(426, "Please update your app. A new version is available.");
   }
-  const { processCount } = req.body;
+
+  const { processCount = 1 } = req.body;
 
   if (!key) {
     throw new ApiError(400, "API key is required in headers.");
@@ -408,22 +301,16 @@ const validateAppKey = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Device ID is required in headers.");
   }
 
-  // Ensure processCount is a valid number
-  const count = parseInt(processCount);
+  const count = parseInt(processCount, 10);
   if (isNaN(count) || count < 1) {
-    throw new ApiError(
-      400,
-      "Valid process count is required (must be a positive number)."
-    );
+    throw new ApiError(400, "Valid process count is required (must be a positive number).");
   }
 
   const appKey = await AppKey.findOne({ key });
-
   if (!appKey) {
     throw new ApiError(404, "API key not found.");
   }
 
-  // Check if API key is valid
   if (!appKey.isValid()) {
     if (appKey.status === "suspended") {
       throw new ApiError(403, "Account has been suspended.");
@@ -431,7 +318,6 @@ const validateAppKey = asyncHandler(async (req, res) => {
     throw new ApiError(403, "API key is not valid or active.");
   }
 
-  // Device authorization logic (allow max 2 devices)
   if (!appKey.allowedDevices.includes(deviceId)) {
     if (appKey.allowedDevices.length >= 2) {
       throw new ApiError(
@@ -439,50 +325,40 @@ const validateAppKey = asyncHandler(async (req, res) => {
         "This account is already used on two devices. No more devices allowed."
       );
     }
-
     appKey.allowedDevices.push(deviceId);
     await appKey.save();
   }
 
-  // Check if can process the request
   if (!appKey.canProcess(count)) {
-    const limit = appKey.plan.type === "free" ? 5 : appKey.credit;
-
-    throw new ApiError(
-      429,
-      `You need ${count} credits but have ${limit} remaining.`
-    );
+    const limit = appKey.plan.type === PLAN_TYPES.FREE ? 5 : appKey.credit;
+    throw new ApiError(429, `You need ${count} credits but have ${limit} remaining.`);
   }
 
-  // Calculate expiresIn for credit and subscription plans
   const now = new Date();
   const expiresIn =
-    (appKey.plan.type === "credit" || appKey.plan.type === "subscription") &&
+    (appKey.plan.type === PLAN_TYPES.CREDIT || appKey.plan.type === PLAN_TYPES.SUBSCRIPTION) &&
     appKey.expiresAt
-      ? Math.max(
-          0,
-          Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
-        )
+      ? Math.max(0, Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24)))
       : null;
 
-  const aiApiSecret = appKey.plan.type === "credit" ? config.encoderKey : null;
+  const aiApiSecret = appKey.plan.type === PLAN_TYPES.CREDIT ? config.encoderKey : null;
 
   return new ApiResponse(200, true, "API key is valid and process allowed.", {
     username: appKey.username,
     plan: appKey.plan,
     totalProcess: appKey.totalProcess,
     expiresAt:
-      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
+      appKey.plan.type === PLAN_TYPES.CREDIT || appKey.plan.type === PLAN_TYPES.SUBSCRIPTION
         ? appKey.expiresAt
         : null,
     expiresIn,
     aiApiSecret,
-    deviceId: deviceId,
+    deviceId,
     remainingCredit: appKey.credit,
   }).send(res);
 });
 
-const getAppKeyStats = asyncHandler(async (req, res) => {
+export const getAppKeyStats = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
 
   if (!key) {
@@ -490,33 +366,25 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
   }
 
   const appKey = await AppKey.findOne({ key }).populate("userId", "name email");
-
   if (!appKey) {
     throw new ApiError(404, "Key not found.");
   }
 
-  // Check if API key is valid and refresh daily credits if needed
   const isValid = appKey.isValid();
   await appKey.save();
 
-  // Calculate expiresIn for credit and subscription plans
   const now = new Date();
   const expiresIn =
-    (appKey.plan.type === "credit" || appKey.plan.type === "subscription") &&
+    (appKey.plan.type === PLAN_TYPES.CREDIT || appKey.plan.type === PLAN_TYPES.SUBSCRIPTION) &&
     appKey.expiresAt
-      ? Math.max(
-          0,
-          Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24))
-        )
+      ? Math.max(0, Math.floor((appKey.expiresAt - now) / (1000 * 60 * 60 * 24)))
       : null;
 
-  const encryptedKey = await AiAPI.findOne();
+  const encryptedKeyDoc = await AiAPI.findOne({ isActive: true });
   const aiApiKey =
-    appKey.plan.type === "credit" ? encryptedKey.ai_api_key : null;
+    appKey.plan.type === PLAN_TYPES.CREDIT && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
 
   const remainingCredit = appKey.calculateCredit();
-
-  await new Promise((resolve) => setTimeout(resolve, 1000));
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     plan: appKey.plan,
@@ -524,7 +392,7 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
     status: appKey.status,
     isValid,
     expiresAt:
-      appKey.plan.type === "credit" || appKey.plan.type === "subscription"
+      appKey.plan.type === PLAN_TYPES.CREDIT || appKey.plan.type === PLAN_TYPES.SUBSCRIPTION
         ? appKey.expiresAt
         : null,
     expiresIn,
@@ -540,20 +408,18 @@ const getAppKeyStats = asyncHandler(async (req, res) => {
 
 export const processApiUsage = asyncHandler(async (req, res) => {
   const key = req.header("x-api-key");
-  const { processCount, processFileCount, failedCount, failedErrors } =
-    req.body;
+  const { processCount, processFileCount, failedCount, failedErrors } = req.body;
 
   if (!key) throw new ApiError(400, "API key is required in headers.");
 
   const appKey = await AppKey.findOne({ key });
   if (!appKey) throw new ApiError(404, "API key not found.");
 
-  const creditUsed = parseInt(processCount) || 0;
-  const fileCount = parseInt(processFileCount) || 0;
-  const failed = parseInt(failedCount) || 0;
+  const creditUsed = parseInt(processCount, 10) || 0;
+  const fileCount = parseInt(processFileCount, 10) || 0;
+  const failed = parseInt(failedCount, 10) || 0;
   const errorMsg = failedErrors || "";
 
-  // If key is invalid before processing
   if (!appKey.isValid()) {
     if (failed > 0) {
       await logFailedProcess(appKey, failed, errorMsg);
@@ -561,76 +427,84 @@ export const processApiUsage = asyncHandler(async (req, res) => {
     throw new ApiError(403, "API key is not valid or active.");
   }
 
-  // Handle successful processing
   if (creditUsed > 0) {
     try {
       await appKey.useCredit(creditUsed, fileCount);
     } catch (error) {
-      // If success fails due to insufficient credits etc.
       await logFailedProcess(appKey, failed > 0 ? failed : 1, error.message);
       throw new ApiError(429, error.message);
     }
   }
 
-  // If failedCount exists additionally (should not throw)
   if (failed > 0) {
     await logFailedProcess(appKey, failed, errorMsg);
+  }
+
+  // Update normalized usage ledger
+  const today = new Date().toISOString().split("T")[0];
+  try {
+    await ApiUsageLog.updateOne(
+      { appKeyId: appKey._id, date: today },
+      {
+        $setOnInsert: { userId: appKey.userId, date: today },
+        $inc: { processCount: creditUsed, fileCount, failedCount: failed },
+        $push: errorMsg ? { errors: errorMsg } : undefined,
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    // Non-blocking for client
+    console.error("Failed to update ApiUsageLog:", err.message);
   }
 
   return new ApiResponse(200, true, "Usage updated successfully", {
     plan: appKey.plan,
     remainingCredit: appKey.calculateCredit(),
     totalProcess: appKey.totalProcess,
-    dailyProcess: Object.fromEntries(appKey.dailyProcess),
-    monthlyProcess: Object.fromEntries(appKey.monthlyProcess),
+    dailyProcess: Object.fromEntries(appKey.dailyProcess || new Map()),
+    monthlyProcess: Object.fromEntries(appKey.monthlyProcess || new Map()),
     totalFailedProcess: appKey.totalFailedProcess,
-    failedProcess: Object.fromEntries(appKey.failedProcess),
+    failedProcess: Object.fromEntries(appKey.failedProcess || new Map()),
   }).send(res);
 });
 
 async function logFailedProcess(appKey, count, errorMessage) {
-  const now = new Date();
-  const dayKey = now.toISOString().split("T")[0];
+  const dayKey = new Date().toISOString().split("T")[0];
 
-  // Init map if missing
   if (!appKey.failedProcess) {
     appKey.failedProcess = new Map();
   }
 
-  let dayData = appKey.failedProcess.get(dayKey) || {
+  const dayData = appKey.failedProcess.get(dayKey) || {
     count: 0,
     errorMessages: [],
   };
 
-  // Increment count
   dayData.count += count;
   appKey.totalFailedProcess = (appKey.totalFailedProcess || 0) + count;
 
-  // Push errors
-  if (errorMessage.trim()) {
+  if (errorMessage && errorMessage.trim()) {
     const errorList = errorMessage
       .split("|")
       .map((s) => s.trim())
       .filter(Boolean);
-
     dayData.errorMessages.push(...errorList);
   }
 
   appKey.failedProcess.set(dayKey, dayData);
-
-  cleanupFailedData(appKey); // ✅ remove old data
-
+  cleanupFailedData(appKey);
   await appKey.save();
 }
 
 function cleanupFailedData(appKey) {
+  if (!appKey.failedProcess) return;
   const now = new Date();
   const recentDays = new Set();
 
   for (let i = 0; i < 3; i++) {
-    const date = new Date();
-    date.setDate(now.getDate() - i);
-    recentDays.add(date.toISOString().split("T")[0]);
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    recentDays.add(d.toISOString().split("T")[0]);
   }
 
   for (const key of appKey.failedProcess.keys()) {
@@ -639,15 +513,3 @@ function cleanupFailedData(appKey) {
     }
   }
 }
-
-export {
-  createAppKey,
-  updateAppKey,
-  deleteAppKey,
-  validateAppKey,
-  getAppKeyStats,
-  resetDevice,
-  updateAppKeyStatus,
-  getUserDetailsByKey,
-  addCredits,
-};
