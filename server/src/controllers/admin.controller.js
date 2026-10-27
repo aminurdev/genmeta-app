@@ -8,7 +8,7 @@ import { Order } from "../models/order.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { WITHDRAWAL_STATUS } from "../constants/index.js";
+import { USER_ROLES, WITHDRAWAL_STATUS } from "../constants/index.js";
 
 export const getAdminDashboardStats = asyncHandler(async (req, res) => {
   const now = new Date();
@@ -751,4 +751,150 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
     withdrawal,
     availableBalance: referral.availableBalance,
   }).send(res);
+});
+
+/**
+ * @desc Get high-level system infrastructure & governance overview (SuperAdmin only)
+ */
+export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
+  const [roleCounts, disabledCount, totalAppKeys, appKeyAgg] = await Promise.all([
+    User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
+    User.countDocuments({ isDisabled: true }),
+    AppKey.countDocuments(),
+    AppKey.aggregate([{ $group: { _id: null, totalProcesses: { $sum: "$totalProcess" } } }]),
+  ]);
+
+  const roleMap = { user: 0, admin: 0, superAdmin: 0 };
+  roleCounts.forEach((r) => {
+    if (r._id && roleMap[r._id] !== undefined) {
+      roleMap[r._id] = r.count;
+    }
+  });
+
+  const memory = process.memoryUsage();
+  const uptimeSeconds = Math.floor(process.uptime());
+
+  const systemHealth = {
+    environment: process.env.NODE_ENV || "development",
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptimeSeconds,
+    uptimeHuman: `${Math.floor(uptimeSeconds / 3600)}h ${Math.floor((uptimeSeconds % 3600) / 60)}m`,
+    memory: {
+      rssMB: Math.round(memory.rss / (1024 * 1024)),
+      heapUsedMB: Math.round(memory.heapUsed / (1024 * 1024)),
+      heapTotalMB: Math.round(memory.heapTotal / (1024 * 1024)),
+    },
+    database: {
+      status: mongoose.connection.readyState === 1 ? "healthy" : "disconnected",
+      name: mongoose.connection.name || "mongodb",
+    },
+    counts: {
+      totalUsers: roleMap.user + roleMap.admin + roleMap.superAdmin,
+      users: roleMap.user,
+      admins: roleMap.admin,
+      superAdmins: roleMap.superAdmin,
+      disabledUsers: disabledCount,
+      totalAppKeys,
+      totalProcesses: appKeyAgg[0]?.totalProcesses || 0,
+    },
+  };
+
+  return new ApiResponse(200, true, "SuperAdmin system overview fetched successfully", systemHealth).send(res);
+});
+
+/**
+ * @desc List all staff accounts (Admins & SuperAdmins)
+ */
+export const getAdminList = asyncHandler(async (req, res) => {
+  const staff = await User.find({
+    role: { $in: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] },
+  })
+    .select("-password -refreshToken -verificationToken")
+    .sort({ role: 1, createdAt: -1 });
+
+  return new ApiResponse(200, true, "Staff accounts retrieved successfully", {
+    staff,
+    total: staff.length,
+  }).send(res);
+});
+
+/**
+ * @desc Promote / Demote user role (SuperAdmin only)
+ */
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const { userId, role } = req.body;
+
+  if (!userId || !role) {
+    throw new ApiError(400, "User ID and target role are required");
+  }
+
+  const validRoles = [USER_ROLES.USER, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN];
+  if (!validRoles.includes(role)) {
+    throw new ApiError(400, `Invalid role. Allowed roles: ${validRoles.join(", ")}`);
+  }
+
+  // Prevent superAdmin from demoting themselves
+  if (req.user._id.toString() === userId.toString() && role !== USER_ROLES.SUPER_ADMIN) {
+    throw new ApiError(400, "You cannot demote your own SuperAdmin account");
+  }
+
+  const targetUser = await User.findById(userId);
+  if (!targetUser) {
+    throw new ApiError(404, "Target user not found");
+  }
+
+  // If demoting another superAdmin, check that there is at least one other superAdmin remaining
+  if (targetUser.role === USER_ROLES.SUPER_ADMIN && role !== USER_ROLES.SUPER_ADMIN) {
+    const superAdminCount = await User.countDocuments({ role: USER_ROLES.SUPER_ADMIN });
+    if (superAdminCount <= 1) {
+      throw new ApiError(400, "Cannot demote the last remaining SuperAdmin");
+    }
+  }
+
+  targetUser.role = role;
+  await targetUser.save();
+
+  return new ApiResponse(200, true, `User role successfully updated to ${role}`, {
+    userId: targetUser._id,
+    name: targetUser.name,
+    email: targetUser.email,
+    role: targetUser.role,
+  }).send(res);
+});
+
+/**
+ * @desc Toggle user disabled / banned status (SuperAdmin only)
+ */
+export const toggleUserStatus = asyncHandler(async (req, res) => {
+  const { userId, isDisabled } = req.body;
+
+  if (!userId || typeof isDisabled !== "boolean") {
+    throw new ApiError(400, "User ID and boolean isDisabled status are required");
+  }
+
+  // Prevent self-disable
+  if (req.user._id.toString() === userId.toString()) {
+    throw new ApiError(400, "You cannot disable your own account");
+  }
+
+  const targetUser = await User.findById(userId);
+  if (!targetUser) {
+    throw new ApiError(404, "Target user not found");
+  }
+
+  targetUser.isDisabled = isDisabled;
+  await targetUser.save();
+
+  return new ApiResponse(
+    200,
+    true,
+    `User account successfully ${isDisabled ? "disabled" : "enabled"}`,
+    {
+      userId: targetUser._id,
+      name: targetUser.name,
+      email: targetUser.email,
+      isDisabled: targetUser.isDisabled,
+    }
+  ).send(res);
 });

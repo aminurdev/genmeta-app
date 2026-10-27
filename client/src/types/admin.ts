@@ -283,3 +283,47 @@ export interface GetPaymentsHistoryParams {
   startDate?: string;
   endDate?: string;
 }
+
+
+export interface SuperAdminOverview {
+  environment: string;
+  nodeVersion: string;
+  platform: string;
+  uptimeSeconds: number;
+  uptimeHuman: string;
+  memory: {
+    rssMB: number;
+    heapUsedMB: number;
+    heapTotalMB: number;
+  };
+  database: {
+    status: "healthy" | "disconnected";
+    name: string;
+  };
+  counts: {
+    totalUsers: number;
+    users: number;
+    admins: number;
+    superAdmins: number;
+    disabledUsers: number;
+    totalAppKeys: number;
+    totalProcesses: number;
+  };
+}
+
+export interface StaffAccount {
+  _id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin" | "superAdmin";
+  avatar?: string | null;
+  isVerified: boolean;
+  isDisabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffListResponse {
+  staff: StaffAccount[];
+  total: number;
+}

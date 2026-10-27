@@ -86,3 +86,6 @@ export const verifySuperAdmin = asyncHandler(async (req, _, next) => {
 
 // Composed middleware for Admin protected routes
 export const authenticateAndVerifyAdmin = [verifyUser, verifyAdmin];
+
+// Composed middleware for SuperAdmin protected routes
+export const authenticateAndVerifySuperAdmin = [verifyUser, verifySuperAdmin];

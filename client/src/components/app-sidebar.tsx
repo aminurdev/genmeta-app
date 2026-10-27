@@ -22,6 +22,7 @@ import {
   Phone,
   Mail,
   Database,
+  ShieldAlert,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
 import { Separator } from "./ui/separator";
@@ -92,6 +93,18 @@ const adminSidebarData = [
         title: "OverView",
         url: "/admin",
         icon: LayoutDashboard,
+      },
+    ],
+  },
+  {
+    label: "Super Admin",
+    isForAdmin: true,
+    isForSuperAdmin: true,
+    items: [
+      {
+        title: "Super Admin Hub",
+        url: "/admin/super-admin",
+        icon: ShieldAlert,
       },
     ],
   },

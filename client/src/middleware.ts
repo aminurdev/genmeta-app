@@ -71,6 +71,11 @@ export function middleware(request: NextRequest) {
       // Non-admin users are safely redirected to user dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
+
+    // SuperAdmin exclusivity for /admin/super-admin
+    if (pathname.startsWith("/admin/super-admin") && userRole !== "superAdmin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
   }
 
   return NextResponse.next();

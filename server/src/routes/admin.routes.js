@@ -9,8 +9,15 @@ import {
   getReferralByUserId,
   getUserStats,
   updateWithdrawal,
+  getSuperAdminSystemOverview,
+  getAdminList,
+  updateUserRole,
+  toggleUserStatus,
 } from "../controllers/admin.controller.js";
-import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
+import {
+  authenticateAndVerifyAdmin,
+  authenticateAndVerifySuperAdmin,
+} from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -40,5 +47,12 @@ router.patch(
   authenticateAndVerifyAdmin,
   updateWithdrawal
 );
+
+
+// SuperAdmin exclusive endpoints
+router.get("/super-admin/overview", authenticateAndVerifySuperAdmin, getSuperAdminSystemOverview);
+router.get("/super-admin/admins", authenticateAndVerifySuperAdmin, getAdminList);
+router.patch("/super-admin/update-role", authenticateAndVerifySuperAdmin, updateUserRole);
+router.patch("/super-admin/toggle-status", authenticateAndVerifySuperAdmin, toggleUserStatus);
 
 export default router;

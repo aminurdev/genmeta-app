@@ -40,6 +40,8 @@ export const QUERY_KEYS = {
   maintenanceStats: ["admin", "scheduler", "stats"],
 
   allPricing: ["pricing", "all"],
+  superAdminOverview: ["admin", "superAdmin", "overview"],
+  superAdminStaff: ["admin", "superAdmin", "staff"],
 } as const;
 
 export const MUTATION_KEYS = {
