@@ -1,13 +1,13 @@
 {
   "scripts": {
-    "add:all": " yarn install && cd client && yarn install && cd ../server && yarn install",
-    "client": "cd client && yarn run dev",
-    "server": "cd server && yarn run dev",
-    "client:start": "cd client && yarn start",
-    "server:start": "cd server && yarn start",
-    "build": "cd client && yarn run build",
-    "dev": "concurrently \"yarn run client\" \"yarn run server\"",
-    "start": "concurrently \"yarn run client:start\" \"yarn run server:start\""
+    "add:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "client": "cd client && npm run dev",
+    "server": "cd server && npm run dev",
+    "client:start": "cd client && npm start",
+    "server:start": "cd server && npm start",
+    "build": "cd client && npm run build",
+    "dev": "concurrently \"npm run client\" \"npm run server\"",
+    "start": "concurrently \"npm run client:start\" \"npm run server:start\""
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

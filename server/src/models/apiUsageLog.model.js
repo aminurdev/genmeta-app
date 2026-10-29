@@ -2,10 +2,15 @@ import mongoose from "mongoose";
 
 const apiUsageLogSchema = new mongoose.Schema(
   {
+    appUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AppUser",
+      required: true,
+      index: true,
+    },
     appKeyId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "AppKey",
-      required: true,
+      ref: "AppUser",
       index: true,
     },
     userId: {
@@ -38,11 +43,13 @@ const apiUsageLogSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: "dailyapiusages",
     suppressReservedKeysWarning: true,
   }
 );
 
-apiUsageLogSchema.index({ appKeyId: 1, date: 1 }, { unique: true });
+apiUsageLogSchema.index({ appUserId: 1, date: 1 }, { unique: true });
+apiUsageLogSchema.index({ appKeyId: 1, date: 1 });
 apiUsageLogSchema.index({ userId: 1, date: 1 });
 
 export const ApiUsageLog =

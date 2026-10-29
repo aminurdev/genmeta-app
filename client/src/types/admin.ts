@@ -161,13 +161,24 @@ export interface PaymentResponse {
   page: number;
   limit: number;
   totalPages: number;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
   payments: {
     _id: string;
-    user: {
+    user?: {
       _id: string;
       name: string;
       email: string;
     };
+    userId?: {
+      _id: string;
+      name: string;
+      email: string;
+    } | string;
     paymentID: string;
     trxID: string;
     plan?: {
@@ -176,8 +187,11 @@ export interface PaymentResponse {
       type?: string;
     };
     amount: number;
+    currency?: string;
+    gateway?: string;
     createdAt: string;
-    transactionStatus: string;
+    status?: string;
+    transactionStatus?: string;
   }[];
 }
 

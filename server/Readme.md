@@ -89,7 +89,6 @@ npm run dev
 | `referralwithdrawals`| **NEW** Withdrawal request ledger| `(status, requestedAt)`, `(userId, requestedAt)` |
 | `dailyapiusages` | **NEW** Daily rollups & stats | `(appKeyId, date)` (unique), `(userId, date)`, `date` |
 | `aiapis` | Encrypted Gemini AI keys | `isActive`, `createdAt` |
-| `bkashtokens` | bKash OAuth token cache | `expires_at` |
 | `_migrations` | Migration version tracking | `name` (unique), `batch` |
 
 ---
@@ -112,15 +111,8 @@ npm run dev
   - `GET /appkey/stats` - Quotas & status
 
 - **Payment Gateways**: `/api/v1/payment`
-  - `POST /create-app-payment` - Initiate bKash checkout
-  - `GET /bkash-callback` - bKash webhook / verification
   - `POST /create-paystation-payment` - Initiate PayStation checkout
   - `GET /paystation-callback` - PayStation webhook / verification
-
-- **Orders & Subscriptions**: `/api/v1/orders`
-  - `POST /create` - Create order with promo/referral
-  - `GET /my-orders` - User order history
-  - `PATCH /:orderId/status` - Admin fulfillment (with plan synchronization)
 
 - **Referrals**: `/api/v1/referral`
   - `GET /getDetails` - Referral metrics & code

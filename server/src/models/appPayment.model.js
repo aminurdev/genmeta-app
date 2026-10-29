@@ -26,7 +26,7 @@ const paymentSchema = new mongoose.Schema(
     gateway: {
       type: String,
       enum: Object.values(PAYMENT_GATEWAYS),
-      default: PAYMENT_GATEWAYS.BKASH,
+      default: PAYMENT_GATEWAYS.PAYSTATION,
       index: true,
     },
     plan: {

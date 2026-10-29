@@ -17,7 +17,9 @@
     "migrate:up": "node src/database/migrations/migrator.js up",
     "migrate:down": "node src/database/migrations/migrator.js down",
     "migrate:status": "node src/database/migrations/migrator.js status",
-    "restore:backup": "node scripts/restore-from-backup.js"
+    "restore:backup": "node scripts/restore-from-backup.js",
+    "db:migrate-new": "node scripts/migrate-to-new-db.js",
+    "db:migrate-appusers": "node scripts/migrate-appkeys-to-appusers.js"
   },
   "dependencies": {
     "axios": "^1.8.3",

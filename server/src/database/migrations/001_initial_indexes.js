@@ -21,7 +21,11 @@ export async function up(connection) {
   console.log("  → Ensuring indexes on users collection...");
   const users = db.collection("users");
   await safeCreateIndex(users, { email: 1 }, { unique: true });
-  await safeCreateIndex(users, { googleId: 1 }, { unique: true, sparse: true });
+  await safeCreateIndex(
+    users,
+    { googleId: 1 },
+    { unique: true, partialFilterExpression: { googleId: { $type: "string" } } }
+  );
   await safeCreateIndex(users, { role: 1, isVerified: 1, createdAt: -1 });
 
   console.log("  → Ensuring indexes on appkeys collection...");

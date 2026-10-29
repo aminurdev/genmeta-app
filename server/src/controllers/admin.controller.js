@@ -553,17 +553,37 @@ export const getUserStats = asyncHandler(async (req, res) => {
 });
 
 export const getPaymentsHistory = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "" } = req.query;
+  const { page = 1, limit = 10, search = "", startDate, endDate, status } = req.query;
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const limitNum = Math.max(1, parseInt(limit, 10));
   const skip = (pageNum - 1) * limitNum;
 
   const query = {};
+
+  if (status) {
+    query.status = { $regex: new RegExp(`^${status}$`, "i") };
+  }
+
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) query.createdAt.$gte = new Date(startDate);
+    if (endDate) query.createdAt.$lte = new Date(endDate);
+  }
+
   if (search) {
+    const matchingUsers = await User.find({
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ],
+    }).select("_id");
+    const userIds = matchingUsers.map((u) => u._id);
+
     query.$or = [
       { trxID: { $regex: search, $options: "i" } },
       { paymentID: { $regex: search, $options: "i" } },
+      { userId: { $in: userIds } },
     ];
   }
 
@@ -577,13 +597,43 @@ export const getPaymentsHistory = asyncHandler(async (req, res) => {
     AppPayment.countDocuments(query),
   ]);
 
+  const transformedPayments = payments.map((p) => {
+    const userObj = p.userId && typeof p.userId === "object" ? p.userId : null;
+    return {
+      _id: p._id,
+      user: {
+        _id: userObj?._id?.toString() || p.userId?.toString() || "N/A",
+        name: userObj?.name || "Unknown User",
+        email: userObj?.email || "N/A",
+      },
+      userId: p.userId,
+      paymentID: p.paymentID,
+      trxID: p.trxID,
+      plan: p.plan,
+      amount: p.amount,
+      currency: p.currency || "BDT",
+      gateway: p.gateway,
+      status: p.status || "Completed",
+      transactionStatus: p.status || "Completed",
+      paymentDetails: p.paymentDetails,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    };
+  });
+
+  const totalPages = Math.ceil(total / limitNum);
+
   return new ApiResponse(200, true, "Payments history retrieved", {
-    payments,
+    payments: transformedPayments,
+    total,
+    page: pageNum,
+    limit: limitNum,
+    totalPages,
     pagination: {
       total,
       page: pageNum,
       limit: limitNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages,
     },
   }).send(res);
 });

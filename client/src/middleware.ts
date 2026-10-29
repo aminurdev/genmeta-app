@@ -29,10 +29,7 @@ function parseJwt(token: string): DecodedToken | null {
 const authRoutes = ["/login", "/signup", "/verify-email", "/reset-password"];
 const protectedRoutes = [
   /^\/dashboard(\/.*)?$/,
-  /^\/generate(\/.*)?$/,
   /^\/payment-status(\/.*)?$/,
-  /^\/results(\/.*)?$/,
-  /^\/settings(\/.*)?$/,
 ];
 const adminRoutes = [/^\/admin(\/.*)?$/];
 

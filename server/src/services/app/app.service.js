@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
-import { executePayment } from "../bkash/bkash.service.js";
 import { checkTransactionStatus } from "../paystation/paystation.service.js";
 import { User } from "../../models/user.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
@@ -40,99 +39,6 @@ export const redirectToPricing = (res, message, reason = "") => {
     redirectURL += `&reason=${encodeURIComponent(reason)}`;
   }
   return res.redirect(redirectURL);
-};
-
-/**
- * Process Successful bKash Payment
- */
-export const processSuccessfulPayment = async (paymentID, res) => {
-  let paymentDetails;
-
-  try {
-    paymentDetails = await executePayment(paymentID);
-  } catch (error) {
-    logger.error("Payment execution failed", { paymentID, error: error.message });
-    return redirectToPricing(res, "Payment execution failed", error.message || "execution_error");
-  }
-
-  if (!paymentDetails) {
-    logger.error("Failed to retrieve payment details", { paymentID });
-    return redirectToPricing(res, "Payment failed", "verification_failed");
-  }
-
-  const {
-    trxID,
-    transactionStatus,
-    amount,
-    payerReference,
-    merchantInvoiceNumber,
-  } = paymentDetails;
-  const planName = merchantInvoiceNumber?.split("-")[0] || "plan";
-
-  try {
-    const parts = (payerReference || "").split("-");
-    const userId = parts[0];
-    const planId = parts[1];
-    const promoCodeId = parts[2] || null;
-
-    if (!userId || !planId) {
-      logger.error("Invalid payerReference structure in bKash callback", { payerReference });
-      return redirectToPricing(res, "Payment verification error", "invalid_reference");
-    }
-
-    const planDetails = await AppPricing.findById(planId);
-
-    // Prevent duplicate processing
-    let payment = await AppPayment.findOne({
-      $or: [{ paymentID }, { trxID }],
-    });
-
-    if (payment) {
-      logger.info("Payment already processed:", { paymentID, trxID });
-      return res.redirect(
-        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${planName}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
-      );
-    }
-
-    // Create payment record
-    payment = await AppPayment.create({
-      userId,
-      paymentID,
-      trxID,
-      amount: parseFloat(amount),
-      gateway: PAYMENT_GATEWAYS.BKASH,
-      plan: {
-        id: planId,
-        name: planDetails?.name || planName,
-        type: planDetails?.type || "unknown",
-      },
-      paymentDetails,
-      status: transactionStatus,
-    });
-
-    if (transactionStatus === "Completed" || transactionStatus === "Successful") {
-      // 1. Update user plan
-      await planService.updateUserPlan(userId, planId);
-
-      // 2. Distribute referral commission if applicable
-      await planService.processReferralReward(userId, { paymentId: payment._id });
-
-      // 3. Record promo code usage
-      if (promoCodeId) {
-        await planService.recordPromoCodeUsage(userId, promoCodeId, { paymentId: payment._id });
-      }
-
-      return res.redirect(
-        `${config.cors_origin}/payment-status?status=success&amount=${amount}&plan=${planName}&trxID=${trxID}&planType=${planDetails?.type || "N/A"}&duration=${planDetails?.planDuration || "N/A"}${planDetails?.type === "credit" ? `&credit=${planDetails?.credit || 0}` : ""}`
-      );
-    } else {
-      logger.warn("Payment status not completed", { paymentID, transactionStatus });
-      return redirectToPricing(res, "Payment incomplete", "pending_completion");
-    }
-  } catch (error) {
-    logger.error("Error processing successful bKash payment", { paymentID, error: error.message });
-    return redirectToPricing(res, "Payment processing error", "processing_error");
-  }
 };
 
 /**

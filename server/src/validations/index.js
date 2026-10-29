@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { USER_ROLES, PLAN_TYPES, ORDER_STATUS, WITHDRAWAL_STATUS, PROMO_APPLIES_TO } from "../constants/index.js";
+import { USER_ROLES, PLAN_TYPES, WITHDRAWAL_STATUS, PROMO_APPLIES_TO } from "../constants/index.js";
 
 // === AUTH SCHEMAS ===
 export const registerUserSchema = z.object({
@@ -104,25 +104,6 @@ export const createPromoCodeSchema = z.object({
 export const validatePromoCodeSchema = z.object({
   code: z.string().min(1, "Promo code is required").toUpperCase(),
   planType: z.enum([PLAN_TYPES.SUBSCRIPTION, PLAN_TYPES.CREDIT]).optional(),
-});
-
-// === ORDER SCHEMAS ===
-export const createOrderSchema = z.object({
-  planId: z.string().min(1, "Plan ID is required"),
-  promoCode: z.string().optional(),
-  referralCode: z.string().optional(),
-});
-
-export const adminCreateOrderSchema = z.object({
-  userId: z.string().min(1, "User ID is required"),
-  planId: z.string().min(1, "Plan ID is required"),
-  amount: z.coerce.number().optional(),
-  notes: z.string().optional(),
-});
-
-export const updateOrderStatusSchema = z.object({
-  status: z.enum([ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED]),
-  notes: z.string().optional(),
 });
 
 // === REFERRAL SCHEMAS ===

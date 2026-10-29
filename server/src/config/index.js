@@ -39,13 +39,6 @@ const envSchema = z.object({
 
   RESEND_API_KEY: z.string().optional().default(""),
 
-  BKASH_BASE_URL: z.string().optional().default("https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized"),
-  BKASH_APP_KEY: z.string().optional().default(""),
-  BKASH_APP_SECRET: z.string().optional().default(""),
-  BKASH_USERNAME: z.string().optional().default(""),
-  BKASH_PASSWORD: z.string().optional().default(""),
-  BKASH_CALLBACK_URL: z.string().optional().default("http://localhost:5000/api/v1/payment/bkash-callback"),
-
   PAYSTATION_BASE_URL: z.string().optional().default("https://sandbox.paystation.com.bd"),
   PAYSTATION_MERCHANT_ID: z.string().optional().default(""),
   PAYSTATION_PASSWORD: z.string().optional().default(""),
@@ -100,15 +93,6 @@ const config = {
   email_verify_token_expiry: rawEnv.EMAIL_VERIFY_TOKEN_EXPIRY || "1d",
 
   resend_api_key: rawEnv.RESEND_API_KEY || "",
-
-  bkash: {
-    base_url: rawEnv.BKASH_BASE_URL,
-    app_key: rawEnv.BKASH_APP_KEY,
-    app_secret: rawEnv.BKASH_APP_SECRET,
-    username: rawEnv.BKASH_USERNAME,
-    password: rawEnv.BKASH_PASSWORD,
-    callback_url: rawEnv.BKASH_CALLBACK_URL,
-  },
 
   paystation: {
     base_url: rawEnv.PAYSTATION_BASE_URL,
