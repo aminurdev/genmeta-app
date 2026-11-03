@@ -38,7 +38,7 @@ export const getUserStats = async (): Promise<
 export const resetDeviceId = async (
   userId: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appkey/reset-device`, {
+  const result = await api.put(`/app/appid/reset-device`, {
     key: userId,
   });
   return result.data;
@@ -48,7 +48,7 @@ export const updateUserStats = async (
   userId: string,
   mode: "suspend" | "reactivate",
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appkey/update-status`, {
+  const result = await api.put(`/app/appid/update-status`, {
     key: userId,
     mode,
   });
@@ -58,14 +58,14 @@ export const updateUserStats = async (
 export const updateUser = async (
   requestBody: any,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appkey/update", requestBody);
+  const result = await api.put("/app/appid/update", requestBody);
   return result.data;
 };
 
 export const createUser = async (
   requestBody: any,
 ): Promise<ApiResponse<any> | ApiErrorResponse> => {
-  const result = await api.post("/app/appkey/create", requestBody);
+  const result = await api.post("/app/appid/create", requestBody);
   return result.data;
 };
 
@@ -73,7 +73,7 @@ export const addCredits = async (
   key: string,
   credits: number,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appkey/add-credits", {
+  const result = await api.put("/app/appid/add-credits", {
     key,
     credits,
   });

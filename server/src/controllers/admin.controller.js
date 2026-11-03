@@ -358,6 +358,16 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       monthlyRevenueList: monthlyRevenueMap,
     },
     users: userStats[0]?.counts[0] || { total: 0, verified: 0, newThisMonth: 0 },
+    appIds: {
+      total: appKeyCounts.total || 0,
+      newThisMonth: appKeyCounts.newThisMonth || 0,
+      active: appKeyCounts.active || 0,
+      activePremium: appKeyCounts.activePremium || 0,
+      subscriptionPlanCount: appKeyCounts.subscriptionPlanCount || 0,
+      creditPlanCount: appKeyCounts.creditPlanCount || 0,
+      monthlyProcessList: monthlyProcessMap,
+      topUsage,
+    },
     appKeys: {
       total: appKeyCounts.total || 0,
       newThisMonth: appKeyCounts.newThisMonth || 0,
@@ -430,13 +440,14 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     return {
       ...u,
       key: keyDoc?.key || null,
+      appId: keyDoc?.key || null,
+      appKey: keyDoc?.key || null,
       plan: keyDoc?.plan || { type: "free", name: "Free" },
       credit: keyDoc?.credit ?? 0,
       status: keyDoc?.status || (u.isDisabled ? "suspended" : "active"),
       allowedDevices: keyDoc?.allowedDevices || [],
       totalProcess: keyDoc?.totalProcess || 0,
       expiresAt: keyDoc?.expiresAt || null,
-      appKey: keyDoc?.key || null,
     };
   });
 
@@ -845,6 +856,7 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
       admins: roleMap.admin,
       superAdmins: roleMap.superAdmin,
       disabledUsers: disabledCount,
+      totalAppIds: totalAppKeys,
       totalAppKeys,
       totalProcesses: appKeyAgg[0]?.totalProcesses || 0,
     },

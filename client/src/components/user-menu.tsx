@@ -150,7 +150,7 @@ export function UserMenu({
               className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
             >
               <UserIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Profile & API Key</span>
+              <span className="font-medium text-sm">Profile & App ID</span>
             </Link>
           </DropdownMenuItem>
 

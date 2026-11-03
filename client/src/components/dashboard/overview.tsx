@@ -87,7 +87,7 @@ export default function Overview() {
     if (!key) return;
     navigator.clipboard.writeText(key);
     setCopied(true);
-    toast.success("API Key copied to clipboard");
+    toast.success("App ID copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -123,7 +123,7 @@ export default function Overview() {
   const plan = data.plan || { type: data.appKey?.planType || "free", name: "Free Tier" };
   const credit = data.credit ?? data.appKey?.creditRemaining ?? 0;
   const remainingDays = data.remainingDays ?? data.appKey?.daysLeft ?? null;
-  const appKeyString = data.appKey?.key || "";
+  const appKeyString = data.appId?.id || data.appId?.key || data.appKey?.key || "";
   const totalProcess = data.totalProcess ?? data.appKey?.totalProcess ?? 0;
   const todayProcess = data.todayProcess ?? data.appKey?.todayUsage ?? 0;
   const thisMonthProcess = data.currentMonthProcess ?? data.appKey?.thisMonthUsage ?? 0;
@@ -151,7 +151,7 @@ export default function Overview() {
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Manage your AI processing quota, copy your desktop app key, and track daily activity.
+            Manage your AI processing quota, view your desktop App ID, and track daily activity.
           </p>
         </div>
 
@@ -185,7 +185,7 @@ export default function Overview() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">Desktop App API Key</span>
+                <span className="font-semibold text-sm">Desktop App ID</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Active
@@ -197,7 +197,7 @@ export default function Overview() {
                     ? showKey
                       ? appKeyString
                       : `${appKeyString.slice(0, 8)}••••••••••••••••${appKeyString.slice(-6)}`
-                    : "No App Key Generated"}
+                    : "No App ID Found"}
                 </code>
                 {appKeyString && (
                   <Button
@@ -230,7 +230,7 @@ export default function Overview() {
                 ) : (
                   <>
                     <Copy className="h-3.5 w-3.5" />
-                    Copy Key
+                    Copy App ID
                   </>
                 )}
               </Button>

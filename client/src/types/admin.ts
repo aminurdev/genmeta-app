@@ -7,6 +7,24 @@ export type AdminDashboardStats = {
     monthlyRevenueList: Record<string, number>;
     monthlyBreakdown?: Record<string, number> | Array<Record<string, unknown>>;
   };
+  appIds?: {
+    total: number;
+    newThisMonth: number;
+    active: number;
+    activePremium: number;
+    subscriptionPlanCount: number;
+    creditPlanCount: number;
+    monthlyProcessList: Record<string, number>;
+    topUsage: Array<{
+      _id: string;
+      count: number;
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+    }>;
+  };
   appKeys: {
     total: number;
     newThisMonth: number;
@@ -102,6 +120,8 @@ export interface AppUsers {
   email?: string;
   name?: string;
   key: string;
+  appId?: string;
+  appKey?: string;
   credit: number | null;
   isActive: boolean;
   status: "active" | "suspended";
@@ -320,6 +340,7 @@ export interface SuperAdminOverview {
     admins: number;
     superAdmins: number;
     disabledUsers: number;
+    totalAppIds?: number;
     totalAppKeys: number;
     totalProcesses: number;
   };

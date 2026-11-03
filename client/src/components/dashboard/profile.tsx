@@ -92,7 +92,7 @@ const Profile = () => {
   }
 
   const user = data.user || data;
-  const appKey = data.appKey;
+  const appKey = data.appId || data.appKey;
   const loginProviders: string[] = Array.isArray(user.loginProvider) && user.loginProvider.length > 0
     ? user.loginProvider
     : ["email"];
@@ -192,14 +192,14 @@ const Profile = () => {
           </CardContent>
         </Card>
 
-        {/* API Key Information */}
+        {/* Desktop App ID Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AppWindowMac className="h-5 w-5" />
-              App Information
+              Desktop App ID
             </CardTitle>
-            <CardDescription>Your app access and usage details</CardDescription>
+            <CardDescription>Your desktop app account identifier and plan usage</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {appKey ? (
@@ -253,7 +253,7 @@ const Profile = () => {
               </div>
             ) : (
               <div className="py-6 text-center text-muted-foreground">
-                <p>No active API key found for this account.</p>
+                <p>No active App ID found for this account.</p>
               </div>
             )}
           </CardContent>

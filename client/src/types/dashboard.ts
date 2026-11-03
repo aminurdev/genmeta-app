@@ -46,6 +46,31 @@ export interface Overview {
   }[];
   recentHistory?: OverviewRecentItem[];
 
+  // App ID information
+  appId?: {
+    exists: boolean;
+    id?: string | null;
+    key?: string | null;
+    totalProcess: number;
+    todayUsage: number;
+    thisMonthUsage: number;
+    last6MonthProcess: {
+      month: string;
+      count: number;
+    }[];
+    last7DaysProcess: {
+      day?: string;
+      date?: string;
+      count: number;
+    }[];
+    creditRemaining: number | null;
+    planType: "free" | "credit" | "subscription";
+    planId: string | null;
+    expiresAt: string | null;
+    daysLeft: number | null;
+    isSuspended: boolean;
+    isManuallyDisabled: boolean;
+  };
   // Compatibility nested fields
   appKey?: {
     exists: boolean;
@@ -106,6 +131,19 @@ export interface Profile {
     role: string;
     createdAt?: string;
   };
+  appId?: {
+    key?: string;
+    plan: {
+      type: "subscription" | "credit" | "free";
+      id?: string;
+      name?: string;
+    };
+    totalProcess?: number;
+    credit: number | null;
+    isActive: boolean;
+    status: "active" | "suspended";
+    expiresAt: string | null;
+  } | null;
   appKey?: {
     key?: string;
     plan: {

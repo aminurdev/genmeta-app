@@ -479,6 +479,7 @@ appUserSchema.index({ createdAt: -1 });
 
 export const AppUser =
   mongoose.models.AppUser || mongoose.model("AppUser", appUserSchema, "appusers");
+export const AppId = AppUser; // Modern App ID alias
 export const AppKey = AppUser; // Seamless alias for backward compatibility
 
 export default AppUser;

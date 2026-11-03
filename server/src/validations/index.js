@@ -41,30 +41,33 @@ export const resetPasswordSchema = z.object({
   path: ["confirmNewPassword"],
 });
 
-// === APP KEY SCHEMAS ===
-export const createAppKeySchema = z.object({
+// === APP ID / APP KEY SCHEMAS ===
+export const createAppIdSchema = z.object({
   username: z.string().min(1, "Username (email) is required"),
   expiryDays: z.coerce.number().optional().default(3),
   plan: z.union([z.string(), z.object({ type: z.string() })]).optional().default("free"),
   initialCredit: z.coerce.number().optional(),
 });
+export const createAppKeySchema = createAppIdSchema;
 
-export const updateAppKeySchema = z.object({
+export const updateAppIdSchema = z.object({
   username: z.string().min(1, "Username is required"),
   plan: z.union([z.string(), z.object({ type: z.string() })]).optional(),
   expiryDays: z.coerce.number().optional(),
   credit: z.coerce.number().optional(),
 });
+export const updateAppKeySchema = updateAppIdSchema;
 
 export const addCreditsSchema = z.object({
-  key: z.string().min(1, "API key is required"),
+  key: z.string().min(1, "App ID is required"),
   credits: z.coerce.number().min(1, "Credits must be a positive number"),
 });
 
-export const updateAppKeyStatusSchema = z.object({
-  key: z.string().min(1, "API key is required"),
+export const updateAppIdStatusSchema = z.object({
+  key: z.string().min(1, "App ID is required"),
   mode: z.enum(["suspend", "reactivate"]),
 });
+export const updateAppKeyStatusSchema = updateAppIdStatusSchema;
 
 // === PRICING SCHEMAS ===
 export const createPricingPlanSchema = z.object({

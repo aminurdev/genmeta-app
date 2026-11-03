@@ -1,13 +1,12 @@
 /**
- * AppKey Model (Legacy Wrapper)
+ * AppKey Model (Backward-compatible Re-export)
  *
- * NOTE: "App Key" was historically the concept used when static keys were issued.
- * The system has since transitioned to "App Users" (`AppUser`).
- * This module re-exports `AppUser` as `AppKey` to provide 100% backward
- * compatibility for existing controllers, services, and middlewares.
+ * NOTE: "App Key" was historically the term used when static keys were issued.
+ * The system has transitioned to "App ID" / "App User" (`AppId` / `AppUser`).
+ * This module re-exports `AppId` and `AppUser` for 100% backward compatibility.
  */
 
-import { AppUser, AppKey } from "./appUser.model.js";
+import { AppUser, AppKey, AppId } from "./appUser.model.js";
 
-export { AppUser, AppKey };
+export { AppUser, AppKey, AppId };
 export default AppKey;

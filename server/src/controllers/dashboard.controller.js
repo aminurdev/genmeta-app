@@ -15,7 +15,7 @@ export const getOverview = asyncHandler(async (req, res) => {
 
   const [appKey, user, paymentStats, orders] = await Promise.all([
     AppKey.findOne({ userId }).select(
-      "plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt"
+      "key plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt"
     ),
     User.findById(userId).select("name email isVerified loginProvider avatar role createdAt"),
     AppPayment.aggregate([
@@ -123,7 +123,25 @@ export const getOverview = asyncHandler(async (req, res) => {
     last6MonthProcess,
     last7DaysProcess,
     recentHistory: combinedHistory,
-    // Backward compatibility objects
+    // App ID / License Information
+    appId: {
+      exists: !!appKey,
+      id: appKey?.key || null,
+      key: appKey?.key || null,
+      totalProcess: appKey?.totalProcess || 0,
+      todayUsage: dailyProcess.get(todayStr) || 0,
+      thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
+      last6MonthProcess,
+      last7DaysProcess,
+      creditRemaining: appKey?.credit ?? 0,
+      planType: appKey?.plan?.type || "free",
+      planId: appKey?.plan?.id || null,
+      expiresAt: appKey?.expiresAt || null,
+      daysLeft: remainingDays,
+      isSuspended: appKey?.status === "suspended",
+      isManuallyDisabled: appKey ? !appKey.isActive : false,
+    },
+    // Backward compatibility object
     appKey: {
       exists: !!appKey,
       key: appKey?.key || null,
@@ -166,7 +184,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   }
 
   const appKey = await AppKey.findOne({ userId: user._id }).select(
-    "key plan credit status expiresAt"
+    "key plan credit status expiresAt isActive totalProcess"
   );
 
   const userObj = user.toObject();
@@ -174,6 +192,7 @@ export const getProfile = asyncHandler(async (req, res) => {
   return new ApiResponse(200, true, "Profile retrieved successfully", {
     ...userObj,
     user: userObj,
+    appId: appKey,
     appKey,
   }).send(res);
 });

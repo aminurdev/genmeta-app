@@ -55,16 +55,18 @@ export const generateCode = (length = 6, letterRatio = 0.7) => {
 };
 
 /**
- * Generate a cryptographically secure App Key
+ * Generate a cryptographically secure App ID
  * @returns {string} sha256 hex string
  */
-export function generateAppKey() {
+export function generateAppId() {
   const buffer = crypto.randomBytes(32);
   const timestamp = Date.now().toString();
   const uuid = uuidv4();
   const combined = buffer.toString("hex") + timestamp + uuid;
   return crypto.createHash("sha256").update(combined).digest("hex");
 }
+
+export const generateAppKey = generateAppId; // Backward-compatible alias
 
 /**
  * Compare two semantic version strings (e.g., "1.2.0" vs "1.1.9")
