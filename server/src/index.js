@@ -22,6 +22,10 @@ async function startServer() {
       console.log(`✓ Health endpoint: http://localhost:${config.port}/health`);
     });
 
+    // Set 5-minute timeout on HTTP server to handle long-running operations like backups
+    server.timeout = 300000;
+    server.requestTimeout = 300000;
+
     // 3. Initialize background schedulers
     schedulerService.start();
     console.log("✓ Scheduler initialized");

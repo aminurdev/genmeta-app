@@ -211,9 +211,8 @@ export default function AppIdList() {
       if (result.success) {
         toast(
           result.message ||
-            `App ID ${
-              mode === "suspend" ? "suspended" : "reactivated"
-            } successfully`,
+          `App ID ${mode === "suspend" ? "suspended" : "reactivated"
+          } successfully`,
         );
 
         // Refresh the API keys list
@@ -384,9 +383,12 @@ export default function AppIdList() {
         setCreatePlan("free");
         setCreateExpiryDays("7");
       } else {
+        
+      console.log(result)
         throw new Error(result.message || "Failed to create app user");
       }
     } catch (err) {
+      console.log(err)
       toast(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
       setIsCreating(false);
