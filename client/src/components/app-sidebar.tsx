@@ -46,7 +46,7 @@ const userSidebarData = [
       {
         title: "Referral",
         url: "/dashboard/referral",
-        icon: Users, // Referral: using Users icon
+        icon: Users,
       },
       {
         title: "Appearance",
@@ -105,6 +105,7 @@ const adminSidebarData = [
         title: "Super Admin Hub",
         url: "/admin/super-admin",
         icon: ShieldAlert,
+        isForSuperAdmin: true,
       },
     ],
   },
@@ -120,7 +121,7 @@ const adminSidebarData = [
       {
         title: "Referral",
         url: "/admin/referral",
-        icon: Users, // Referral: using Users icon
+        icon: Users,
       },
       {
         title: "Payments",
@@ -164,6 +165,8 @@ export type AppSidebarProps = {
 
 export function AppSidebar({ user, type }: AppSidebarProps) {
   const sidebarData = type === "admin" ? adminSidebarData : userSidebarData;
+  const isSuperAdmin = user?.role === "superAdmin";
+  const isAdmin = user?.role === "admin" || isSuperAdmin;
 
   return (
     <Sidebar collapsible="icon">
@@ -174,8 +177,19 @@ export function AppSidebar({ user, type }: AppSidebarProps) {
 
       <SidebarContent>
         {sidebarData.map((section) => {
-          const visibleItems = section.items.filter(() => {
-            const isAdmin = user?.role === "admin" || user?.role === "superAdmin";
+          // If section is for superAdmin only, only show if user is superAdmin
+          if ((section as { isForSuperAdmin?: boolean }).isForSuperAdmin && !isSuperAdmin) {
+            return null;
+          }
+
+          // If section is for admin only, only show if user is admin or superAdmin
+          if (section.isForAdmin && !isAdmin) {
+            return null;
+          }
+
+          const visibleItems = section.items.filter((item) => {
+            const itemIsForSuperAdmin = (item as { isForSuperAdmin?: boolean }).isForSuperAdmin;
+            if (itemIsForSuperAdmin && !isSuperAdmin) return false;
             return !section.isForAdmin || isAdmin;
           });
 

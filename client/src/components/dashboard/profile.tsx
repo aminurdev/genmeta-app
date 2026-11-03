@@ -21,7 +21,7 @@ import {
 import { format } from "date-fns";
 import { PasswordChangeForm } from "@/components/dashboard/password-change-form";
 import { PlanSwitcher } from "@/components/dashboard/plan-switcher";
-import Loading from "@/app/dashboard/loading";
+import { ProfileSkeleton } from "@/components/dashboard/profile-skeleton";
 
 const Profile = () => {
   const { data: profile, isLoading, isError, error } = useProfileQuery();
@@ -54,7 +54,7 @@ const Profile = () => {
 
   // Loading state
   if (isLoading) {
-    return <Loading />;
+    return <ProfileSkeleton />;
   }
 
   // Error state

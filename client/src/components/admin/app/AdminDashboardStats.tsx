@@ -30,7 +30,7 @@ import {
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAdminOverviewQuery } from "@/services/queries/admin-dashboard";
-import Loading from "@/app/admin/loading";
+import { AdminDashboardSkeleton } from "@/components/admin/admin-dashboard-skeleton";
 
 export default function DashboardStats() {
   const { data, isLoading, error, refetch } = useAdminOverviewQuery();
@@ -84,7 +84,7 @@ export default function DashboardStats() {
   };
 
   if (isLoading) {
-    return <Loading />;
+    return <AdminDashboardSkeleton showHeader={false} />;
   }
 
   if (error) {

@@ -64,6 +64,11 @@ import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  SuperAdminDashboardSkeleton,
+  SuperAdminTelemetrySkeleton,
+  SuperAdminStaffRowsSkeleton,
+} from "@/components/admin/super-admin-skeleton";
 
 export default function SuperAdminPage() {
   const { user: currentUser } = useAuth();
@@ -136,6 +141,10 @@ export default function SuperAdminPage() {
       ? Math.round((overview.memory.heapUsedMB / overview.memory.heapTotalMB) * 100)
       : 0;
 
+  if (isOverviewLoading && !overview && isStaffLoading && staff.length === 0) {
+    return <SuperAdminDashboardSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -199,7 +208,11 @@ export default function SuperAdminPage() {
 
         {/* TAB 1: Infrastructure Telemetry */}
         <TabsContent value="telemetry" className="space-y-6">
-          {/* Key Metrics Cards */}
+          {isOverviewLoading && !overview ? (
+            <SuperAdminTelemetrySkeleton />
+          ) : (
+            <>
+              {/* Key Metrics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -383,6 +396,8 @@ export default function SuperAdminPage() {
               </CardContent>
             </Card>
           </div>
+            </>
+          )}
         </TabsContent>
 
         {/* TAB 2: Staff & Access Governance */}
@@ -420,11 +435,7 @@ export default function SuperAdminPage() {
                   </TableHeader>
                   <TableBody>
                     {isStaffLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          Loading staff directory...
-                        </TableCell>
-                      </TableRow>
+                      <SuperAdminStaffRowsSkeleton count={5} />
                     ) : filteredStaff.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">

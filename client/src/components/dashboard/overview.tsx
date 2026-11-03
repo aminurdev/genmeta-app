@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { UserDashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import {
   Key,
   Copy,
@@ -34,40 +34,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ProcessChart } from "@/components/dashboard/process-chart";
-
-function OverviewSkeleton() {
-  return (
-    <div className="space-y-6">
-      {/* Top Banner Skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
-        <div className="space-y-2">
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-32" />
-        </div>
-      </div>
-
-      {/* App Key Strip Skeleton */}
-      <Skeleton className="h-20 w-full rounded-xl" />
-
-      {/* 4 KPI Cards Skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-xl" />
-        ))}
-      </div>
-
-      {/* Chart & Summary Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Skeleton className="h-80 lg:col-span-2 rounded-xl" />
-        <Skeleton className="h-80 rounded-xl" />
-      </div>
-    </div>
-  );
-}
 
 export default function Overview() {
   const [showKey, setShowKey] = useState(false);
@@ -97,7 +63,7 @@ export default function Overview() {
   };
 
   if (isLoading) {
-    return <OverviewSkeleton />;
+    return <UserDashboardSkeleton />;
   }
 
   if (isError || !overviewRes?.success || !overviewRes.data) {
