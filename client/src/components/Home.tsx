@@ -313,15 +313,16 @@ export default function HomePage({ releaseInfo }: Props) {
               className="lp-rise max-w-3xl text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl md:text-6xl md:leading-[1.05]"
               style={{ animationDelay: "60ms" }}
             >
-              AI Metadata for Your Stock Content
+              AI Metadata Generator for Adobe Stock & Microstock
             </h1>
 
             <p
               className="lp-rise mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg"
               style={{ animationDelay: "120ms" }}
             >
-              GenMeta generates relevance-ranked titles, descriptions, and keywords for your photos, videos, and vectors optimized for Adobe Stock, Shutterstock, Freepik, and more.
-
+              GenMeta generates relevance-ranked titles, descriptions, and
+              keywords for your photos, videos, and vectors optimized for Adobe
+              Stock, Shutterstock, Freepik, and more.
             </p>
 
             <div
@@ -422,8 +423,6 @@ export default function HomePage({ releaseInfo }: Props) {
           </div>
         </Section>
 
-
-
         {/* ---------------------------- Features (Bento) -------------------- */}
         <Section id="features">
           <SectionHeader
@@ -518,17 +517,21 @@ export default function HomePage({ releaseInfo }: Props) {
               <div className="flex gap-4 rounded-xl border bg-background p-5">
                 <Lock className="h-6 w-6 shrink-0 text-foreground" />
                 <div>
-                  <h3 className="text-base font-medium">Local-First Desktop App</h3>
+                  <h3 className="text-base font-medium">
+                    Local-First Desktop App
+                  </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Your full-resolution images, RAW captures, vectors, and master
-                    videos are never uploaded to remote storage.
+                    Your full-resolution images, RAW captures, vectors, and
+                    master videos are never uploaded to remote storage.
                   </p>
                 </div>
               </div>
               <div className="flex gap-4 rounded-xl border bg-background p-5">
                 <HardDrive className="h-6 w-6 shrink-0 text-foreground" />
                 <div>
-                  <h3 className="text-base font-medium">Fast Folder Batch Scanning</h3>
+                  <h3 className="text-base font-medium">
+                    Fast Folder Batch Scanning
+                  </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Scan thousands of creative files directly from your SSD or
                     external drive with zero bandwidth bottlenecks.
@@ -538,10 +541,12 @@ export default function HomePage({ releaseInfo }: Props) {
               <div className="flex gap-4 rounded-xl border bg-background p-5">
                 <ShieldCheck className="h-6 w-6 shrink-0 text-foreground" />
                 <div>
-                  <h3 className="text-base font-medium">Direct Metadata Embedding</h3>
+                  <h3 className="text-base font-medium">
+                    Direct Metadata Embedding
+                  </h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Embed EXIF, IPTC and XMP tags directly to your local files so
-                    metadata stays attached wherever your assets travel.
+                    Embed EXIF, IPTC and XMP tags directly to your local files
+                    so metadata stays attached wherever your assets travel.
                   </p>
                 </div>
               </div>
@@ -567,8 +572,8 @@ export default function HomePage({ releaseInfo }: Props) {
                 metadata that helps buyers find your content.
               </p>
               <p className="mt-4 text-pretty text-base font-medium text-foreground">
-                Start completely free. Download for Windows and get 50 free credits
-                instantly — no credit card required.
+                Start completely free. Download for Windows and get 50 free
+                credits instantly — no credit card required.
               </p>
             </div>
 
@@ -581,9 +586,9 @@ export default function HomePage({ releaseInfo }: Props) {
                   True Relevance Ranking
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Agencies like Adobe Stock prioritize the first 5 to 10 keywords.
-                  GenMeta puts primary subjects first instead of random or
-                  alphabetized filler.
+                  Agencies like Adobe Stock prioritize the first 5 to 10
+                  keywords. GenMeta puts primary subjects first instead of
+                  random or alphabetized filler.
                 </p>
               </div>
 

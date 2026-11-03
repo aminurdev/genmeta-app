@@ -13,16 +13,18 @@ import {
   updatePromoCode,
   validatePromoCode,
 } from "../controllers/promocode.controller.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+  createPromoCodeSchema,
+  validatePromoCodeSchema,
+} from "../validations/index.js";
 
 const router = express.Router();
 
-// route = /api/v1/promo-codes
-
-// Admin only routes (protected)
 router
   .route("/")
   .get(authenticateAndVerifyAdmin, getAllPromoCodes)
-  .post(authenticateAndVerifyAdmin, createPromoCode);
+  .post(authenticateAndVerifyAdmin, validate(createPromoCodeSchema), createPromoCode);
 
 router
   .route("/:id")
@@ -30,10 +32,7 @@ router
   .patch(authenticateAndVerifyAdmin, updatePromoCode)
   .delete(authenticateAndVerifyAdmin, deletePromoCode);
 
-// Public routes for validation/usage
-router.post("/validate", validatePromoCode);
-
-// Auth required but not admin
+router.post("/validate", validate(validatePromoCodeSchema), validatePromoCode);
 router.patch("/use/:code", verifyUser, incrementPromoCodeUsage);
 router.get("/code/:code", verifyUser, getPromoCodeByCode);
 

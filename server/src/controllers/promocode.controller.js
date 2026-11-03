@@ -2,31 +2,32 @@ import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/api.error.js";
 import { PromoCode } from "../models/promocode.model.js";
+import { PromoCodeRedemption } from "../models/promoCodeRedemption.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import { PROMO_APPLIES_TO } from "../constants/index.js";
 
-const createPromoCode = asyncHandler(async (req, res) => {
+export const createPromoCode = asyncHandler(async (req, res) => {
   const {
     code,
     description,
     discountPercent,
-    isActive,
-    appliesTo,
+    isActive = true,
+    appliesTo = PROMO_APPLIES_TO.BOTH,
     usageLimit,
     validFrom,
     validUntil,
   } = req.body;
 
   if (!code || !discountPercent || !validFrom || !validUntil) {
-    throw new ApiError(400, "All required fields must be provided");
+    throw new ApiError(400, "All required fields (code, discountPercent, validFrom, validUntil) must be provided");
   }
 
-  // Check if code already exists
-  const existingCode = await PromoCode.findOne({ code: code.toUpperCase() });
+  const normalizedCode = code.toUpperCase().trim();
+  const existingCode = await PromoCode.findOne({ code: normalizedCode });
   if (existingCode) {
     throw new ApiError(409, "A promo code with this code already exists");
   }
 
-  // Validate dates
   const fromDate = new Date(validFrom);
   const untilDate = new Date(validUntil);
 
@@ -39,12 +40,12 @@ const createPromoCode = asyncHandler(async (req, res) => {
   }
 
   const promoCode = await PromoCode.create({
-    code: code.toUpperCase(),
+    code: normalizedCode,
     description,
     discountPercent,
-    isActive: isActive !== undefined ? isActive : true,
-    appliesTo: appliesTo || "both",
-    usageLimit,
+    isActive: Boolean(isActive),
+    appliesTo,
+    usageLimit: usageLimit ? parseInt(usageLimit, 10) : null,
     validFrom: fromDate,
     validUntil: untilDate,
   });
@@ -54,9 +55,8 @@ const createPromoCode = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const getAllPromoCodes = asyncHandler(async (req, res) => {
+export const getAllPromoCodes = asyncHandler(async (req, res) => {
   const { active, appliesTo } = req.query;
-
   const filter = {};
 
   if (active !== undefined) {
@@ -64,7 +64,7 @@ const getAllPromoCodes = asyncHandler(async (req, res) => {
   }
 
   if (appliesTo) {
-    if (["subscription", "credit", "both"].includes(appliesTo)) {
+    if (Object.values(PROMO_APPLIES_TO).includes(appliesTo)) {
       filter.appliesTo = appliesTo;
     } else {
       throw new ApiError(400, "Invalid appliesTo parameter");
@@ -78,7 +78,7 @@ const getAllPromoCodes = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const getPromoCodeById = asyncHandler(async (req, res) => {
+export const getPromoCodeById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -86,7 +86,6 @@ const getPromoCodeById = asyncHandler(async (req, res) => {
   }
 
   const promoCode = await PromoCode.findById(id);
-
   if (!promoCode) {
     throw new ApiError(404, "Promo code not found");
   }
@@ -96,11 +95,14 @@ const getPromoCodeById = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const getPromoCodeByCode = asyncHandler(async (req, res) => {
+export const getPromoCodeByCode = asyncHandler(async (req, res) => {
   const { code } = req.params;
 
-  const promoCode = await PromoCode.findOne({ code: code.toUpperCase() });
+  if (!code) {
+    throw new ApiError(400, "Promo code is required");
+  }
 
+  const promoCode = await PromoCode.findOne({ code: code.toUpperCase().trim() });
   if (!promoCode) {
     throw new ApiError(404, "Promo code not found");
   }
@@ -110,77 +112,36 @@ const getPromoCodeByCode = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const updatePromoCode = asyncHandler(async (req, res) => {
+export const updatePromoCode = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const {
-    code,
-    description,
-    discountPercent,
-    isActive,
-    appliesTo,
-    usageLimit,
-    validFrom,
-    validUntil,
-  } = req.body;
+  const updates = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(400, "Invalid promo code ID format");
   }
 
-  if (code) {
-    const existingCode = await PromoCode.findOne({
-      code: code.toUpperCase(),
-      _id: { $ne: id },
-    });
-
-    if (existingCode) {
+  if (updates.code) {
+    updates.code = updates.code.toUpperCase().trim();
+    const existing = await PromoCode.findOne({ code: updates.code, _id: { $ne: id } });
+    if (existing) {
       throw new ApiError(409, "A promo code with this code already exists");
     }
   }
 
-  // Validate dates if provided
-  let fromDate, untilDate;
-
-  if (validFrom) {
-    fromDate = new Date(validFrom);
-    if (isNaN(fromDate.getTime())) {
-      throw new ApiError(400, "Invalid validFrom date format");
-    }
-  }
-
-  if (validUntil) {
-    untilDate = new Date(validUntil);
-    if (isNaN(untilDate.getTime())) {
-      throw new ApiError(400, "Invalid validUntil date format");
-    }
-  }
-
-  // If both dates are provided, validate them together
-  if (validFrom && validUntil) {
+  if (updates.validFrom && updates.validUntil) {
+    const fromDate = new Date(updates.validFrom);
+    const untilDate = new Date(updates.validUntil);
     if (fromDate >= untilDate) {
-      throw new ApiError(
-        400,
-        "Valid from date must be before valid until date"
-      );
+      throw new ApiError(400, "Valid from date must be before valid until date");
     }
+    updates.validFrom = fromDate;
+    updates.validUntil = untilDate;
   }
 
-  const promoCode = await PromoCode.findByIdAndUpdate(
-    id,
-    {
-      $set: {
-        ...(code && { code: code.toUpperCase() }),
-        ...(description !== undefined && { description }),
-        ...(discountPercent !== undefined && { discountPercent }),
-        ...(isActive !== undefined && { isActive }),
-        ...(appliesTo && { appliesTo }),
-        ...(usageLimit !== undefined && { usageLimit }),
-        ...(validFrom && { validFrom: fromDate }),
-        ...(validUntil && { validUntil: untilDate }),
-      },
-    },
-    { new: true }
-  );
+  const promoCode = await PromoCode.findByIdAndUpdate(id, updates, {
+    new: true,
+    runValidators: true,
+  });
 
   if (!promoCode) {
     throw new ApiError(404, "Promo code not found");
@@ -191,7 +152,7 @@ const updatePromoCode = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
-const deletePromoCode = asyncHandler(async (req, res) => {
+export const deletePromoCode = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -199,96 +160,95 @@ const deletePromoCode = asyncHandler(async (req, res) => {
   }
 
   const promoCode = await PromoCode.findByIdAndDelete(id);
-
   if (!promoCode) {
     throw new ApiError(404, "Promo code not found");
   }
 
-  return new ApiResponse(200, true, "Promo code deleted successfully", {}).send(
-    res
-  );
+  return new ApiResponse(200, true, "Promo code deleted successfully").send(res);
 });
 
-const validatePromoCode = asyncHandler(async (req, res) => {
-  const { code } = req.body;
-
-  console.log({ code });
+export const validatePromoCode = asyncHandler(async (req, res) => {
+  const { code, planType } = req.body;
 
   if (!code) {
     throw new ApiError(400, "Promo code is required");
   }
 
-  const promoCode = await PromoCode.findOne({ code: code.toUpperCase() });
+  const normalizedCode = code.toUpperCase().trim();
+  const promoCode = await PromoCode.findOne({
+    code: normalizedCode,
+    isActive: true,
+  });
 
   if (!promoCode) {
-    throw new ApiError(404, "Invalid promo code");
+    throw new ApiError(404, "Invalid or inactive promo code");
   }
 
-  // Check if the code is active
-  if (!promoCode.isActive) {
-    throw new ApiError(400, "This promo code is no longer active");
-  }
-
-  // Check if usage limit is reached
-  if (
-    promoCode.usageLimit !== null &&
-    promoCode.usedCount >= promoCode.usageLimit
-  ) {
-    throw new ApiError(400, "This promo code has reached its usage limit");
-  }
-
-  // Check if the code is within valid date range
   const now = new Date();
-  if (now < promoCode.validFrom || now > promoCode.validUntil) {
-    throw new ApiError(400, "This promo code is not valid");
+  if (now < promoCode.validFrom) {
+    throw new ApiError(400, "Promo code is not yet active");
   }
 
-  // Return the valid promo code with details
+  if (now > promoCode.validUntil) {
+    throw new ApiError(400, "Promo code has expired");
+  }
+
+  if (planType && promoCode.appliesTo !== PROMO_APPLIES_TO.BOTH && promoCode.appliesTo !== planType) {
+    throw new ApiError(400, `This promo code only applies to ${promoCode.appliesTo} plans`);
+  }
+
+  if (promoCode.usageLimit !== null && (promoCode.usedCount || []).length >= promoCode.usageLimit) {
+    throw new ApiError(400, "Promo code usage limit has been reached");
+  }
+
   return new ApiResponse(200, true, "Promo code is valid", {
     promoCode: {
+      _id: promoCode._id,
       code: promoCode.code,
       discountPercent: promoCode.discountPercent,
       appliesTo: promoCode.appliesTo,
-      validUntil: promoCode.validUntil,
+      description: promoCode.description,
     },
   }).send(res);
 });
 
-const incrementPromoCodeUsage = asyncHandler(async (req, res) => {
+export const incrementPromoCodeUsage = asyncHandler(async (req, res) => {
   const { code } = req.params;
+  const userId = req.user._id;
 
   if (!code) {
     throw new ApiError(400, "Promo code is required");
   }
 
-  const promoCode = await PromoCode.findOneAndUpdate(
-    { code: code.toUpperCase() },
-    { $inc: { usedCount: 1 } },
-    { new: true }
-  );
-
+  const normalizedCode = code.toUpperCase().trim();
+  const promoCode = await PromoCode.findOne({ code: normalizedCode, isActive: true });
   if (!promoCode) {
-    throw new ApiError(404, "Promo code not found");
+    throw new ApiError(404, "Promo code not found or inactive");
   }
 
-  return new ApiResponse(
-    200,
-    true,
-    "Promo code usage incremented successfully",
-    {
-      usedCount: promoCode.usedCount,
-      usageLimit: promoCode.usageLimit,
-    }
-  ).send(res);
-});
+  if (promoCode.usedCount && promoCode.usedCount.includes(userId.toString())) {
+    throw new ApiError(400, "You have already used this promo code");
+  }
 
-export {
-  createPromoCode,
-  getAllPromoCodes,
-  getPromoCodeById,
-  getPromoCodeByCode,
-  updatePromoCode,
-  deletePromoCode,
-  validatePromoCode,
-  incrementPromoCodeUsage,
-};
+  promoCode.usedCount.push(userId.toString());
+  await promoCode.save();
+
+  // Log in normalized ledger
+  await PromoCodeRedemption.updateOne(
+    { promoCodeId: promoCode._id, userId },
+    {
+      $setOnInsert: {
+        promoCodeId: promoCode._id,
+        code: promoCode.code,
+        userId,
+        discountPercent: promoCode.discountPercent,
+        createdAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+
+  return new ApiResponse(200, true, "Promo code usage registered successfully", {
+    promoCode,
+  }).send(res);
+});

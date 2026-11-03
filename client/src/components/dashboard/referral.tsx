@@ -44,7 +44,7 @@ import {
 import { toast } from "sonner";
 import { requestWithdraw } from "@/services/dashboard";
 import { useBaseUrl } from "@/hooks/use-baseUrl";
-import Loading from "@/app/dashboard/loading";
+import { ReferralDashboardSkeleton } from "@/components/dashboard/referral-skeleton";
 
 export function ReferralDashboard() {
   // All hooks must be at the top
@@ -64,7 +64,7 @@ export function ReferralDashboard() {
 
   // Loading state
   if (isLoading) {
-    return <Loading />;
+    return <ReferralDashboardSkeleton />;
   }
 
   // Error state

@@ -1,175 +1,129 @@
-# Image Tag and Title Generator
+# GenMeta API Server - Enterprise Architecture
 
-## Description
+## Overview
 
-This application generates tags and titles for images using machine learning algorithms.
+High-performance backend API powering the GenMeta platform for AI-assisted image tag, title, and metadata generation. Built with Node.js, Express, MongoDB (Mongoose), and secured with JWT, Helmet, and Zod runtime schema validation.
 
-## Features
+---
 
-- Automatic tag generation
-- Title suggestion
-- User-friendly interface
-- Automated database backup system
-- Scheduled maintenance tasks
-- **Payment integration (bKash & PayStation)**
-- User authentication (Google OAuth)
-- API key management
-- Pricing plans and subscriptions
-- Promo code system
-- Referral rewards program
+## Key Architecture & Features
 
-## Installation
+- **Robust Multi-Layered Architecture**: Clean separation between routing, input validation, controllers, transactional business services, and database schemas.
+- **Database Normalization & Zero-Data-Loss Scalability**:
+  - Eliminated unbounded embedded arrays on `Referral` and `PromoCode` documents.
+  - Normalized ledger collections: `ReferralEarning`, `ReferralWithdrawal`, `PromoCodeRedemption`, and `DailyApiUsage`.
+  - Atomically protected balance deductions ensuring prevention of concurrent race conditions / double withdrawals.
+- **Comprehensive Database Migration System**:
+  - Native database migration engine located at `src/database/migrations/migrator.js`.
+  - Batch tracking inside `_migrations` collection.
+  - Compound indexing and schema evolution with safe up/down rollbacks.
+- **Unified Billing & Subscription Engine**: Single source of truth in `PlanService` preventing duplicate payment verification and plan assignment logic.
+- **Hardened Security & Validation**:
+  - Request payload validation on all routes via `Zod`.
+  - `Helmet` HTTP security headers, CORS protection, proxy awareness.
+  - Role-based authorization supporting `user`, `admin`, and `superAdmin`.
+  - `AES-256-CBC` encryption for AI keys and credentials.
+- **Resilience & Observability**:
+  - Graceful shutdown handlers for `SIGTERM` / `SIGINT` with connection pooling drain.
+  - Global centralized error handler differentiating operational vs programming errors.
+  - Request correlation tracing via `X-Request-Id`.
+  - Background scheduler for automated daily maintenance and weekly backups.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/image-tag-title-generator.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd image-tag-title-generator/gen-meta-app
-   ```
-3. Install the dependencies:
-   ```bash
-   npm install
-   ```
-4. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+---
 
-## Configuration
+## Getting Started
 
-### Required Environment Variables
+### 1. Prerequisites
+- Node.js (v18+ recommended, compatible with v20 and v24)
+- MongoDB instance (v6.0+ recommended)
 
-See `.env.example` for all required environment variables including:
+### 2. Installation
+```bash
+npm install
+```
 
-- Database configuration (main and backup)
-- Authentication secrets
-- **Payment gateway credentials (bKash & PayStation)**
-- Email service configuration
+### 3. Environment Configuration
+Create your `.env` file from the example:
+```bash
+cp .env.example .env
+```
+Configure your database URI, JWT secrets, and gateway credentials.
 
-### Payment Gateway Setup
+### 4. Database Migrations
+Run the automated database migrations before starting the server:
+```bash
+# Apply pending migrations
+npm run migrate:up
 
-The application supports two payment gateways:
+# Check migration status
+npm run migrate:status
 
-1. **PayStation** (Recommended) - Multi-gateway aggregator
-   - Supports: bKash, Nagad, Rocket, Upay, Credit/Debit Cards
-   - Easy integration, no token management
-   - See `PAYSTATION_QUICK_START.md` for 5-minute setup
+# Rollback last batch (if needed)
+npm run migrate:down
+```
 
-2. **bKash** - Direct bKash integration
-   - bKash-only payments
-   - Token-based authentication
-   - Advanced security features
+### 5. Running the Application
+```bash
+# Production mode
+npm start
 
-**Payment Documentation:**
-- `PAYSTATION_INTEGRATION.md` - Complete PayStation guide
-- `PAYSTATION_QUICK_START.md` - Quick setup guide
-- `PAYMENT_GATEWAY_COMPARISON.md` - Compare bKash vs PayStation
+# Development mode (with nodemon)
+npm run dev
+```
 
-### Backup System Setup
+---
 
-The application includes an automated MongoDB backup system. See `BACKUP_QUICKSTART.md` for setup instructions.
+## Database Architecture
 
-**Key backup features:**
+| Collection | Description | Primary Indexes |
+| :--- | :--- | :--- |
+| `users` | User accounts & credentials | `email` (unique), `googleId` (sparse), `(role, isVerified, createdAt)` |
+| `appkeys` | Client API keys & quotas | `key` (unique), `userId`, `("plan.type", expiresAt)`, `("plan.type", credit)` |
+| `apppricings` | Subscription & Credit tiers | `(isActive, type, basePrice)` |
+| `apppayments` | Verified payment audit logs | `paymentID` (unique), `trxID` (unique), `(userId, createdAt)` |
+| `orders` | Purchases & order history | `(userId, createdAt)`, `(status, createdAt)`, `planId` |
+| `promocodes` | Promotional discount codes | `code` (unique), `(isActive, validFrom, validUntil)` |
+| `promocoderedemptions` | **NEW** Normalized promo ledger | `(promoCodeId, userId)` (unique), `(userId, createdAt)` |
+| `referrals` | Referral programs & balances | `referralCode` (unique), `referrer` (unique), `availableBalance` |
+| `referralearnings` | **NEW** Commission reward ledger | `(referralId, referredUserId)` (unique), `(referrerId, createdAt)` |
+| `referralwithdrawals`| **NEW** Withdrawal request ledger| `(status, requestedAt)`, `(userId, requestedAt)` |
+| `dailyapiusages` | **NEW** Daily rollups & stats | `(appKeyId, date)` (unique), `(userId, date)`, `date` |
+| `aiapis` | Encrypted Gemini AI keys | `isActive`, `createdAt` |
+| `_migrations` | Migration version tracking | `name` (unique), `batch` |
 
-- Automatic weekly backups (Friday 12:00 PM UTC)
-- Manual backup API endpoints
-- Backup monitoring and statistics
-- Admin-only access
-
-## Usage
-
-1. Start the application:
-
-   ```bash
-   npm start
-   ```
-
-   For development:
-
-   ```bash
-   npm run dev
-   ```
-
-2. The server will start on the configured port (default: 5000)
-
-3. Access the API at `http://localhost:5000`
+---
 
 ## API Documentation
 
-### Main Endpoints
+### Base URL: `/api/v1`
 
-- `/api/v1/users` - User management
-- `/api/v1/app` - Application key management
-- **`/api/v1/payment` - Payment processing (bKash & PayStation)**
-- `/api/v1/scheduler` - Scheduler management
-- `/api/v1/backup` - Database backup (admin only)
-- `/api/v1/pricing` - Pricing plans
-- `/api/v1/promo-codes` - Promotional codes
-- `/api/v1/refer` - Referral system
+- **Authentication & Users**: `/api/v1/users`
+  - `POST /register` - Register new user (domain verified)
+  - `POST /login` - Password login
+  - `POST /verify-email` - Verify email via 6-digit OTP
+  - `POST /refresh-token` - Refresh access token
+  - `GET /google-login` / `GET /google/callback` - OAuth 2.0 flow
+  - `GET /me` - Authenticated profile
 
-### Payment API Endpoints
+- **Desktop & Mobile App Client**: `/api/v1/app`
+  - `POST /appkey/validate` - Authorize device & verify version
+  - `POST /appkey/usage` - Report usage & process counts
+  - `GET /appkey/stats` - Quotas & status
 
-**bKash:**
-- `POST /api/v1/payment/create-app-payment` - Create bKash payment
-- `GET /api/v1/payment/bkash-callback` - bKash callback handler
+- **Payment Gateways**: `/api/v1/payment`
+  - `POST /create-paystation-payment` - Initiate PayStation checkout
+  - `GET /paystation-callback` - PayStation webhook / verification
 
-**PayStation:**
-- `POST /api/v1/payment/create-paystation-payment` - Create PayStation payment
-- `GET /api/v1/payment/paystation-callback` - PayStation callback handler
+- **Referrals**: `/api/v1/referral`
+  - `GET /getDetails` - Referral metrics & code
+  - `POST /request-withdraw` - Atomic withdrawal submission
 
-**Request Format:**
-```json
-{
-  "planId": "507f1f77bcf86cd799439011",
-  "promoCode": "SAVE20"
-}
-```
+- **Admin Management**: `/api/v1/admin`
+  - `GET /dashboard/stats` - High-performance aggregation pipeline
+  - `GET /users/all` - Paginated user management
+  - `GET /paymentHistory/download` - CSV payments export
+  - `PATCH /referral/:userId/withdrawals/:withdrawalId` - Fulfill/reject withdrawals
 
-### Backup API Endpoints
-
-All backup endpoints require admin authentication:
-
-- `GET /api/v1/backup/status` - Get backup status
-- `POST /api/v1/backup/trigger` - Trigger manual backup
-- `GET /api/v1/backup/test-connection` - Test backup connection
-- `GET /api/v1/backup/history` - Get backup history
-
-See `BACKUP_API_EXAMPLES.md` for detailed API examples.
-
-## Automated Tasks
-
-### Daily Maintenance (00:00 UTC)
-
-- Refresh free plan credits
-- Downgrade expired subscriptions
-- Deactivate zero-credit plans
-
-### Weekly Backup (Friday 12:00 PM UTC)
-
-- Full database sync to backup database
-- Automatic backup of all collections
-
-## Documentation
-
-- **Payment System:**
-  - `PAYSTATION_INTEGRATION.md` - Complete PayStation documentation
-  - `PAYSTATION_QUICK_START.md` - 5-minute setup guide
-  - `PAYMENT_GATEWAY_COMPARISON.md` - bKash vs PayStation comparison
-
-- **Backup System:**
-  - `BACKUP_QUICKSTART.md` - Quick setup guide
-  - `BACKUP_GUIDE.md` - Complete backup documentation
-  - `BACKUP_API_EXAMPLES.md` - API usage examples
-  - `BACKUP_ARCHITECTURE.md` - System architecture
-  - `BACKUP_CHECKLIST.md` - Setup checklist
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request.
-
-## License
-
-This project is licensed under the ISC License.
+- **Maintenance & Schedulers**:
+  - Daily plan maintenance at 00:00 UTC (credit refreshes, subscription downgrades)
+  - Weekly backup at Friday 12:00 UTC (automated DB synchronization)

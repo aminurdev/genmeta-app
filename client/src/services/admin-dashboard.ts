@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use server";
 
 import { ApiErrorResponse, ApiResponse } from "@/types";
 import { api } from "./api-client";
@@ -13,6 +12,7 @@ import {
   ReferralDetails,
   UpdateWithdrawalRes,
   GetPaymentsHistoryParams,
+  WithdrawalNotificationsResponse,
 } from "@/types/admin";
 
 export const getAdminOverview = async (): Promise<
@@ -39,7 +39,7 @@ export const getUserStats = async (): Promise<
 export const resetDeviceId = async (
   userId: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appkey/reset-device`, {
+  const result = await api.put(`/app/appid/reset-device`, {
     key: userId,
   });
   return result.data;
@@ -49,7 +49,7 @@ export const updateUserStats = async (
   userId: string,
   mode: "suspend" | "reactivate",
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appkey/update-status`, {
+  const result = await api.put(`/app/appid/update-status`, {
     key: userId,
     mode,
   });
@@ -59,14 +59,14 @@ export const updateUserStats = async (
 export const updateUser = async (
   requestBody: any,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appkey/update", requestBody);
+  const result = await api.put("/app/appid/update", requestBody);
   return result.data;
 };
 
 export const createUser = async (
   requestBody: any,
 ): Promise<ApiResponse<any> | ApiErrorResponse> => {
-  const result = await api.post("/app/appkey/create", requestBody);
+  const result = await api.post("/app/appid/create", requestBody);
   return result.data;
 };
 
@@ -74,7 +74,7 @@ export const addCredits = async (
   key: string,
   credits: number,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appkey/add-credits", {
+  const result = await api.put("/app/appid/add-credits", {
     key,
     credits,
   });
@@ -412,5 +412,12 @@ export const triggerMaintenance = async (): Promise<
   ApiResponse<any> | ApiErrorResponse
 > => {
   const result = await api.post("/scheduler/trigger");
+  return result.data;
+};
+
+export const getWithdrawalNotifications = async (): Promise<
+  ApiResponse<WithdrawalNotificationsResponse> | ApiErrorResponse
+> => {
+  const result = await api.get("/admin/notifications/referral-withdrawals");
   return result.data;
 };

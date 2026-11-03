@@ -1,37 +1,38 @@
+import mongoose from "mongoose";
 import { AppPricing } from "../models/appPricing.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { PLAN_TYPES } from "../constants/index.js";
 
-const getAllPlans = asyncHandler(async (req, res) => {
-  const plans = await AppPricing.find({ isActive: true }).sort({
-    basePrice: 1,
-  });
+export const getAllPlans = asyncHandler(async (req, res) => {
+  const plans = await AppPricing.find({ isActive: true }).sort({ basePrice: 1 }).lean();
 
   const subscriptionPlans = [];
   const creditPlans = [];
 
   for (const plan of plans) {
-    if (plan.type === "subscription") {
+    if (plan.type === PLAN_TYPES.SUBSCRIPTION) {
       subscriptionPlans.push(plan);
-    } else if (plan.type === "credit") {
+    } else if (plan.type === PLAN_TYPES.CREDIT) {
       creditPlans.push(plan);
     }
   }
+
   return new ApiResponse(200, true, "Plans retrieved successfully", {
     subscriptionPlans,
     creditPlans,
   }).send(res);
 });
 
-// Create a new pricing plan
-const createPricingPlan = asyncHandler(async (req, res) => {
+export const createPricingPlan = asyncHandler(async (req, res) => {
   const {
     name,
     type,
     basePrice,
     discountPrice,
-    isActive,
+    discountPercent,
+    isActive = true,
     credit,
     planDuration,
   } = req.body;
@@ -40,48 +41,39 @@ const createPricingPlan = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Name, type, and basePrice are required");
   }
 
-  if (type === "credit" && !credit) {
-    throw new ApiError(400, "Credit is required for credit type pricing");
+  if (type === PLAN_TYPES.CREDIT && !credit) {
+    throw new ApiError(400, "Credit is required for 'credit' plan type");
   }
 
   if (!planDuration) {
-    throw new ApiError(400, "Plan duration is required  pricing");
+    throw new ApiError(400, "Plan duration is required");
   }
 
-  // Ensure discountPrice is valid
-  let finalDiscountPrice =
-    discountPrice !== undefined ? discountPrice : basePrice;
-
-  if (finalDiscountPrice > basePrice) {
+  let finalDiscountPrice = discountPrice !== undefined ? Number(discountPrice) : Number(basePrice);
+  if (finalDiscountPrice > Number(basePrice)) {
     throw new ApiError(400, "Discount price cannot exceed base price");
   }
 
-  // Calculate discountPercent automatically
-  const finalDiscountPercent = Math.round(
-    ((basePrice - finalDiscountPrice) / basePrice) * 100
-  );
+  const finalDiscountPercent =
+    discountPercent !== undefined
+      ? Number(discountPercent)
+      : Math.round(((Number(basePrice) - finalDiscountPrice) / Number(basePrice)) * 100);
 
   const pricingPlan = await AppPricing.create({
-    name,
+    name: name.trim(),
     type,
-    basePrice,
+    basePrice: Number(basePrice),
     discountPrice: finalDiscountPrice,
     discountPercent: finalDiscountPercent,
-    isActive: isActive !== undefined ? isActive : true,
-    credit: type === "credit" ? credit : undefined,
-    planDuration,
+    isActive: Boolean(isActive),
+    credit: type === PLAN_TYPES.CREDIT ? Number(credit) : undefined,
+    planDuration: Number(planDuration),
   });
 
-  return new ApiResponse(
-    201,
-    true,
-    "Pricing plan created successfully",
-    pricingPlan
-  ).send(res);
+  return new ApiResponse(201, true, "Pricing plan created successfully", pricingPlan).send(res);
 });
 
-// Get all pricing plans
-const getAllPricingPlans = asyncHandler(async (req, res) => {
+export const getAllPricingPlans = asyncHandler(async (req, res) => {
   const {
     isActive,
     type,
@@ -92,189 +84,84 @@ const getAllPricingPlans = asyncHandler(async (req, res) => {
   } = req.query;
 
   const filter = {};
-
-  // Apply filters if provided
   if (isActive !== undefined) {
     filter.isActive = isActive === "true";
   }
-
   if (type) {
     filter.type = type;
   }
 
-  // Calculate pagination
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const pageNum = Math.max(1, parseInt(page, 10));
+  const limitNum = Math.max(1, parseInt(limit, 10));
+  const skip = (pageNum - 1) * limitNum;
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
 
-  // Build sort object
-  const sort = {};
-  sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+  const [plans, total] = await Promise.all([
+    AppPricing.find(filter)
+      .sort({ [sortBy]: sortDirection })
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    AppPricing.countDocuments(filter),
+  ]);
 
-  // Execute query
-  const pricingPlans = await AppPricing.find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(parseInt(limit));
-
-  // Get total count for pagination info
-  const totalCount = await AppPricing.countDocuments(filter);
-
-  const data = {
-    plans: pricingPlans,
+  return new ApiResponse(200, true, "Pricing plans retrieved", {
+    plans,
     pagination: {
-      total: totalCount,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      pages: Math.ceil(totalCount / parseInt(limit)),
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
     },
-  };
-
-  return new ApiResponse(
-    200,
-    true,
-    "Pricing plans retrieved successfully",
-    data
-  ).send(res);
+  }).send(res);
 });
 
-// Get pricing plan by ID
-const getPricingPlanById = asyncHandler(async (req, res) => {
+export const getPricingPlanById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  if (!id) {
-    throw new ApiError(400, "Pricing plan ID is required");
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid plan ID");
   }
 
-  const pricingPlan = await AppPricing.findById(id);
-
-  if (!pricingPlan) {
+  const plan = await AppPricing.findById(id);
+  if (!plan) {
     throw new ApiError(404, "Pricing plan not found");
   }
 
-  return new ApiResponse(
-    200,
-    true,
-    "Pricing plan retrieved successfully",
-    pricingPlan
-  ).send(res);
+  return new ApiResponse(200, true, "Pricing plan fetched", plan).send(res);
 });
 
-// Update pricing plan
-const updatePricingPlan = asyncHandler(async (req, res) => {
+export const updatePricingPlan = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const {
-    name,
-    type,
-    basePrice,
-    discountPrice,
-    isActive,
-    credit,
-    planDuration,
-  } = req.body;
+  const updates = req.body;
 
-  if (!id) {
-    throw new ApiError(400, "Pricing plan ID is required");
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid plan ID");
   }
 
-  const existingPlan = await AppPricing.findById(id);
-  if (!existingPlan) {
+  const plan = await AppPricing.findByIdAndUpdate(id, updates, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!plan) {
     throw new ApiError(404, "Pricing plan not found");
   }
 
-  const newType = type || existingPlan.type;
-
-  if (
-    newType === "credit" &&
-    credit === undefined &&
-    existingPlan.type !== "credit"
-  ) {
-    throw new ApiError(
-      400,
-      "Credit is required when changing to credit type pricing"
-    );
-  }
-
-  if (!planDuration) {
-    throw new ApiError(400, "Plan duration is required");
-  }
-
-  // Figure out base price first
-  const effectiveBasePrice =
-    basePrice !== undefined ? basePrice : existingPlan.basePrice;
-
-  // Ensure discountPrice is valid
-  let finalDiscountPrice =
-    discountPrice !== undefined
-      ? discountPrice
-      : existingPlan.discountPrice || effectiveBasePrice;
-
-  if (finalDiscountPrice > effectiveBasePrice) {
-    throw new ApiError(400, "Discount price cannot exceed base price");
-  }
-
-  // Calculate discountPercent automatically
-  const finalDiscountPercent = Math.round(
-    ((effectiveBasePrice - finalDiscountPrice) / effectiveBasePrice) * 100
-  );
-
-  const updatedPlan = await AppPricing.findByIdAndUpdate(
-    id,
-    {
-      name: name !== undefined ? name : existingPlan.name,
-      type: newType,
-      basePrice: effectiveBasePrice,
-      discountPrice: finalDiscountPrice,
-      discountPercent: finalDiscountPercent,
-      isActive: isActive !== undefined ? isActive : existingPlan.isActive,
-      credit:
-        newType === "credit"
-          ? credit !== undefined
-            ? credit
-            : existingPlan.credit
-          : undefined,
-      planDuration,
-    },
-    { new: true, runValidators: true }
-  );
-
-  return new ApiResponse(
-    200,
-    true,
-    "Pricing plan updated successfully",
-    updatedPlan
-  ).send(res);
+  return new ApiResponse(200, true, "Pricing plan updated", plan).send(res);
 });
 
-// Delete pricing plan
-const deletePricingPlan = asyncHandler(async (req, res) => {
+export const deletePricingPlan = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  if (!id) {
-    throw new ApiError(400, "Pricing plan ID is required");
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(400, "Invalid plan ID");
   }
 
-  if (id) {
-    throw new ApiError(404, "Delete not available");
-  }
-
-  const deletedPlan = await AppPricing.findByIdAndDelete(id);
-
-  if (!deletedPlan) {
+  const plan = await AppPricing.findByIdAndDelete(id);
+  if (!plan) {
     throw new ApiError(404, "Pricing plan not found");
   }
 
-  return new ApiResponse(
-    200,
-    true,
-    "Pricing plan deleted successfully",
-    null
-  ).send(res);
+  return new ApiResponse(200, true, "Pricing plan deleted successfully").send(res);
 });
-
-export {
-  createPricingPlan,
-  getAllPricingPlans,
-  getPricingPlanById,
-  updatePricingPlan,
-  deletePricingPlan,
-  getAllPlans,
-};

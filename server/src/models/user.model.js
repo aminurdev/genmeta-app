@@ -2,69 +2,111 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import config from "../config/index.js";
+import { USER_ROLES } from "../constants/index.js";
 
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: [true, "Name is required"], trim: true },
-  email: {
-    type: String,
-    required: [true, "Email is required"],
-    unique: true,
-    lowercase: true,
-    validate: {
-      validator: function (email) {
-        return /^\S+@\S+\.\S+$/.test(email);
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [100, "Name cannot exceed 100 characters"],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+      validate: {
+        validator: function (email) {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        },
+        message: "Please provide a valid email address",
       },
-      message: "Invalid email format",
     },
-  },
-  password: {
-    type: String,
-    required: [
-      function () {
-        return this.loginProvider?.includes("email");
+    password: {
+      type: String,
+      required: [
+        function () {
+          return this.loginProvider?.includes("email");
+        },
+        "Password is required for email login",
+      ],
+      minlength: [6, "Password must be at least 6 characters"],
+    },
+    avatar: {
+      type: String,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isDisabled: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    referred: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Referral",
+      index: true,
+    },
+    ipAddress: {
+      type: String,
+      trim: true,
+    },
+    verificationToken: {
+      type: String,
+      select: false,
+    },
+    loginProvider: {
+      type: [String],
+      enum: {
+        values: ["email", "google"],
+        message: "Login provider must be either 'email' or 'google'",
       },
-      "Password is required for email login",
-    ],
-    minlength: [6, "Password must be at least 6 characters"],
-  },
-  avatar: { type: String, default: null },
-  isVerified: { type: Boolean, default: false },
-  isDisabled: { type: Boolean, default: false },
-  referred: { type: mongoose.Schema.Types.ObjectId, ref: "Referral" },
-  ipAddress: { type: String },
-  verificationToken: { type: String },
-  loginProvider: {
-    type: [String],
-    enum: {
-      values: ["email", "google"],
-      message: "Login provider must be either 'email' or 'google'",
+      required: [true, "Login provider is required"],
+      default: ["email"],
     },
-    required: [true, "Login provider is required"],
-    default: ["email"],
-  },
-  googleId: { type: String, unique: true, sparse: true },
-  refreshToken: { type: String },
-  role: {
-    type: String,
-    enum: {
-      values: ["user", "admin", "superAdmin"],
-      message: "Role must be either user or admin",
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
     },
-    default: "user",
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    role: {
+      type: String,
+      enum: {
+        values: Object.values(USER_ROLES),
+        message: "Role must be 'user', 'admin', or 'superAdmin'",
+      },
+      default: USER_ROLES.USER,
+      index: true,
+    },
   },
-  createdAt: { type: Date, default: Date.now },
-});
+  {
+    timestamps: true,
+  }
+);
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();
-
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-userSchema.methods.isPasswordCorrect = async function (password) {
-  if (!this.password) return false;
-  return await bcrypt.compare(password, this.password);
+userSchema.methods.isPasswordCorrect = async function (candidatePassword) {
+  if (!this.password || !candidatePassword) return false;
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
 userSchema.methods.generateAccessToken = function () {
@@ -90,4 +132,8 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
+// Compound index for administrative queries
+userSchema.index({ role: 1, isVerified: 1, createdAt: -1 });
+
 export const User = mongoose.model("User", userSchema);
+export default User;

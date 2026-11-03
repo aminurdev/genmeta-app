@@ -1,13 +1,20 @@
 import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
 
-const SOURCE_URI = "";
+dotenv.config();
 
-const TARGET_URI = "";
+const SOURCE_URI = process.env.SOURCE_URI || "";
+const TARGET_URI = process.env.TARGET_URI || "";
 
-const SOURCE_DB = "GenMetaApp";
-const TARGET_DB = "GenMetaApp";
+const SOURCE_DB = process.env.SOURCE_DB || "GenMetaApp";
+const TARGET_DB = process.env.TARGET_DB || "GenMetaApp";
 
 async function cloneDatabase() {
+  if (!SOURCE_URI || !TARGET_URI) {
+    console.error("❌ Please provide SOURCE_URI and TARGET_URI via environment variables.");
+    process.exit(1);
+  }
+
   const sourceClient = new MongoClient(SOURCE_URI);
   const targetClient = new MongoClient(TARGET_URI);
 

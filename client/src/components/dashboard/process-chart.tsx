@@ -6,6 +6,7 @@ import { AreaChart } from "@/components/ui/area-chart";
 interface ProcessData {
   month?: string;
   day?: string;
+  date?: string;
   count: number;
 }
 
@@ -15,22 +16,34 @@ interface ProcessChartProps {
 }
 
 export function ProcessChart({ data, type }: ProcessChartProps) {
-  const formatMonthYear = (monthYear: string) => {
-    const [year, month] = monthYear.split("-");
-    return format(
-      new Date(Number.parseInt(year), Number.parseInt(month) - 1),
-      "MMM yyyy"
-    );
+  const formatMonthYear = (monthYear?: string) => {
+    if (!monthYear) return "";
+    try {
+      const [year, month] = monthYear.split("-");
+      return format(
+        new Date(Number.parseInt(year), Number.parseInt(month) - 1),
+        "MMM yyyy"
+      );
+    } catch {
+      return monthYear;
+    }
   };
 
-  const formatDay = (day: string) => {
-    return format(new Date(day), "MMM d");
+  const formatDay = (dayOrDate?: string) => {
+    if (!dayOrDate) return "";
+    try {
+      return format(new Date(dayOrDate), "MMM d");
+    } catch {
+      return dayOrDate;
+    }
   };
 
-  const chartData = data.map((item) => ({
+  const chartData = (data || []).map((item) => ({
     label:
-      type === "monthly" ? formatMonthYear(item.month!) : formatDay(item.day!),
-    value: item.count,
+      type === "monthly"
+        ? formatMonthYear(item.month)
+        : formatDay(item.day || item.date),
+    value: item.count || 0,
   }));
 
   return (

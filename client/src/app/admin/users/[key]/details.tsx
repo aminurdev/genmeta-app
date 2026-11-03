@@ -48,7 +48,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { getBaseApi } from "@/services/auth-services";
 import {
   ArrowLeft,
   Copy,
@@ -73,7 +72,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import Link from "next/link";
-import { getAccessToken } from "@/lib/cookies";
+import { api } from "@/services/api-client";
 
 interface UserDetails {
   id: string;
@@ -154,7 +153,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     if (appKey) {
       fetchAppKeyDetails(appKey);
     } else {
-      setError("No API key provided");
+      setError("No App ID provided");
       setLoading(false);
     }
   }, [appKey]);
@@ -162,25 +161,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const fetchAppKeyDetails = async (key: string) => {
     try {
       setLoading(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(
-        `${baseApi}/app/appkey/user/details/${key}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch API key details");
-      }
-
-      const result = await response.json();
+      const response = await api.get(`/app/appid/user/details/${key}`);
+      const result = response.data;
 
       if (result.success) {
         const responseData: AppKeyDetailsResponse = result.data;
@@ -193,7 +175,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           setUpdatePlan(responseData.appKey.plan.type);
         }
       } else {
-        throw new Error(result.message || "Failed to fetch API key details");
+        throw new Error(result.message || "Failed to fetch App ID details");
       }
     } catch (err) {
       setError(
@@ -275,9 +257,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsUpdating(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
       const requestBody: {
         username: string;
         plan?: string;
@@ -304,20 +283,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         }
       }
 
-      const response = await fetch(`${baseApi}/app/appkey/update`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update app user");
-      }
-
-      const result = await response.json();
+      const response = await api.put("/app/appid/update", requestBody);
+      const result = response.data;
 
       if (result.success) {
         toast("App user updated successfully");
@@ -343,25 +310,10 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsResetting(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/reset-device`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-        }),
+      const response = await api.put("/app/appid/reset-device", {
+        key: appKeyDetails.key,
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to reset device ID");
-      }
+      const result = response.data;
 
       if (result.success) {
         toast("Device ID reset successfully");
@@ -386,26 +338,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsChangingStatus(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/update-status`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-          mode,
-        }),
+      const response = await api.put("/app/appid/update-status", {
+        key: appKeyDetails.key,
+        mode,
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || `Failed to ${mode} API key`);
-      }
+      const result = response.data;
 
       if (result.success) {
         toast(
@@ -419,7 +356,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           fetchAppKeyDetails(appKey);
         }
       } else {
-        throw new Error(result.message || `Failed to ${mode} API key`);
+        throw new Error(result.message || `Failed to ${mode} App ID`);
       }
     } catch (err) {
       toast.error(
@@ -435,31 +372,16 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsDeleting(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(
-        `${baseApi}/app/appkey/delete/${appKeyDetails.username}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
+      const response = await api.delete(
+        `/app/appid/delete/${appKeyDetails.username}`
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete API key");
-      }
-
-      const result = await response.json();
+      const result = response.data;
 
       if (result.success) {
-        toast("API key deleted successfully");
+        toast("App ID deleted successfully");
         router.push("/admin/users");
       } else {
-        throw new Error(result.message || "Failed to delete API key");
+        throw new Error(result.message || "Failed to delete App ID");
       }
     } catch (err) {
       toast.error(
@@ -483,26 +405,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
     try {
       setIsAddingCredit(true);
-      const baseApi = await getBaseApi();
-      const accessToken = await getAccessToken();
-
-      const response = await fetch(`${baseApi}/app/appkey/add-credits`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          key: appKeyDetails.key,
-          credits: Number.parseInt(creditAmount),
-        }),
+      const response = await api.put("/app/appid/add-credits", {
+        key: appKeyDetails.key,
+        credits: Number.parseInt(creditAmount),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to add credits");
-      }
+      const result = response.data;
 
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);
@@ -529,7 +436,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Loading API key details...</p>
+        <p className="text-muted-foreground">Loading App ID details...</p>
       </div>
     );
   }
@@ -538,7 +445,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-destructive mb-4" />
-        <h3 className="text-lg font-medium">Error loading API key details</h3>
+        <h3 className="text-lg font-medium">Error loading App ID details</h3>
         <p className="text-muted-foreground mt-2 mb-4">{error}</p>
         <div className="flex gap-4">
           <Button variant="outline" asChild>
@@ -562,9 +469,9 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium">API key not found</h3>
+        <h3 className="text-lg font-medium">App ID not found</h3>
         <p className="text-muted-foreground mt-2 mb-4">
-          The requested API key could not be found.
+          The requested App ID could not be found.
         </p>
         <Button variant="outline" asChild>
           <Link href="/admin/users" className="text-center">
@@ -586,9 +493,9 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold">API Key Details</h1>
+            <h1 className="text-2xl font-semibold">App ID Details</h1>
             <p className="text-sm text-muted-foreground">
-              Manage and monitor API key usage
+              Manage and monitor App ID usage
             </p>
           </div>
         </div>
@@ -662,11 +569,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         {/* API Key Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">API Key Details</CardTitle>
+            <CardTitle className="text-lg">App ID Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="font-medium text-muted-foreground">API Key</div>
+              <div className="font-medium text-muted-foreground">App ID</div>
               <div className="col-span-2 flex items-center gap-2">
                 <code className="text-xs bg-muted px-2 py-1 rounded">
                   {appKeyDetails.key.substring(0, 8)}...

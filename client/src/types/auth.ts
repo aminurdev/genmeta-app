@@ -14,7 +14,7 @@ export interface LoginResponse {
     avatar: string | null;
     isVerified: boolean;
     loginProvider: ("email" | "google")[];
-    role: "user" | "admin";
+    role: "user" | "admin" | "superAdmin";
     accessToken: string;
     refreshToken: string;
   };
