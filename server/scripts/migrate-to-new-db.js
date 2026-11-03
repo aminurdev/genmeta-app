@@ -1,11 +1,15 @@
 import { MongoClient, ObjectId } from "mongodb";
+import crypto from "crypto";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Configuration
-const SOURCE_URI = process.env.SOURCE_URI || "mongodb://127.0.0.1:27017";
+const SOURCE_URI = process.env.SOURCE_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
 const SOURCE_DB_NAME = process.env.SOURCE_DB || "GenMetaApp";
 
-const TARGET_URI = process.env.TARGET_URI || "mongodb://127.0.0.1:27017";
-const TARGET_DB_NAME = process.env.TARGET_DB || "GenMetaApp_v2";
+const TARGET_URI = process.env.TARGET_URI || process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
+const TARGET_DB_NAME = process.env.TARGET_DB || process.env.DB_NAME || "GenMetaApp_v2";
 
 const BATCH_SIZE = 1000;
 
@@ -170,6 +174,7 @@ async function runDatabaseMigration() {
         for (const [dateStr, count] of Object.entries(keyDoc.dailyProcess)) {
           if (dateStr && count > 0) {
             dailyUsageBatch.push({
+              appUserId: transformedKey._id,
               appKeyId: transformedKey._id,
               userId: transformedKey.userId,
               date: dateStr,
@@ -518,16 +523,108 @@ async function runDatabaseMigration() {
 
     // Daily Api Usages
     await targetDb.collection("dailyapiusages").createIndexes([
-      { key: { appKeyId: 1, date: 1 }, unique: true, name: "uniq_appkey_date" },
+      { key: { appUserId: 1, date: 1 }, unique: true, name: "uniq_appuser_date" },
+      { key: { appKeyId: 1, date: 1 }, name: "idx_appkey_date" },
       { key: { userId: 1, date: 1 }, name: "idx_user_date" },
       { key: { date: 1 }, name: "idx_usage_date" },
     ]);
+
+    // 10. MIGRATE APPKEYS TO APPUSERS (NEW UNIFIED SYSTEM)
+    console.log("\n▶ [10/10] Transitioning AppKeys to Unified AppUsers Collection...");
+    const appKeysCol = targetDb.collection("appkeys");
+    const appUsersCol = targetDb.collection("appusers");
+    const usersCol = targetDb.collection("users");
+
+    const legacyKeys = await appKeysCol.find().toArray();
+    // Prioritize keys with usage/active status if duplicates exist
+    legacyKeys.sort((a, b) => (b.totalProcess || 0) - (a.totalProcess || 0));
+
+    const seenUserIds = new Set();
+    const validAppUsers = [];
+
+    for (const doc of legacyKeys) {
+      const uidStr = doc.userId?.toString();
+      if (!uidStr) continue;
+
+      if (seenUserIds.has(uidStr)) {
+        console.log(`   [Deduplicate] Skipping duplicate app key for userId: ${uidStr}`);
+        continue;
+      }
+      seenUserIds.add(uidStr);
+
+      validAppUsers.push({
+        ...doc,
+        userId: doc.userId instanceof ObjectId ? doc.userId : new ObjectId(doc.userId),
+        username: (doc.username || "").toLowerCase().trim(),
+        updatedAt: doc.updatedAt || new Date(),
+      });
+    }
+
+    if (validAppUsers.length > 0) {
+      await appUsersCol.insertMany(validAppUsers, { ordered: false });
+    }
+
+    // Populate missing AppUser profiles for registered users
+    const allUsers = await usersCol
+      .find({}, { projection: { _id: 1, email: 1, isDisabled: 1, createdAt: 1 } })
+      .toArray();
+    const existingAppUserIds = new Set(
+      (await appUsersCol.find({}, { projection: { userId: 1 } }).toArray()).map((u) => u.userId.toString())
+    );
+
+    const missingUsers = allUsers.filter((u) => !existingAppUserIds.has(u._id.toString()));
+    if (missingUsers.length > 0) {
+      const today = new Date().toISOString().split("T")[0];
+      const newAppUsers = missingUsers.map((u) => ({
+        userId: u._id,
+        username: (u.email || "").toLowerCase().trim(),
+        key: crypto.randomBytes(32).toString("hex"),
+        credit: 5,
+        isActive: true,
+        status: u.isDisabled ? "suspended" : "active",
+        suspendedAt: null,
+        expiresAt: null,
+        allowedDevices: [],
+        plan: {
+          type: "free",
+          id: null,
+          name: "Free Tier",
+        },
+        totalProcess: 0,
+        monthlyProcess: {},
+        dailyProcess: {},
+        lastCreditRefresh: today,
+        lastPlanChange: u.createdAt || new Date(),
+        planHistory: [],
+        failedProcess: {},
+        totalFailedProcess: 0,
+        createdAt: u.createdAt || new Date(),
+        updatedAt: new Date(),
+      }));
+
+      await appUsersCol.insertMany(newAppUsers, { ordered: false });
+    }
+
+    // AppUsers Compound Indexes
+    await targetDb.collection("appusers").createIndexes([
+      { key: { userId: 1 }, unique: true, name: "uniq_appuser_userId" },
+      { key: { key: 1 }, unique: true, name: "uniq_appuser_key" },
+      { key: { username: 1 }, unique: true, name: "uniq_appuser_username" },
+      { key: { "plan.type": 1, expiresAt: 1 }, name: "idx_appuser_plan_expires" },
+      { key: { "plan.type": 1, credit: 1 }, name: "idx_appuser_plan_credit" },
+      { key: { "plan.type": 1, lastCreditRefresh: 1 }, name: "idx_appuser_plan_refresh" },
+      { key: { isActive: 1, status: 1 }, name: "idx_appuser_active_status" },
+      { key: { userId: 1, isActive: 1 }, name: "idx_appuser_user_active" },
+      { key: { createdAt: -1 }, name: "idx_appuser_created" },
+    ]);
+    console.log(`   ✓ Created ${validAppUsers.length + missingUsers.length} documents in [appusers] with full indexes.`);
 
     // Record migrations as applied in target database
     await targetDb.collection("_migrations").insertMany([
       { name: "001_initial_indexes.js", batch: 1, executedAt: new Date() },
       { name: "002_normalize_referrals_and_promocodes.js", batch: 1, executedAt: new Date() },
       { name: "003_normalize_appkeys_and_pricing.js", batch: 1, executedAt: new Date() },
+      { name: "004_migrate_appkeys_to_appusers.js", batch: 1, executedAt: new Date() },
     ]);
 
     console.log("   ✓ All compound indexes & migration history established.");

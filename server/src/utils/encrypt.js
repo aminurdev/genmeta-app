@@ -4,7 +4,10 @@ import config from "../config/index.js";
 const ALGORITHM = "aes-256-cbc";
 
 const getKey = () => {
-  const secret = config.encoderKey || "default-secret-key-genmeta-32-chars";
+  const secret = config.encoderKey;
+  if (!secret) {
+    throw new Error("GEMINI_ENCODER_KEY is not defined in environment variables");
+  }
   return crypto.createHash("sha256").update(String(secret)).digest(); // exactly 32 bytes
 };
 

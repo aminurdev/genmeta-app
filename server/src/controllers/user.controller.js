@@ -282,7 +282,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   if (!user.loginProvider.includes("email")) {
-    throw new ApiError(401, "Please log in using your Google account");
+    throw new ApiError(401, "Invalid email or password");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
@@ -410,7 +410,13 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
   }
 
   const { otp, otpToken } = generateOtpAndOtpToken(user._id);
-  await sendOTPEmail(email, user.name, otp);
+
+  if (config.NODE_ENV === "production") {
+    await sendOTPEmail(email, user.name, otp);
+    
+  } else {
+    console.log(`[Dev Verification Code] Email: ${user.email}, OTP: ${otp}`);
+  }
 
   return new ApiResponse(200, true, "OTP sent successfully", { otpToken }).send(res);
 });

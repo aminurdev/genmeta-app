@@ -1,10 +1,21 @@
 import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
 
-const SOURCE_URI = "mongodb+srv://genmetaapp:a7ymMF8kwz13A039@cluster0.q9hjz.mongodb.net";
-const SOURCE_DB = "GenMetaApp_backup";
+dotenv.config();
 
-const TARGET_URI = "mongodb://127.0.0.1:27017";
-const TARGET_DB = "GenMetaApp";
+const SOURCE_URI = process.env.MONGODB_BACKUP_URI;
+if (!SOURCE_URI) {
+  console.error("❌ MONGODB_BACKUP_URI is not set. Please set it in your .env file.");
+  process.exit(1);
+}
+const SOURCE_DB = process.env.BACKUP_DB_NAME || "GenMetaApp_backup";
+
+const TARGET_URI =
+  process.env.TARGET_URI ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017";
+const TARGET_DB =
+  process.env.TARGET_DB || process.env.DB_NAME || "GenMetaApp_v2";
 
 const BATCH_SIZE = 1000;
 

@@ -18,23 +18,23 @@ const envSchema = z.object({
   BACKUP_DB_NAME: z.string().optional(),
   MONGODB_BACKUP_URI: z.string().optional(),
 
-  GEMINI_ENCODER_KEY: z.string().default("default-32-byte-secret-key-12345678"),
+  GEMINI_ENCODER_KEY: z.string().min(1, "GEMINI_ENCODER_KEY is required in .env"),
   MINIMUM_REQUIRED_APP_VERSION: z.string().default("1.0.0"),
 
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
-  SESSION_SECRET: z.string().default("genmeta-session-secret-key-2026"),
+  SESSION_SECRET: z.string().min(1, "SESSION_SECRET is required in .env"),
 
   GOOGLE_CLIENT_ID: z.string().optional().default(""),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
   GOOGLE_CALLBACK_URL: z.string().optional().default("http://localhost:5000/api/v1/users/google/callback"),
 
-  ACCESS_TOKEN_SECRET: z.string().default("default-access-token-secret-key"),
+  ACCESS_TOKEN_SECRET: z.string().min(1, "ACCESS_TOKEN_SECRET is required in .env"),
   ACCESS_TOKEN_EXPIRY: z.string().default("8d"),
 
-  REFRESH_TOKEN_SECRET: z.string().default("default-refresh-token-secret-key"),
+  REFRESH_TOKEN_SECRET: z.string().min(1, "REFRESH_TOKEN_SECRET is required in .env"),
   REFRESH_TOKEN_EXPIRY: z.string().default("31d"),
 
-  EMAIL_VERIFY_TOKEN_SECRET: z.string().default("default-verify-token-secret-key"),
+  EMAIL_VERIFY_TOKEN_SECRET: z.string().min(1, "EMAIL_VERIFY_TOKEN_SECRET is required in .env"),
   EMAIL_VERIFY_TOKEN_EXPIRY: z.string().default("1d"),
 
   RESEND_API_KEY: z.string().optional().default(""),
@@ -73,23 +73,23 @@ const config = {
   mongodb_backup_uri: rawEnv.MONGODB_BACKUP_URI || mongoBaseUri,
   backup_db_name: rawEnv.BACKUP_DB_NAME || `${dbName}_backup`,
 
-  encoderKey: rawEnv.GEMINI_ENCODER_KEY || "default-32-byte-secret-key-12345678",
+  encoderKey: rawEnv.GEMINI_ENCODER_KEY,
   minimumRequiredAppVersion: rawEnv.MINIMUM_REQUIRED_APP_VERSION || "1.0.0",
 
   cors_origin: rawEnv.CORS_ORIGIN || "http://localhost:3000",
-  session_secret: rawEnv.SESSION_SECRET || "genmeta-session-secret-key-2026",
+  session_secret: rawEnv.SESSION_SECRET,
 
   google_client_id: rawEnv.GOOGLE_CLIENT_ID || "",
   google_client_secret: rawEnv.GOOGLE_CLIENT_SECRET || "",
   google_callback_url: rawEnv.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/users/google/callback",
 
-  access_token_secret: rawEnv.ACCESS_TOKEN_SECRET || "default-access-token-secret-key",
+  access_token_secret: rawEnv.ACCESS_TOKEN_SECRET,
   access_token_expiry: rawEnv.ACCESS_TOKEN_EXPIRY || "8d",
 
-  refresh_token_secret: rawEnv.REFRESH_TOKEN_SECRET || "default-refresh-token-secret-key",
+  refresh_token_secret: rawEnv.REFRESH_TOKEN_SECRET,
   refresh_token_expiry: rawEnv.REFRESH_TOKEN_EXPIRY || "31d",
 
-  email_verify_token_secret: rawEnv.EMAIL_VERIFY_TOKEN_SECRET || "default-verify-token-secret-key",
+  email_verify_token_secret: rawEnv.EMAIL_VERIFY_TOKEN_SECRET,
   email_verify_token_expiry: rawEnv.EMAIL_VERIFY_TOKEN_EXPIRY || "1d",
 
   resend_api_key: rawEnv.RESEND_API_KEY || "",

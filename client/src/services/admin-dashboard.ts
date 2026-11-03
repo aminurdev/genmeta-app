@@ -12,6 +12,7 @@ import {
   ReferralDetails,
   UpdateWithdrawalRes,
   GetPaymentsHistoryParams,
+  WithdrawalNotificationsResponse,
 } from "@/types/admin";
 
 export const getAdminOverview = async (): Promise<
@@ -411,5 +412,12 @@ export const triggerMaintenance = async (): Promise<
   ApiResponse<any> | ApiErrorResponse
 > => {
   const result = await api.post("/scheduler/trigger");
+  return result.data;
+};
+
+export const getWithdrawalNotifications = async (): Promise<
+  ApiResponse<WithdrawalNotificationsResponse> | ApiErrorResponse
+> => {
+  const result = await api.get("/admin/notifications/referral-withdrawals");
   return result.data;
 };

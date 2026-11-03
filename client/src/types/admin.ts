@@ -362,3 +362,23 @@ export interface StaffListResponse {
   staff: StaffAccount[];
   total: number;
 }
+
+export interface WithdrawalNotification {
+  id: string;
+  withdrawalId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar: string | null;
+  amount: number;
+  withdrawAccount: string;
+  requestedAt: string;
+  status: "pending" | "completed" | "rejected";
+  pendingCount?: number;
+  href: string;
+}
+
+export interface WithdrawalNotificationsResponse {
+  count: number;
+  notifications: WithdrawalNotification[];
+}

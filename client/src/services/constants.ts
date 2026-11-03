@@ -42,6 +42,7 @@ export const QUERY_KEYS = {
   allPricing: ["pricing", "all"],
   superAdminOverview: ["admin", "superAdmin", "overview"],
   superAdminStaff: ["admin", "superAdmin", "staff"],
+  adminWithdrawalNotifications: ["admin", "notifications", "withdrawals"],
 } as const;
 
 export const MUTATION_KEYS = {

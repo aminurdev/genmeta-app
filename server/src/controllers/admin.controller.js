@@ -794,7 +794,13 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
   // Also synchronize in normalized ledger if present
   try {
     await ReferralWithdrawal.updateOne(
-      { _id: withdrawalId },
+      {
+        $or: [
+          { _id: withdrawalId },
+          { referralId: referral._id, status: WITHDRAWAL_STATUS.PENDING, amount: withdrawal.amount },
+          { userId: referral.referrer, status: WITHDRAWAL_STATUS.PENDING, amount: withdrawal.amount },
+        ],
+      },
       {
         $set: {
           status,
@@ -959,4 +965,72 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
       isDisabled: targetUser.isDisabled,
     }
   ).send(res);
+});
+
+/**
+ * @desc Get ONLY pending referral users for the notification panel
+ * @route GET /api/v1/admin/notifications/referral-withdrawals
+ * @access Private (Admin & SuperAdmin)
+ */
+export const getPendingWithdrawalNotifications = asyncHandler(async (req, res) => {
+  // Query only referrals that have active pending withdrawals
+  const referralsWithPending = await Referral.find({
+    "withdrawHistory.status": WITHDRAWAL_STATUS.PENDING,
+  })
+    .populate("referrer", "name email avatar")
+    .lean();
+
+  const pendingUsers = [];
+
+  for (const ref of referralsWithPending) {
+    const referrer = ref.referrer;
+    if (!referrer) continue;
+
+    // Filter strictly to pending items only
+    const pendingWithdrawals = (ref.withdrawHistory || []).filter(
+      (w) => w.status === WITHDRAWAL_STATUS.PENDING
+    );
+
+    if (pendingWithdrawals.length === 0) continue;
+
+    // Calculate total pending amount for this user
+    const totalPendingAmount = pendingWithdrawals.reduce(
+      (sum, item) => sum + (Number(item.amount) || 0),
+      0
+    );
+
+    // Get the latest pending request for account details and timestamp
+    const sortedPending = pendingWithdrawals.sort(
+      (a, b) =>
+        new Date(b.requestedAt || b.createdAt || 0) -
+        new Date(a.requestedAt || a.createdAt || 0)
+    );
+    const latestPending = sortedPending[0];
+    const userIdStr = referrer._id.toString();
+
+    pendingUsers.push({
+      id: latestPending._id ? latestPending._id.toString() : userIdStr,
+      withdrawalId: latestPending._id ? latestPending._id.toString() : "",
+      userId: userIdStr,
+      userName: referrer.name || "Referral User",
+      userEmail: referrer.email || "",
+      userAvatar: referrer.avatar || null,
+      amount: totalPendingAmount,
+      withdrawAccount: latestPending.withdrawAccount || ref.withdrawAccount || "N/A",
+      requestedAt: latestPending.requestedAt || latestPending.createdAt || new Date(),
+      status: WITHDRAWAL_STATUS.PENDING,
+      pendingCount: pendingWithdrawals.length,
+      href: `/admin/referral/${userIdStr}`,
+    });
+  }
+
+  // Sort by most recent request at top
+  pendingUsers.sort(
+    (a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)
+  );
+
+  return new ApiResponse(200, true, "Pending referral users retrieved", {
+    count: pendingUsers.length,
+    notifications: pendingUsers,
+  }).send(res);
 });

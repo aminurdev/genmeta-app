@@ -9,6 +9,7 @@ import {
   getReferralByUserId,
   getUserStats,
   updateWithdrawal,
+  getPendingWithdrawalNotifications,
   getSuperAdminSystemOverview,
   getAdminList,
   updateUserRole,
@@ -48,6 +49,12 @@ router.patch(
   updateWithdrawal
 );
 
+// Admin notification endpoints
+router.get(
+  "/notifications/referral-withdrawals",
+  authenticateAndVerifyAdmin,
+  getPendingWithdrawalNotifications
+);
 
 // SuperAdmin exclusive endpoints
 router.get("/super-admin/overview", authenticateAndVerifySuperAdmin, getSuperAdminSystemOverview);
