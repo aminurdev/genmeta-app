@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>GenMeta — AI Metadata Generator for Adobe Stock & Microstock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f2eee4;
+        --panel: #faf8f2;
+        --ink: #17150f;
+        --mute: #6a6559;
+        --line: #d6cfbd;
+        --acc: #e5471b;
+        --accink: #fff;
+        --inv: #17150f;
+        --invink: #efe9db;
+        --serif: "Fraunces", Georgia, "Times New Roman", serif;
+        --sans:
+          "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #14130f;
+          --panel: #1c1a15;
+          --ink: #efe9db;
+          --mute: #9a947f;
+          --line: #34312a;
+          --acc: #ff6a3d;
+          --accink: #14130f;
+          --inv: #0c0b09;
+          --invink: #efe9db;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #14130f;
+        --panel: #1c1a15;
+        --ink: #efe9db;
+        --mute: #9a947f;
+        --line: #34312a;
+        --acc: #ff6a3d;
+        --accink: #14130f;
+        --inv: #0c0b09;
+        --invink: #efe9db;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 400 17px/1.55 var(--sans);
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 28px;
+      }
+      .mono {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--mute);
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--serif);
+        font-weight: 500;
+        margin: 0;
+        letter-spacing: -0.02em;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 22px;
+        border-radius: 2px;
+        font-weight: 600;
+        font-size: 15px;
+        border: 1.5px solid var(--ink);
+        transition:
+          transform 0.15s,
+          background 0.15s;
+      }
+      .btn.p {
+        background: var(--acc);
+        border-color: var(--acc);
+        color: var(--accink);
+      }
+      .btn.p:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 3px 3px 0 var(--ink);
+      }
+      .btn.s:hover {
+        background: var(--ink);
+        color: var(--bg);
+      }
+      /* nav */
+      header.nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+      }
+      .nav .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--serif);
+        font-size: 21px;
+        font-weight: 600;
+      }
+      .logo i {
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--ink);
+        position: relative;
+        display: block;
+      }
+      .logo i::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        background: var(--acc);
+      }
+      .nav nav {
+        display: flex;
+        gap: 30px;
+        font-size: 14.5px;
+        font-weight: 500;
+      }
+      .nav nav a {
+        color: var(--mute);
+      }
+      .nav nav a:hover {
+        color: var(--ink);
+      }
+      .nav .btn {
+        padding: 9px 16px;
+        font-size: 14px;
+      }
+      /* hero */
+      .hero {
+        padding: 76px 0 64px;
+        border-bottom: 1px solid var(--line);
+      }
+      .hero .wrap {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: 56px;
+        align-items: center;
+      }
+      .tag {
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 26px;
+      }
+      .tag b {
+        background: var(--acc);
+        color: var(--accink);
+        padding: 2px 7px;
+        font-weight: 500;
+      }
+      .hero h1 {
+        font-size: clamp(40px, 5.6vw, 72px);
+        line-height: 1.02;
+      }
+      .hero h1 em {
+        font-style: italic;
+        color: var(--acc);
+      }
+      .hero p.lead {
+        font-size: 19px;
+        color: var(--mute);
+        max-width: 30em;
+        margin: 26px 0 34px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .hero small {
+        display: block;
+        margin-top: 18px;
+      }
+      /* record */
+      .rec {
+        background: var(--panel);
+        border: 1.5px solid var(--ink);
+        box-shadow: 8px 8px 0 var(--ink);
+      }
+      .rec-h {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1.5px solid var(--ink);
+      }
+      .rec-b {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 18px;
+        padding: 18px 16px;
+      }
+      .thumb {
+        aspect-ratio: 1;
+        background:
+          radial-gradient(circle at 30% 30%, #5b7cff 0 22%, transparent 45%),
+          radial-gradient(circle at 70% 60%, #b24dff 0 26%, transparent 52%),
+          radial-gradient(circle at 45% 80%, #2fd0ff 0 18%, transparent 40%),
+          #efe9f7;
+        border: 1px solid var(--line);
+      }
+      .fld {
+        margin-bottom: 14px;
+      }
+      .fld .mono {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-size: 10.5px;
+      }
+      .fld p {
+        margin: 0;
+        font-size: 14.5px;
+        line-height: 1.4;
+      }
+      .kw {
+        padding: 0 16px 18px;
+      }
+      .kws {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .kws span {
+        font: 500 12px var(--mono);
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        color: var(--mute);
+      }
+      .kws span.t {
+        border-color: var(--ink);
+        color: var(--ink);
+        background: var(--bg);
+      }
+      .kws span.t::before {
+        content: attr(data-n);
+        color: var(--acc);
+        margin-right: 6px;
+      }
+      .rec-f {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-top: 1.5px solid var(--ink);
+        background: var(--ink);
+        color: var(--bg);
+      }
+      .rec-f .mono {
+        color: inherit;
+        opacity: 0.8;
+      }
+      .bracket {
+        font: 500 11px var(--mono);
+        color: var(--acc);
+        margin: 12px 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .bracket::after {
+        content: "";
+        flex: 1;
+        border-top: 1.5px dashed var(--acc);
+      }
+      /* marquee */
+      .mk {
+        border-bottom: 1px solid var(--line);
+        padding: 22px 0;
+      }
+      .mk .wrap {
+        display: flex;
+        align-items: center;
+        gap: 36px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .mk ul {
+        display: flex;
+        gap: 34px;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        font-family: var(--serif);
+        font-size: 19px;
+        color: var(--mute);
+      }
+      /* sections */
+      section {
+        padding: 96px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .sh {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        gap: 40px;
+        margin-bottom: 56px;
+      }
+      .sh h2 {
+        font-size: clamp(32px, 4vw, 52px);
+        line-height: 1.06;
+        max-width: 15em;
+      }
+      /* index table */
+      .idx {
+        border-top: 1.5px solid var(--ink);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 70px 300px 1fr 40px;
+        gap: 24px;
+        align-items: baseline;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--line);
+        transition:
+          padding 0.2s,
+          background 0.2s;
+      }
+      .row:hover {
+        background: var(--panel);
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+      .row .n {
+        font: 500 13px var(--mono);
+        color: var(--acc);
+      }
+      .row h3 {
+        font-size: 24px;
+      }
+      .row p {
+        margin: 0;
+        color: var(--mute);
+        font-size: 16px;
+      }
+      .row .a {
+        font-family: var(--mono);
+        color: var(--mute);
+        text-align: right;
+      }
+      /* steps */
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1.5px solid var(--ink);
+        background: var(--panel);
+      }
+      .step {
+        padding: 26px 24px 30px;
+        border-right: 1px solid var(--line);
+        position: relative;
+      }
+      .step:last-child {
+        border-right: 0;
+      }
+      .step .big {
+        font: 500 64px/1 var(--serif);
+        color: var(--acc);
+        display: block;
+        margin-bottom: 34px;
+      }
+      .step h3 {
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+      .step p {
+        margin: 0;
+        color: var(--mute);
+        font-size: 15.5px;
+      }
+      /* local */
+      .dark {
+        background: var(--inv);
+        color: var(--invink);
+      }
+      .dark .mono {
+        color: #9a947f;
+      }
+      .dark .sh h2 {
+        color: var(--invink);
+      }
+      .loc {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 64px;
+        align-items: start;
+      }
+      .loc p.big {
+        font-size: 21px;
+        line-height: 1.5;
+        margin: 0 0 36px;
+        color: #cfc8b6;
+      }
+      .flow {
+        border: 1px solid #3a372f;
+        padding: 24px;
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .flow .l {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px dashed #3a372f;
+        gap: 18px;
+      }
+      .flow .l:last-child {
+        border: 0;
+      }
+      .flow .ok {
+        color: #7ddc9a;
+      }
+      .flow .no {
+        color: #ff6a3d;
+      }
+      .flow h4 {
+        margin: 0 0 6px;
+        font: 500 11px var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #9a947f;
+      }
+      .pts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .pts li {
+        padding: 20px 0;
+        border-top: 1px solid #3a372f;
+      }
+      .pts h3 {
+        font-size: 22px;
+        margin-bottom: 6px;
+        color: var(--invink);
+      }
+      .pts p {
+        margin: 0;
+        color: #a8a28f;
+        font-size: 15.5px;
+      }
+      /* better metadata */
+      .cmp {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1.5px solid var(--ink);
+        margin-bottom: 56px;
+      }
+      .cmp > div {
+        padding: 26px;
+      }
+      .cmp > div:first-child {
+        border-right: 1.5px solid var(--ink);
+        background: var(--panel);
+      }
+      .cmp h4 {
+        margin: 0 0 14px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .cmp .bad span {
+        display: inline-block;
+        margin: 0 6px 6px 0;
+        font: 12px var(--mono);
+        color: var(--mute);
+        text-decoration: line-through;
+        text-decoration-color: var(--acc);
+      }
+      .cmp .good span {
+        display: inline-block;
+        margin: 0 6px 6px 0;
+        font: 500 12px var(--mono);
+      }
+      .cmp .good span:nth-child(-n + 5) {
+        background: var(--acc);
+        color: var(--accink);
+        padding: 2px 7px;
+      }
+      .three {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px;
+      }
+      .three div {
+        border-top: 1.5px solid var(--ink);
+        padding-top: 18px;
+      }
+      .three h3 {
+        font-size: 23px;
+        margin: 8px 0;
+      }
+      .three p {
+        margin: 0;
+        color: var(--mute);
+        font-size: 16px;
+      }
+      /* who */
+      .who {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        border-top: 1.5px solid var(--ink);
+        border-bottom: 1.5px solid var(--ink);
+      }
+      .who div {
+        padding: 26px 22px 30px;
+        border-right: 1px solid var(--line);
+      }
+      .who div:last-child {
+        border: 0;
+      }
+      .who h3 {
+        font-size: 24px;
+        margin: 34px 0 8px;
+      }
+      .who p {
+        margin: 0;
+        color: var(--mute);
+        font-size: 15.5px;
+      }
+      /* faq */
+      .faq {
+        border-top: 1.5px solid var(--ink);
+      }
+      details {
+        border-bottom: 1px solid var(--line);
+      }
+      summary {
+        list-style: none;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 22px 0;
+        font: 500 22px/1.25 var(--serif);
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::after {
+        content: "+";
+        font: 400 26px var(--mono);
+        color: var(--acc);
+        transition: transform 0.2s;
+      }
+      details[open] summary::after {
+        transform: rotate(45deg);
+      }
+      details p {
+        margin: 0 0 24px;
+        max-width: 46em;
+        color: var(--mute);
+      }
+      /* final */
+      .final {
+        background: var(--acc);
+        color: var(--accink);
+        padding: 96px 0;
+        border: 0;
+      }
+      .final h2 {
+        font-size: clamp(36px, 5.4vw, 76px);
+        line-height: 1;
+        max-width: 12em;
+      }
+      .final p {
+        max-width: 30em;
+        margin: 22px 0 34px;
+        font-size: 19px;
+      }
+      .final .btn {
+        border-color: var(--accink);
+      }
+      .final .btn.p {
+        background: var(--accink);
+        color: var(--acc);
+        border-color: var(--accink);
+      }
+      .final .btn.s {
+        color: var(--accink);
+      }
+      .final .btn.s:hover {
+        background: var(--accink);
+        color: var(--acc);
+      }
+      footer {
+        padding: 64px 0 40px;
+        background: var(--bg);
+      }
+      .ft {
+        display: grid;
+        grid-template-columns: 1.6fr repeat(4, 1fr);
+        gap: 32px;
+      }
+      .ft h4 {
+        margin: 0 0 14px;
+        font: 500 11px var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--mute);
+      }
+      .ft a {
+        display: block;
+        padding: 4px 0;
+        font-size: 14.5px;
+        color: var(--ink);
+      }
+      .ft a:hover {
+        color: var(--acc);
+      }
+      .ft p {
+        color: var(--mute);
+        font-size: 14.5px;
+        margin: 12px 0;
+      }
+      .copy {
+        margin-top: 48px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      @media (max-width: 960px) {
+        .hero .wrap,
+        .loc,
+        .cmp,
+        .three {
+          grid-template-columns: 1fr;
+        }
+        .hero .wrap {
+          gap: 48px;
+        }
+        .cmp > div:first-child {
+          border-right: 0;
+          border-bottom: 1.5px solid var(--ink);
+        }
+        .sh {
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+        .row {
+          grid-template-columns: 44px 1fr;
+          gap: 6px 14px;
+        }
+        .row p {
+          grid-column: 2;
+        }
+        .row .a {
+          display: none;
+        }
+        .steps,
+        .who {
+          grid-template-columns: 1fr 1fr;
+        }
+        .step:nth-child(2),
+        .who div:nth-child(2) {
+          border-right: 0;
+        }
+        .step:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+        .who div:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+        .ft {
+          grid-template-columns: 1fr 1fr;
+        }
+        .ft > div:first-child {
+          grid-column: 1/-1;
+        }
+        .nav nav {
+          display: none;
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding: 0 20px;
+        }
+        section {
+          padding: 68px 0;
+        }
+        .hero {
+          padding: 48px 0;
+        }
+        .steps,
+        .who {
+          grid-template-columns: 1fr;
+        }
+        .step,
+        .who div {
+          border-right: 0 !important;
+          border-bottom: 1px solid var(--line);
+        }
+        .rec-b {
+          grid-template-columns: 84px 1fr;
+        }
+        .rec {
+          box-shadow: 5px 5px 0 var(--ink);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap">
+        <a class="logo" href="https://genmeta.app/"><i></i>GenMeta</a>
+        <nav>
+          <a href="#features">Features</a><a href="#process">How it works</a
+          ><a href="https://genmeta.app/pricing">Pricing</a
+          ><a href="https://genmeta.app/docs">Docs</a
+          ><a href="https://genmeta.app/dashboard">Dashboard</a>
+        </nav>
+        <a class="btn p" href="https://genmeta.app/download">Download</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="hero">
+        <div class="wrap">
+          <div>
+            <div class="tag mono"><b>New</b> v6.7.5 is available</div>
+            <h1>
+              Metadata that <em>ranks</em>, written before you finish your
+              coffee.
+            </h1>
+            <p class="lead">
+              GenMeta reads your photos, vectors and videos, then writes
+              relevance-ordered titles, descriptions and keywords for Adobe
+              Stock, Shutterstock, Freepik and more.
+            </p>
+            <div class="cta">
+              <a
+                class="btn p"
+                href="https://github.com/aminurdev/genmeta-app/releases/download/6.7.5/GenMeta-Setup-6.7.5.exe"
+                >Download free for Windows →</a
+              >
+              <a class="btn s" href="https://genmeta.app/pricing"
+                >View pricing</a
+              >
+            </div>
+            <small class="mono"
+              >Windows 10/11 · 50 free credits · No card required</small
+            >
+          </div>
+
+          <div class="rec" aria-label="Example of a generated metadata record">
+            <div class="rec-h mono" style="color: var(--ink)">
+              <span>watercolor-splash-0142.png</span
+              ><span style="color: var(--acc)">● Generated</span>
+            </div>
+            <div class="rec-b">
+              <div class="thumb"></div>
+              <div>
+                <div class="fld">
+                  <div class="mono">
+                    <span>Title</span><span>91 / 200</span>
+                  </div>
+                  <p>
+                    Watercolor Splash Texture Background with Vibrant Blue and
+                    Purple Hues for Artistic Designs
+                  </p>
+                </div>
+                <div class="fld" style="margin: 0">
+                  <div class="mono">
+                    <span>Description</span><span>158</span>
+                  </div>
+                  <p>
+                    A vibrant watercolor splash texture blending blue and purple
+                    hues. Ideal for digital art, graphic design and creative
+                    backgrounds.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="bracket">TOP 10 · WEIGHTED BY AGENCY SEARCH</div>
+            <div class="kw">
+              <div class="kws">
+                <span class="t" data-n="01">watercolor</span
+                ><span class="t" data-n="02">splash</span
+                ><span class="t" data-n="03">texture</span
+                ><span class="t" data-n="04">background</span
+                ><span class="t" data-n="05">blue</span
+                ><span class="t" data-n="06">purple</span
+                ><span class="t" data-n="07">artistic</span
+                ><span class="t" data-n="08">abstract</span
+                ><span class="t" data-n="09">paint</span
+                ><span class="t" data-n="10">stain</span> <span>wash</span
+                ><span>creative</span><span>backdrop</span><span>+31</span>
+              </div>
+            </div>
+            <div class="rec-f">
+              <span class="mono">45 keywords</span
+              ><span class="mono">adobe-stock.csv ↓</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mk">
+        <div class="wrap">
+          <span class="mono">Formatted for</span>
+          <ul>
+            <li>Adobe Stock</li>
+            <li>Shutterstock</li>
+            <li>Freepik</li>
+            <li>Getty Images</li>
+            <li>iStock</li>
+            <li>Alamy</li>
+            <li>Pond5</li>
+            <li>Depositphotos</li>
+          </ul>
+        </div>
+      </div>
+
+      <section id="features">
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">01 — Features</span>
+            <h2>Everything between export and upload.</h2>
+          </div>
+          <div class="idx">
+            <div class="row">
+              <span class="n">A.01</span>
+              <h3>AI metadata generator</h3>
+              <p>
+                Titles, descriptions, keywords and categories from images,
+                vectors and video, using state-of-the-art vision models.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.02</span>
+              <h3>Bulk generation</h3>
+              <p>
+                Process hundreds or thousands of files in a single pass, not one
+                description at a time.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.03</span>
+              <h3>Stock keyword ordering</h3>
+              <p>
+                Relevant keywords with the critical marketplace search terms
+                placed first.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.04</span>
+              <h3>Vector metadata</h3>
+              <p>
+                Accurate tags and descriptions for EPS and SVG artwork, without
+                describing every layer.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.05</span>
+              <h3>Stock video metadata</h3>
+              <p>
+                Descriptions and keywords for footage, covering framing, motion
+                and resolution.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.06</span>
+              <h3>Metadata embedding</h3>
+              <p>
+                Write EXIF, IPTC and XMP directly into supported files so tags
+                travel with them.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.07</span>
+              <h3>Custom AI instructions</h3>
+              <p>
+                Set keyword limits, ban terms and match your agency’s submission
+                style with your own rules.
+              </p>
+              <span class="a">→</span>
+            </div>
+            <div class="row">
+              <span class="n">A.08</span>
+              <h3>CSV &amp; agency export</h3>
+              <p>
+                Agency-ready spreadsheets for Adobe Stock, Shutterstock,
+                Freepik, Getty/iStock and Alamy.
+              </p>
+              <span class="a">→</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="process">
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">02 — Workflow</span>
+            <h2>From folder to CSV in four steps.</h2>
+          </div>
+          <div class="steps">
+            <div class="step">
+              <span class="big">1</span>
+              <h3>Install</h3>
+              <p>A lightweight installer for Windows 10 and 11.</p>
+            </div>
+            <div class="step">
+              <span class="big">2</span>
+              <h3>Add files</h3>
+              <p>Drag in a folder of images, videos or vectors.</p>
+            </div>
+            <div class="step">
+              <span class="big">3</span>
+              <h3>Generate</h3>
+              <p>Titles, descriptions and keywords for every file.</p>
+            </div>
+            <div class="step">
+              <span class="big">4</span>
+              <h3>Review &amp; export</h3>
+              <p>Edit inline, then export for your agency of choice.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dark">
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">03 — Privacy</span>
+            <h2>Your files stay on your computer.</h2>
+          </div>
+          <div class="loc">
+            <div>
+              <p class="big">
+                GenMeta is a desktop app. Browser tools make you upload
+                gigabytes of assets; GenMeta processes files locally and sends
+                only lightweight visual data for AI analysis.
+              </p>
+              <div class="flow">
+                <h4>What leaves your machine</h4>
+                <div class="l">
+                  <span>Full-resolution originals / RAW</span
+                  ><span class="no">never uploaded</span>
+                </div>
+                <div class="l">
+                  <span>Master videos &amp; vectors</span
+                  ><span class="no">never uploaded</span>
+                </div>
+                <div class="l">
+                  <span>Lightweight visual preview for AI</span
+                  ><span class="ok">sent</span>
+                </div>
+                <div class="l">
+                  <span>EXIF · IPTC · XMP tags</span
+                  ><span class="ok">written locally</span>
+                </div>
+              </div>
+            </div>
+            <ul class="pts">
+              <li>
+                <h3>Local-first desktop app</h3>
+                <p>
+                  Full-resolution images, RAW captures, vectors and master
+                  videos are never uploaded to remote storage.
+                </p>
+              </li>
+              <li>
+                <h3>Fast folder scanning</h3>
+                <p>
+                  Scan thousands of files from your SSD or external drive with
+                  no bandwidth bottleneck.
+                </p>
+              </li>
+              <li>
+                <h3>Direct embedding</h3>
+                <p>
+                  Tags are written to your local files, so metadata stays
+                  attached wherever the asset goes.
+                </p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">04 — Quality</span>
+            <h2>Better metadata. Higher acceptance. Free to start.</h2>
+          </div>
+          <div class="cmp">
+            <div>
+              <h4>
+                <span class="mono" style="color: var(--ink)"
+                  >Generic AI tool</span
+                ><span class="mono">Spam risk</span>
+              </h4>
+              <div class="bad">
+                <span>image</span><span>photo</span><span>nice</span
+                ><span>beautiful</span><span>cool</span><span>pretty</span
+                ><span>art</span><span>design</span><span>stuff</span
+                ><span>wallpaper</span><span>picture</span>
+              </div>
+            </div>
+            <div>
+              <h4>
+                <span class="mono" style="color: var(--ink)">GenMeta</span
+                ><span class="mono" style="color: var(--acc)"
+                  >First 5 weighted</span
+                >
+              </h4>
+              <div class="good">
+                <span>watercolor</span><span>splash</span><span>texture</span
+                ><span>background</span><span>blue</span><span>purple</span
+                ><span>artistic</span><span>abstract</span><span>paint</span
+                ><span>stain</span>
+              </div>
+            </div>
+          </div>
+          <div class="three">
+            <div>
+              <span class="mono">01</span>
+              <h3>True relevance ranking</h3>
+              <p>
+                Adobe Stock prioritizes the first 5 to 10 keywords. GenMeta puts
+                primary subjects there, not alphabetized filler.
+              </p>
+            </div>
+            <div>
+              <span class="mono">02</span>
+              <h3>No hallucinations, no spam</h3>
+              <p>
+                Trained on stock visual criteria to tag real subjects, styles
+                and moods, avoiding terms that trigger rejections.
+              </p>
+            </div>
+            <div>
+              <span class="mono">03</span>
+              <h3>Multi-agency CSV &amp; embed</h3>
+              <p>
+                Prepare assets for Adobe Stock, Shutterstock, Freepik and other
+                distributors in the formats they require.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">05 — Audience</span>
+            <h2>Built for people who upload every week.</h2>
+          </div>
+          <div class="who">
+            <div>
+              <span class="mono">P</span>
+              <h3>Photographers</h3>
+              <p>Tag full shoots in one pass instead of file by file.</p>
+            </div>
+            <div>
+              <span class="mono">I</span>
+              <h3>Illustrators</h3>
+              <p>Precise, searchable descriptions for vectors and icons.</p>
+            </div>
+            <div>
+              <span class="mono">V</span>
+              <h3>Videographers</h3>
+              <p>Descriptive metadata for footage and motion assets.</p>
+            </div>
+            <div>
+              <span class="mono">S</span>
+              <h3>Studios</h3>
+              <p>Consistent metadata across large, multi-author catalogs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <div class="sh">
+            <span class="mono">06 — FAQ</span>
+            <h2>Questions about AI metadata.</h2>
+          </div>
+          <div class="faq">
+            <details>
+              <summary>
+                Why is GenMeta’s metadata better than generic AI?
+              </summary>
+              <p>
+                It’s built specifically for microstock. Keywords are ranked by
+                relevance, tied to what is actually visible, and kept free of
+                filler that review teams reject.
+              </p>
+            </details>
+            <details>
+              <summary>Can I use GenMeta for free?</summary>
+              <p>
+                Yes. Download for Windows and you get 50 free credits instantly,
+                with no credit card required. Upgrade when you need unlimited
+                processing and every export format.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Can AI generate Adobe Stock keywords with relevance ranking?
+              </summary>
+              <p>
+                GenMeta places primary subjects first, matching how Adobe Stock
+                weights the opening 5 to 10 keywords.
+              </p>
+            </details>
+            <details>
+              <summary>Does GenMeta support vectors and stock videos?</summary>
+              <p>
+                Yes. It handles photos, vectors including EPS and SVG, and video
+                clips, each with metadata suited to the format.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Does GenMeta embed metadata into files or export CSV?
+              </summary>
+              <p>
+                Both. It can embed EXIF, IPTC and XMP into supported files and
+                export agency-ready CSVs for the major marketplaces.
+              </p>
+            </details>
+            <details>
+              <summary>
+                Does GenMeta upload my original files to the cloud?
+              </summary>
+              <p>
+                No. Originals stay on your computer. Only lightweight visual
+                data is sent for AI analysis.
+              </p>
+            </details>
+          </div>
+          <p style="margin-top: 28px; color: var(--mute)">
+            Can’t find what you need?
+            <a
+              href="https://genmeta.app/contact"
+              style="color: var(--acc); font-weight: 600"
+              >Contact us →</a
+            >
+          </p>
+        </div>
+      </section>
+
+      <section class="final">
+        <div class="wrap">
+          <h2>Boost your microstock sales with better metadata.</h2>
+          <p>
+            Start on the free plan. Upgrade when you need unlimited processing
+            and every export format.
+          </p>
+          <div class="cta">
+            <a
+              class="btn p"
+              href="https://github.com/aminurdev/genmeta-app/releases/download/6.7.5/GenMeta-Setup-6.7.5.exe"
+              >Download free</a
+            ><a class="btn s" href="https://genmeta.app/pricing"
+              >Compare plans</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="ft">
+          <div>
+            <a class="logo" href="https://genmeta.app/"><i></i>GenMeta</a>
+            <p>
+              AI metadata generation for microstock contributors. Built for
+              Windows.
+            </p>
+            <a href="mailto:support@genmeta.app">support@genmeta.app</a
+            ><a href="https://wa.me/8801817710493">WhatsApp support</a>
+          </div>
+          <div>
+            <h4>Product</h4>
+            <a href="https://genmeta.app/download">Download</a
+            ><a href="https://genmeta.app/pricing">Pricing &amp; plans</a
+            ><a href="https://genmeta.app/docs">Documentation</a
+            ><a href="https://genmeta.app/dashboard">Dashboard</a>
+          </div>
+          <div>
+            <h4>Marketplaces</h4>
+            <a href="https://genmeta.app/for-adobe-stock">Adobe Stock</a
+            ><a href="https://genmeta.app/for-shutterstock">Shutterstock</a
+            ><a href="https://genmeta.app/for-freepik">Freepik</a
+            ><a href="https://genmeta.app/microstock-metadata-generator"
+              >Microstock creators</a
+            >
+          </div>
+          <div>
+            <h4>Solutions</h4>
+            <a href="https://genmeta.app/ai-metadata-generator"
+              >Metadata generator</a
+            ><a href="https://genmeta.app/ai-stock-keyword-generator"
+              >Keyword generator</a
+            ><a href="https://genmeta.app/for-vectors">Vector metadata</a
+            ><a href="https://genmeta.app/for-stock-video">Stock video</a>
+          </div>
+          <div>
+            <h4>Company</h4>
+            <a href="https://genmeta.app/about">About</a
+            ><a href="https://genmeta.app/contact">Contact</a
+            ><a href="https://genmeta.app/terms">Terms</a
+            ><a href="https://genmeta.app/privacy-policy">Privacy</a
+            ><a href="https://genmeta.app/refund-policy">Refunds</a>
+          </div>
+        </div>
+        <div class="copy mono">
+          <span>© 2026 GenMeta Technologies</span
+          ><span>Made for contributors</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -2,6 +2,7 @@
 
 import type React from "react";
 import Image from "next/image";
+import GenMetaHeroDemo from "@/components/main/GenMetaHeroDemo";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -361,27 +362,10 @@ export default function HomePage({ releaseInfo }: Props) {
             </p>
           </div>
 
-          {/* Product shot */}
+          {/* Product shot — animated stageshow demo */}
           <div className="relative px-4 pb-4 md:px-12 md:pb-12">
-            <div className="rounded-xl border bg-muted/50 p-1.5 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.12)] md:p-2 dark:shadow-none">
-              <div className="overflow-hidden rounded-lg border bg-background">
-                <Image
-                  src="/Assets/app-light.png"
-                  alt="GenMeta desktop app showing generated titles, descriptions and keywords"
-                  width={2000}
-                  height={1200}
-                  priority
-                  className="h-auto w-full dark:hidden"
-                />
-                <Image
-                  src="/Assets/app-dark.png"
-                  alt="GenMeta desktop app showing generated titles, descriptions and keywords"
-                  width={2000}
-                  height={1200}
-                  priority
-                  className="hidden h-auto w-full dark:block"
-                />
-              </div>
+            <div className="overflow-hidden rounded-xl border bg-muted/50 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.12)] dark:shadow-none">
+              <GenMetaHeroDemo />
             </div>
           </div>
         </section>
