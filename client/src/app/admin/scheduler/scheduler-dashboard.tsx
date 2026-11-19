@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { SchedulerSkeleton } from "./scheduler-skeleton";
 import {
   useSchedulerStatusQuery,
   useMaintenanceStatsQuery,
@@ -154,16 +155,7 @@ export function SchedulerDashboard() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading scheduler dashboard...</span>
-        </div>
-      </div>
-    );
-  }
+  if (loading) { return <SchedulerSkeleton />; }
 
   return (
     <div className="space-y-6">

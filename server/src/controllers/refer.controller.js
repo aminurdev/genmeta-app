@@ -1,34 +1,33 @@
 import { Referral } from "../models/referral.model.js";
+import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateCode } from "../utils/index.js";
+import { WITHDRAWAL_STATUS } from "../constants/index.js";
 
-const getReferralDetails = asyncHandler(async (req, res) => {
+export const getReferralDetails = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
 
-  // Try to find referral
   let referral = await Referral.findOne({ referrer: userId })
     .populate({
       path: "referredUsers",
-      select: "name email isVerified loginProvider",
+      select: "name email isVerified loginProvider createdAt",
     })
     .populate({
       path: "earnedHistory.user",
       select: "name email",
     });
 
-  // If no referral, create one safely
   if (!referral) {
     referral = await Referral.findOneAndUpdate(
       { referrer: userId },
-      { $setOnInsert: { referrer: userId, referralCode: generateCode() } },
-      { upsert: true, new: true } // atomic upsert
+      { $setOnInsert: { referrer: userId, referralCode: generateCode(6, 0.7) } },
+      { upsert: true, new: true }
     );
   }
 
-  // ✅ Filter referred users: skip unverified email-only users
-  const validReferredUsers = referral.referredUsers.filter(
+  const validReferredUsers = (referral.referredUsers || []).filter(
     (u) =>
       u.isVerified ||
       (u.loginProvider &&
@@ -36,16 +35,15 @@ const getReferralDetails = asyncHandler(async (req, res) => {
         !u.loginProvider.includes("email"))
   );
 
-  // Calculate totals
-  const totalEarned = referral.earnedHistory.reduce(
+  const totalEarned = (referral.earnedHistory || []).reduce(
     (sum, e) => sum + (e.amount || 0),
     0
   );
 
-  const availableBalance = referral.availableBalance;
+  const availableBalance = referral.availableBalance || 0;
 
-  const totalWithdrawn = referral.withdrawHistory
-    .filter((w) => w.status === "completed")
+  const totalWithdrawn = (referral.withdrawHistory || [])
+    .filter((w) => w.status === WITHDRAWAL_STATUS.COMPLETED)
     .reduce((sum, w) => sum + (w.amount || 0), 0);
 
   return new ApiResponse(200, true, "Referral data retrieved", {
@@ -55,69 +53,88 @@ const getReferralDetails = asyncHandler(async (req, res) => {
     totalEarned,
     availableBalance,
     totalWithdrawn,
-    earnedHistory: referral.earnedHistory,
-    withdrawHistory: referral.withdrawHistory,
+    earnedHistory: referral.earnedHistory || [],
+    withdrawHistory: referral.withdrawHistory || [],
   }).send(res);
 });
 
-// 📌 Request withdrawal
-const requestWithdrawal = asyncHandler(async (req, res) => {
+export const requestWithdrawal = asyncHandler(async (req, res) => {
   const userId = req.user?._id;
   const { amount, withdrawAccount } = req.body;
 
   const minimumWithdrawAmount = 100;
 
-  // Validate withdraw account
   if (!withdrawAccount?.trim()) {
-    throw new ApiError(400, "Withdrawal account is required");
+    throw new ApiError(400, "Withdrawal account details are required");
   }
 
-  // Validate amount
-  if (!amount || amount <= 0) {
+  const withdrawAmount = Number(amount);
+  if (!withdrawAmount || withdrawAmount <= 0) {
     throw new ApiError(400, "Withdrawal amount must be greater than 0");
   }
 
-  if (amount < minimumWithdrawAmount) {
+  if (withdrawAmount < minimumWithdrawAmount) {
     throw new ApiError(
       400,
-      `Minimum withdrawal amount is ${minimumWithdrawAmount}`
+      `Minimum withdrawal amount is ${minimumWithdrawAmount} BDT`
     );
   }
 
-  // Find referral record
-  const referral = await Referral.findOne({ referrer: userId });
-  if (!referral) {
-    throw new ApiError(404, "Referral record not found");
+  const cleanAccount = withdrawAccount.trim();
+
+  // ATOMIC balance deduction: guarantees no concurrent double-spend!
+  const updatedReferral = await Referral.findOneAndUpdate(
+    {
+      referrer: userId,
+      availableBalance: { $gte: withdrawAmount },
+    },
+    {
+      $inc: { availableBalance: -withdrawAmount },
+      $set: { withdrawAccount: cleanAccount },
+      $push: {
+        withdrawHistory: {
+          amount: withdrawAmount,
+          withdrawAccount: cleanAccount,
+          status: WITHDRAWAL_STATUS.PENDING,
+          requestedAt: new Date(),
+          createdAt: new Date(),
+        },
+      },
+    },
+    { new: true }
+  );
+
+  if (!updatedReferral) {
+    // Determine whether record exists or balance was insufficient
+    const existing = await Referral.findOne({ referrer: userId });
+    if (!existing) {
+      throw new ApiError(404, "Referral record not found");
+    }
+    throw new ApiError(400, "Insufficient referral balance for withdrawal");
   }
 
-  // Ensure account is stored/updated
-  if (referral.withdrawAccount !== withdrawAccount) {
-    referral.withdrawAccount = withdrawAccount.trim();
-  }
-
-  // Check balance
-  if (referral.availableBalance < amount) {
-    throw new ApiError(400, "Insufficient balance for withdrawal");
-  }
-
-  // Deduct balance and log request
-  referral.availableBalance -= amount;
-  const withdrawal = {
-    amount,
-    withdrawAccount: referral.withdrawAccount,
-    status: "pending",
+  // Create record in normalized ledger
+  const withdrawalRecord = await ReferralWithdrawal.create({
+    referralId: updatedReferral._id,
+    userId,
+    amount: withdrawAmount,
+    status: WITHDRAWAL_STATUS.PENDING,
+    withdrawAccount: cleanAccount,
     requestedAt: new Date(),
-  };
-  referral.withdrawHistory.push(withdrawal);
-
-  await referral.save();
+  });
 
   return new ApiResponse(
     200,
     true,
     "Withdrawal request submitted successfully",
-    { withdrawal }
+    {
+      withdrawal: {
+        id: withdrawalRecord._id,
+        amount: withdrawAmount,
+        status: WITHDRAWAL_STATUS.PENDING,
+        withdrawAccount: cleanAccount,
+        availableBalance: updatedReferral.availableBalance,
+      },
+    }
   ).send(res);
 });
-
-export { getReferralDetails, requestWithdrawal };

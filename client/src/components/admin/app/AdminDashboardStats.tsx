@@ -20,64 +20,78 @@ import { AreaChart } from "@/components/ui/area-chart";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  CreditCard,
   DollarSign,
   Key,
   RefreshCw,
   Users,
   XCircle,
+  Activity,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAdminOverviewQuery } from "@/services/queries/admin-dashboard";
-import Loading from "@/app/admin/loading";
+import { AdminDashboardSkeleton } from "@/components/admin/admin-dashboard-skeleton";
 
 export default function DashboardStats() {
   const { data, isLoading, error, refetch } = useAdminOverviewQuery();
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number = 0) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "BDT",
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(amount || 0);
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "MMM d, yyyy");
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM d, yyyy");
+    } catch {
+      return dateString;
+    }
   };
 
-  const formatTime = (dateString: string) => {
-    return format(new Date(dateString), "h:mm a");
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      return format(new Date(dateString), "h:mm a");
+    } catch {
+      return "";
+    }
   };
 
   const formatMonthYear = (monthYear: string) => {
-    const [year, month] = monthYear.split("-");
-    return format(
-      new Date(Number.parseInt(year), Number.parseInt(month) - 1),
-      "MMM yyyy",
-    );
+    try {
+      const [year, month] = monthYear.split("-");
+      return format(
+        new Date(Number.parseInt(year), Number.parseInt(month) - 1),
+        "MMM yyyy"
+      );
+    } catch {
+      return monthYear;
+    }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string) => {
+    if (!name) return "U";
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   if (isLoading) {
-    return <Loading />;
+    return <AdminDashboardSkeleton showHeader={false} />;
   }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-destructive mb-4" />
-        <h3 className="text-lg font-medium">
-          Error loading dashboard statistics
-        </h3>
+        <h3 className="text-lg font-medium">Error loading dashboard statistics</h3>
         <p className="text-muted-foreground mt-2 mb-4">
           {error instanceof Error ? error.message : "An unknown error occurred"}
         </p>
@@ -107,22 +121,37 @@ export default function DashboardStats() {
 
   const stats = data.data;
 
-  const revenueData = Object.entries(stats.revenue.monthlyRevenueList).map(
-    ([month, value]) => ({
-      label: formatMonthYear(month),
-      value,
-    }),
-  );
+  // Safe fallback normalization
+  const monthlyRevenue =
+    (stats.revenue?.monthlyRevenueList || ((stats.revenue as unknown as Record<string, Record<string, number>>)?.monthlyBreakdown) || {}) as Record<string, number>;
+  const revenueData = Object.entries(monthlyRevenue).map(([month, value]) => ({
+    label: formatMonthYear(month),
+    value: value || 0,
+  }));
 
-  const processData = Object.entries(stats.appKeys.monthlyProcessList).map(
-    ([month, value]) => ({
-      label: formatMonthYear(month),
-      value,
-    }),
-  );
+  const monthlyProcesses = stats.appKeys?.monthlyProcessList || {};
+  const processData = Object.entries(monthlyProcesses).map(([month, value]) => ({
+    label: formatMonthYear(month),
+    value: value || 0,
+  }));
+
+  const recentPayments =
+    stats.payments?.recent || stats.recentPayments || [];
+
+  const topUsage = stats.appKeys?.topUsage || [];
+  const topSpenders = stats.payments?.topSpenders || [];
+  const topReferrers = stats.topReferrers || [];
+
+  const growthPercentage =
+    stats.revenue?.growthPercentage ??
+    (stats.revenue?.lastMonth && stats.revenue.lastMonth > 0
+      ? ((stats.revenue.currentMonth - stats.revenue.lastMonth) /
+          stats.revenue.lastMonth) *
+        100
+      : 0);
 
   return (
-    <div className=" space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Button variant="outline" onClick={() => refetch()}>
@@ -132,7 +161,7 @@ export default function DashboardStats() {
       </div>
 
       {/* Summary Cards */}
-      <div className="flex gap-4 overflow-x-auto whitespace-nowrap pb-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {/* Total Revenue Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -141,13 +170,13 @@ export default function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.revenue.total)}
+              {formatCurrency(stats.revenue?.total)}
             </div>
             <p className="text-xs text-muted-foreground">Lifetime revenue</p>
           </CardContent>
         </Card>
 
-        {/* Monthly Revenue Card */}
+        {/* Current Month Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Month</CardTitle>
@@ -155,48 +184,42 @@ export default function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.revenue.currentMonth)}
+              {formatCurrency(stats.revenue?.currentMonth)}
             </div>
             <div className="flex items-center pt-1">
-              {stats.revenue.growthPercentage > 0 ? (
+              {growthPercentage > 0 ? (
                 <ArrowUpIcon className="mr-1 h-3 w-3 text-green-500" />
-              ) : stats.revenue.growthPercentage < 0 ? (
+              ) : growthPercentage < 0 ? (
                 <ArrowDownIcon className="mr-1 h-3 w-3 text-red-500" />
               ) : null}
               <span
                 className={
-                  stats.revenue.growthPercentage > 0
+                  growthPercentage > 0
                     ? "text-xs text-green-500"
-                    : stats.revenue.growthPercentage < 0
-                      ? "text-xs text-red-500"
-                      : "text-xs text-muted-foreground"
+                    : growthPercentage < 0
+                    ? "text-xs text-red-500"
+                    : "text-xs text-muted-foreground"
                 }
               >
-                {stats.revenue.growthPercentage !== 0
-                  ? `${Math.abs(stats.revenue.growthPercentage).toFixed(
-                      2,
-                    )}% from last month`
-                  : "No change from last month"}
+                {growthPercentage !== 0
+                  ? `${Math.abs(growthPercentage).toFixed(2)}% vs last month`
+                  : "No change vs last month"}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Last Month Revenue */}
+        {/* Previous Month Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Previous Month
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Previous Month</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.revenue.lastMonth)}
+              {formatCurrency(stats.revenue?.lastMonth)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Last month&apos;s revenue
-            </p>
+            <p className="text-xs text-muted-foreground">Last month&apos;s revenue</p>
           </CardContent>
         </Card>
 
@@ -207,23 +230,23 @@ export default function DashboardStats() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.users.total}</div>
+            <div className="text-2xl font-bold">{(stats.users?.total ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              +{stats.users.newThisMonth} new this month
+              +{stats.users?.newThisMonth ?? 0} new this month
             </p>
           </CardContent>
         </Card>
 
-        {/* APP Users Card */}
+        {/* App Keys / Active Users Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">APP Users</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.appKeys.total}</div>
+            <div className="text-2xl font-bold">{(stats.appKeys?.total ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              +{stats.appKeys.newThisMonth} new this month
+              {stats.appKeys?.active ?? 0} active keys
             </p>
           </CardContent>
         </Card>
@@ -231,39 +254,22 @@ export default function DashboardStats() {
         {/* Current Premium Users Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-2">
-            <CardTitle className="text-sm font-medium">
-              Current Premium Users
-            </CardTitle>
-            <Key className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Premium Users</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.appKeys.activePremium}
+              {(stats.appKeys?.activePremium ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.appKeys.subscriptionPlanCount} subscription and{" "}
-              {stats.appKeys.creditPlanCount} credit
-            </p>
-          </CardContent>
-        </Card>
-
-
-
-        {/* Payments Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payments</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.payments.total}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.payments.newThisMonth} new this month
+              {stats.appKeys?.subscriptionPlanCount ?? 0} subs,{" "}
+              {stats.appKeys?.creditPlanCount ?? 0} credit
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Charts */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Revenue Chart */}
         <Card>
@@ -282,11 +288,11 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* Images Process Chart */}
+        {/* Processes Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Image Processing Overview</CardTitle>
-            <CardDescription>Monthly image processing trends</CardDescription>
+            <CardDescription>Processing volume trends</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <AreaChart
@@ -311,47 +317,50 @@ export default function DashboardStats() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Plan</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stats.payments.recent.map((payment, index) => (
-                <TableRow
-                  key={`${payment.userId?._id}-${payment.createdAt}-${index}`}
-                >
-                  <TableCell>
-                    <div className="flex gap-4">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage
-                          src={`https://avatar.vercel.sh/${payment.userId?.email}`}
-                          alt={payment.userId?.name}
-                        />
-                        <AvatarFallback>
-                          {getInitials(payment.userId?.name ?? "")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {payment.userId?.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {payment.userId?.email}
-                        </span>
+              {recentPayments.map((payment, index) => {
+                const userObj = payment.userId || { name: "Unknown", email: "N/A" };
+                return (
+                  <TableRow key={`${userObj._id || index}-${payment.createdAt}-${index}`}>
+                    <TableCell>
+                      <div className="flex gap-4 items-center">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage
+                            src={`https://avatar.vercel.sh/${userObj.email || "user"}`}
+                            alt={userObj.name || "User"}
+                          />
+                          <AvatarFallback>
+                            {getInitials(userObj.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{userObj.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {userObj.email}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(payment.amount)}
-                  </TableCell>
-                  <TableCell>{formatDate(payment.createdAt)}</TableCell>
-                  <TableCell>{formatTime(payment.createdAt)}</TableCell>
-                </TableRow>
-              ))}
-              {stats.payments.recent.length === 0 && (
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatCurrency(payment.amount)}
+                    </TableCell>
+                    <TableCell className="capitalize text-sm text-muted-foreground">
+                      {typeof payment.plan === "object" && payment.plan !== null ? (payment.plan as { name?: string; type?: string }).name || (payment.plan as { name?: string; type?: string }).type || "Standard" : (typeof payment.plan === "string" ? payment.plan : "Standard")}
+                    </TableCell>
+                    <TableCell>{formatDate(payment.createdAt)}</TableCell>
+                    <TableCell>{formatTime(payment.createdAt)}</TableCell>
+                  </TableRow>
+                );
+              })}
+              {recentPayments.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="text-center py-6 text-muted-foreground"
                   >
                     No recent payments
@@ -363,8 +372,9 @@ export default function DashboardStats() {
         </CardContent>
       </Card>
 
-
+      {/* Activity Breakdown: Top API Usage, Top Spenders, Top Referrers */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+        {/* Top API Usage */}
         <Card>
           <CardHeader>
             <CardTitle>Top API Usage</CardTitle>
@@ -379,39 +389,41 @@ export default function DashboardStats() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.appKeys.topUsage.map((item, index) => (
-                  <TableRow key={`${item._id}-${index}`}>
+                {topUsage.map((item, index) => (
+                  <TableRow key={`${item._id || index}-${index}`}>
                     <TableCell>
-                      <div className="flex gap-4">
-                        <Avatar className="h-9 w-9">
+                      <div className="flex gap-3 items-center">
+                        <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={`https://avatar.vercel.sh/${item.user.email}`}
-                            alt={item.user.name}
+                            src={`https://avatar.vercel.sh/${item.user?.email || "user"}`}
+                            alt={item.user?.name || "User"}
                           />
                           <AvatarFallback>
-                            {getInitials(item.user.name ?? "")}
+                            {getInitials(item.user?.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{item.user.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {item.user.email}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-sm truncate">
+                            {item.user?.name || "User"}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.user?.email}
                           </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {item.count.toLocaleString()}
+                      {(item.count || 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
-                {stats.appKeys.topUsage.length === 0 && (
+                {topUsage.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={2}
                       className="text-center py-6 text-muted-foreground"
                     >
-                      No data
+                      No usage data yet
                     </TableCell>
                   </TableRow>
                 )}
@@ -420,6 +432,7 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
+        {/* Top Spenders */}
         <Card>
           <CardHeader>
             <CardTitle>Top Spenders</CardTitle>
@@ -434,28 +447,24 @@ export default function DashboardStats() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.payments.topSpenders.map((item, index) => (
-                  <TableRow key={`${item._id}-${index}`}>
+                {topSpenders.map((item, index) => (
+                  <TableRow key={`${item._id || index}-${index}`}>
                     <TableCell>
-                      <div className="flex gap-4">
-                        <Avatar className="h-9 w-9">
+                      <div className="flex gap-3 items-center">
+                        <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={
-                              item.user?.email
-                                ? `https://avatar.vercel.sh/${item.user.email}`
-                                : ""
-                            }
-                            alt={item.user?.name ?? ""}
+                            src={`https://avatar.vercel.sh/${item.user?.email || "user"}`}
+                            alt={item.user?.name || "User"}
                           />
                           <AvatarFallback>
-                            {getInitials(item.user?.name ?? "")}
+                            {getInitials(item.user?.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {item.user?.name ?? ""}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-sm truncate">
+                            {item.user?.name || "User"}
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground truncate">
                             {item.user?.email}
                           </span>
                         </div>
@@ -466,13 +475,13 @@ export default function DashboardStats() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {stats.payments.topSpenders.length === 0 && (
+                {topSpenders.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={2}
                       className="text-center py-6 text-muted-foreground"
                     >
-                      No data
+                      No spenders data yet
                     </TableCell>
                   </TableRow>
                 )}
@@ -481,6 +490,7 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
+        {/* Top Referrers */}
         <Card>
           <CardHeader>
             <CardTitle>Top Referrers</CardTitle>
@@ -495,39 +505,41 @@ export default function DashboardStats() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.topReferrers.map((item, index) => (
-                  <TableRow key={`${item._id}-${index}`}>
+                {topReferrers.map((item, index) => (
+                  <TableRow key={`${item._id || index}-${index}`}>
                     <TableCell>
-                      <div className="flex gap-4">
-                        <Avatar className="h-9 w-9">
+                      <div className="flex gap-3 items-center">
+                        <Avatar className="h-8 w-8">
                           <AvatarImage
-                            src={`https://avatar.vercel.sh/${item.user.email}`}
-                            alt={item.user.name}
+                            src={`https://avatar.vercel.sh/${item.user?.email || "user"}`}
+                            alt={item.user?.name || "User"}
                           />
                           <AvatarFallback>
-                            {getInitials(item.user.name ?? "")}
+                            {getInitials(item.user?.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{item.user.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {item.user.email}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-sm truncate">
+                            {item.user?.name || "User"}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.user?.email}
                           </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {item.referredCount.toLocaleString()}
+                      {(item.referredCount || 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))}
-                {stats.topReferrers.length === 0 && (
+                {topReferrers.length === 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={2}
                       className="text-center py-6 text-muted-foreground"
                     >
-                      No data
+                      No referral data yet
                     </TableCell>
                   </TableRow>
                 )}

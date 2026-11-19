@@ -24,6 +24,7 @@ import {
   stopScheduler,
   triggerMaintenance,
   updateWithdrawal,
+  getWithdrawalNotifications,
 } from "../admin-dashboard";
 import type { GetPaymentsHistoryParams } from "@/types/admin";
 
@@ -261,7 +262,17 @@ export function useUpdateWithdrawalMutation() {
     }) => updateWithdrawal(userId, withdrawalId, status, trx),
     onSuccess: () => {
       // Invalidate referral queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+            queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminWithdrawalNotifications });
     },
+  });
+}
+
+export function useWithdrawalNotificationsQuery() {
+  return useQuery({
+    queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+    queryFn: getWithdrawalNotifications,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 }

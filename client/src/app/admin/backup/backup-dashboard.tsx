@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { BackupSkeleton } from "./backup-skeleton";
 import {
   useBackupConnectionQuery,
   useBackupStatusQuery,
@@ -94,15 +95,18 @@ export function BackupDashboard() {
   };
 
   const handleTriggerBackup = async () => {
+    const toastId = toast.loading("Database backup in progress... Please wait.");
     try {
       const result = await triggerBackupMutation.mutateAsync();
       if (result.success) {
-        toast.success("Database backup completed successfully");
+        toast.success("Database backup completed successfully", { id: toastId });
       } else {
-        toast.error(result.message || "Backup failed");
+        toast.error(result.message || "Backup failed", { id: toastId });
       }
-    } catch {
-      toast.error("Failed to trigger backup");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to trigger backup";
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -120,16 +124,7 @@ export function BackupDashboard() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading backup dashboard...</span>
-        </div>
-      </div>
-    );
-  }
+  if (loading) { return <BackupSkeleton />; }
 
   return (
     <div className="space-y-6">
@@ -255,11 +250,16 @@ export function BackupDashboard() {
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {triggerBackupMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Backing Up Database...
+                    </>
                   ) : (
-                    <Database className="mr-2 h-4 w-4" />
+                    <>
+                      <Database className="mr-2 h-4 w-4" />
+                      Trigger Backup Now
+                    </>
                   )}
-                  Trigger Backup Now
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

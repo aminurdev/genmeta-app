@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatisticsContent from "./statistics-content";
-import AppKeyList from "./appkey-list";
+import AppIdList from "./appid-list";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -33,7 +33,7 @@ export default function StatisticsPage() {
           </Suspense>
 
           <Suspense fallback={<AppKeyListLoading />}>
-            <AppKeyList />
+            <AppIdList />
           </Suspense>
         </div>
       </div>

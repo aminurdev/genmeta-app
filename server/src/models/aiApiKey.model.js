@@ -1,12 +1,27 @@
 import mongoose from "mongoose";
 
-// Define Mongoose Schema for bKash Token
-const bKashTokenSchema = new mongoose.Schema({
-  ai_api_key: {
-    type: String,
-    required: true,
+const aiApiKeySchema = new mongoose.Schema(
+  {
+    ai_api_key: {
+      type: String,
+      required: [true, "AI API key is required"],
+    },
+    name: {
+      type: String,
+      default: "Gemini API Key",
+      trim: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
-});
+  {
+    timestamps: true,
+  }
+);
 
-// Create the model (if not already created)
-export const AiAPI = mongoose.model("AiAPI", bKashTokenSchema);
+export const AiAPI =
+  mongoose.models.AiAPI || mongoose.model("AiAPI", aiApiKeySchema);
+export default AiAPI;

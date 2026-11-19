@@ -83,7 +83,7 @@ export function NavUser({ user }: Props) {
                       )}
                     >
                       <AvatarImage
-                        src={user?.avatar || "/user/placeholder.svg"}
+                        src={user?.avatar || undefined} alt={user?.name || "User"}
                       />
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                         {userInitials}
@@ -180,7 +180,7 @@ export function NavUser({ user }: Props) {
                   isHovered && "scale-110 ring-2 ring-primary/20"
                 )}
               >
-                <AvatarImage src={user?.avatar || "/user/placeholder.svg"} />
+                <AvatarImage src={user?.avatar || undefined} alt={user?.name || "User"} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                   {userInitials}
                 </AvatarFallback>

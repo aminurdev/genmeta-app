@@ -59,6 +59,9 @@ const getBackupStatus = asyncHandler(async (req, res) => {
  * Syncs all data from main database to backup database
  */
 const triggerBackup = asyncHandler(async (req, res) => {
+    // Extend socket timeout for long-running backup operation (5 minutes)
+    if (req.setTimeout) req.setTimeout(300000);
+    if (res.setTimeout) res.setTimeout(300000);
     try {
         const result = await backupService.performBackup();
 

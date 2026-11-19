@@ -5,6 +5,25 @@ export type AdminDashboardStats = {
     lastMonth: number;
     growthPercentage: number;
     monthlyRevenueList: Record<string, number>;
+    monthlyBreakdown?: Record<string, number> | Array<Record<string, unknown>>;
+  };
+  appIds?: {
+    total: number;
+    newThisMonth: number;
+    active: number;
+    activePremium: number;
+    subscriptionPlanCount: number;
+    creditPlanCount: number;
+    monthlyProcessList: Record<string, number>;
+    topUsage: Array<{
+      _id: string;
+      count: number;
+      user: {
+        _id: string;
+        name: string;
+        email: string;
+      };
+    }>;
   };
   appKeys: {
     total: number;
@@ -35,6 +54,7 @@ export type AdminDashboardStats = {
       _id: string;
       amount: number;
       createdAt: string;
+      plan?: { name?: string; type?: string } | string;
       userId: {
         _id: string;
         name: string;
@@ -87,13 +107,21 @@ export type AdminDashboardStats = {
       };
     }>;
   };
+  recentPayments?: Record<string, unknown>[];
+  monthlyBreakdown?: unknown;
+  processes?: unknown;
+  ordersSummary?: unknown;
 };
 
 export interface AppUsers {
   _id: string;
   userId: string;
   username: string;
+  email?: string;
+  name?: string;
   key: string;
+  appId?: string;
+  appKey?: string;
   credit: number | null;
   isActive: boolean;
   status: "active" | "suspended";
@@ -153,13 +181,24 @@ export interface PaymentResponse {
   page: number;
   limit: number;
   totalPages: number;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
   payments: {
     _id: string;
-    user: {
+    user?: {
       _id: string;
       name: string;
       email: string;
     };
+    userId?: {
+      _id: string;
+      name: string;
+      email: string;
+    } | string;
     paymentID: string;
     trxID: string;
     plan?: {
@@ -168,8 +207,11 @@ export interface PaymentResponse {
       type?: string;
     };
     amount: number;
+    currency?: string;
+    gateway?: string;
     createdAt: string;
-    transactionStatus: string;
+    status?: string;
+    transactionStatus?: string;
   }[];
 }
 
@@ -274,4 +316,69 @@ export interface GetPaymentsHistoryParams {
   status?: string;
   startDate?: string;
   endDate?: string;
+}
+
+
+export interface SuperAdminOverview {
+  environment: string;
+  nodeVersion: string;
+  platform: string;
+  uptimeSeconds: number;
+  uptimeHuman: string;
+  memory: {
+    rssMB: number;
+    heapUsedMB: number;
+    heapTotalMB: number;
+  };
+  database: {
+    status: "healthy" | "disconnected";
+    name: string;
+  };
+  counts: {
+    totalUsers: number;
+    users: number;
+    admins: number;
+    superAdmins: number;
+    disabledUsers: number;
+    totalAppIds?: number;
+    totalAppKeys: number;
+    totalProcesses: number;
+  };
+}
+
+export interface StaffAccount {
+  _id: string;
+  name: string;
+  email: string;
+  role: "user" | "admin" | "superAdmin";
+  avatar?: string | null;
+  isVerified: boolean;
+  isDisabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StaffListResponse {
+  staff: StaffAccount[];
+  total: number;
+}
+
+export interface WithdrawalNotification {
+  id: string;
+  withdrawalId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userAvatar: string | null;
+  amount: number;
+  withdrawAccount: string;
+  requestedAt: string;
+  status: "pending" | "completed" | "rejected";
+  pendingCount?: number;
+  href: string;
+}
+
+export interface WithdrawalNotificationsResponse {
+  count: number;
+  notifications: WithdrawalNotification[];
 }

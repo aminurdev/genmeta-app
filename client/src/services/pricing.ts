@@ -6,18 +6,6 @@ import {
 } from "@/types/pricing";
 import { api } from "./api-client";
 
-// export const getAllPricing = async (): Promise<
-//   ApiResponse<PricingResponse> | ApiErrorResponse
-// > => {
-//   const res = await fetch(
-//     `${process.env.NEXT_PUBLIC_API_BASE_URL}/pricing/plans`,
-//     {
-//       cache: "force-cache",
-//     }
-//   );
-//   return res.json();
-// };
-
 export const getAllPricing = async (): Promise<
   ApiResponse<PricingResponse> | ApiErrorResponse
 > => {
@@ -29,24 +17,19 @@ type createPaymentParams = {
   planId: string;
   type: string;
   promoCode?: string;
-  paymentMethod: string;
+  paymentMethod?: string;
 };
 
 export const createPayment = async ({
   planId,
   type,
   promoCode,
-  paymentMethod,
+  paymentMethod = "paystation",
 }: createPaymentParams): Promise<
   ApiResponse<PaymentCreateResponse> | ApiErrorResponse
 > => {
   try {
-    // Determine the endpoint based on payment method
-    const endpoint = paymentMethod === "paystation" 
-      ? "/payment/create-paystation-payment"
-      : "/payment/create-app-payment";
-    
-    const result = await api.post(endpoint, {
+    const result = await api.post("/payment/create-paystation-payment", {
       planId,
       type,
       promoCode,

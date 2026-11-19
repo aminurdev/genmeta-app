@@ -23,34 +23,53 @@ import {
   verifyGoogle,
 } from "../controllers/appUser.controller.js";
 import { createRateLimiter } from "../middlewares/rate.limit.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+  registerUserSchema,
+  loginUserSchema,
+  changePasswordSchema,
+  requestPasswordResetSchema,
+  verifyOtpSchema,
+  resetPasswordSchema,
+} from "../validations/index.js";
+
 const router = Router();
 
-// Custom rate limiter for registration: max 5 per hour
 const registerLimiter = createRateLimiter({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 20,
-  message: "Too many registration request attempts. Please try again later.",
+  message: "Too many registration attempts. Please try again later.",
 });
 
 const loginLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 mins
-  max: 10,
-  message: "Too many login attempts, Please try again later.",
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Too many login attempts. Please try again later.",
 });
 
-const limiter = createRateLimiter({ max: 10, windowMs: 5 * 60 * 1000 });
+const resetLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+});
 
 router.get("/google-login", googleLogin);
 router.get("/google/callback", (req, res, next) => {
   const { state, error, error_description } = req.query;
 
-  const { type } = JSON.parse(state);
+  let type = null;
+  try {
+    if (state) {
+      type = JSON.parse(state).type;
+    }
+  } catch {
+    type = null;
+  }
 
-  // If Google sent an error
   if (error) {
     console.log("Google OAuth Error:", error, error_description);
   }
-  if (type && type === "app") {
+
+  if (type === "app") {
     googleCallback(req, res, next);
   } else {
     googleLoginCallback(req, res, next);
@@ -60,19 +79,20 @@ router.get("/google/callback", (req, res, next) => {
 router.post("/verify-google", verifyGoogleToken);
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification-email", resendVerificationEmail);
-router.post("/request-password-reset", requestPasswordReset);
-router.post("/verify-otp", verifyOTP);
-router.post("/reset-password", limiter, resetPassword);
-router.post("/register", registerLimiter, registerUser);
-router.post("/login", loginLimiter, loginUser);
-router.post("/app/login", loginLimiter, appUserLogin);
+router.post("/request-password-reset", validate(requestPasswordResetSchema), requestPasswordReset);
+router.post("/verify-otp", validate(verifyOtpSchema), verifyOTP);
+router.post("/reset-password", resetLimiter, validate(resetPasswordSchema), resetPassword);
+router.post("/register", registerLimiter, validate(registerUserSchema), registerUser);
+router.post("/login", loginLimiter, validate(loginUserSchema), loginUser);
+router.post("/app/login", loginLimiter, validate(loginUserSchema), appUserLogin);
 
-// Secured routes
+// Protected routes
 router.post("/logout", verifyUser, logoutUser);
 router.post("/refresh-token", refreshAccessToken);
-router.patch("/change-password", verifyUser, changeCurrentPassword);
+router.patch("/change-password", verifyUser, validate(changePasswordSchema), changeCurrentPassword);
 router.get("/me", verifyUser, getCurrentUser);
 
+// App Google OAuth endpoints
 router.get("/app/google", googleLoginAPP);
 router.post("/app/verify-google", verifyUser, verifyGoogle);
 

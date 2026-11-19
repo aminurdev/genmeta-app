@@ -1,61 +1,94 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "./services/auth-services";
 
-const authRoutes = ["/login", "/signup"];
+interface DecodedToken {
+  userId?: string;
+  name?: string;
+  email?: string;
+  role?: "user" | "admin" | "superAdmin";
+  exp?: number;
+}
+
+function parseJwt(token: string): DecodedToken | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+const authRoutes = ["/login", "/signup", "/verify-email", "/reset-password"];
 const protectedRoutes = [
-  /^\/generate(\/.*)?$/,
   /^\/dashboard(\/.*)?$/,
   /^\/payment-status(\/.*)?$/,
-  /^\/results(\/.*)?$/,
-  /^\/settings(\/.*)?$/,
 ];
-const adminRoutes = [/^\/admin(\/.*)?$/]; // Admin routes pattern
+const adminRoutes = [/^\/admin(\/.*)?$/];
 
-export const middleware = async function handleRequest(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const userInfo = await getCurrentUser();
+  const accessToken = request.cookies.get("accessToken")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
 
-  // If the user is not authenticated
-  if (!userInfo) {
-    if (authRoutes.includes(pathname)) {
-      return NextResponse.next();
-    } else {
-      return NextResponse.redirect(
-        new URL(`/login?redirectPath=${pathname}`, request.url)
-      );
+  const decoded = accessToken ? parseJwt(accessToken) : null;
+  const now = Math.floor(Date.now() / 1000);
+  const isTokenValid = decoded && (!decoded.exp || decoded.exp > now);
+  const isAuthenticated = !!(isTokenValid || refreshToken);
+
+  const isAuthRoute = authRoutes.includes(pathname);
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.match(route));
+  const isAdminRoute = adminRoutes.some((route) => pathname.match(route));
+
+  // If unauthenticated and accessing protected or admin route -> redirect to login
+  if (!isAuthenticated && (isProtectedRoute || isAdminRoute)) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirectPath", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // If authenticated and trying to access login/signup -> redirect to dashboard
+  if (isAuthenticated && isAuthRoute) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Admin authorization: must have admin or superAdmin role
+  if (isAdminRoute) {
+    const userRole = decoded?.role;
+    const isAdmin = userRole === "admin" || userRole === "superAdmin";
+
+    if (!isAdmin) {
+      // Non-admin users are safely redirected to user dashboard
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-  }
 
-  // If authenticated and accessing an auth page, redirect to home
-  if (authRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  // Check for admin routes - only allow if user has admin role
-  if (adminRoutes.some((route) => pathname.match(route))) {
-    if (userInfo.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+    // SuperAdmin exclusivity for /admin/super-admin
+    if (pathname.startsWith("/admin/super-admin") && userRole !== "superAdmin") {
+      return NextResponse.redirect(new URL("/admin", request.url));
     }
-    return NextResponse.next();
-  }
-
-  // Restrict access to protected routes for unauthenticated users
-  if (protectedRoutes.some((route) => pathname.match(route))) {
-    return NextResponse.next();
   }
 
   return NextResponse.next();
-};
+}
 
 export const config = {
   matcher: [
     "/login",
     "/signup",
-    "/generate/:path*",
+    "/verify-email",
+    "/reset-password",
     "/dashboard/:path*",
+    "/admin/:path*",
+    "/generate/:path*",
     "/results/:path*",
     "/payment-status/:path*",
     "/settings/:path*",
-    "/admin/:path*",
   ],
 };

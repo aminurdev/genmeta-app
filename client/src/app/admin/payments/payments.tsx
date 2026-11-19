@@ -150,8 +150,8 @@ export function PaymentHistoryPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusBadge = (status?: string) => {
+    switch ((status || "completed").toLowerCase()) {
       case "completed":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">
@@ -183,8 +183,8 @@ export function PaymentHistoryPage() {
     }
   };
 
-  const getPlanTypeBadge = (type: string) => {
-    switch (type.toLowerCase()) {
+  const getPlanTypeBadge = (type?: string) => {
+    switch ((type || "unknown").toLowerCase()) {
       case "subscription":
         return (
           <Badge
@@ -529,10 +529,10 @@ export function PaymentHistoryPage() {
                           <TableCell>
                             <div className="space-y-1">
                               <div className="font-medium">
-                                {payment.user.name}
+                                {payment.user?.name || (typeof payment.userId === "object" && payment.userId?.name) || "Unknown User"}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {payment.user.email}
+                                {payment.user?.email || (typeof payment.userId === "object" && payment.userId?.email) || "N/A"}
                               </div>
                             </div>
                           </TableCell>
@@ -559,7 +559,7 @@ export function PaymentHistoryPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {getStatusBadge(payment.transactionStatus)}
+                            {getStatusBadge(payment.transactionStatus ?? payment.status ?? "Completed")}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>

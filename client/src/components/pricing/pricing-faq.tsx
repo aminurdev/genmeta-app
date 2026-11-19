@@ -48,9 +48,7 @@ export function PricingFaq() {
             What payment methods do you accept?
           </AccordionTrigger>
           <AccordionContent>
-            We currently support bKash as our payment processor. We plan to add
-            more payment methods in the future to give you more options for
-            purchasing our services.
+            We support PayStation, allowing you to pay securely using debit/credit cards, mobile banking, and internet banking.
           </AccordionContent>
         </AccordionItem>
 
