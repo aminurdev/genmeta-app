@@ -9,6 +9,7 @@ interface PageProps {
 const ReferralUserPage = async ({ params }: PageProps) => {
   const userId = (await params).userId;
 
+  let referralData;
   try {
     const result = await getAllReferralByUserId(userId);
 
@@ -16,15 +17,17 @@ const ReferralUserPage = async ({ params }: PageProps) => {
       notFound();
     }
 
-    return (
-      <div className="container mx-auto py-6">
-        <AdminUserReferralDashboard data={result.data} userId={userId} />
-      </div>
-    );
+    referralData = result.data;
   } catch (error) {
     console.error("[v0] Error fetching user referral data:", error);
     notFound();
   }
+
+  return (
+    <div className="container mx-auto py-6">
+      <AdminUserReferralDashboard data={referralData} userId={userId} />
+    </div>
+  );
 };
 
 export default ReferralUserPage;

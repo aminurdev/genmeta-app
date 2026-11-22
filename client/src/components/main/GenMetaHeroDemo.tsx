@@ -99,6 +99,8 @@ export default function GenMetaHeroDemo() {
     setFiles(prev => prev.map(f => f.id === fileId ? { ...f, status } : f));
   }, []);
 
+  const runAnimationRef = useRef<() => void>(() => {});
+
   const runAnimation = useCallback(() => {
     // Reset state
     setAppVisible(false);
@@ -180,11 +182,11 @@ export default function GenMetaHeroDemo() {
     });
 
     // Loop reset
-    after(T.loopReset, () => runAnimation());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    after(T.loopReset, () => runAnimationRef.current());
   }, [after, setFileStatus]);
 
   useEffect(() => {
+    runAnimationRef.current = runAnimation;
     runAnimation();
     return clearAllTimers;
   }, [runAnimation, clearAllTimers]);

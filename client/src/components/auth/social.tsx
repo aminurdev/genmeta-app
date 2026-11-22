@@ -12,7 +12,7 @@ export default function Social() {
   const pathname = usePathname();
   const redirectPath = searchParams?.get("redirectPath") || "/";
 
-  let referral = searchParams?.get("ref");
+  const referral = searchParams?.get("ref");
 
   useEffect(() => {
     if (referral) {
@@ -24,12 +24,12 @@ export default function Social() {
     try {
       setIsLoading(true);
 
-      referral = localStorage.getItem("referralCode");
+      const storedReferral = localStorage.getItem("referralCode");
       const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
       const statePayload = {
         redirectPath,
         path: pathname,
-        referralCode: referral,
+        referralCode: storedReferral,
       };
 
       const state = encodeURIComponent(JSON.stringify(statePayload));
