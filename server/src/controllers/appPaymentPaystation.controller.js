@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { PAYMENT_STATUS, USER_ROLES } from "../constants/index.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { PaymentTransaction } from "../models/paymentTransaction.model.js";
+import { User } from "../models/user.model.js";
 import {
   logger,
   processSuccessfulPaystationPayment,
@@ -214,6 +215,23 @@ export const getMyPaymentTransactions = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
+function parseInclusiveEndDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(raw) ||
+    (date.getUTCHours() === 0 &&
+      date.getUTCMinutes() === 0 &&
+      date.getUTCSeconds() === 0 &&
+      date.getUTCMilliseconds() === 0)
+  ) {
+    date.setUTCHours(23, 59, 59, 999);
+  }
+  return date;
+}
+
 export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const {
@@ -223,7 +241,11 @@ export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
     search = "",
     startDate,
     endDate,
+    refresh,
   } = req.query;
+
+  const now = new Date();
+  const isExplicitRefresh = refresh === "true" || refresh === "1";
 
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
@@ -238,10 +260,19 @@ export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
     filter.status = String(status);
   }
 
-  if (startDate || endDate) {
+  const parsedStart = startDate ? new Date(startDate) : null;
+  const parsedEnd = endDate ? parseInclusiveEndDate(endDate) : null;
+  if (
+    (parsedStart && !Number.isNaN(parsedStart.getTime())) ||
+    (parsedEnd && !Number.isNaN(parsedEnd.getTime()))
+  ) {
     filter.createdAt = {};
-    if (startDate) filter.createdAt.$gte = new Date(startDate);
-    if (endDate) filter.createdAt.$lte = new Date(endDate);
+    if (parsedStart && !Number.isNaN(parsedStart.getTime())) {
+      filter.createdAt.$gte = parsedStart;
+    }
+    if (parsedEnd && !Number.isNaN(parsedEnd.getTime())) {
+      filter.createdAt.$lte = parsedEnd;
+    }
   }
 
   const trimmedSearch = String(search || "").trim();
@@ -261,6 +292,8 @@ export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
       { invoiceNumber: { $regex: safeSearch, $options: "i" } },
       { trxId: { $regex: safeSearch, $options: "i" } },
       { "customer.email": { $regex: safeSearch, $options: "i" } },
+      { "customer.name": { $regex: safeSearch, $options: "i" } },
+      { "plan.name": { $regex: safeSearch, $options: "i" } },
     ];
     if (userIds.length > 0) {
       orClauses.push({ userId: { $in: userIds } });
@@ -273,7 +306,7 @@ export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
 
   const [transactions, total, statusSummaryRows] = await Promise.all([
     PaymentTransaction.find(filter)
-      .populate("userId", "name email")
+      .populate("userId", "name email avatar")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -306,11 +339,16 @@ export const getAdminPaymentTransactions = asyncHandler(async (req, res) => {
         limit: limitNum,
         totalPages: Math.ceil(total / limitNum),
       },
+      meta: {
+        generatedAt: now.toISOString(),
+        refreshed: isExplicitRefresh,
+      },
     }
   ).send(res);
 });
 
 export const reconcilePaymentByInvoice = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const { invoiceNumber } = req.params;
   const result = await paymentService.verifyAndFulfillTransaction(
     invoiceNumber,
@@ -332,6 +370,7 @@ export const reconcilePaymentByInvoice = asyncHandler(async (req, res) => {
 });
 
 export const reconcilePendingPayments = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const summary = await paymentService.reconcilePendingTransactions({ limit });
 
@@ -344,6 +383,7 @@ export const reconcilePendingPayments = asyncHandler(async (req, res) => {
 });
 
 export const verifyPaystationTrx = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const { trxId } = req.params;
   const cleanedTrx = String(trxId || "").trim();
   if (!cleanedTrx) {

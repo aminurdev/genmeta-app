@@ -1,79 +1,12 @@
-import { DownloadPaymentHistory } from "@/types/admin";
-
 /**
- * Escapes CSV field values to handle commas, quotes, and newlines
- */
-const escapeCsvField = (field: string | Date | number): string => {
-  if (field === null || field === undefined) return "";
-
-  const stringValue = String(field);
-
-  // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
-  if (
-    stringValue.includes(",") ||
-    stringValue.includes('"') ||
-    stringValue.includes("\n")
-  ) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
-  }
-
-  return stringValue;
-};
-
-/**
- * Formats date to a readable string format
- */
-
-/**
- * Converts payment history data to CSV format
- */
-export const convertToCSV = (data: DownloadPaymentHistory["data"]): string => {
-  if (!data || data.length === 0) {
-    throw new Error("No data available for export");
-  }
-
-  // Define CSV headers
-  const headers = [
-    "Name",
-    "Email",
-    "Phone Number",
-    "Amount",
-    "Transaction ID",
-    "Payment ID",
-    "Payment Create Time",
-    "Payment Execute Time",
-  ];
-
-  // Create CSV header row
-  const headerRow = headers.map((header) => escapeCsvField(header)).join(",");
-
-  // Create CSV data rows
-  const dataRows = data.map((record) => {
-    const row = [
-      escapeCsvField(record.name || ""),
-      escapeCsvField(record.email || ""),
-      escapeCsvField(record.paymentNumber || ""),
-
-      escapeCsvField(record.amount || ""),
-      escapeCsvField(record.trxID || ""),
-      escapeCsvField(record.paymentID || ""),
-      escapeCsvField(record.paymentCreatedAt || ""),
-      escapeCsvField(record.paymentExecuteTime || ""),
-    ];
-    return row.join(",");
-  });
-
-  return [headerRow, ...dataRows].join("\n");
-};
-
-/**
- * Triggers CSV file download in browser
+ * Triggers CSV file download in browser with UTF-8 BOM
  */
 export const downloadCSVFile = (csvContent: string, filename: string): void => {
   try {
-    // Add BOM for proper UTF-8 encoding in Excel
     const BOM = "\uFEFF";
-    const csvWithBOM = BOM + csvContent;
+    const csvWithBOM = csvContent.startsWith(BOM)
+      ? csvContent
+      : BOM + csvContent;
 
     const blob = new Blob([csvWithBOM], {
       type: "text/csv;charset=utf-8;",
@@ -90,7 +23,6 @@ export const downloadCSVFile = (csvContent: string, filename: string): void => {
     link.click();
     document.body.removeChild(link);
 
-    // Clean up the object URL
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error("Error downloading CSV file:", error);
@@ -111,21 +43,4 @@ export const generateFilename = (startDate?: Date, endDate?: Date): string => {
   }
 
   return `payment-history_${timestamp}.csv`;
-};
-
-/**
- * Builds query parameters for API request
- */
-export const buildQueryParams = (startDate?: Date, endDate?: Date): string => {
-  const params = new URLSearchParams();
-
-  if (startDate) {
-    params.append("startDate", startDate.toISOString());
-  }
-
-  if (endDate) {
-    params.append("endDate", endDate.toISOString());
-  }
-
-  return params.toString();
 };

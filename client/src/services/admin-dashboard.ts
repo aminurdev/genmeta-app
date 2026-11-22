@@ -13,7 +13,11 @@ import {
   UpdateAppUserResponse,
   UsersStatisticsData,
   PaymentResponse,
-  DownloadPaymentHistory,
+  AdminPaymentTransactionsResponse,
+  GetAdminPaymentTransactionsParams,
+  ReconcilePaymentResponse,
+  ReconcilePendingResponse,
+  VerifyPaystationTrxResponse,
   AllReferralsResponse,
   GetAllReferralsParams,
   ReferralDetails,
@@ -220,34 +224,175 @@ export const addCredits = async (
   }
 };
 
-export const getPaymentsHistory = async ({
-  page,
-  limit,
-  search,
-  sortBy,
-  sortOrder,
-  status,
-  startDate,
-  endDate,
-}: GetPaymentsHistoryParams = {}): Promise<
-  ApiResponse<PaymentResponse> | ApiErrorResponse
-> => {
-  const result = await api.get(
-    `/admin/paymentHistory/get?page=${page ?? ""}&limit=${limit ?? ""}&search=${
-      search ?? ""
-    }&sortBy=${sortBy ?? ""}&sortOrder=${sortOrder ?? ""}&status=${
-      status ?? ""
-    }&startDate=${startDate ?? ""}&endDate=${endDate ?? ""}`,
-  );
-  return result.data;
+export const getPaymentsHistory = async (
+  params: GetPaymentsHistoryParams = {},
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<PaymentResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append("page", params.page.toString());
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.search) queryParams.append("search", params.search);
+    if (params.sortBy) queryParams.append("sortBy", params.sortBy);
+    if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+    if (params.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params.planType && params.planType !== "all") {
+      queryParams.append("planType", params.planType);
+    }
+    if (params.gateway && params.gateway !== "all") {
+      queryParams.append("gateway", params.gateway);
+    }
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
+    if (options?.refresh) queryParams.append("refresh", "true");
+
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/admin/paymentHistory/get${queryString ? `?${queryString}` : ""}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const downloadPaymentHistory = async (
-  queryParams?: string,
-): Promise<DownloadPaymentHistory> => {
-  const result = await api.get(`/admin/paymentHistory/download?${queryParams}`);
+  params: GetPaymentsHistoryParams = {},
+): Promise<{ success: true; csv: string } | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.search) queryParams.append("search", params.search);
+    if (params.sortBy) queryParams.append("sortBy", params.sortBy);
+    if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+    if (params.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params.planType && params.planType !== "all") {
+      queryParams.append("planType", params.planType);
+    }
+    if (params.gateway && params.gateway !== "all") {
+      queryParams.append("gateway", params.gateway);
+    }
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
 
-  return result.data;
+    const queryString = queryParams.toString();
+    const result = await api.get<string>(
+      `/admin/paymentHistory/download${queryString ? `?${queryString}` : ""}`,
+      {
+        responseType: "text",
+        headers: { Accept: "text/csv" },
+      },
+    );
+
+    return { success: true, csv: String(result.data ?? "") };
+  } catch (error) {
+    const err = error as AxiosApiError;
+    const rawData = err.response?.data as unknown;
+    if (typeof rawData === "string") {
+      try {
+        return JSON.parse(rawData) as ApiErrorResponse;
+      } catch {
+        return {
+          success: false,
+          statusCode: err.response?.status ?? 500,
+          message: rawData || "Failed to export CSV",
+          data: null,
+        };
+      }
+    }
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const getAdminPaymentTransactions = async (
+  params: GetAdminPaymentTransactionsParams = {},
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<AdminPaymentTransactionsResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append("page", params.page.toString());
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params.search) queryParams.append("search", params.search);
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
+    if (options?.refresh) queryParams.append("refresh", "true");
+
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/payment/admin/transactions${queryString ? `?${queryString}` : ""}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const reconcilePaymentByInvoice = async (
+  invoiceNumber: string,
+): Promise<ApiResponse<ReconcilePaymentResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.post(
+      `/payment/admin/reconcile/${encodeURIComponent(invoiceNumber)}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const reconcilePendingPayments = async (
+  limit: number = 20,
+): Promise<ApiResponse<ReconcilePendingResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.post(
+      `/payment/admin/reconcile-pending?limit=${limit}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const verifyPaystationTrx = async (
+  trxId: string,
+): Promise<ApiResponse<VerifyPaystationTrxResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.get(
+      `/payment/admin/verify-trx/${encodeURIComponent(trxId)}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const getAllReferral = async (

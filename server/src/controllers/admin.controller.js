@@ -1565,49 +1565,230 @@ export const getUserStats = asyncHandler(async (req, res) => {
   );
 });
 
-export const getPaymentsHistory = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "", startDate, endDate, status } = req.query;
+function parseInclusiveEndDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return null;
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(raw) ||
+    (date.getUTCHours() === 0 &&
+      date.getUTCMinutes() === 0 &&
+      date.getUTCSeconds() === 0 &&
+      date.getUTCMilliseconds() === 0)
+  ) {
+    date.setUTCHours(23, 59, 59, 999);
+  }
+  return date;
+}
 
-  const pageNum = Math.max(1, parseInt(page, 10));
-  const limitNum = Math.max(1, parseInt(limit, 10));
-  const skip = (pageNum - 1) * limitNum;
+function escapeCsvCell(value) {
+  if (value === null || value === undefined) return '""';
+  let str = String(value);
+  if (/^[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+}
 
+async function buildPaymentsFilterQuery({
+  search = "",
+  status,
+  planType,
+  gateway,
+  startDate,
+  endDate,
+} = {}) {
   const query = {};
 
-  if (status) {
-    query.status = { $regex: new RegExp(`^${status}$`, "i") };
+  if (status && status !== "all") {
+    query.status = { $regex: new RegExp(`^${escapeRegex(status)}$`, "i") };
   }
 
-  if (startDate || endDate) {
+  if (planType && planType !== "all") {
+    query["plan.type"] = {
+      $regex: new RegExp(`^${escapeRegex(planType)}$`, "i"),
+    };
+  }
+
+  if (gateway && gateway !== "all") {
+    query.gateway = { $regex: new RegExp(`^${escapeRegex(gateway)}$`, "i") };
+  }
+
+  const parsedStart = startDate ? new Date(startDate) : null;
+  const parsedEnd = endDate ? parseInclusiveEndDate(endDate) : null;
+  if (
+    (parsedStart && !Number.isNaN(parsedStart.getTime())) ||
+    (parsedEnd && !Number.isNaN(parsedEnd.getTime()))
+  ) {
     query.createdAt = {};
-    if (startDate) query.createdAt.$gte = new Date(startDate);
-    if (endDate) query.createdAt.$lte = new Date(endDate);
+    if (parsedStart && !Number.isNaN(parsedStart.getTime())) {
+      query.createdAt.$gte = parsedStart;
+    }
+    if (parsedEnd && !Number.isNaN(parsedEnd.getTime())) {
+      query.createdAt.$lte = parsedEnd;
+    }
   }
 
-  if (search) {
+  const trimmedSearch = String(search || "").trim();
+  if (trimmedSearch) {
+    const safeSearch = escapeRegex(trimmedSearch);
     const matchingUsers = await User.find({
       $or: [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { name: { $regex: safeSearch, $options: "i" } },
+        { email: { $regex: safeSearch, $options: "i" } },
       ],
-    }).select("_id");
+    })
+      .select("_id")
+      .lean();
     const userIds = matchingUsers.map((u) => u._id);
 
-    query.$or = [
-      { trxID: { $regex: search, $options: "i" } },
-      { paymentID: { $regex: search, $options: "i" } },
-      { userId: { $in: userIds } },
+    const orClauses = [
+      { trxID: { $regex: safeSearch, $options: "i" } },
+      { paymentID: { $regex: safeSearch, $options: "i" } },
+      { "plan.name": { $regex: safeSearch, $options: "i" } },
+      { paymentMethod: { $regex: safeSearch, $options: "i" } },
+      { gateway: { $regex: safeSearch, $options: "i" } },
     ];
+    if (userIds.length > 0) {
+      orClauses.push({ userId: { $in: userIds } });
+    }
+    query.$or = orClauses;
   }
 
-  const [payments, total] = await Promise.all([
+  return query;
+}
+
+const ALLOWED_PAYMENT_SORT_FIELDS = new Set([
+  "createdAt",
+  "amount",
+  "status",
+  "gateway",
+]);
+
+export const getPaymentsHistory = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    startDate,
+    endDate,
+    status = "all",
+    planType = "all",
+    gateway = "all",
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    refresh,
+  } = req.query;
+
+  const now = new Date();
+  const isExplicitRefresh = refresh === "true" || refresh === "1";
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+  const skip = (pageNum - 1) * limitNum;
+  const safeSortBy = ALLOWED_PAYMENT_SORT_FIELDS.has(String(sortBy))
+    ? String(sortBy)
+    : "createdAt";
+  const sortDir = sortOrder === "asc" ? 1 : -1;
+
+  const query = await buildPaymentsFilterQuery({
+    search,
+    status,
+    planType,
+    gateway,
+    startDate,
+    endDate,
+  });
+
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  const thisMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+
+  const [payments, total, filteredAgg, summaryAgg] = await Promise.all([
     AppPayment.find(query)
-      .populate("userId", "name email")
-      .sort({ createdAt: -1 })
+      .populate("userId", "name email avatar")
+      .sort({ [safeSortBy]: sortDir, _id: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean(),
     AppPayment.countDocuments(query),
+    AppPayment.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
+          totalCount: { $sum: 1 },
+        },
+      },
+    ]),
+    AppPayment.aggregate([
+      {
+        $facet: {
+          totals: [
+            {
+              $group: {
+                _id: null,
+                totalRevenue: { $sum: { $ifNull: ["$amount", 0] } },
+                totalPayments: { $sum: 1 },
+                todayRevenue: {
+                  $sum: {
+                    $cond: [
+                      { $gte: ["$createdAt", todayStart] },
+                      { $ifNull: ["$amount", 0] },
+                      0,
+                    ],
+                  },
+                },
+                todayCount: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", todayStart] }, 1, 0],
+                  },
+                },
+                thisMonthRevenue: {
+                  $sum: {
+                    $cond: [
+                      { $gte: ["$createdAt", thisMonthStart] },
+                      { $ifNull: ["$amount", 0] },
+                      0,
+                    ],
+                  },
+                },
+                thisMonthCount: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", thisMonthStart] }, 1, 0],
+                  },
+                },
+              },
+            },
+          ],
+          byPlanType: [
+            {
+              $group: {
+                _id: { $toLower: { $ifNull: ["$plan.type", "other"] } },
+                amount: { $sum: { $ifNull: ["$amount", 0] } },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          byGateway: [
+            {
+              $group: {
+                _id: { $toLower: { $ifNull: ["$gateway", "paystation"] } },
+                amount: { $sum: { $ifNull: ["$amount", 0] } },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+        },
+      },
+    ]),
   ]);
 
   const transformedPayments = payments.map((p) => {
@@ -1618,6 +1799,7 @@ export const getPaymentsHistory = asyncHandler(async (req, res) => {
         _id: userObj?._id?.toString() || p.userId?.toString() || "N/A",
         name: userObj?.name || "Unknown User",
         email: userObj?.email || "N/A",
+        avatar: userObj?.avatar || null,
       },
       userId: p.userId,
       paymentID: p.paymentID,
@@ -1625,19 +1807,80 @@ export const getPaymentsHistory = asyncHandler(async (req, res) => {
       plan: p.plan,
       amount: p.amount,
       currency: p.currency || "BDT",
-      gateway: p.gateway,
+      gateway: p.gateway || "paystation",
+      paymentMethod:
+        p.paymentMethod || p.paymentDetails?.paymentMethod || null,
+      transactionId: p.transactionId || null,
       status: p.status || "Completed",
       transactionStatus: p.status || "Completed",
-      paymentDetails: p.paymentDetails,
+      paymentDetails: p.paymentDetails || null,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     };
   });
 
+  const totalsRow = summaryAgg[0]?.totals?.[0] || {
+    totalRevenue: 0,
+    totalPayments: 0,
+    todayRevenue: 0,
+    todayCount: 0,
+    thisMonthRevenue: 0,
+    thisMonthCount: 0,
+  };
+
+  const planBucket = {
+    subscription: { amount: 0, count: 0 },
+    credit: { amount: 0, count: 0 },
+    other: { amount: 0, count: 0 },
+  };
+  for (const row of summaryAgg[0]?.byPlanType || []) {
+    if (row._id === "subscription") {
+      planBucket.subscription = { amount: row.amount || 0, count: row.count || 0 };
+    } else if (row._id === "credit") {
+      planBucket.credit = { amount: row.amount || 0, count: row.count || 0 };
+    } else {
+      planBucket.other.amount += row.amount || 0;
+      planBucket.other.count += row.count || 0;
+    }
+  }
+
+  const gatewayBucket = {
+    paystation: { amount: 0, count: 0 },
+    bkash: { amount: 0, count: 0 },
+    manual: { amount: 0, count: 0 },
+  };
+  for (const row of summaryAgg[0]?.byGateway || []) {
+    if (row._id === "paystation" || row._id === "bkash" || row._id === "manual") {
+      gatewayBucket[row._id] = { amount: row.amount || 0, count: row.count || 0 };
+    }
+  }
+
+  const totalPayments = totalsRow.totalPayments || 0;
+  const totalRevenue = totalsRow.totalRevenue || 0;
+  const summary = {
+    totalRevenue,
+    totalPayments,
+    todayRevenue: totalsRow.todayRevenue || 0,
+    todayCount: totalsRow.todayCount || 0,
+    thisMonthRevenue: totalsRow.thisMonthRevenue || 0,
+    thisMonthCount: totalsRow.thisMonthCount || 0,
+    avgOrderValue:
+      totalPayments > 0 ? Number((totalRevenue / totalPayments).toFixed(2)) : 0,
+    byPlanType: planBucket,
+    byGateway: gatewayBucket,
+  };
+
+  const filteredSummary = {
+    totalAmount: filteredAgg[0]?.totalAmount || 0,
+    totalCount: filteredAgg[0]?.totalCount || 0,
+  };
+
   const totalPages = Math.ceil(total / limitNum);
 
   return new ApiResponse(200, true, "Payments history retrieved", {
     payments: transformedPayments,
+    summary,
+    filteredSummary,
     total,
     page: pageNum,
     limit: limitNum,
@@ -1648,29 +1891,95 @@ export const getPaymentsHistory = asyncHandler(async (req, res) => {
       limit: limitNum,
       totalPages,
     },
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+    },
   }).send(res);
 });
 
 export const downloadPaymentsHistory = asyncHandler(async (req, res) => {
-  const payments = await AppPayment.find()
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+
+  const {
+    search = "",
+    startDate,
+    endDate,
+    status = "all",
+    planType = "all",
+    gateway = "all",
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = req.query;
+
+  const query = await buildPaymentsFilterQuery({
+    search,
+    status,
+    planType,
+    gateway,
+    startDate,
+    endDate,
+  });
+
+  const safeSortBy = ALLOWED_PAYMENT_SORT_FIELDS.has(String(sortBy))
+    ? String(sortBy)
+    : "createdAt";
+  const sortDir = sortOrder === "asc" ? 1 : -1;
+
+  const payments = await AppPayment.find(query)
     .populate("userId", "name email")
-    .sort({ createdAt: -1 })
+    .sort({ [safeSortBy]: sortDir, _id: -1 })
     .lean();
 
-  let csv = "ID,User Name,User Email,Amount,TrxID,PaymentID,Plan Name,Plan Type,Gateway,Created At\n";
+  const header = [
+    "ID",
+    "Date",
+    "User Name",
+    "User Email",
+    "Amount",
+    "Currency",
+    "Plan Name",
+    "Plan Type",
+    "Gateway",
+    "Payment Method",
+    "Status",
+    "TrxID",
+    "PaymentID",
+  ].join(",");
+
+  const rows = [header];
 
   for (const p of payments) {
-    const userName = (p.userId?.name || "").replace(/"/g, '""');
-    const userEmail = (p.userId?.email || "").replace(/"/g, '""');
-    const planName = (p.plan?.name || "").replace(/"/g, '""');
-    const planType = (p.plan?.type || "").replace(/"/g, '""');
-    const date = new Date(p.createdAt).toISOString();
+    const userObj = p.userId && typeof p.userId === "object" ? p.userId : null;
+    const method =
+      p.paymentMethod || p.paymentDetails?.paymentMethod || "";
+    const date = p.createdAt ? new Date(p.createdAt).toISOString() : "";
 
-    csv += `"${p._id}","${userName}","${userEmail}",${p.amount},"${p.trxID}","${p.paymentID}","${planName}","${planType}","${p.gateway || "bkash"}","${date}"\n`;
+    rows.push(
+      [
+        escapeCsvCell(p._id),
+        escapeCsvCell(date),
+        escapeCsvCell(userObj?.name || "Unknown User"),
+        escapeCsvCell(userObj?.email || "N/A"),
+        escapeCsvCell(p.amount ?? 0),
+        escapeCsvCell(p.currency || "BDT"),
+        escapeCsvCell(p.plan?.name || ""),
+        escapeCsvCell(p.plan?.type || ""),
+        escapeCsvCell(p.gateway || "paystation"),
+        escapeCsvCell(method),
+        escapeCsvCell(p.status || "Completed"),
+        escapeCsvCell(p.trxID || ""),
+        escapeCsvCell(p.paymentID || ""),
+      ].join(",")
+    );
   }
 
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", 'attachment; filename="payments_history.csv"');
+  const csv = "\uFEFF" + rows.join("\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="payments_history.csv"'
+  );
   return res.status(200).send(csv);
 });
 

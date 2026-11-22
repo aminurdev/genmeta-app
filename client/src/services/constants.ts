@@ -1,4 +1,5 @@
 import type {
+  GetAdminPaymentTransactionsParams,
   GetAllReferralsParams,
   GetPaymentsHistoryParams,
   GetPricingPlansParams,
@@ -19,6 +20,12 @@ export const QUERY_KEYS = {
     "admin",
     "paymentHistory",
     "list",
+    params,
+  ],
+  adminPaymentTransactions: (params?: GetAdminPaymentTransactionsParams) => [
+    "admin",
+    "payments",
+    "transactions",
     params,
   ],
   downloadPayments: (queryParams?: string) => [

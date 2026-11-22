@@ -475,6 +475,61 @@ export interface UpdateAppUserResponse {
   paymentRecorded: { id: string; trxID: string; amount: number } | null;
 }
 
+export interface PaymentRecord {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    avatar?: string | null;
+  };
+  userId?:
+    | {
+        _id: string;
+        name: string;
+        email: string;
+        avatar?: string | null;
+      }
+    | string;
+  paymentID: string;
+  trxID: string;
+  plan?: {
+    id?: string;
+    name?: string;
+    type?: string;
+  };
+  amount: number;
+  currency?: string;
+  gateway?: string;
+  paymentMethod?: string | null;
+  transactionId?: string | null;
+  status?: string;
+  transactionStatus?: string;
+  paymentDetails?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PaymentsSummary {
+  totalRevenue: number;
+  totalPayments: number;
+  todayRevenue: number;
+  todayCount: number;
+  thisMonthRevenue: number;
+  thisMonthCount: number;
+  avgOrderValue: number;
+  byPlanType: {
+    subscription: { amount: number; count: number };
+    credit: { amount: number; count: number };
+    other: { amount: number; count: number };
+  };
+  byGateway: {
+    paystation: { amount: number; count: number };
+    bkash: { amount: number; count: number };
+    manual: { amount: number; count: number };
+  };
+}
+
 export interface PaymentResponse {
   total: number;
   page: number;
@@ -486,47 +541,142 @@ export interface PaymentResponse {
     limit: number;
     totalPages: number;
   };
-  payments: {
-    _id: string;
-    user?: {
-      _id: string;
-      name: string;
-      email: string;
-    };
-    userId?: {
-      _id: string;
-      name: string;
-      email: string;
-    } | string;
-    paymentID: string;
-    trxID: string;
-    plan?: {
-      id?: string;
-      name?: string;
-      type?: string;
-    };
-    amount: number;
-    currency?: string;
-    gateway?: string;
-    createdAt: string;
-    status?: string;
-    transactionStatus?: string;
-  }[];
+  summary?: PaymentsSummary;
+  filteredSummary?: {
+    totalAmount: number;
+    totalCount: number;
+  };
+  payments: PaymentRecord[];
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
 }
 
-export interface DownloadPaymentHistory {
-  success: boolean;
+export type PaymentTransactionStatus =
+  | "initiated"
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "canceled"
+  | "expired"
+  | "amount_mismatch"
+  | "refunded";
+
+export interface AdminPaymentTransactionEvent {
+  type: string;
+  source: string;
   message: string;
-  data: {
+  meta?: Record<string, unknown> | null;
+  at: string;
+}
+
+export interface AdminPaymentTransaction {
+  id: string | null;
+  invoiceNumber: string | null;
+  gateway: string;
+  status: PaymentTransactionStatus | string;
+  trxId: string | null;
+  paymentMethod: string | null;
+  payerMobileNo: string | null;
+  plan: {
+    id: string;
     name: string;
-    email: string;
-    paymentNumber: string;
-    paymentCreatedAt: string;
-    paymentExecuteTime: string;
-    amount: string;
-    trxID: string;
-    paymentID: string;
-  }[];
+    type: string;
+    planDuration?: number | null;
+    credit?: number | null;
+  };
+  promoCode: {
+    code: string;
+    discountPercent: number;
+  } | null;
+  amount: number;
+  paidAmount: number;
+  currency: string;
+  pricing: {
+    basePrice: number;
+    priceAfterPlanDiscount: number;
+    planDiscountAmount: number;
+    promoDiscountAmount: number;
+    expectedAmount: number;
+    paidAmount: number | null;
+    currency: string;
+    payWithCharge: number;
+  };
+  failureReason: string | null;
+  expiresAt: string | null;
+  verifiedAt: string | null;
+  fulfilledAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  userId?:
+    | {
+        _id: string;
+        name: string;
+        email: string;
+        avatar?: string | null;
+      }
+    | string
+    | null;
+  appPaymentId?: string | null;
+  gatewayStatus?: string | null;
+  fulfillmentSteps?: {
+    paymentRecorded: boolean;
+    planUpdated: boolean;
+    referralProcessed: boolean;
+    promoRecorded: boolean;
+    emailSent: boolean;
+  } | null;
+  events?: AdminPaymentTransactionEvent[];
+}
+
+export interface AdminPaymentTransactionsResponse {
+  transactions: AdminPaymentTransaction[];
+  statusSummary: Record<string, number>;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface GetAdminPaymentTransactionsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ReconcilePaymentResponse {
+  outcome: string;
+  alreadyProcessed: boolean;
+  error: string | null;
+  transaction: AdminPaymentTransaction | null;
+}
+
+export interface ReconcilePendingResponse {
+  scanned?: number;
+  completed?: number;
+  failed?: number;
+  expired?: number;
+  pending?: number;
+  skipped?: boolean;
+  [key: string]: unknown;
+}
+
+export interface VerifyPaystationTrxResponse {
+  found: boolean;
+  apiVersion?: string;
+  message?: string;
+  data: Record<string, unknown> | null;
 }
 
 export interface ReferralSummary {
@@ -790,6 +940,8 @@ export interface GetPaymentsHistoryParams {
   sortBy?: string;
   sortOrder?: string;
   status?: string;
+  planType?: string;
+  gateway?: string;
   startDate?: string;
   endDate?: string;
 }

@@ -9,6 +9,10 @@ import {
   getUserStats,
   getPaymentsHistory,
   downloadPaymentHistory,
+  getAdminPaymentTransactions,
+  reconcilePaymentByInvoice,
+  reconcilePendingPayments,
+  verifyPaystationTrx,
   getAllReferral,
   getAllReferralByUserId,
   getPricingPlans,
@@ -35,6 +39,7 @@ import {
 } from "../admin-dashboard";
 import type {
   CreateAppUserPayload,
+  GetAdminPaymentTransactionsParams,
   GetAllReferralsParams,
   GetPaymentsHistoryParams,
   GetPricingPlansParams,
@@ -239,17 +244,122 @@ export function usePaymentsHistoryQuery(params: GetPaymentsHistoryParams = {}) {
   return useQuery({
     queryKey: QUERY_KEYS.paymentsHistory(params),
     queryFn: () => getPaymentsHistory(params),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
-export function useDownloadPaymentHistoryQuery(
-  queryParams?: string,
-  enabled = false
+export function useAdminPaymentTransactionsQuery(
+  params: GetAdminPaymentTransactionsParams = {}
 ) {
   return useQuery({
-    queryKey: QUERY_KEYS.downloadPayments(queryParams ?? ""),
-    queryFn: () => downloadPaymentHistory(queryParams),
-    enabled,
+    queryKey: QUERY_KEYS.adminPaymentTransactions(params),
+    queryFn: () => getAdminPaymentTransactions(params),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshPaymentsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      paymentsParams,
+      transactionsParams,
+    }: {
+      paymentsParams?: GetPaymentsHistoryParams;
+      transactionsParams?: GetAdminPaymentTransactionsParams;
+    }) => {
+      const [paymentsRes, transactionsRes] = await Promise.all([
+        getPaymentsHistory(paymentsParams, { refresh: true }),
+        getAdminPaymentTransactions(transactionsParams, { refresh: true }),
+      ]);
+      return {
+        paymentsRes,
+        transactionsRes,
+        paymentsParams: paymentsParams ?? {},
+        transactionsParams: transactionsParams ?? {},
+      };
+    },
+    onSuccess: ({
+      paymentsRes,
+      transactionsRes,
+      paymentsParams,
+      transactionsParams,
+    }) => {
+      if (paymentsRes.success) {
+        queryClient.setQueryData(
+          QUERY_KEYS.paymentsHistory(paymentsParams),
+          paymentsRes
+        );
+      }
+      if (transactionsRes.success) {
+        queryClient.setQueryData(
+          QUERY_KEYS.adminPaymentTransactions(transactionsParams),
+          transactionsRes
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "paymentHistory"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "payments", "transactions"],
+      });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+    },
+  });
+}
+
+export function useExportPaymentsCsvMutation() {
+  return useMutation({
+    mutationFn: (params: GetPaymentsHistoryParams = {}) =>
+      downloadPaymentHistory(params),
+  });
+}
+
+export function useReconcilePaymentMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invoiceNumber: string) =>
+      reconcilePaymentByInvoice(invoiceNumber),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "paymentHistory"] });
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "payments", "transactions"],
+        });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+      }
+    },
+  });
+}
+
+export function useReconcilePendingPaymentsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (limit: number = 20) => reconcilePendingPayments(limit),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "paymentHistory"] });
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "payments", "transactions"],
+        });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
+      }
+    },
+  });
+}
+
+export function useVerifyPaystationTrxMutation() {
+  return useMutation({
+    mutationFn: (trxId: string) => verifyPaystationTrx(trxId),
   });
 }
 
