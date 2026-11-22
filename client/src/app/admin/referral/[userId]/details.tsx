@@ -12,8 +12,10 @@ import {
   Clock,
   Copy,
   DollarSign,
+  ExternalLink,
   Phone,
   RefreshCw,
+  Search,
   ShieldCheck,
   TrendingUp,
   User2,
@@ -30,6 +32,7 @@ import {
   useUpdateWithdrawalMutation,
 } from "@/services/queries/admin-dashboard";
 import type { WithdrawHistory } from "@/types/admin";
+import PaginationView from "@/components/pagination-view";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -58,7 +62,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ReferralDetailSkeleton } from "../referral-skeleton";
@@ -68,6 +71,11 @@ interface AdminUserReferralDashboardProps {
 }
 
 type WithdrawalFilter = "all" | "pending" | "completed" | "rejected";
+type ReferredUserFilter = "all" | "converted" | "registered";
+
+const WITHDRAWALS_PER_PAGE = 8;
+const USERS_PER_PAGE = 8;
+const EARNINGS_PER_PAGE = 8;
 
 function getInitials(name?: string): string {
   if (!name) return "U";
@@ -128,12 +136,33 @@ function getStatusBadgeClass(status: string): string {
   }
 }
 
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 export default function AdminUserReferralDashboard({
   userId,
 }: AdminUserReferralDashboardProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Withdrawal section state
   const [withdrawalFilter, setWithdrawalFilter] =
     useState<WithdrawalFilter>("all");
+  const [withdrawalPage, setWithdrawalPage] = useState(1);
+
+  // Referred users section state
+  const [referredFilter, setReferredFilter] =
+    useState<ReferredUserFilter>("all");
+  const [referredSearch, setReferredSearch] = useState("");
+  const [referredPage, setReferredPage] = useState(1);
+
+  // Earnings section state
+  const [earningsPage, setEarningsPage] = useState(1);
+
+  // Action dialog state
   const [selectedWithdrawal, setSelectedWithdrawal] =
     useState<WithdrawHistory | null>(null);
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(
@@ -142,7 +171,13 @@ export default function AdminUserReferralDashboard({
   const [trxId, setTrxId] = useState("");
   const [notesInput, setNotesInput] = useState("");
 
-  const { data: res, isLoading, isError, refetch } = useReferralByUserIdQuery(userId);
+  const {
+    data: res,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useReferralByUserIdQuery(userId);
   const refreshMutation = useRefreshReferralByUserMutation(userId);
   const updateWithdrawalMutation = useUpdateWithdrawalMutation();
 
@@ -154,33 +189,20 @@ export default function AdminUserReferralDashboard({
     return list.filter((w) => w.status === withdrawalFilter);
   }, [data?.withdrawHistory, withdrawalFilter]);
 
-  const recentActivity = useMemo(() => {
-    if (!data) return [];
-    const items = [
-      ...data.earnedHistory.map((e) => ({
-        id: `earn-${e._id}`,
-        kind: "earning" as const,
-        title: e.user.name,
-        subtitle: e.user.email,
-        amount: e.amount,
-        status: "earned",
-        date: e.createdAt,
-      })),
-      ...data.withdrawHistory.map((w) => ({
-        id: `wd-${w._id}`,
-        kind: "withdrawal" as const,
-        title: `Withdrawal (${w.withdrawAccount})`,
-        subtitle: w.trx ? `TRX: ${w.trx}` : w.notes || w.status,
-        amount: w.amount,
-        status: w.status,
-        date: w.requestedAt || w.createdAt,
-      })),
-    ];
-    items.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
-    return items.slice(0, 8);
-  }, [data]);
+  const filteredReferredUsers = useMemo(() => {
+    const list = data?.referredUsers ?? [];
+    const term = referredSearch.trim().toLowerCase();
+    return list.filter((u) => {
+      if (referredFilter === "converted" && !u.hasConverted) return false;
+      if (referredFilter === "registered" && u.hasConverted) return false;
+      if (term) {
+        const nameMatch = String(u.name || "").toLowerCase().includes(term);
+        const emailMatch = String(u.email || "").toLowerCase().includes(term);
+        if (!nameMatch && !emailMatch) return false;
+      }
+      return true;
+    });
+  }, [data?.referredUsers, referredFilter, referredSearch]);
 
   const handleCopy = async (text: string, label: string, key: string) => {
     try {
@@ -290,7 +312,9 @@ export default function AdminUserReferralDashboard({
           <CardContent className="py-12 text-center space-y-4">
             <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
             <div className="space-y-1">
-              <p className="font-semibold text-lg">Could not load referral record</p>
+              <p className="font-semibold text-lg">
+                Could not load referral record
+              </p>
               <p className="text-sm text-muted-foreground">{errMsg}</p>
             </div>
             <div className="flex items-center justify-center gap-2">
@@ -304,6 +328,42 @@ export default function AdminUserReferralDashboard({
       </div>
     );
   }
+
+  // Pagination slices
+  const withdrawalTotalPages = Math.max(
+    1,
+    Math.ceil(filteredWithdrawals.length / WITHDRAWALS_PER_PAGE),
+  );
+  const safeWithdrawalPage = Math.min(withdrawalPage, withdrawalTotalPages);
+  const visibleWithdrawals = filteredWithdrawals.slice(
+    (safeWithdrawalPage - 1) * WITHDRAWALS_PER_PAGE,
+    safeWithdrawalPage * WITHDRAWALS_PER_PAGE,
+  );
+
+  const usersTotalPages = Math.max(
+    1,
+    Math.ceil(filteredReferredUsers.length / USERS_PER_PAGE),
+  );
+  const safeUsersPage = Math.min(referredPage, usersTotalPages);
+  const visibleReferredUsers = filteredReferredUsers.slice(
+    (safeUsersPage - 1) * USERS_PER_PAGE,
+    safeUsersPage * USERS_PER_PAGE,
+  );
+
+  const earningsTotalPages = Math.max(
+    1,
+    Math.ceil(data.earnedHistory.length / EARNINGS_PER_PAGE),
+  );
+  const safeEarningsPage = Math.min(earningsPage, earningsTotalPages);
+  const visibleEarnings = data.earnedHistory.slice(
+    (safeEarningsPage - 1) * EARNINGS_PER_PAGE,
+    safeEarningsPage * EARNINGS_PER_PAGE,
+  );
+
+  const payoutRatio =
+    data.totalEarned > 0
+      ? Math.min(100, Math.round((data.totalWithdrawn / data.totalEarned) * 100))
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -330,9 +390,13 @@ export default function AdminUserReferralDashboard({
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span>Synced {formatRelativeTime(data.meta?.generatedAt)}</span>
               </div>
+              {isFetching && (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              )}
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">
-              Affiliate commissions, referred users &amp; withdrawal payouts
+              Manage payouts, referred signups &amp; commission history on one
+              page
             </p>
           </div>
         </div>
@@ -362,405 +426,397 @@ export default function AdminUserReferralDashboard({
         </div>
       </div>
 
-      {/* Hero Referrer Card */}
+      {/* Hero Referrer Card + Inline Conversion & Payout Strip */}
       <Card>
-        <CardContent className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="flex items-start sm:items-center gap-4 min-w-0">
-            <Avatar className="h-14 w-14 shrink-0 border">
-              <AvatarImage
-                src={data.referrer.avatar || undefined}
-                alt={data.referrer.name}
-              />
-              <AvatarFallback className="text-base font-semibold">
-                {getInitials(data.referrer.name)}
-              </AvatarFallback>
-            </Avatar>
+        <CardContent className="p-5 sm:p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="flex items-start sm:items-center gap-4 min-w-0">
+              <Avatar className="h-14 w-14 shrink-0 border">
+                <AvatarImage
+                  src={data.referrer.avatar || undefined}
+                  alt={data.referrer.name}
+                />
+                <AvatarFallback className="text-base font-semibold">
+                  {getInitials(data.referrer.name)}
+                </AvatarFallback>
+              </Avatar>
 
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-bold truncate">
-                  {data.referrer.name}
-                </h2>
-                {data.referrer.isVerified && (
-                  <Badge
-                    variant="outline"
-                    className="gap-1 text-[11px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
-                  >
-                    <ShieldCheck className="h-3 w-3" />
-                    Verified
-                  </Badge>
-                )}
-                {data.referrer.isDisabled && (
-                  <Badge variant="destructive" className="text-[11px]">
-                    Disabled
-                  </Badge>
-                )}
-              </div>
-
-              <p className="text-sm text-muted-foreground truncate">
-                {data.referrer.email}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleCopy(data.referralCode, "Referral code", "code")
-                  }
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-muted/50 hover:bg-muted text-xs font-mono transition-colors"
-                >
-                  <span className="text-muted-foreground">Code:</span>
-                  <span className="font-semibold text-foreground">
-                    {data.referralCode}
-                  </span>
-                  {copiedKey === "code" ? (
-                    <Check className="h-3 w-3 text-emerald-600" />
-                  ) : (
-                    <Copy className="h-3 w-3 text-muted-foreground" />
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg sm:text-xl font-bold truncate">
+                    {data.referrer.name}
+                  </h2>
+                  {data.referrer.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 text-[11px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                    >
+                      <ShieldCheck className="h-3 w-3" />
+                      Verified
+                    </Badge>
                   )}
-                </button>
+                  {data.referrer.isDisabled && (
+                    <Badge variant="destructive" className="text-[11px]">
+                      Disabled
+                    </Badge>
+                  )}
+                </div>
 
-                {data.withdrawAccount ? (
+                <p className="text-sm text-muted-foreground truncate">
+                  {data.referrer.email}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() =>
-                      handleCopy(
-                        data.withdrawAccount!,
-                        "Payout account",
-                        "account",
-                      )
+                      handleCopy(data.referralCode, "Referral code", "code")
                     }
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-muted/50 hover:bg-muted text-xs font-mono transition-colors"
                   >
-                    <Phone className="h-3 w-3 text-muted-foreground" />
-                    <span>{data.withdrawAccount}</span>
-                    {copiedKey === "account" ? (
+                    <span className="text-muted-foreground">Code:</span>
+                    <span className="font-semibold text-foreground">
+                      {data.referralCode}
+                    </span>
+                    {copiedKey === "code" ? (
                       <Check className="h-3 w-3 text-emerald-600" />
                     ) : (
                       <Copy className="h-3 w-3 text-muted-foreground" />
                     )}
                   </button>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-xs text-muted-foreground">
-                    <Phone className="h-3 w-3" />
-                    No payout account set
-                  </span>
-                )}
+
+                  {data.withdrawAccount ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(
+                          data.withdrawAccount!,
+                          "Payout account",
+                          "account",
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-muted/50 hover:bg-muted text-xs font-mono transition-colors"
+                    >
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      <span>{data.withdrawAccount}</span>
+                      {copiedKey === "account" ? (
+                        <Check className="h-3 w-3 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-xs text-muted-foreground">
+                      <Phone className="h-3 w-3" />
+                      No payout account set
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap lg:flex-col lg:items-end gap-2 text-xs text-muted-foreground shrink-0">
+              <div className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>
+                  Joined{" "}
+                  {formatShortDate(data.referrer.createdAt || data.createdAt)}
+                </span>
+              </div>
+              <div className="font-mono text-[11px] bg-muted/60 px-2 py-0.5 rounded border">
+                ID: {userId}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap lg:flex-col lg:items-end gap-2 text-xs text-muted-foreground shrink-0">
-            <div className="inline-flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Joined {formatShortDate(data.referrer.createdAt || data.createdAt)}</span>
+          {/* Embedded Overview Metrics Strip (replaces separate Overview tab) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Referral Conversion Rate
+                </span>
+                <span className="font-medium tabular-nums">
+                  {data.convertedCount} / {data.referralCount} converted (
+                  {data.conversionRate}%)
+                </span>
+              </div>
+              <Progress value={data.conversionRate} className="h-1.5" />
             </div>
-            <div className="font-mono text-[11px] bg-muted/60 px-2 py-0.5 rounded border">
-              ID: {userId}
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Payout Ratio</span>
+                <span className="font-medium tabular-nums">
+                  {formatCurrency(data.totalWithdrawn)} /{" "}
+                  {formatCurrency(data.totalEarned)} paid ({payoutRatio}%)
+                </span>
+              </div>
+              <Progress value={payoutRatio} className="h-1.5" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 4 KPI Cards */}
+      {/* 4 Interactive KPI Cards (click to filter / jump directly to sections) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Available Balance
-            </CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(data.availableBalance)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Ready for withdrawal
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Total Earned
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatCurrency(data.totalEarned)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {data.convertedCount} of {data.referralCount} converted (
-              {data.conversionRate}%)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card
-          className={cn(
-            data.pendingWithdrawalsCount > 0 &&
-              "border-amber-500/40 bg-amber-500/5",
-          )}
+        <button
+          type="button"
+          onClick={() => scrollToSection("withdrawals-section")}
+          className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Pending Payouts
-            </CardTitle>
-            <Clock
-              className={cn(
-                "h-4 w-4",
-                data.pendingWithdrawalsCount > 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-muted-foreground",
-              )}
-            />
-          </CardHeader>
-          <CardContent>
-            <div
-              className={cn(
-                "text-2xl font-bold tabular-nums",
-                data.pendingWithdrawalsCount > 0 &&
-                  "text-amber-600 dark:text-amber-400",
-              )}
-            >
-              {data.pendingWithdrawalsCount}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {formatCurrency(data.pendingWithdrawalsAmount)} awaiting review
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="h-full transition-colors hover:border-foreground/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Available Balance
+              </CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(data.availableBalance)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ready for withdrawal
+              </p>
+            </CardContent>
+          </Card>
+        </button>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Total Paid Out
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatCurrency(data.totalWithdrawn)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {data.completedWithdrawalsCount} completed &middot;{" "}
-              {data.rejectedWithdrawalsCount} rejected
-            </p>
-          </CardContent>
-        </Card>
+        <button
+          type="button"
+          onClick={() => scrollToSection("earnings-section")}
+          className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Card className="h-full transition-colors hover:border-foreground/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Total Earned
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatCurrency(data.totalEarned)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                From {data.earnedHistory.length} commission event
+                {data.earnedHistory.length === 1 ? "" : "s"}
+              </p>
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setWithdrawalFilter((prev) =>
+              prev === "pending" ? "all" : "pending",
+            );
+            setWithdrawalPage(1);
+            scrollToSection("withdrawals-section");
+          }}
+          className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Card
+            className={cn(
+              "h-full transition-colors hover:border-foreground/30",
+              data.pendingWithdrawalsCount > 0 &&
+                "border-amber-500/40 bg-amber-500/5",
+            )}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Pending Payouts
+              </CardTitle>
+              <Clock
+                className={cn(
+                  "h-4 w-4",
+                  data.pendingWithdrawalsCount > 0
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground",
+                )}
+              />
+            </CardHeader>
+            <CardContent>
+              <div
+                className={cn(
+                  "text-2xl font-bold tabular-nums",
+                  data.pendingWithdrawalsCount > 0 &&
+                    "text-amber-600 dark:text-amber-400",
+                )}
+              >
+                {data.pendingWithdrawalsCount}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatCurrency(data.pendingWithdrawalsAmount)} awaiting review
+              </p>
+            </CardContent>
+          </Card>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setWithdrawalFilter((prev) =>
+              prev === "completed" ? "all" : "completed",
+            );
+            setWithdrawalPage(1);
+            scrollToSection("withdrawals-section");
+          }}
+          className="text-left w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Card className="h-full transition-colors hover:border-foreground/30">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Total Paid Out
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatCurrency(data.totalWithdrawn)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data.completedWithdrawalsCount} completed &middot;{" "}
+                {data.rejectedWithdrawalsCount} rejected
+              </p>
+            </CardContent>
+          </Card>
+        </button>
       </div>
 
-      {/* Tabbed Sections */}
-      <Tabs defaultValue="withdrawals" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto p-1 gap-1">
-          <TabsTrigger value="withdrawals" className="py-2 gap-1.5 text-xs sm:text-sm">
-            <span>Withdrawals</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[11px] tabular-nums">
-              {data.withdrawHistory.length}
-            </Badge>
-            {data.pendingWithdrawalsCount > 0 && (
-              <span
-                className="h-2 w-2 rounded-full bg-amber-500"
-                title={`${data.pendingWithdrawalsCount} pending`}
-              />
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="earnings" className="py-2 gap-1.5 text-xs sm:text-sm">
-            <span>Earnings</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[11px] tabular-nums">
-              {data.earnedHistory.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="referrals" className="py-2 gap-1.5 text-xs sm:text-sm">
-            <span>Referred Users</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-[11px] tabular-nums">
-              {data.referredUsers.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="overview" className="py-2 text-xs sm:text-sm">
-            Overview
-          </TabsTrigger>
-        </TabsList>
+      {/* Section 1: Withdrawal Requests (Always Visible) */}
+      <Card id="withdrawals-section" className="scroll-mt-4">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-semibold">
+                Withdrawal Requests
+              </CardTitle>
+              <Badge variant="secondary" className="tabular-nums">
+                {data.withdrawHistory.length}
+              </Badge>
+            </div>
+            <CardDescription>
+              Approve pending payouts with a transaction ID or reject to refund
+              available balance.
+            </CardDescription>
+          </div>
 
-        {/* Withdrawals Tab */}
-        <TabsContent value="withdrawals">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-base font-semibold">
-                  Withdrawal Requests
-                </CardTitle>
-                <CardDescription>
-                  Approve payouts with a transaction reference or reject to
-                  refund the balance.
-                </CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {(
-                  [
-                    { key: "all", label: "All" },
-                    { key: "pending", label: "Pending" },
-                    { key: "completed", label: "Completed" },
-                    { key: "rejected", label: "Rejected" },
-                  ] as const
-                ).map((item) => (
-                  <Button
-                    key={item.key}
-                    type="button"
-                    size="sm"
-                    variant={
-                      withdrawalFilter === item.key ? "default" : "outline"
-                    }
-                    className="h-7 px-2.5 text-xs"
-                    onClick={() => setWithdrawalFilter(item.key)}
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                {
+                  key: "all",
+                  label: "All",
+                  count: data.withdrawHistory.length,
+                },
+                {
+                  key: "pending",
+                  label: "Pending",
+                  count: data.pendingWithdrawalsCount,
+                },
+                {
+                  key: "completed",
+                  label: "Completed",
+                  count: data.completedWithdrawalsCount,
+                },
+                {
+                  key: "rejected",
+                  label: "Rejected",
+                  count: data.rejectedWithdrawalsCount,
+                },
+              ] as const
+            ).map((item) => {
+              const active = withdrawalFilter === item.key;
+              return (
+                <Button
+                  key={item.key}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="h-8 px-2.5 text-xs gap-1.5"
+                  onClick={() => {
+                    setWithdrawalFilter(item.key);
+                    setWithdrawalPage(1);
+                  }}
+                >
+                  <span>{item.label}</span>
+                  <Badge
+                    variant={active ? "secondary" : "outline"}
+                    className={cn(
+                      "h-4 px-1.5 text-[10px] tabular-nums",
+                      active &&
+                        "bg-background/20 text-inherit border-transparent",
+                    )}
                   >
-                    {item.label}
-                  </Button>
-                ))}
-              </div>
-            </CardHeader>
+                    {item.count}
+                  </Badge>
+                </Button>
+              );
+            })}
+          </div>
+        </CardHeader>
 
-            <CardContent>
-              {filteredWithdrawals.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
-                  <Clock className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm font-medium">
-                    No {withdrawalFilter === "all" ? "" : withdrawalFilter}{" "}
-                    withdrawal requests found
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Desktop Table */}
-                  <div className="hidden md:block rounded-lg border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/40">
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Account</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Transaction / Note</TableHead>
-                          <TableHead>Requested</TableHead>
-                          <TableHead>Processed</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredWithdrawals.map((withdrawal) => (
-                          <TableRow key={withdrawal._id}>
-                            <TableCell className="font-semibold tabular-nums">
-                              {formatCurrency(withdrawal.amount)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1.5">
-                                <code className="font-mono text-xs bg-muted px-2 py-0.5 rounded">
-                                  {withdrawal.withdrawAccount}
-                                </code>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    handleCopy(
-                                      withdrawal.withdrawAccount,
-                                      "Account",
-                                      `wd-acc-${withdrawal._id}`,
-                                    )
-                                  }
-                                >
-                                  {copiedKey === `wd-acc-${withdrawal._id}` ? (
-                                    <Check className="h-3 w-3 text-emerald-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3 text-muted-foreground" />
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "capitalize",
-                                  getStatusBadgeClass(withdrawal.status),
-                                )}
-                              >
-                                {withdrawal.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="max-w-[240px]">
-                              <div className="space-y-0.5">
-                                <p className="font-mono text-xs truncate">
-                                  {withdrawal.trx || "—"}
-                                </p>
-                                {withdrawal.notes && (
-                                  <p className="text-xs text-muted-foreground line-clamp-2">
-                                    {withdrawal.notes}
-                                  </p>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDate(
-                                withdrawal.requestedAt || withdrawal.createdAt,
-                              )}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDate(withdrawal.issuedAt)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {withdrawal.status === "pending" ? (
-                                <div className="flex justify-end gap-1.5">
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      openWithdrawalModal(withdrawal, "approve")
-                                    }
-                                    className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                  >
-                                    <Check className="h-3.5 w-3.5 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() =>
-                                      openWithdrawalModal(withdrawal, "reject")
-                                    }
-                                    className="h-7 px-2.5 text-xs"
-                                  >
-                                    <X className="h-3.5 w-3.5 mr-1" />
-                                    Reject
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  Processed
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {/* Mobile Cards */}
-                  <div className="md:hidden divide-y rounded-lg border">
-                    {filteredWithdrawals.map((withdrawal) => (
-                      <div key={withdrawal._id} className="p-4 space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <p className="font-bold text-base tabular-nums">
-                              {formatCurrency(withdrawal.amount)}
-                            </p>
-                            <p className="font-mono text-xs text-muted-foreground">
+        <CardContent className="space-y-4">
+          {filteredWithdrawals.length === 0 ? (
+            <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
+              <Clock className="h-9 w-9 mx-auto mb-2.5 text-muted-foreground/50" />
+              <p className="text-sm font-medium">
+                No {withdrawalFilter === "all" ? "" : withdrawalFilter}{" "}
+                withdrawal requests found
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block rounded-lg border overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Transaction / Note</TableHead>
+                      <TableHead>Requested</TableHead>
+                      <TableHead>Processed</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleWithdrawals.map((withdrawal) => (
+                      <TableRow key={withdrawal._id}>
+                        <TableCell className="font-semibold tabular-nums">
+                          {formatCurrency(withdrawal.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <code className="font-mono text-xs bg-muted px-2 py-0.5 rounded">
                               {withdrawal.withdrawAccount}
-                            </p>
+                            </code>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() =>
+                                handleCopy(
+                                  withdrawal.withdrawAccount,
+                                  "Account",
+                                  `wd-acc-${withdrawal._id}`,
+                                )
+                              }
+                            >
+                              {copiedKey === `wd-acc-${withdrawal._id}` ? (
+                                <Check className="h-3 w-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </Button>
                           </div>
+                        </TableCell>
+                        <TableCell>
                           <Badge
                             variant="outline"
                             className={cn(
@@ -770,439 +826,443 @@ export default function AdminUserReferralDashboard({
                           >
                             {withdrawal.status}
                           </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-muted-foreground">Requested</p>
-                            <p className="mt-0.5">
-                              {formatShortDate(
-                                withdrawal.requestedAt || withdrawal.createdAt,
-                              )}
+                        </TableCell>
+                        <TableCell className="max-w-[240px]">
+                          <div className="space-y-0.5">
+                            <p className="font-mono text-xs truncate">
+                              {withdrawal.trx || "—"}
                             </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Processed</p>
-                            <p className="mt-0.5">
-                              {formatShortDate(withdrawal.issuedAt)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {(withdrawal.trx || withdrawal.notes) && (
-                          <div className="rounded-md bg-muted/40 p-2 text-xs space-y-1">
-                            {withdrawal.trx && (
-                              <p className="font-mono">
-                                TRX: {withdrawal.trx}
-                              </p>
-                            )}
                             {withdrawal.notes && (
-                              <p className="text-muted-foreground">
-                                Note: {withdrawal.notes}
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {withdrawal.notes}
                               </p>
                             )}
                           </div>
-                        )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(
+                            withdrawal.requestedAt || withdrawal.createdAt,
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(withdrawal.issuedAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {withdrawal.status === "pending" ? (
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  openWithdrawalModal(withdrawal, "approve")
+                                }
+                                className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                              >
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  openWithdrawalModal(withdrawal, "reject")
+                                }
+                                className="h-7 px-2.5 text-xs"
+                              >
+                                <X className="h-3.5 w-3.5 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Processed
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-                        {withdrawal.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                openWithdrawalModal(withdrawal, "approve")
-                              }
-                              className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                            >
-                              <Check className="h-3.5 w-3.5 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() =>
-                                openWithdrawalModal(withdrawal, "reject")
-                              }
-                              className="flex-1 h-8 text-xs"
-                            >
-                              <X className="h-3.5 w-3.5 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
+              {/* Mobile Cards */}
+              <div className="md:hidden divide-y rounded-lg border">
+                {visibleWithdrawals.map((withdrawal) => (
+                  <div key={withdrawal._id} className="p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-base tabular-nums">
+                          {formatCurrency(withdrawal.amount)}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {withdrawal.withdrawAccount}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "capitalize",
+                          getStatusBadgeClass(withdrawal.status),
+                        )}
+                      >
+                        {withdrawal.status}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Requested</p>
+                        <p className="mt-0.5">
+                          {formatShortDate(
+                            withdrawal.requestedAt || withdrawal.createdAt,
+                          )}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Processed</p>
+                        <p className="mt-0.5">
+                          {formatShortDate(withdrawal.issuedAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(withdrawal.trx || withdrawal.notes) && (
+                      <div className="rounded-md bg-muted/40 p-2 text-xs space-y-1">
+                        {withdrawal.trx && (
+                          <p className="font-mono">TRX: {withdrawal.trx}</p>
+                        )}
+                        {withdrawal.notes && (
+                          <p className="text-muted-foreground">
+                            Note: {withdrawal.notes}
+                          </p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    )}
 
-        {/* Earnings Tab */}
-        <TabsContent value="earnings">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Earning History
-              </CardTitle>
-              <CardDescription>
-                Commissions credited when referred users purchase plans.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.earnedHistory.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
-                  <TrendingUp className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm font-medium">No earning history yet</p>
+                    {withdrawal.status === "pending" && (
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() =>
+                            openWithdrawalModal(withdrawal, "approve")
+                          }
+                          className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <Check className="h-3.5 w-3.5 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() =>
+                            openWithdrawalModal(withdrawal, "reject")
+                          }
+                          className="flex-1 h-8 text-xs"
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {filteredWithdrawals.length > WITHDRAWALS_PER_PAGE && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t">
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    Showing {(safeWithdrawalPage - 1) * WITHDRAWALS_PER_PAGE + 1}
+                    –
+                    {Math.min(
+                      safeWithdrawalPage * WITHDRAWALS_PER_PAGE,
+                      filteredWithdrawals.length,
+                    )}{" "}
+                    of {filteredWithdrawals.length} requests
+                  </span>
+                  <PaginationView
+                    currentPage={safeWithdrawalPage}
+                    totalPages={withdrawalTotalPages}
+                    handlePageChange={setWithdrawalPage}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="hidden md:block rounded-lg border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/40">
-                          <TableHead>Referred User</TableHead>
-                          <TableHead className="text-right">
-                            Commission
-                          </TableHead>
-                          <TableHead className="text-right">Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.earnedHistory.map((earning) => (
-                          <TableRow key={earning._id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage
-                                    src={earning.user.avatar || undefined}
-                                    alt={earning.user.name}
-                                  />
-                                  <AvatarFallback className="text-xs">
-                                    {getInitials(earning.user.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  {earning.user._id ? (
-                                    <Link
-                                      href={`/admin/users/${encodeURIComponent(earning.user._id)}`}
-                                      className="font-medium text-sm hover:underline"
-                                    >
-                                      {earning.user.name}
-                                    </Link>
-                                  ) : (
-                                    <p className="font-medium text-sm">
-                                      {earning.user.name}
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-muted-foreground">
-                                    {earning.user.email}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                              +{formatCurrency(earning.amount)}
-                            </TableCell>
-                            <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
-                              {formatDate(earning.createdAt)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-                  <div className="md:hidden divide-y rounded-lg border">
-                    {data.earnedHistory.map((earning) => (
-                      <div
-                        key={earning._id}
-                        className="p-3.5 flex items-center justify-between gap-3"
-                      >
+      {/* Section 2: Referred Users & Earning History Side-by-Side (Always Visible) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Left Column: Referred Users */}
+        <Card id="referred-users-section" className="xl:col-span-7 scroll-mt-4">
+          <CardHeader className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-semibold">
+                    Referred Users
+                  </CardTitle>
+                  <Badge variant="secondary" className="tabular-nums">
+                    {data.referredUsers.length}
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Accounts registered using code{" "}
+                  <code className="font-mono">{data.referralCode}</code>
+                </CardDescription>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { key: "all", label: "All" },
+                    { key: "converted", label: "Converted" },
+                    { key: "registered", label: "Registered" },
+                  ] as const
+                ).map((item) => (
+                  <Button
+                    key={item.key}
+                    type="button"
+                    size="sm"
+                    variant={
+                      referredFilter === item.key ? "default" : "outline"
+                    }
+                    className="h-7 px-2.5 text-xs"
+                    onClick={() => {
+                      setReferredFilter(item.key);
+                      setReferredPage(1);
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {data.referredUsers.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Filter referred users by name or email..."
+                  value={referredSearch}
+                  onChange={(e) => {
+                    setReferredSearch(e.target.value);
+                    setReferredPage(1);
+                  }}
+                  className="h-9 pl-9 pr-9 text-sm"
+                />
+                {referredSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReferredSearch("");
+                      setReferredPage(1);
+                    }}
+                    aria-label="Clear filter"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )}
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {filteredReferredUsers.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
+                <Users className="h-9 w-9 mx-auto mb-2.5 text-muted-foreground/50" />
+                <p className="text-sm font-medium">
+                  No referred users match your filter
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y rounded-lg border">
+                  {visibleReferredUsers.map((user) => (
+                    <div
+                      key={user._id}
+                      className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage
+                            src={user.avatar || undefined}
+                            alt={user.name}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(user.name)}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {earning.user.name}
-                          </p>
+                          <Link
+                            href={`/admin/users/${encodeURIComponent(user._id)}`}
+                            className="font-medium text-sm hover:underline truncate block"
+                          >
+                            {user.name}
+                          </Link>
                           <p className="text-xs text-muted-foreground truncate">
-                            {earning.user.email}
+                            {user.email} &middot; Joined{" "}
+                            {formatShortDate(user.createdAt)}
                           </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0">
+                        {user.hasConverted ? (
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="gap-1 text-[11px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              Converted
+                            </Badge>
+                            {user.earnedAmount && user.earnedAmount > 0 ? (
+                              <span className="text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(user.earnedAmount)}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <Badge variant="secondary" className="text-[11px]">
+                            Registered
+                          </Badge>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          asChild
+                          className="h-8 w-8"
+                          title="Open user profile"
+                        >
+                          <Link
+                            href={`/admin/users/${encodeURIComponent(user._id)}`}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {filteredReferredUsers.length > USERS_PER_PAGE && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Showing {(safeUsersPage - 1) * USERS_PER_PAGE + 1}–
+                      {Math.min(
+                        safeUsersPage * USERS_PER_PAGE,
+                        filteredReferredUsers.length,
+                      )}{" "}
+                      of {filteredReferredUsers.length} users
+                    </span>
+                    <PaginationView
+                      currentPage={safeUsersPage}
+                      totalPages={usersTotalPages}
+                      handlePageChange={setReferredPage}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Earning History */}
+        <Card id="earnings-section" className="xl:col-span-5 scroll-mt-4">
+          <CardHeader className="flex flex-row items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-semibold">
+                  Earning History
+                </CardTitle>
+                <Badge variant="secondary" className="tabular-nums">
+                  {data.earnedHistory.length}
+                </Badge>
+              </div>
+              <CardDescription>
+                Commission credits from qualifying purchases
+              </CardDescription>
+            </div>
+            <Badge
+              variant="outline"
+              className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 tabular-nums shrink-0"
+            >
+              {formatCurrency(data.totalEarned)}
+            </Badge>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {data.earnedHistory.length === 0 ? (
+              <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
+                <TrendingUp className="h-9 w-9 mx-auto mb-2.5 text-muted-foreground/50" />
+                <p className="text-sm font-medium">No earning history yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y rounded-lg border">
+                  {visibleEarnings.map((earning) => (
+                    <div
+                      key={earning._id}
+                      className="p-3.5 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar className="h-8 w-8 shrink-0">
+                          <AvatarImage
+                            src={earning.user.avatar || undefined}
+                            alt={earning.user.name}
+                          />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(earning.user.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          {earning.user._id ? (
+                            <Link
+                              href={`/admin/users/${encodeURIComponent(earning.user._id)}`}
+                              className="font-medium text-sm hover:underline truncate block"
+                            >
+                              {earning.user.name}
+                            </Link>
+                          ) : (
+                            <p className="font-medium text-sm truncate">
+                              {earning.user.name}
+                            </p>
+                          )}
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {earning.user.email} &middot;{" "}
                             {formatShortDate(earning.createdAt)}
                           </p>
                         </div>
-                        <span className="font-semibold text-sm tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
-                          +{formatCurrency(earning.amount)}
-                        </span>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Referred Users Tab */}
-        <TabsContent value="referrals">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">
-                Referred Users
-              </CardTitle>
-              <CardDescription>
-                Accounts registered using referral code{" "}
-                <code className="font-mono">{data.referralCode}</code>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.referredUsers.length === 0 ? (
-                <div className="rounded-lg border border-dashed py-10 text-center text-muted-foreground">
-                  <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm font-medium">No referred users yet</p>
+                      <span className="font-semibold text-sm tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
+                        +{formatCurrency(earning.amount)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  <div className="hidden md:block rounded-lg border overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/40">
-                          <TableHead>User</TableHead>
-                          <TableHead>Joined</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">
-                            Commission Earned
-                          </TableHead>
-                          <TableHead className="text-right">Profile</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.referredUsers.map((user) => (
-                          <TableRow key={user._id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage
-                                    src={user.avatar || undefined}
-                                    alt={user.name}
-                                  />
-                                  <AvatarFallback className="text-xs">
-                                    {getInitials(user.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {user.name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {user.email}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatShortDate(user.createdAt)}
-                            </TableCell>
-                            <TableCell>
-                              {user.hasConverted ? (
-                                <Badge
-                                  variant="outline"
-                                  className="gap-1 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
-                                >
-                                  <CheckCircle2 className="h-3 w-3" />
-                                  Converted
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary">Registered</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium tabular-nums">
-                              {user.earnedAmount && user.earnedAmount > 0 ? (
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                  {formatCurrency(user.earnedAmount)}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link
-                                  href={`/admin/users/${encodeURIComponent(user._id)}`}
-                                >
-                                  View
-                                </Link>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
 
-                  <div className="md:hidden divide-y rounded-lg border">
-                    {data.referredUsers.map((user) => (
-                      <div key={user._id} className="p-3.5 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {user.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {user.email}
-                            </p>
-                          </div>
-                          {user.hasConverted ? (
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 text-[11px]"
-                            >
-                              Converted
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="shrink-0 text-[11px]">
-                              Registered
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Joined {formatShortDate(user.createdAt)}</span>
-                          <Link
-                            href={`/admin/users/${encodeURIComponent(user._id)}`}
-                            className="font-medium text-foreground hover:underline"
-                          >
-                            View profile
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Overview Tab */}
-        <TabsContent value="overview">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Account &amp; Payout Breakdown
-                </CardTitle>
-                <CardDescription>
-                  Summary of referral wallet metrics and conversion health
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Total Referrals</span>
-                  <span className="font-semibold tabular-nums">
-                    {data.referralCount}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Converted Users</span>
-                  <span className="font-semibold tabular-nums">
-                    {data.convertedCount} ({data.conversionRate}%)
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Total Earned</span>
-                  <span className="font-semibold tabular-nums">
-                    {formatCurrency(data.totalEarned)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">Total Paid Out</span>
-                  <span className="font-semibold tabular-nums">
-                    {formatCurrency(data.totalWithdrawn)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">
-                    Pending Payouts
-                  </span>
-                  <span className="font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-                    {formatCurrency(data.pendingWithdrawalsAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b">
-                  <span className="text-muted-foreground">
-                    Available Balance
-                  </span>
-                  <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(data.availableBalance)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5">
-                  <span className="text-muted-foreground">Payout Account</span>
-                  <span className="font-mono text-xs">
-                    {data.withdrawAccount || "Not set"}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  Recent Activity
-                </CardTitle>
-                <CardDescription>
-                  Latest commission credits and withdrawal updates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentActivity.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">
-                    No activity recorded yet
-                  </p>
-                ) : (
-                  <div className="divide-y">
-                    {recentActivity.map((item) => (
-                      <div
-                        key={item.id}
-                        className="py-2.5 flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {item.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {item.subtitle} &middot;{" "}
-                            {formatShortDate(item.date)}
-                          </p>
-                        </div>
-                        {item.kind === "earning" ? (
-                          <span className="text-sm font-semibold tabular-nums text-emerald-600 dark:text-emerald-400 shrink-0">
-                            +{formatCurrency(item.amount)}
-                          </span>
-                        ) : (
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-semibold tabular-nums">
-                              -{formatCurrency(item.amount)}
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] capitalize h-4 px-1.5",
-                                getStatusBadgeClass(item.status),
-                              )}
-                            >
-                              {item.status}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {data.earnedHistory.length > EARNINGS_PER_PAGE && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t">
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      Page {safeEarningsPage} of {earningsTotalPages}
+                    </span>
+                    <PaginationView
+                      currentPage={safeEarningsPage}
+                      totalPages={earningsTotalPages}
+                      handlePageChange={setEarningsPage}
+                      showFirstLast={false}
+                      showJumpToPage={false}
+                    />
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Withdrawal Action Modal */}
       <Dialog
