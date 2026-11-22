@@ -4,6 +4,20 @@ const nextConfig: NextConfig = {
   experimental: {
     agentUpgrade: "latest",
   },
+  async rewrites() {
+    const backendApiUrl = (
+      process.env.BACKEND_API_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      "http://localhost:5000/api/v1"
+    ).replace(/\/+$/, "");
+
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${backendApiUrl}/:path*`,
+      },
+    ];
+  },
   async redirects() {
     return [
       {

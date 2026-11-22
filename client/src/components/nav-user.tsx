@@ -19,6 +19,7 @@ import {
 } from "./ui/tooltip";
 import { useSidebar } from "./ui/sidebar";
 import { logout } from "@/services/auth-services";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
 import { User } from "@/types/user";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ interface Props {
 
 export function NavUser({ user }: Props) {
   const router = useRouter();
+  const { setUser: setAuthUser } = useAuth();
   const { state, isMobile } = useSidebar();
   const [isHovered, setIsHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -48,7 +50,9 @@ export function NavUser({ user }: Props) {
   const handleLogout = async () => {
     const result = await logout();
     if (result.success) {
+      setAuthUser(null);
       router.push("/login");
+      router.refresh();
     } else {
       console.error(result.message);
     }

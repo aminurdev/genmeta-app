@@ -1,16 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import {
-  getAccessToken,
-  getAccessTokenSync,
-  getRefreshToken,
-  getRefreshTokenSync,
-  setTokens,
-  deleteTokens,
-  setClientCookie,
-} from "../lib/cookies";
 import { ENV } from "../lib/env";
+import { getServerCookieHeader } from "../lib/cookies-server";
 
-const API_BASE_URL = ENV.apiBaseUrl || "http://localhost:5000/api/v1";
+const isBrowser = typeof window !== "undefined";
+const API_BASE_URL = isBrowser ? "/api/v1" : ENV.backendApiUrl;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -22,16 +15,21 @@ export const api = axios.create({
   timeout: 30000,
 });
 
-// Attach access token automatically (synchronously in browser for 0ms latency)
+// Forward request cookies during SSR
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    let token = getAccessTokenSync();
-    if (!token && typeof window === "undefined") {
-      token = await getAccessToken();
-    }
-
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window === "undefined") {
+      try {
+        const cookieHeader = await getServerCookieHeader();
+        if (cookieHeader && !config.headers.Cookie) {
+          config.headers.Cookie = cookieHeader;
+        }
+        if (!config.headers.Origin && ENV.appUrl) {
+          config.headers.Origin = ENV.appUrl;
+        }
+      } catch {
+        // Non-fatal outside request context
+      }
     }
 
     return config;
@@ -39,23 +37,34 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Concurrency queue for automatic 401 token refresh
+// Single-flight concurrency queue for automatic 401 HttpOnly cookie refresh in browser
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: () => void;
   reject: (error: unknown) => void;
 }> = [];
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
-    } else if (token) {
-      prom.resolve(token);
+    } else {
+      prom.resolve();
     }
   });
   failedQueue = [];
 };
+
+const SKIP_REFRESH_PATHS = [
+  "/users/refresh-token",
+  "/users/login",
+  "/users/register",
+  "/users/logout",
+  "/users/verify-email",
+  "/users/verify-otp",
+  "/users/reset-password",
+  "/users/verify-google",
+];
 
 api.interceptors.response.use(
   (response) => response,
@@ -64,25 +73,22 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (!originalRequest) {
+    if (!originalRequest || typeof window === "undefined") {
       return Promise.reject(error);
     }
 
     const isUnauthorized = error.response?.status === 401;
-    const isAuthRoute =
-      originalRequest.url?.includes("/users/refresh-token") ||
-      originalRequest.url?.includes("/users/login") ||
-      originalRequest.url?.includes("/users/register");
+    const requestUrl = originalRequest.url || "";
+    const shouldSkip = SKIP_REFRESH_PATHS.some((path) =>
+      requestUrl.includes(path)
+    );
 
-    if (isUnauthorized && !originalRequest._retry && !isAuthRoute) {
+    if (isUnauthorized && !originalRequest._retry && !shouldSkip) {
       if (isRefreshing) {
-        return new Promise<string>((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((newToken) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return api(originalRequest);
-          })
+          .then(() => api(originalRequest))
           .catch((err) => Promise.reject(err));
       }
 
@@ -90,60 +96,33 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        let refreshToken = getRefreshTokenSync();
-        if (!refreshToken && typeof window === "undefined") {
-          refreshToken = await getRefreshToken();
-        }
-
-        if (!refreshToken) {
-          throw new Error("No refresh token available");
-        }
-
-        const refreshResponse = await axios.post(
-          `${API_BASE_URL}/users/refresh-token`,
-          { refreshToken },
+        await axios.post(
+          "/api/v1/users/refresh-token",
+          {},
           { withCredentials: true }
         );
 
-        const newAccessToken =
-          refreshResponse.data?.data?.accessToken ||
-          refreshResponse.data?.accessToken;
-        const newRefreshToken =
-          refreshResponse.data?.data?.refreshToken ||
-          refreshResponse.data?.refreshToken ||
-          refreshToken;
-
-        if (!newAccessToken) {
-          throw new Error("Invalid refresh token response");
-        }
-
-        // Update tokens
-        if (typeof window !== "undefined") {
-          setClientCookie("accessToken", newAccessToken);
-          if (newRefreshToken) {
-            setClientCookie("refreshToken", newRefreshToken);
-          }
-        }
-        await setTokens(newAccessToken, newRefreshToken);
-
-        processQueue(null, newAccessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        processQueue(null);
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        await deleteTokens();
+        processQueue(refreshError);
 
-        if (typeof window !== "undefined") {
-          const currentPath = window.location.pathname;
-          if (
-            !currentPath.includes("/login") &&
-            !currentPath.includes("/signup")
-          ) {
-            window.location.href = `/login?redirectPath=${encodeURIComponent(
-              currentPath
-            )}`;
-          }
+        const currentPath = window.location.pathname;
+        const isProtectedPath =
+          currentPath.startsWith("/dashboard") ||
+          currentPath.startsWith("/admin") ||
+          currentPath.startsWith("/payment-status") ||
+          currentPath.startsWith("/settings");
+
+        if (
+          isProtectedPath &&
+          !currentPath.includes("/login") &&
+          !currentPath.includes("/signup")
+        ) {
+          const fullPath = `${currentPath}${window.location.search || ""}`;
+          window.location.href = `/login?redirectPath=${encodeURIComponent(
+            fullPath
+          )}`;
         }
 
         return Promise.reject(refreshError);

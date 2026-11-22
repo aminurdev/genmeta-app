@@ -29,13 +29,19 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().optional().default("http://localhost:5000/api/v1/users/google/callback"),
 
   ACCESS_TOKEN_SECRET: z.string().min(1, "ACCESS_TOKEN_SECRET is required in .env"),
-  ACCESS_TOKEN_EXPIRY: z.string().default("8d"),
+  ACCESS_TOKEN_EXPIRY: z.string().default("15m"),
 
   REFRESH_TOKEN_SECRET: z.string().min(1, "REFRESH_TOKEN_SECRET is required in .env"),
-  REFRESH_TOKEN_EXPIRY: z.string().default("31d"),
+  REFRESH_TOKEN_EXPIRY: z.string().default("30d"),
 
   EMAIL_VERIFY_TOKEN_SECRET: z.string().min(1, "EMAIL_VERIFY_TOKEN_SECRET is required in .env"),
   EMAIL_VERIFY_TOKEN_EXPIRY: z.string().default("1d"),
+
+  COOKIE_DOMAIN: z.string().optional().default(""),
+  COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).optional().default("lax"),
+  BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+  MAX_LOGIN_ATTEMPTS: z.coerce.number().int().min(3).max(20).default(5),
+  LOCKOUT_DURATION_MS: z.coerce.number().int().min(60000).default(15 * 60 * 1000),
 
   RESEND_API_KEY: z.string().optional().default(""),
 
@@ -84,13 +90,20 @@ const config = {
   google_callback_url: rawEnv.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/users/google/callback",
 
   access_token_secret: rawEnv.ACCESS_TOKEN_SECRET,
-  access_token_expiry: rawEnv.ACCESS_TOKEN_EXPIRY || "8d",
+  access_token_expiry: rawEnv.ACCESS_TOKEN_EXPIRY || "15m",
 
   refresh_token_secret: rawEnv.REFRESH_TOKEN_SECRET,
-  refresh_token_expiry: rawEnv.REFRESH_TOKEN_EXPIRY || "31d",
+  refresh_token_expiry: rawEnv.REFRESH_TOKEN_EXPIRY || "30d",
 
   email_verify_token_secret: rawEnv.EMAIL_VERIFY_TOKEN_SECRET,
   email_verify_token_expiry: rawEnv.EMAIL_VERIFY_TOKEN_EXPIRY || "1d",
+
+  cookie_domain: rawEnv.COOKIE_DOMAIN || undefined,
+  cookie_secure: (rawEnv.NODE_ENV || "development") === "production",
+  cookie_same_site: rawEnv.COOKIE_SAME_SITE || "lax",
+  bcrypt_rounds: Number(rawEnv.BCRYPT_ROUNDS) || 12,
+  max_login_attempts: Number(rawEnv.MAX_LOGIN_ATTEMPTS) || 5,
+  lockout_duration_ms: Number(rawEnv.LOCKOUT_DURATION_MS) || 15 * 60 * 1000,
 
   resend_api_key: rawEnv.RESEND_API_KEY || "",
 

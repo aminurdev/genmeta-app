@@ -1,16 +1,19 @@
 import { Router } from "express";
 import {
   changeCurrentPassword,
+  getActiveSessions,
   getCurrentUser,
   googleLogin,
   googleLoginCallback,
   loginUser,
+  logoutAllSessions,
   logoutUser,
   refreshAccessToken,
   registerUser,
   requestPasswordReset,
   resendVerificationEmail,
   resetPassword,
+  revokeSession,
   verifyEmail,
   verifyGoogleToken,
   verifyOTP,
@@ -25,15 +28,24 @@ import {
   googleLoginAPP,
   verifyGoogle,
 } from "../controllers/appUser.controller.js";
-import { createRateLimiter } from "../middlewares/rate.limit.middleware.js";
+import {
+  authStrictLimiter,
+  createRateLimiter,
+  otpSendLimiter,
+  otpVerifyLimiter,
+  refreshLimiter,
+} from "../middlewares/rate.limit.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   registerUserSchema,
   loginUserSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
   changePasswordSchema,
   requestPasswordResetSchema,
   verifyOtpSchema,
   resetPasswordSchema,
+  verifyGoogleCodeSchema,
 } from "../validations/index.js";
 
 const router = Router();
@@ -44,15 +56,10 @@ const registerLimiter = createRateLimiter({
   message: "Too many registration attempts. Please try again later.",
 });
 
-const loginLimiter = createRateLimiter({
-  windowMs: 15 * 60 * 1000,
-  max: 15,
-  message: "Too many login attempts. Please try again later.",
-});
-
 const resetLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  message: "Too many password reset attempts. Please try again later.",
 });
 
 router.get("/google-login", googleLogin);
@@ -79,26 +86,59 @@ router.get("/google/callback", (req, res, next) => {
   }
 });
 
-router.post("/verify-google", verifyGoogleToken);
-router.post("/verify-email", verifyEmail);
-router.post("/resend-verification-email", resendVerificationEmail);
-router.post("/request-password-reset", validate(requestPasswordResetSchema), requestPasswordReset);
-router.post("/verify-otp", validate(verifyOtpSchema), verifyOTP);
+router.post(
+  "/verify-google",
+  authStrictLimiter,
+  validate(verifyGoogleCodeSchema),
+  verifyGoogleToken
+);
+
+router.post("/verify-email", otpVerifyLimiter, validate(verifyEmailSchema), verifyEmail);
+router.get("/verify-email", otpVerifyLimiter, verifyEmail);
+router.post(
+  "/resend-verification-email",
+  otpSendLimiter,
+  validate(resendVerificationSchema),
+  resendVerificationEmail
+);
+
+router.post(
+  "/request-password-reset",
+  otpSendLimiter,
+  validate(requestPasswordResetSchema),
+  requestPasswordReset
+);
+router.post("/verify-otp", otpVerifyLimiter, validate(verifyOtpSchema), verifyOTP);
 router.post("/reset-password", resetLimiter, validate(resetPasswordSchema), resetPassword);
+
 router.post("/register", registerLimiter, validate(registerUserSchema), registerUser);
-router.post("/login", loginLimiter, validate(loginUserSchema), loginUser);
-router.post("/app/login", loginLimiter, validate(loginUserSchema), appUserLogin);
-router.post("/app/login-key", loginLimiter, appKeyDirectLogin);
-router.post("/app/replace-device", loginLimiter, replaceDeviceAndLogin);
-router.post("/app/logout", appUserLogout);
+router.post("/login", authStrictLimiter, validate(loginUserSchema), loginUser);
 
-// Protected routes
-router.post("/logout", verifyUser, logoutUser);
-router.post("/refresh-token", refreshAccessToken);
-router.patch("/change-password", verifyUser, validate(changePasswordSchema), changeCurrentPassword);
+// Session & token endpoints
+router.post("/refresh-token", refreshLimiter, refreshAccessToken);
+router.post("/logout", logoutUser);
+router.post("/logout-all", verifyUser, logoutAllSessions);
+router.get("/sessions", verifyUser, getActiveSessions);
+router.delete("/sessions/:sessionId", verifyUser, revokeSession);
 router.get("/me", verifyUser, getCurrentUser);
+router.patch(
+  "/change-password",
+  verifyUser,
+  validate(changePasswordSchema),
+  changeCurrentPassword
+);
+router.post(
+  "/change-password",
+  verifyUser,
+  validate(changePasswordSchema),
+  changeCurrentPassword
+);
 
-// App Google OAuth endpoints
+// Desktop Electron App endpoints (kept compatible with ../app)
+router.post("/app/login", authStrictLimiter, validate(loginUserSchema), appUserLogin);
+router.post("/app/login-key", authStrictLimiter, appKeyDirectLogin);
+router.post("/app/replace-device", authStrictLimiter, replaceDeviceAndLogin);
+router.post("/app/logout", appUserLogout);
 router.get("/app/google", googleLoginAPP);
 router.post("/app/verify-google", verifyUser, verifyGoogle);
 

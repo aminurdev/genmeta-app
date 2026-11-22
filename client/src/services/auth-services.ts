@@ -1,11 +1,7 @@
-import { jwtDecode } from "jwt-decode";
 import { FieldValues } from "react-hook-form";
-import {
-  deleteTokens,
-  getAccessToken,
-  getRefreshToken,
-  setTokens,
-} from "@/lib/cookies";
+import { deleteTokens, getClientCookie } from "@/lib/cookies";
+import { hasServerAuthCookies } from "@/lib/cookies-server";
+import { SESSION_HINT_COOKIE_NAME } from "@/lib/auth-constants";
 import { ENV } from "@/lib/env";
 import { api } from "./api-client";
 import {
@@ -14,22 +10,20 @@ import {
   AxiosApiError,
   AxiosApiResponse,
 } from "@/types";
-import {
+import type {
+  ActiveSessionsResponse,
+  AuthUser,
+  CurrentUserResponse,
   LoginResponse,
-  RefreshAccessTokenResponse,
-  OtpResponse,
-  TempTokenResponse,
+  RegisterResponse,
+  RequestResetResponse,
+  ResendVerificationResponse,
+  SessionInfo,
+  VerifyGoogleResponse,
+  VerifyOtpResponse,
 } from "@/types/auth";
 
-export interface User {
-  userId: string;
-  name: string;
-  email: string;
-  role: "user" | "admin" | "superAdmin";
-  avatar?: string;
-  iat: number;
-  exp: number;
-}
+export type User = AuthUser;
 
 export const getBaseApi = async () => {
   return ENV.apiBaseUrl;
@@ -48,11 +42,11 @@ const formatApiError = (error: unknown, defaultMsg: string): ApiErrorResponse =>
 
 export const registerUser = async (
   userData: FieldValues,
-  referral: string | null
-): Promise<ApiResponse<OtpResponse> | ApiErrorResponse> => {
+  referral: string | null = null
+): Promise<ApiResponse<RegisterResponse> | ApiErrorResponse> => {
   try {
-    if (referral) userData.referralCode = referral;
-    const result = await api.post("/users/register", userData);
+    const payload = referral ? { ...userData, referralCode: referral } : userData;
+    const result = await api.post("/users/register", payload);
     return result.data;
   } catch (error) {
     return formatApiError(error, "Registration failed");
@@ -61,11 +55,9 @@ export const registerUser = async (
 
 export const resendVerificationEmail = async (
   email: string
-): Promise<ApiResponse<OtpResponse> | ApiErrorResponse> => {
+): Promise<ApiResponse<ResendVerificationResponse> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/users/resend-verification-email", {
-      email,
-    });
+    const result = await api.post("/users/resend-verification-email", { email });
     return result.data;
   } catch (error) {
     return formatApiError(error, "Failed to resend verification email");
@@ -73,25 +65,13 @@ export const resendVerificationEmail = async (
 };
 
 export const verifyEmail = async (
-  otpToken: string,
-  otp: string
+  payload: { email: string; otp: string } | { token: string }
 ): Promise<ApiResponse<LoginResponse> | ApiErrorResponse> => {
   try {
     const result: AxiosApiResponse<LoginResponse> = await api.post(
       "/users/verify-email",
-      {
-        otpToken,
-        otp,
-      }
+      payload
     );
-
-    if (result.data.success && result.data.data?.user) {
-      const { accessToken, refreshToken } = result.data.data.user;
-      if (accessToken && refreshToken) {
-        await setTokens(accessToken, refreshToken);
-      }
-    }
-
     return result.data;
   } catch (error) {
     return formatApiError(error, "Verification failed");
@@ -106,14 +86,6 @@ export const loginUser = async (
       "/users/login",
       userData
     );
-
-    if (result.data.success && result.data.data?.user) {
-      const { accessToken, refreshToken } = result.data.data.user;
-      if (accessToken && refreshToken) {
-        await setTokens(accessToken, refreshToken);
-      }
-    }
-
     return result.data;
   } catch (error) {
     return formatApiError(error, "Login failed");
@@ -121,25 +93,17 @@ export const loginUser = async (
 };
 
 export const verifyGoogleToken = async (
-  token: string,
-  referral: string | null
-): Promise<ApiResponse<LoginResponse> | ApiErrorResponse> => {
+  code: string,
+  referral: string | null = null
+): Promise<ApiResponse<VerifyGoogleResponse> | ApiErrorResponse> => {
   try {
-    const result: AxiosApiResponse<LoginResponse> = await api.post(
+    const result: AxiosApiResponse<VerifyGoogleResponse> = await api.post(
       "/users/verify-google",
       {
-        token,
+        code,
         referralCode: referral,
       }
     );
-
-    if (result.data.success && result.data.data?.user) {
-      const { accessToken, refreshToken } = result.data.data.user;
-      if (accessToken && refreshToken) {
-        await setTokens(accessToken, refreshToken);
-      }
-    }
-
     return result.data;
   } catch (error) {
     return formatApiError(error, "Google verification failed");
@@ -147,60 +111,37 @@ export const verifyGoogleToken = async (
 };
 
 export const refreshAccessToken = async (): Promise<
-  ApiResponse<RefreshAccessTokenResponse> | ApiErrorResponse
+  ApiResponse<LoginResponse> | ApiErrorResponse
 > => {
   try {
-    const refreshToken = await getRefreshToken();
-
-    if (!refreshToken) {
-      return {
-        success: false,
-        statusCode: 401,
-        message: "No refresh token found",
-      };
-    }
-
-    const result: AxiosApiResponse<RefreshAccessTokenResponse> = await api.post(
+    const result: AxiosApiResponse<LoginResponse> = await api.post(
       "/users/refresh-token",
-      {
-        refreshToken,
-      }
+      {}
     );
-
-    if (result.data.success && result.data.data) {
-      const { accessToken, refreshToken: newRefreshToken } = result.data.data;
-      if (accessToken && newRefreshToken) {
-        await setTokens(accessToken, newRefreshToken);
-      }
-    }
-
     return result.data;
   } catch (error) {
     return formatApiError(error, "Token refresh failed");
   }
 };
 
-export const getCurrentUser = async (): Promise<User | null> => {
-  const accessToken = await getAccessToken();
-
-  if (!accessToken) {
-    return null;
-  }
-
+export const getCurrentUser = async (
+  force: boolean = false
+): Promise<User | null> => {
   try {
-    const decoded = jwtDecode<User>(accessToken);
-    const now = Math.floor(Date.now() / 1000);
-    if (decoded.exp && decoded.exp < now) {
-      // Token is expired, try to refresh
-      const refreshed = await refreshAccessToken();
-      if (refreshed.success && refreshed.data?.accessToken) {
-        return jwtDecode<User>(refreshed.data.accessToken);
+    if (typeof window === "undefined") {
+      const hasCookies = await hasServerAuthCookies();
+      if (!hasCookies) {
+        return null;
       }
+    } else if (!force && getClientCookie(SESSION_HINT_COOKIE_NAME) !== "1") {
       return null;
     }
-    return decoded;
-  } catch (error) {
-    console.warn("Failed to decode user token:", error);
+
+    const result: AxiosApiResponse<CurrentUserResponse> = await api.get(
+      "/users/me"
+    );
+    return result.data?.data?.user || null;
+  } catch {
     return null;
   }
 };
@@ -210,7 +151,7 @@ export const getCurrentUserWithRefresh = getCurrentUser;
 export const logout = async () => {
   try {
     try {
-      await api.post("/users/logout");
+      await api.post("/users/logout", {});
     } catch {
       // Non-blocking if server logout fails
     }
@@ -218,13 +159,57 @@ export const logout = async () => {
     return { success: true, message: "Successfully logged out." };
   } catch (error) {
     console.error("Error during logout:", error);
-    return { success: false, message: "An unexpected error occurred during logout." };
+    return {
+      success: false,
+      message: "An unexpected error occurred during logout.",
+    };
+  }
+};
+
+export const logoutAllSessions = async (): Promise<
+  ApiResponse<null> | ApiErrorResponse
+> => {
+  try {
+    const result = await api.post("/users/logout-all", {});
+    await deleteTokens();
+    return result.data;
+  } catch (error) {
+    return formatApiError(error, "Failed to sign out from all devices");
+  }
+};
+
+export const getActiveSessions = async (): Promise<
+  ApiResponse<ActiveSessionsResponse> | ApiErrorResponse
+> => {
+  try {
+    const result: AxiosApiResponse<ActiveSessionsResponse> = await api.get(
+      "/users/sessions"
+    );
+    return result.data;
+  } catch (error) {
+    return formatApiError(error, "Failed to load active sessions");
+  }
+};
+
+export const revokeSession = async (
+  sessionId: string
+): Promise<
+  ApiResponse<{ sessionId: string; revokedCurrent: boolean }> | ApiErrorResponse
+> => {
+  try {
+    const result = await api.delete(`/users/sessions/${sessionId}`);
+    if (result.data?.data?.revokedCurrent) {
+      await deleteTokens();
+    }
+    return result.data;
+  } catch (error) {
+    return formatApiError(error, "Failed to revoke session");
   }
 };
 
 export const requestPasswordReset = async (
   email: string
-): Promise<ApiResponse<OtpResponse> | ApiErrorResponse> => {
+): Promise<ApiResponse<RequestResetResponse> | ApiErrorResponse> => {
   try {
     const result = await api.post("/users/request-password-reset", { email });
     return result.data;
@@ -234,11 +219,11 @@ export const requestPasswordReset = async (
 };
 
 export const verifyOTP = async (
-  otp: string,
-  otpToken: string
-): Promise<ApiResponse<TempTokenResponse> | ApiErrorResponse> => {
+  email: string,
+  otp: string
+): Promise<ApiResponse<VerifyOtpResponse> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/users/verify-otp", { otp, otpToken });
+    const result = await api.post("/users/verify-otp", { email, otp });
     return result.data;
   } catch (error) {
     return formatApiError(error, "OTP verification failed");
@@ -248,13 +233,13 @@ export const verifyOTP = async (
 export const resetPassword = async (
   newPassword: string,
   confirmNewPassword: string,
-  tempToken: string
+  resetToken: string
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
     const result = await api.post("/users/reset-password", {
       newPassword,
       confirmNewPassword,
-      tempToken,
+      resetToken,
     });
     return result.data;
   } catch (error) {
@@ -278,3 +263,5 @@ export const changePassword = async (
     return formatApiError(error, "Failed to change password");
   }
 };
+
+export type { SessionInfo };

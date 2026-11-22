@@ -28,3 +28,27 @@ export const createRateLimiter = ({
     },
   });
 };
+
+export const authStrictLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Too many authentication attempts. Please try again in 15 minutes.",
+});
+
+export const otpSendLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  message: "Too many verification code requests. Please try again later.",
+});
+
+export const otpVerifyLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Too many verification attempts. Please try again later.",
+});
+
+export const refreshLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Too many token refresh requests. Please slow down.",
+});

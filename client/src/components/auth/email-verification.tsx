@@ -29,7 +29,7 @@ import {
 const calculatePasswordStrength = (password: string) => {
   let score = 0;
   const checks = {
-    length: password.length >= 6,
+    length: password.length >= 8,
     lowercase: /[a-z]/.test(password),
     uppercase: /[A-Z]/.test(password),
     numbers: /\d/.test(password),
@@ -41,9 +41,7 @@ const calculatePasswordStrength = (password: string) => {
   if (checks.uppercase) score += 20;
   if (checks.numbers) score += 20;
   if (checks.symbols) score += 20;
-
-  if (password.length >= 8) score += 10;
-  if (password.length >= 12) score += 10;
+  if (password.length >= 12) score += 20;
 
   let strength: "weak" | "medium" | "strong";
   if (score < 40) strength = "weak";
@@ -59,16 +57,16 @@ function ResetPasswordContent() {
 
   const stepParam = searchParams?.get("step");
   const emailParam = searchParams?.get("email") || "";
-  const otpTokenParam = searchParams?.get("otpToken") || "";
-  const tempTokenParam = searchParams?.get("tempToken") || "";
+  const parsedStep = stepParam ? Number.parseInt(stepParam, 10) : 1;
 
   const [email, setEmail] = useState(emailParam);
   const [otp, setOtp] = useState("");
-  const [otpToken, setOtpToken] = useState(otpTokenParam);
-  const [tempToken, setTempToken] = useState(tempTokenParam);
+  const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [step, setStep] = useState(stepParam ? Number.parseInt(stepParam, 10) : 1);
+  const [step, setStep] = useState(
+    parsedStep === 2 && emailParam ? 2 : 1
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -86,7 +84,6 @@ function ResetPasswordContent() {
 
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  // Countdown timer for 60s resend code
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (resendTimer > 0) {
@@ -97,23 +94,21 @@ function ResetPasswordContent() {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  // Focus OTP input when step 2 is active
   useEffect(() => {
     if (step === 2 && otpInputRef.current) {
       otpInputRef.current.focus();
     }
   }, [step]);
 
-  // Sync state with URL params
+  // Never put reset tokens into the URL; only sync step and email
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("step", step.toString());
-    if (email) params.set("email", email);
-    if (otpToken) params.set("otpToken", otpToken);
-    if (tempToken) params.set("tempToken", tempToken);
-
+    if (email && (step === 2 || step === 3)) {
+      params.set("email", email);
+    }
     router.replace(`/reset-password?${params.toString()}`, { scroll: false });
-  }, [step, email, otpToken, tempToken, router]);
+  }, [step, email, router]);
 
   // Request OTP (Step 1)
   const handleRequestOTP = async () => {
@@ -134,8 +129,9 @@ function ResetPasswordContent() {
       const result = await requestPasswordReset(email);
 
       if (result.success) {
-        setOtpToken(result.data?.otpToken || "");
-        setSuccess("Verification code sent to your email");
+        setSuccess(
+          result.message || "If an account exists, a 6-digit code has been sent."
+        );
         setResendTimer(60);
         setStep(2);
       } else {
@@ -161,7 +157,6 @@ function ResetPasswordContent() {
       const result = await requestPasswordReset(email);
 
       if (result.success) {
-        setOtpToken(result.data?.otpToken || "");
         setSuccess("A new verification code has been sent!");
         setResendTimer(60);
         setOtp("");
@@ -179,6 +174,10 @@ function ResetPasswordContent() {
 
   // Verify OTP (Step 2)
   const handleVerifyOTP = async () => {
+    if (!email) {
+      setStep(1);
+      return;
+    }
     if (!otp || otp.length !== 6) {
       setError("Please enter the 6-digit verification code");
       return;
@@ -189,14 +188,17 @@ function ResetPasswordContent() {
     setIsLoading(true);
 
     try {
-      const result = await verifyOTP(otp, otpToken);
+      const result = await verifyOTP(email, otp);
 
-      if (result.success) {
-        setTempToken(result.data?.tempToken || "");
+      if (result.success && result.data?.resetToken) {
+        setResetToken(result.data.resetToken);
         setSuccess("Code verified successfully");
         setStep(3);
       } else {
-        setError(result.message || "Invalid verification code. Please try again.");
+        setError(
+          (!result.success && result.message) ||
+            "Invalid verification code. Please try again."
+        );
       }
     } catch (err) {
       console.error(err);
@@ -208,13 +210,19 @@ function ResetPasswordContent() {
 
   // Reset Password (Step 3)
   const handleResetPassword = async () => {
+    if (!resetToken) {
+      setError("Your verification session expired. Please verify your code again.");
+      setStep(2);
+      return;
+    }
+
     if (!newPassword || !confirmNewPassword) {
       setError("Please fill in both password fields");
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long");
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
       return;
     }
 
@@ -231,10 +239,11 @@ function ResetPasswordContent() {
       const result = await resetPassword(
         newPassword,
         confirmNewPassword,
-        tempToken
+        resetToken
       );
 
       if (result.success) {
+        setResetToken("");
         setSuccess("Password reset successful");
         setStep(4);
       } else {
@@ -252,7 +261,7 @@ function ResetPasswordContent() {
 
   const handleBackToEmail = () => {
     setOtp("");
-    setOtpToken("");
+    setResetToken("");
     setError("");
     setSuccess("");
     setResendTimer(0);
@@ -369,7 +378,7 @@ function ResetPasswordContent() {
             Verify your email
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            We sent a 6-digit verification code to
+            If an account exists for it, we sent a 6-digit code to
           </p>
           <p className="mt-1 font-mono text-xs font-medium text-foreground bg-muted/50 rounded-md py-1 px-2.5 inline-block">
             {email}
@@ -465,11 +474,10 @@ function ResetPasswordContent() {
             Set new password
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Choose a strong password with at least 6 characters.
+            Choose a strong password with at least 8 characters.
           </p>
 
           <div className="mt-6 space-y-4 text-left">
-            {/* New Password */}
             <div className="space-y-1.5">
               <label htmlFor="newPassword" className="text-xs font-medium text-foreground">
                 New password
@@ -504,7 +512,6 @@ function ResetPasswordContent() {
                 </Button>
               </div>
 
-              {/* Password strength meter */}
               {passwordStrength && (
                 <div className="pt-2 space-y-2">
                   <div className="flex items-center gap-1.5">
@@ -557,7 +564,7 @@ function ResetPasswordContent() {
                           : "opacity-60"
                       }`}
                     >
-                      <Check className="h-3 w-3" /> 6+ chars
+                      <Check className="h-3 w-3" /> 8+ chars
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 ${
@@ -591,7 +598,6 @@ function ResetPasswordContent() {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div className="space-y-1.5">
               <label
                 htmlFor="confirmNewPassword"
@@ -687,7 +693,7 @@ function ResetPasswordContent() {
             Password reset successful!
           </h1>
           <p className="mt-2 text-sm text-muted-foreground max-w-sm mx-auto">
-            Your password has been reset successfully. You can now log in with your new password.
+            Your password has been reset and all existing sessions have been signed out. You can now log in with your new password.
           </p>
 
           <Button

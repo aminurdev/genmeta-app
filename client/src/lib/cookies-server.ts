@@ -1,47 +1,32 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { ENV } from "./env";
+import {
+  ACCESS_COOKIE_NAME,
+  LEGACY_COOKIE_NAMES,
+  REFRESH_COOKIE_NAME,
+  SESSION_HINT_COOKIE_NAME,
+} from "./auth-constants";
 
-const getTokenCookieOptions = (maxAgeSeconds: number) => ({
-  httpOnly: false, // Allows synchronous reading by client Axios interceptors with 0 latency
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  maxAge: maxAgeSeconds,
-  path: "/",
-});
-
-export async function getServerToken(
-  tokenType: "accessToken" | "refreshToken"
-): Promise<string | null> {
+export async function getServerCookieHeader(): Promise<string> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(tokenType)?.value;
-  return token || null;
+  return cookieStore.toString();
 }
 
-export async function setServerTokens(
-  accessToken: string,
-  refreshToken: string
-): Promise<void> {
+export async function hasServerAuthCookies(): Promise<boolean> {
   const cookieStore = await cookies();
-  const accessExpiryDays = Number(ENV.accessTokenExpiry) || 8;
-  const refreshExpiryDays = Number(ENV.refreshTokenExpiry) || 31;
-
-  cookieStore.set(
-    "accessToken",
-    accessToken,
-    getTokenCookieOptions(60 * 60 * 24 * accessExpiryDays)
-  );
-
-  cookieStore.set(
-    "refreshToken",
-    refreshToken,
-    getTokenCookieOptions(60 * 60 * 24 * refreshExpiryDays)
+  return Boolean(
+    cookieStore.get(ACCESS_COOKIE_NAME)?.value ||
+      cookieStore.get(REFRESH_COOKIE_NAME)?.value
   );
 }
 
 export async function deleteServerTokens(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete("accessToken");
-  cookieStore.delete("refreshToken");
+  cookieStore.delete(ACCESS_COOKIE_NAME);
+  cookieStore.delete(REFRESH_COOKIE_NAME);
+  cookieStore.delete(SESSION_HINT_COOKIE_NAME);
+  for (const name of LEGACY_COOKIE_NAMES) {
+    cookieStore.delete(name);
+  }
 }

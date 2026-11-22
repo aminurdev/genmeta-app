@@ -3,14 +3,17 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { sanitizeRedirectPath } from "@/lib/auth-constants";
 
 export default function Social() {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const redirectPath = searchParams?.get("redirectPath") || "/";
+  const safeRedirectPath = sanitizeRedirectPath(
+    searchParams?.get("redirectPath"),
+    "/dashboard"
+  );
 
   const referral = searchParams?.get("ref");
 
@@ -20,26 +23,11 @@ export default function Social() {
     }
   }, [referral]);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsLoading(true);
-
-      const storedReferral = localStorage.getItem("referralCode");
-      const baseApi = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const statePayload = {
-        redirectPath,
-        path: pathname,
-        referralCode: storedReferral,
-      };
-
-      const state = encodeURIComponent(JSON.stringify(statePayload));
-      const loginUrl = `${baseApi}/users/google-login?state=${state}&type=web`;
-
-      window.location.href = loginUrl;
-    } catch (error) {
-      setIsLoading(false);
-      console.error("Google Sign-In failed:", error);
-    }
+  const handleGoogleSignIn = () => {
+    setIsLoading(true);
+    window.location.href = `/api/v1/users/google-login?redirectPath=${encodeURIComponent(
+      safeRedirectPath
+    )}`;
   };
 
   return (

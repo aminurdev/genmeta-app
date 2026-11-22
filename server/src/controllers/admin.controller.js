@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { User } from "../models/user.model.js";
+import { Session } from "../models/session.model.js";
 import { Referral } from "../models/referral.model.js";
 import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
 import ApiError from "../utils/api.error.js";
@@ -987,6 +988,13 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
 
   targetUser.isDisabled = isDisabled;
   await targetUser.save();
+
+  if (isDisabled) {
+    await Session.updateMany(
+      { userId: targetUser._id, revokedAt: null },
+      { $set: { revokedAt: new Date(), revokeReason: "user_disabled" } }
+    );
+  }
 
   return new ApiResponse(
     200,

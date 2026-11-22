@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { PasswordChangeForm } from "@/components/dashboard/password-change-form";
 import { PlanSwitcher } from "@/components/dashboard/plan-switcher";
 import { ProfileSkeleton } from "@/components/dashboard/profile-skeleton";
+import { ActiveSessions } from "@/components/dashboard/active-sessions";
 
 const Profile = () => {
   const { data: profile, isLoading, isError, error } = useProfileQuery();
@@ -262,6 +263,9 @@ const Profile = () => {
 
       {/* Plan Switcher / Upgrade */}
       <PlanSwitcher />
+
+      {/* Active Sessions */}
+      <ActiveSessions />
 
       {/* Security & Password Change */}
       {hasEmailProvider && <PasswordChangeForm />}

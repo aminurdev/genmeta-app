@@ -18,7 +18,8 @@ import {
 import { NavLinks, MobileNavLinks } from "./navLinks";
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getCurrentUserWithRefresh, logout } from "@/services/auth-services";
+import { logout } from "@/services/auth-services";
+import { useAuth } from "@/components/providers/auth-provider";
 import type { User } from "@/types/user";
 import { WindowsIcon } from "./Home";
 import { ThemeToggle } from "./theme-toggle";
@@ -29,29 +30,22 @@ interface NavigationProps {
 }
 
 export function Navigation({ propUser }: NavigationProps) {
-  const [loading, setLoading] = useState(propUser ? false : true);
-  const [user, setUser] = useState<User | null>(propUser);
+  const { user: authUser, isLoading: authLoading, setUser: setAuthUser } = useAuth();
+  const [hasCleared, setHasCleared] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        setLoading(true);
-        const currentUser = await getCurrentUserWithRefresh();
-        setUser(currentUser);
-      } catch {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!user) {
-      fetchUser();
+    if (propUser && !authUser && !hasCleared) {
+      setAuthUser(propUser);
     }
-  }, []);
+  }, [propUser, authUser, hasCleared, setAuthUser]);
+
+  const user = hasCleared ? authUser : authUser ?? propUser;
+  const loading = !user && authLoading;
 
   useEffect(() => {
     let ticking = false;
@@ -84,17 +78,15 @@ export function Navigation({ propUser }: NavigationProps) {
     setIsMobileMenuOpen(false);
   }, []);
 
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-
   const handleLogout = async () => {
     setIsLoading(true);
-
     const result = await logout();
     setIsLoading(false);
 
     if (result.success) {
-      setUser(null);
+      setHasCleared(true);
+      setAuthUser(null);
+      router.refresh();
       if (pathname !== "/") {
         router.push("/login");
       }

@@ -28,9 +28,14 @@ export const ENV = {
     "NEXT_PUBLIC_API_BASE_URL",
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1"
   ),
+  backendApiUrl: (
+    process.env.BACKEND_API_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    "http://localhost:5000/api/v1"
+  ).replace(/\/+$/, ""),
   appUrl: getEnv(
     "NEXT_PUBLIC_APP_URL",
-    process.env.NEXT_PUBLIC_APP_URL || "https://genmeta.app"
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   ),
   gtmId: getEnv(
     "NEXT_PUBLIC_GTM_ID",
@@ -40,16 +45,16 @@ export const ENV = {
     Number(
       getEnv(
         "NEXT_PUBLIC_ACCESS_TOKEN_EXPIRY",
-        process.env.NEXT_PUBLIC_ACCESS_TOKEN_EXPIRY || "8"
+        process.env.NEXT_PUBLIC_ACCESS_TOKEN_EXPIRY || "15"
       )
-    ) || 8,
+    ) || 15,
   refreshTokenExpiry:
     Number(
       getEnv(
         "NEXT_PUBLIC_REFRESH_TOKEN_EXPIRY",
-        process.env.NEXT_PUBLIC_REFRESH_TOKEN_EXPIRY || "31"
+        process.env.NEXT_PUBLIC_REFRESH_TOKEN_EXPIRY || "30"
       )
-    ) || 31,
+    ) || 30,
   nodeEnv: process.env.NODE_ENV || "development",
   isProduction: process.env.NODE_ENV === "production",
   isDevelopment: process.env.NODE_ENV === "development",

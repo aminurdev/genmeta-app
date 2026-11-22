@@ -1,8 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { User, getCurrentUser, logout as authLogout } from "@/services/auth-services";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import {
+  User,
+  getCurrentUser,
+  logout as authLogout,
+} from "@/services/auth-services";
 import { getClientCookie } from "@/lib/cookies-client";
+import { SESSION_HINT_COOKIE_NAME } from "@/lib/auth-constants";
 
 interface AuthContextType {
   user: User | null;
@@ -10,7 +21,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  refreshUser: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  refreshUser: () => Promise<User | null>;
   logout: () => Promise<void>;
 }
 
@@ -20,7 +32,8 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isAdmin: false,
   isSuperAdmin: false,
-  refreshUser: async () => {},
+  setUser: () => {},
+  refreshUser: async () => null,
   logout: async () => {},
 });
 
@@ -34,26 +47,32 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
-      const token = getClientCookie("accessToken");
-      if (!token) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-      const currentUser = await getCurrentUser();
+      setIsLoading(true);
+      const currentUser = await getCurrentUser(true);
       setUser(currentUser);
+      return currentUser;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!initialUser) {
+    if (initialUser) {
+      setUser(initialUser);
+      setIsLoading(false);
+      return;
+    }
+
+    if (getClientCookie(SESSION_HINT_COOKIE_NAME) === "1") {
       refreshUser();
+    } else {
+      setUser(null);
+      setIsLoading(false);
     }
   }, [initialUser, refreshUser]);
 
@@ -77,6 +96,7 @@ export function AuthProvider({
         isAuthenticated,
         isAdmin,
         isSuperAdmin,
+        setUser,
         refreshUser,
         logout,
       }}

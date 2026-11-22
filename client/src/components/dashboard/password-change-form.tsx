@@ -37,8 +37,13 @@ export function PasswordChangeForm() {
       return;
     }
 
-    if (formData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long.");
+    if (formData.newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (formData.newPassword.length > 72) {
+      toast.error("Password must be at most 72 characters long.");
       return;
     }
 
@@ -52,7 +57,10 @@ export function PasswordChangeForm() {
       );
 
       if (result.success) {
-        toast.success("Your password has been successfully changed.");
+        toast.success(
+          result.message ||
+            "Your password has been updated and other sessions were signed out."
+        );
         // Reset form
         setFormData({
           currentPassword: "",

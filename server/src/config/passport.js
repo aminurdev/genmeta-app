@@ -24,25 +24,30 @@ const configureGoogleStrategy = () => {
           const displayName =
             profile.displayName || profile.name?.givenName || "Unknown User";
 
-          // Check if user already exists
-          let user = await User.findOne({ email });
+          // Check if user already exists (normalized email)
+          const normalizedEmail = email.toLowerCase().trim();
+          let user = await User.findOne({ email: normalizedEmail });
 
           if (!user) {
             // Create new user
             user = await User.create({
               name: displayName,
-              email,
+              email: normalizedEmail,
               loginProvider: ["google"],
               googleId: profile.id,
               isVerified: true,
               avatar: profile.photos?.[0]?.value || null,
             });
           } else {
+            if (user.isDisabled) {
+              return done(null, user);
+            }
+
             // Update existing user if needed
             let needsUpdate = false;
 
-            if (!user.avatar) {
-              user.avatar = profile.photos?.[0]?.value || null;
+            if (!user.avatar && profile.photos?.[0]?.value) {
+              user.avatar = profile.photos[0].value;
               needsUpdate = true;
             }
 
@@ -53,6 +58,7 @@ const configureGoogleStrategy = () => {
 
             if (!user.loginProvider.includes("google")) {
               user.loginProvider.push("google");
+              needsUpdate = true;
             }
 
             if (!user.isVerified) {
@@ -60,12 +66,7 @@ const configureGoogleStrategy = () => {
               needsUpdate = true;
             }
 
-            if (!user.profilePicture && profile.photos?.[0]?.value) {
-              user.profilePicture = profile.photos[0].value;
-              needsUpdate = true;
-            }
-
-            if (user.name !== displayName) {
+            if (displayName && displayName !== "Unknown User" && user.name !== displayName) {
               user.name = displayName;
               needsUpdate = true;
             }

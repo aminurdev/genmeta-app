@@ -38,12 +38,14 @@ import {
   resendVerificationEmail,
   verifyEmail,
 } from "@/services/auth-services";
+import { useAuth } from "@/components/providers/auth-provider";
+import { sanitizeRedirectPath } from "@/lib/auth-constants";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const calculatePasswordStrength = (password: string) => {
   let score = 0;
   const checks = {
-    length: password.length >= 6,
+    length: password.length >= 8,
     lowercase: /[a-z]/.test(password),
     uppercase: /[A-Z]/.test(password),
     numbers: /\d/.test(password),
@@ -55,9 +57,7 @@ const calculatePasswordStrength = (password: string) => {
   if (checks.uppercase) score += 20;
   if (checks.numbers) score += 20;
   if (checks.symbols) score += 20;
-
-  if (password.length >= 8) score += 10;
-  if (password.length >= 12) score += 10;
+  if (password.length >= 12) score += 20;
 
   let strength: "weak" | "medium" | "strong";
   if (score < 40) strength = "weak";
@@ -93,6 +93,7 @@ const generateSecurePassword = () => {
 const SignUpForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setUser, refreshUser } = useAuth();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [isShow, setIsShow] = useState<boolean>(false);
@@ -102,9 +103,6 @@ const SignUpForm = () => {
   );
   const [userEmail, setUserEmail] = useState<string>(
     searchParams?.get("email") || ""
-  );
-  const [otpToken, setOtpToken] = useState<string>(
-    searchParams?.get("token") || ""
   );
   const [otp, setOtp] = useState<string>("");
   const [otpError, setOtpError] = useState<string>("");
@@ -120,6 +118,10 @@ const SignUpForm = () => {
   } | null>(null);
 
   const referral = searchParams?.get("ref");
+  const safeRedirect = sanitizeRedirectPath(
+    searchParams?.get("redirectPath"),
+    "/dashboard"
+  );
 
   useEffect(() => {
     if (referral) {
@@ -136,7 +138,6 @@ const SignUpForm = () => {
     }
   };
 
-  // Timer for resend OTP
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (resendTimer > 0) {
@@ -147,7 +148,6 @@ const SignUpForm = () => {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  // Focus OTP input when verification step shows
   useEffect(() => {
     if (showEmailVerification && otpInputRef.current) {
       otpInputRef.current.focus();
@@ -163,16 +163,13 @@ const SignUpForm = () => {
     },
   });
 
-  const updateUrlForVerification = (email: string, token: string) => {
+  const updateUrlForVerification = (email: string) => {
     const params = new URLSearchParams(searchParams?.toString());
     params.set("step", "verify");
     params.set("email", email);
-    params.set("token", token);
+    params.delete("token");
     if (referral) {
       params.set("ref", referral);
-    }
-    if (searchParams?.get("redirectPath")) {
-      params.set("redirectPath", searchParams?.get("redirectPath") || "");
     }
     router.replace(`?${params.toString()}`, { scroll: false });
   };
@@ -194,13 +191,13 @@ const SignUpForm = () => {
 
         const result = await registerUser(values, storedReferral);
         if (result?.success) {
-          setUserEmail(values.email);
+          const email = result.data?.email || values.email;
+          setUserEmail(email);
           setShowEmailVerification(true);
-          setOtpToken(result.data?.otpToken || "");
           setResendTimer(60);
-          updateUrlForVerification(values.email, result.data?.otpToken || "");
+          updateUrlForVerification(email);
         } else {
-          setError(result?.message);
+          setError(result?.message || "Failed to create account.");
         }
       } catch (err: unknown) {
         console.error(err);
@@ -216,6 +213,10 @@ const SignUpForm = () => {
   };
 
   const verifyOtp = async () => {
+    if (!userEmail) {
+      setOtpError("Email address is missing. Please return to registration.");
+      return;
+    }
     if (otp.length !== 6) {
       setOtpError("Please enter a 6-digit code");
       return;
@@ -223,17 +224,17 @@ const SignUpForm = () => {
     setIsVerifyingOtp(true);
     setOtpError("");
     try {
-      const result = await verifyEmail(otpToken, otp);
+      const result = await verifyEmail({ email: userEmail, otp });
       if (result.success) {
         setSuccess("Email verified successfully! Welcome!");
+        if (result.data?.user) {
+          setUser(result.data.user);
+        } else {
+          await refreshUser();
+        }
         clearVerificationFromUrl();
-        setTimeout(() => {
-          if (searchParams?.get("redirectPath")) {
-            router.push(searchParams?.get("redirectPath") || "/");
-          } else {
-            router.push("/");
-          }
-        }, 1200);
+        router.replace(safeRedirect);
+        router.refresh();
       } else {
         setOtpError(result.message || "Invalid verification code");
       }
@@ -246,7 +247,7 @@ const SignUpForm = () => {
   };
 
   const resendOtp = async () => {
-    if (resendTimer > 0) return;
+    if (resendTimer > 0 || !userEmail) return;
     setIsResendingOtp(true);
     setOtpError("");
     try {
@@ -255,8 +256,6 @@ const SignUpForm = () => {
         setSuccess("Verification code sent!");
         setResendTimer(60);
         setOtp("");
-        setOtpToken(result.data?.otpToken || "");
-        updateUrlForVerification(userEmail, result.data?.otpToken || "");
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setOtpError(result.message || "Failed to resend code");
@@ -285,12 +284,9 @@ const SignUpForm = () => {
   };
 
   const loginHref = searchParams?.get("redirectPath")
-    ? `/login?redirectPath=${encodeURIComponent(
-        searchParams?.get("redirectPath") || ""
-      )}`
+    ? `/login?redirectPath=${encodeURIComponent(safeRedirect)}`
     : "/login";
 
-  // Step 2: Email Verification
   if (showEmailVerification) {
     return (
       <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs text-center">
@@ -302,7 +298,7 @@ const SignUpForm = () => {
           Verify your email
         </h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          We sent a 6-digit verification code to
+          We sent a 6-digit verification code and verification link to
         </p>
         <p className="mt-1 font-mono text-xs font-medium text-foreground bg-muted/50 rounded-md py-1 px-2.5 inline-block">
           {userEmail}
@@ -315,6 +311,7 @@ const SignUpForm = () => {
               id="otp"
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               placeholder="••••••"
               value={otp}
               onChange={(e) => handleOtpChange(e.target.value)}
@@ -380,10 +377,8 @@ const SignUpForm = () => {
     );
   }
 
-  // Step 1: Sign Up Form
   return (
     <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs">
-      {/* Heading */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
           Create an account
@@ -393,10 +388,8 @@ const SignUpForm = () => {
         </p>
       </div>
 
-      {/* Social login */}
       <Social />
 
-      {/* Divider */}
       <div className="relative my-6 flex items-center justify-center">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border" />
@@ -406,7 +399,6 @@ const SignUpForm = () => {
         </span>
       </div>
 
-      {/* Form */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -493,7 +485,7 @@ const SignUpForm = () => {
                       disabled={isPending}
                       type={isShow ? "text" : "password"}
                       autoComplete="new-password"
-                      placeholder="Create a strong password"
+                      placeholder="Create a strong password (min. 8 characters)"
                       onChange={(e) => {
                         field.onChange(e);
                         handlePasswordChange(e.target.value);
@@ -521,7 +513,6 @@ const SignUpForm = () => {
                 </FormControl>
                 <FormMessage className="text-xs" />
 
-                {/* Password strength meter */}
                 {passwordStrength && (
                   <div className="pt-2 space-y-2">
                     <div className="flex items-center gap-1.5">
@@ -574,7 +565,7 @@ const SignUpForm = () => {
                             : "opacity-60"
                         }`}
                       >
-                        <Check className="h-3 w-3" /> 6+ chars
+                        <Check className="h-3 w-3" /> 8+ chars
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 ${
@@ -633,7 +624,6 @@ const SignUpForm = () => {
         </form>
       </Form>
 
-      {/* Switch link */}
       <p className="mt-6 text-center text-xs text-muted-foreground">
         Already have an account?{" "}
         <Link
@@ -644,7 +634,6 @@ const SignUpForm = () => {
         </Link>
       </p>
 
-      {/* Legal disclaimer */}
       <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/80">
         By creating an account, you agree to our{" "}
         <Link

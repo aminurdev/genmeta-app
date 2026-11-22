@@ -1,26 +1,51 @@
-export interface OtpResponse {
-  otpToken: string;
+import type { UserT } from "./user";
+
+export type AuthUser = UserT;
+
+export interface RegisterResponse {
+  email: string;
+  requiresVerification: boolean;
 }
 
-export interface TempTokenResponse {
-  tempToken: string;
+export interface ResendVerificationResponse {
+  email: string;
 }
 
 export interface LoginResponse {
-  user: {
-    _id: string;
-    name: string;
-    email: string;
-    avatar: string | null;
-    isVerified: boolean;
-    loginProvider: ("email" | "google")[];
-    role: "user" | "admin" | "superAdmin";
-    accessToken: string;
-    refreshToken: string;
-  };
+  user: AuthUser;
+  sessionId?: string;
 }
 
-export interface RefreshAccessTokenResponse {
-  accessToken: string;
-  refreshToken: string;
+export interface VerifyGoogleResponse {
+  user: AuthUser;
+  sessionId?: string;
+  redirectPath?: string;
+}
+
+export interface RequestResetResponse {
+  email: string;
+}
+
+export interface VerifyOtpResponse {
+  resetToken: string;
+}
+
+export interface CurrentUserResponse {
+  user: AuthUser;
+  currentSessionId: string | null;
+}
+
+export interface SessionInfo {
+  id: string;
+  deviceName: string;
+  ipAddress: string;
+  userAgent: string;
+  lastActiveAt: string;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+}
+
+export interface ActiveSessionsResponse {
+  sessions: SessionInfo[];
 }

@@ -2,43 +2,85 @@ import { z } from "zod";
 import { PLAN_TYPES, PROMO_APPLIES_TO } from "../constants/index.js";
 
 // === AUTH SCHEMAS ===
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(72, "Password must be at most 72 characters");
+
 export const registerUserSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  referralCode: z.string().optional(),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
+  password: passwordSchema,
+  referralCode: z.string().trim().optional(),
 });
 
 export const loginUserSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
+  password: z.string().min(1, "Password is required").max(72, "Invalid credentials"),
 });
 
-export const changePasswordSchema = z.object({
-  currentPassword: z.string().optional(),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "New password and confirm password do not match",
-  path: ["confirmPassword"],
+export const verifyEmailSchema = z.union([
+  z.object({
+    email: z.string().trim().toLowerCase().email("Invalid email address"),
+    otp: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, "Verification code must be 6 digits"),
+  }),
+  z.object({
+    token: z.string().trim().min(32, "Invalid verification token"),
+  }),
+]);
+
+export const resendVerificationSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
 });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required").max(72).optional(),
+    newPassword: passwordSchema,
+    confirmPassword: z.string().optional(),
+    confirmNewPassword: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.confirmPassword || data.confirmNewPassword), {
+    message: "Please confirm your new password",
+    path: ["confirmPassword"],
+  })
+  .refine(
+    (data) => data.newPassword === (data.confirmPassword || data.confirmNewPassword),
+    {
+      message: "New password and confirm password do not match",
+      path: ["confirmPassword"],
+    }
+  );
 
 export const requestPasswordResetSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
 });
 
 export const verifyOtpSchema = z.object({
-  otp: z.string().min(4, "OTP is required"),
-  otpToken: z.string().min(1, "OTP Token is required"),
+  email: z.string().trim().toLowerCase().email("Invalid email address"),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "OTP must be 6 digits"),
 });
 
-export const resetPasswordSchema = z.object({
-  tempToken: z.string().min(1, "Temporary token is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
-  confirmNewPassword: z.string().min(6, "Confirm password must be at least 6 characters"),
-}).refine((data) => data.newPassword === data.confirmNewPassword, {
-  message: "New password and confirm password do not match",
-  path: ["confirmNewPassword"],
+export const resetPasswordSchema = z
+  .object({
+    resetToken: z.string().trim().min(32, "Reset token is required"),
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string().min(1, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "New password and confirm password do not match",
+    path: ["confirmNewPassword"],
+  });
+
+export const verifyGoogleCodeSchema = z.object({
+  code: z.string().trim().min(16, "Google authorization code is required"),
+  referralCode: z.string().trim().nullable().optional(),
 });
 
 // === APP USER SCHEMAS ===

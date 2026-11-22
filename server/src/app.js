@@ -1,5 +1,6 @@
 import cors from "cors";
 import express from "express";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import compression from "compression";
 import morgan from "morgan";
@@ -7,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import config from "./config/index.js";
 import ApiError from "./utils/api.error.js";
+import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "./utils/auth.utils.js";
 import globalErrorHandler from "./middlewares/handleGlobal.error.js";
 import { initializePassport } from "./config/passport.js";
 
@@ -58,17 +60,21 @@ if (config.NODE_ENV !== "test") {
   );
 }
 
+const allowedOrigins = [
+  config.cors_origin,
+  "https://www.genmeta.app",
+  "https://genmeta.app",
+  ...(config.isProduction
+    ? []
+    : ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173"]),
+].filter(Boolean);
+
 // CORS setup
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-      const allowedOrigins = [
-        config.cors_origin,
-        "http://localhost:3000",
-        "http://localhost:5173",
-      ].filter(Boolean);
 
       if (allowedOrigins.includes(origin) || !config.isProduction) {
         return callback(null, true);
@@ -96,9 +102,70 @@ app.use(
   })
 );
 
-// Body Parsing
+// Cookie & Body Parsing
+app.use(cookieParser());
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+
+// CSRF Origin verification for cookie-authenticated state-changing requests
+app.use((req, res, next) => {
+  const method = req.method.toUpperCase();
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    return next();
+  }
+
+  // Non-cookie API clients (e.g. Electron desktop app) are immune to cookie CSRF
+  if (
+    req.headers.authorization ||
+    req.headers["x-app-user-key"] ||
+    req.headers["x-api-key"]
+  ) {
+    return next();
+  }
+
+  // No auth cookies sent on this request
+  if (!req.cookies?.[ACCESS_COOKIE_NAME] && !req.cookies?.[REFRESH_COOKIE_NAME]) {
+    return next();
+  }
+
+  // Exempt third-party payment callbacks/webhooks
+  const reqPath = req.originalUrl || req.url || "";
+  if (/^\/api\/v1\/payment\/(webhook|ipn|paystation-callback|success|fail|cancel)/.test(reqPath)) {
+    return next();
+  }
+
+  let requestOrigin = req.headers.origin;
+  if (!requestOrigin && req.headers.referer) {
+    try {
+      requestOrigin = new URL(req.headers.referer).origin;
+    } catch {
+      requestOrigin = undefined;
+    }
+  }
+
+  if (requestOrigin) {
+    if (allowedOrigins.includes(requestOrigin)) {
+      return next();
+    }
+    return res.status(403).json({
+      success: false,
+      statusCode: 403,
+      message: "Invalid request origin",
+      code: "CSRF_ORIGIN_MISMATCH",
+    });
+  }
+
+  if (config.isProduction) {
+    return res.status(403).json({
+      success: false,
+      statusCode: 403,
+      message: "Origin header required for authenticated requests",
+      code: "CSRF_ORIGIN_MISSING",
+    });
+  }
+
+  return next();
+});
 
 // Initialize Passport for OAuth
 initializePassport(app);

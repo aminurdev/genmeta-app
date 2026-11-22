@@ -20,12 +20,15 @@ import { Eye, EyeOff, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { FormError } from "./form-error";
 import { FormSuccess } from "./form-success";
 import Social from "./social";
-import { loginUser } from "@/services/auth-services";
+import { loginUser, resendVerificationEmail } from "@/services/auth-services";
+import { useAuth } from "@/components/providers/auth-provider";
+import { sanitizeRedirectPath } from "@/lib/auth-constants";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const LoginForm = () => {
   const searchParams = useSearchParams();
   const redirect = searchParams?.get("redirectPath");
+  const safeRedirect = sanitizeRedirectPath(redirect, "/dashboard");
   const errorMessage = searchParams?.get("error");
   const message = searchParams?.get("message") ?? "";
 
@@ -33,9 +36,12 @@ const LoginForm = () => {
     errorMessage ?? undefined
   );
   const [success, setSuccess] = useState<string | undefined>(message ?? "");
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
   const [isShow, setIsShow] = useState<boolean>(false);
   const [isPending, setTransition] = useTransition();
   const router = useRouter();
+  const { setUser, refreshUser } = useAuth();
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -48,18 +54,29 @@ const LoginForm = () => {
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     setError("");
     setSuccess("");
+    setUnverifiedEmail(null);
+
     setTransition(async () => {
       try {
         const res = await loginUser(values);
         if (res?.success) {
-          setSuccess(res?.message);
-          if (redirect) {
-            router.push(redirect);
+          setSuccess(res.message || "Signed in successfully");
+          if (res.data?.user) {
+            setUser(res.data.user);
           } else {
-            router.push("/");
+            await refreshUser();
           }
+          router.replace(safeRedirect);
+          router.refresh();
         } else {
-          setError(res?.message);
+          setError(res?.message || "Invalid email or password");
+          if (res?.code === "EMAIL_NOT_VERIFIED") {
+            const emailFromRes =
+              typeof res.data?.email === "string"
+                ? res.data.email
+                : values.email;
+            setUnverifiedEmail(emailFromRes);
+          }
         }
       } catch (err: unknown) {
         console.error(err);
@@ -68,8 +85,19 @@ const LoginForm = () => {
     });
   };
 
+  const handleResendAndVerify = async () => {
+    if (!unverifiedEmail) return;
+    setIsResending(true);
+    try {
+      await resendVerificationEmail(unverifiedEmail);
+    } finally {
+      setIsResending(false);
+      router.push(`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`);
+    }
+  };
+
   const signupHref = redirect
-    ? `/signup?redirectPath=${encodeURIComponent(redirect)}`
+    ? `/signup?redirectPath=${encodeURIComponent(safeRedirect)}`
     : "/signup";
 
   return (
@@ -177,6 +205,23 @@ const LoginForm = () => {
           />
 
           <FormError message={error} />
+
+          {unverifiedEmail && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-300 flex items-center justify-between gap-2">
+              <span>Need a new verification code?</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs shrink-0"
+                onClick={handleResendAndVerify}
+                disabled={isResending}
+              >
+                {isResending ? "Sending..." : "Verify Email"}
+              </Button>
+            </div>
+          )}
+
           <FormSuccess message={success} />
 
           <Button

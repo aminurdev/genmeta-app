@@ -4,6 +4,8 @@ export interface ApiErrorResponse {
   success: false;
   statusCode: number;
   message: string;
+  code?: string;
+  data?: Record<string, unknown> | null;
   stack?: string;
 }
 

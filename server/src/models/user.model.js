@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import config from "../config/index.js";
@@ -35,7 +36,7 @@ const userSchema = new mongoose.Schema(
         },
         "Password is required for email login",
       ],
-      minlength: [6, "Password must be at least 6 characters"],
+      minlength: [8, "Password must be at least 8 characters"],
     },
     avatar: {
       type: String,
@@ -92,6 +93,22 @@ const userSchema = new mongoose.Schema(
       default: USER_ROLES.USER,
       index: true,
     },
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -100,36 +117,51 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, config.bcrypt_rounds || 12);
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date(Date.now() - 1000);
+  }
   next();
 });
+
+userSchema.methods.isLocked = function () {
+  return Boolean(this.lockUntil && this.lockUntil.getTime() > Date.now());
+};
 
 userSchema.methods.isPasswordCorrect = async function (candidatePassword) {
   if (!this.password || !candidatePassword) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.methods.generateAccessToken = function () {
-  return jwt.sign(
-    {
-      userId: this._id,
-      name: this.name,
-      email: this.email,
-      role: this.role,
-    },
-    config.access_token_secret,
-    { expiresIn: config.access_token_expiry }
-  );
+userSchema.methods.generateAccessToken = function (sessionId = null) {
+  const payload = {
+    userId: this._id.toString(),
+    role: this.role,
+    type: "access",
+  };
+  if (sessionId) {
+    payload.sid = sessionId.toString();
+  }
+  return jwt.sign(payload, config.access_token_secret, {
+    expiresIn: config.access_token_expiry,
+  });
 };
 
-userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign(
-    {
-      userId: this._id,
-    },
-    config.refresh_token_secret,
-    { expiresIn: config.refresh_token_expiry }
-  );
+userSchema.methods.generateRefreshToken = function (sessionId, tokenFamily) {
+  const payload = {
+    userId: this._id.toString(),
+    type: "refresh",
+    jti: crypto.randomUUID(),
+  };
+  if (sessionId) {
+    payload.sid = sessionId.toString();
+  }
+  if (tokenFamily) {
+    payload.fam = tokenFamily;
+  }
+  return jwt.sign(payload, config.refresh_token_secret, {
+    expiresIn: config.refresh_token_expiry,
+  });
 };
 
 // Compound index for administrative queries
