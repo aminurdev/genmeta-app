@@ -15,7 +15,7 @@ export const getOverview = asyncHandler(async (req, res) => {
 
   const [appKey, user, paymentStats, orders] = await Promise.all([
     AppKey.findOne({ userId }).select(
-      "key plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt"
+      "key plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt allowedDevices devices maxDevices"
     ),
     User.findById(userId).select("name email isVerified loginProvider avatar role createdAt"),
     AppPayment.aggregate([
@@ -140,6 +140,9 @@ export const getOverview = asyncHandler(async (req, res) => {
       daysLeft: remainingDays,
       isSuspended: appKey?.status === "suspended",
       isManuallyDisabled: appKey ? !appKey.isActive : false,
+      allowedDevices: appKey?.allowedDevices || [],
+      devices: appKey?.devices || [],
+      maxDevices: appKey?.maxDevices || 2,
     },
     // Backward compatibility object
     appKey: {
@@ -157,6 +160,9 @@ export const getOverview = asyncHandler(async (req, res) => {
       daysLeft: remainingDays,
       isSuspended: appKey?.status === "suspended",
       isManuallyDisabled: appKey ? !appKey.isActive : false,
+      allowedDevices: appKey?.allowedDevices || [],
+      devices: appKey?.devices || [],
+      maxDevices: appKey?.maxDevices || 2,
     },
     payments: {
       totalSpent,

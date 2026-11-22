@@ -4,7 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
-import { AppId, AppUser } from "../models/appId.model.js";
+import { AppId, AppUser, extractDeviceMeta } from "../models/appId.model.js";
 import { ApiUsageLog } from "../models/apiUsageLog.model.js";
 import config from "../config/index.js";
 import { generateAppId, generateAppKey, compareVersions } from "../utils/index.js";
@@ -159,10 +159,10 @@ export const deleteAppId = asyncHandler(async (req, res) => {
 export const deleteAppKey = deleteAppId;
 
 /**
- * RESET allowed device bindings for an App ID
+ * RESET allowed device bindings for an App ID (all devices or a single deviceId)
  */
 export const resetDevice = asyncHandler(async (req, res) => {
-  const { key, appId } = req.body;
+  const { key, appId, deviceId } = req.body;
   const targetId = appId || key;
 
   if (!targetId) {
@@ -174,10 +174,17 @@ export const resetDevice = asyncHandler(async (req, res) => {
     throw new ApiError(404, "App ID not found.");
   }
 
-  appDoc.allowedDevices = [];
+  if (deviceId) {
+    appDoc.removeDevice(deviceId);
+  } else {
+    appDoc.resetAllDevices();
+  }
   await appDoc.save();
 
-  return new ApiResponse(200, true, "Device ID reset successfully.").send(res);
+  return new ApiResponse(200, true, "Device ID reset successfully.", {
+    devices: appDoc.getFormattedDevices(),
+    allowedDevices: appDoc.allowedDevices,
+  }).send(res);
 });
 
 /**
@@ -325,15 +332,20 @@ export const getUserDetailsByKey = getUserDetailsByAppId;
  */
 export const validateAppId = asyncHandler(async (req, res) => {
   const key = req.header("x-app-id") || req.header("x-api-key");
-  const deviceId = req.header("x-device-id");
-  const version = req.header("x-app-version");
+  const deviceMeta = extractDeviceMeta(req);
+  const { deviceId } = deviceMeta;
+  const version = req.header("x-app-version") || deviceMeta.appVersion;
 
   if (!version) {
-    throw new ApiError(426, "Please update your app. A new version is available.");
+    throw new ApiError(426, "Please update your app. A new version is available.", [], "", {
+      code: "APP_UPDATE_REQUIRED",
+    });
   }
 
   if (compareVersions(version, config.minimumRequiredAppVersion) < 0) {
-    throw new ApiError(426, "Please update your app. A new version is available.");
+    throw new ApiError(426, "Please update your app. A new version is available.", [], "", {
+      code: "APP_UPDATE_REQUIRED",
+    });
   }
 
   const { processCount = 1 } = req.body;
@@ -358,21 +370,33 @@ export const validateAppId = asyncHandler(async (req, res) => {
 
   if (!appDoc.isValid()) {
     if (appDoc.status === "suspended") {
-      throw new ApiError(403, "Account has been suspended.");
+      throw new ApiError(403, "Account has been suspended.", [], "", {
+        code: "ACCOUNT_SUSPENDED",
+      });
     }
-    throw new ApiError(403, "App ID is not valid or active.");
+    throw new ApiError(403, "App ID is not valid or active.", [], "", {
+      code: "ACCOUNT_INACTIVE",
+    });
   }
 
-  if (!appDoc.allowedDevices.includes(deviceId)) {
-    if (appDoc.allowedDevices.length >= 2) {
-      throw new ApiError(
-        403,
-        "This account is already used on two devices. No more devices allowed."
-      );
-    }
-    appDoc.allowedDevices.push(deviceId);
-    await appDoc.save();
+  const deviceResult = appDoc.registerOrUpdateDevice(deviceMeta);
+  if (!deviceResult.allowed) {
+    throw new ApiError(
+      403,
+      `This account is already used on ${deviceResult.maxDevices} devices. No more devices allowed.`,
+      [],
+      "",
+      {
+        code: "DEVICE_LIMIT_REACHED",
+        data: {
+          code: "DEVICE_LIMIT_REACHED",
+          devices: deviceResult.devices,
+          maxDevices: deviceResult.maxDevices,
+        },
+      }
+    );
   }
+  await appDoc.save();
 
   if (!appDoc.canProcess(count)) {
     const limit = appDoc.plan.type === PLAN_TYPES.FREE ? 5 : appDoc.credit;
@@ -400,6 +424,8 @@ export const validateAppId = asyncHandler(async (req, res) => {
     expiresIn,
     aiApiSecret,
     deviceId,
+    devices: deviceResult.devices,
+    maxDevices: deviceResult.maxDevices,
     remainingCredit: appDoc.credit,
   }).send(res);
 });
@@ -416,9 +442,32 @@ export const getAppIdStats = asyncHandler(async (req, res) => {
     throw new ApiError(400, "App ID is required.");
   }
 
-  const appDoc = await AppId.findOne({ key }).populate("userId", "name email");
+  const appDoc = await AppId.findOne({ key }).populate("userId", "name email avatar");
   if (!appDoc) {
-    throw new ApiError(404, "App ID not found.");
+    throw new ApiError(404, "App ID not found.", [], "", {
+      code: "KEY_NOT_FOUND",
+    });
+  }
+
+  const deviceMeta = extractDeviceMeta(req);
+  if (deviceMeta.deviceId) {
+    const deviceResult = appDoc.registerOrUpdateDevice(deviceMeta);
+    if (!deviceResult.allowed) {
+      throw new ApiError(
+        403,
+        `This device is no longer authorized. Your account is active on ${deviceResult.maxDevices} other devices.`,
+        [],
+        "",
+        {
+          code: "DEVICE_REVOKED",
+          data: {
+            code: "DEVICE_REVOKED",
+            devices: deviceResult.devices,
+            maxDevices: deviceResult.maxDevices,
+          },
+        }
+      );
+    }
   }
 
   const isValid = appDoc.isValid();
@@ -436,6 +485,10 @@ export const getAppIdStats = asyncHandler(async (req, res) => {
     appDoc.plan.type === PLAN_TYPES.CREDIT && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
 
   const remainingCredit = appDoc.calculateCredit();
+  const devices = appDoc.getFormattedDevices(
+    deviceMeta.deviceId || null,
+    deviceMeta.fingerprint || null
+  );
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
     appId: appDoc.key,
@@ -451,14 +504,94 @@ export const getAppIdStats = asyncHandler(async (req, res) => {
     credit: remainingCredit,
     totalProcess: appDoc.totalProcess,
     aiApiKey,
+    devices,
+    maxDevices: appDoc.maxDevices || 2,
+    currentDeviceId: deviceMeta.deviceId || null,
     user: {
       name: appDoc.userId?.name,
       email: appDoc.userId?.email,
+      avatar: appDoc.userId?.avatar || null,
     },
   }).send(res);
 });
 
 export const getAppKeyStats = getAppIdStats;
+
+/**
+ * GET registered devices for an App ID (from Desktop App)
+ */
+export const getAppDevices = asyncHandler(async (req, res) => {
+  const key = req.header("x-app-id") || req.header("x-api-key");
+  if (!key) {
+    throw new ApiError(400, "App ID is required.");
+  }
+
+  const appDoc = await AppId.findOne({ key });
+  if (!appDoc) {
+    throw new ApiError(404, "App ID not found.");
+  }
+
+  const deviceMeta = extractDeviceMeta(req);
+  const devices = appDoc.getFormattedDevices(
+    deviceMeta.deviceId || null,
+    deviceMeta.fingerprint || null
+  );
+
+  return new ApiResponse(200, true, "Registered devices retrieved", {
+    devices,
+    maxDevices: appDoc.maxDevices || 2,
+    currentDeviceId: deviceMeta.deviceId || null,
+  }).send(res);
+});
+
+/**
+ * REMOVE a specific registered device from an App ID (from Desktop App)
+ */
+export const removeAppDevice = asyncHandler(async (req, res) => {
+  const key = req.header("x-app-id") || req.header("x-api-key");
+  const targetDeviceId = req.params.deviceId || req.body?.deviceId;
+
+  if (!key) {
+    throw new ApiError(400, "App ID is required.");
+  }
+  if (!targetDeviceId) {
+    throw new ApiError(400, "Target device ID is required.");
+  }
+
+  const appDoc = await AppId.findOne({ key });
+  if (!appDoc) {
+    throw new ApiError(404, "App ID not found.");
+  }
+
+  const callerMeta = extractDeviceMeta(req);
+  if (callerMeta.deviceId) {
+    const callerDevice = appDoc.findMatchingDevice(callerMeta.deviceId, callerMeta.fingerprint);
+    if (!callerDevice && appDoc.devices.length >= (appDoc.maxDevices || 2)) {
+      throw new ApiError(403, "Unauthorized device cannot remove other devices.", [], "", {
+        code: "DEVICE_REVOKED",
+      });
+    }
+  }
+
+  const removed = appDoc.removeDevice(targetDeviceId);
+  if (!removed) {
+    throw new ApiError(404, "Device not found on this account.");
+  }
+
+  await appDoc.save();
+
+  const devices = appDoc.getFormattedDevices(
+    callerMeta.deviceId || null,
+    callerMeta.fingerprint || null
+  );
+
+  return new ApiResponse(200, true, "Device removed successfully", {
+    removedDeviceId: targetDeviceId,
+    devices,
+    maxDevices: appDoc.maxDevices || 2,
+    currentDeviceId: callerMeta.deviceId || null,
+  }).send(res);
+});
 
 /**
  * PROCESS usage accounting for an App ID (from Desktop App)

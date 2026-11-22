@@ -18,6 +18,9 @@ import {
 import { verifyUser } from "../middlewares/auth.middleware.js";
 import {
   appUserLogin,
+  appKeyDirectLogin,
+  replaceDeviceAndLogin,
+  appUserLogout,
   googleCallback,
   googleLoginAPP,
   verifyGoogle,
@@ -85,6 +88,9 @@ router.post("/reset-password", resetLimiter, validate(resetPasswordSchema), rese
 router.post("/register", registerLimiter, validate(registerUserSchema), registerUser);
 router.post("/login", loginLimiter, validate(loginUserSchema), loginUser);
 router.post("/app/login", loginLimiter, validate(loginUserSchema), appUserLogin);
+router.post("/app/login-key", loginLimiter, appKeyDirectLogin);
+router.post("/app/replace-device", loginLimiter, replaceDeviceAndLogin);
+router.post("/app/logout", appUserLogout);
 
 // Protected routes
 router.post("/logout", verifyUser, logoutUser);

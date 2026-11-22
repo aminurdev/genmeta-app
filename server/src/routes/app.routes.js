@@ -10,6 +10,8 @@ import {
   validateAppKey,
   getAppIdStats,
   getAppKeyStats,
+  getAppDevices,
+  removeAppDevice,
   updateAppIdStatus,
   updateAppKeyStatus,
   resetDevice,
@@ -46,6 +48,8 @@ router.get("/appid/user/details/:appId", authenticateAndVerifyAdmin, getUserDeta
 
 router.post("/appid/validate", validateAppId);
 router.get("/appid/stats", getAppIdStats);
+router.get("/appid/devices", getAppDevices);
+router.delete("/appid/devices/:deviceId", removeAppDevice);
 router.post("/appid/uses", processAppUsage);
 router.post("/appid/usage", processAppUsage);
 
@@ -62,6 +66,8 @@ router.get("/appkey/user/details/:key", authenticateAndVerifyAdmin, getUserDetai
 
 router.post("/appkey/validate", validateAppKey);
 router.get("/appkey/stats", getAppKeyStats);
+router.get("/appkey/devices", getAppDevices);
+router.delete("/appkey/devices/:deviceId", removeAppDevice);
 router.post("/appkey/uses", processApiUsage);
 router.post("/appkey/usage", processApiUsage);
 

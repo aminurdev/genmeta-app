@@ -6,7 +6,7 @@
  * This module re-exports `AppId` and `AppUser` for 100% backward compatibility.
  */
 
-import { AppUser, AppKey, AppId } from "./appUser.model.js";
+import { AppUser, AppKey, AppId, extractDeviceMeta } from "./appUser.model.js";
 
-export { AppUser, AppKey, AppId };
+export { AppUser, AppKey, AppId, extractDeviceMeta };
 export default AppKey;

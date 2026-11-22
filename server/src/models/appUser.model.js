@@ -47,10 +47,29 @@ const appUserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    maxDevices: {
+      type: Number,
+      default: 2,
+    },
     allowedDevices: {
       type: [String],
       default: [],
     },
+    devices: [
+      {
+        deviceId: { type: String, required: true },
+        fingerprint: { type: String, default: null },
+        deviceName: { type: String, default: "Desktop Device" },
+        platform: { type: String, default: "unknown" },
+        osVersion: { type: String, default: "" },
+        arch: { type: String, default: "" },
+        cpuModel: { type: String, default: "" },
+        appVersion: { type: String, default: "" },
+        ipAddress: { type: String, default: "" },
+        firstLoginAt: { type: Date, default: Date.now },
+        lastActiveAt: { type: Date, default: Date.now },
+      },
+    ],
     plan: {
       type: {
         type: String,
@@ -390,6 +409,305 @@ appUserSchema.methods.upgradePlan = function (newPlan, expiresAt = null, credits
     this.credit = credits !== null ? credits : this.credit;
     this.expiresAt = expiresAt || undefined;
   }
+};
+
+function safeDecodeHeader(val) {
+  if (!val || typeof val !== "string") return "";
+  try {
+    return decodeURIComponent(val).trim();
+  } catch {
+    return val.trim();
+  }
+}
+
+export function extractDeviceMeta(req) {
+  const bodyDevice = req.body?.deviceInfo || {};
+  const rawIp = req.headers?.["x-forwarded-for"] || req.socket?.remoteAddress || "";
+  const ipAddress = (Array.isArray(rawIp) ? rawIp[0] : String(rawIp).split(",")[0]).trim();
+
+  const deviceId = (
+    req.header?.("x-device-id") ||
+    req.headers?.["x-device-id"] ||
+    bodyDevice.deviceId ||
+    ""
+  )
+    .toString()
+    .trim();
+
+  const fingerprint = (
+    req.header?.("x-device-fingerprint") ||
+    req.headers?.["x-device-fingerprint"] ||
+    bodyDevice.fingerprint ||
+    ""
+  )
+    .toString()
+    .trim();
+
+  const deviceName =
+    safeDecodeHeader(
+      req.header?.("x-device-name") || req.headers?.["x-device-name"] || bodyDevice.deviceName
+    ) || "Desktop Device";
+
+  const platform = (
+    req.header?.("x-device-platform") ||
+    req.headers?.["x-device-platform"] ||
+    bodyDevice.platform ||
+    "unknown"
+  )
+    .toString()
+    .trim();
+
+  const osVersion = safeDecodeHeader(
+    req.header?.("x-device-os") || req.headers?.["x-device-os"] || bodyDevice.osVersion || ""
+  );
+
+  const arch = (
+    req.header?.("x-device-arch") ||
+    req.headers?.["x-device-arch"] ||
+    bodyDevice.arch ||
+    ""
+  )
+    .toString()
+    .trim();
+
+  const cpuModel = safeDecodeHeader(
+    req.header?.("x-device-cpu") || req.headers?.["x-device-cpu"] || bodyDevice.cpuModel || ""
+  );
+
+  const appVersion = (
+    req.header?.("x-app-version") ||
+    req.headers?.["x-app-version"] ||
+    bodyDevice.appVersion ||
+    ""
+  )
+    .toString()
+    .trim();
+
+  return {
+    deviceId,
+    fingerprint: fingerprint || null,
+    deviceName,
+    platform,
+    osVersion,
+    arch,
+    cpuModel,
+    appVersion,
+    ipAddress,
+  };
+}
+
+// Method: Ensure allowedDevices (String[]) and devices (Object[]) stay in 100% sync
+appUserSchema.methods.syncDevicesList = function () {
+  if (!Array.isArray(this.allowedDevices)) {
+    this.allowedDevices = [];
+  }
+  if (!Array.isArray(this.devices)) {
+    this.devices = [];
+  }
+
+  // Remove any corrupted entries without a deviceId
+  this.devices = this.devices.filter((d) => d && d.deviceId);
+
+  const knownIds = new Set(this.devices.map((d) => d.deviceId));
+  for (const legacyId of this.allowedDevices) {
+    if (legacyId && typeof legacyId === "string" && !knownIds.has(legacyId)) {
+      this.devices.push({
+        deviceId: legacyId,
+        fingerprint: null,
+        deviceName: "Registered Device",
+        platform: "unknown",
+        osVersion: "",
+        arch: "",
+        cpuModel: "",
+        appVersion: "",
+        ipAddress: "",
+        firstLoginAt: this.updatedAt || this.createdAt || new Date(),
+        lastActiveAt: this.updatedAt || this.createdAt || new Date(),
+      });
+      knownIds.add(legacyId);
+    }
+  }
+
+  // Deduplicate devices by deviceId
+  const uniqueDevices = [];
+  const seenIds = new Set();
+  for (const d of this.devices) {
+    if (!seenIds.has(d.deviceId)) {
+      seenIds.add(d.deviceId);
+      uniqueDevices.push(d);
+    }
+  }
+  this.devices = uniqueDevices;
+  this.allowedDevices = this.devices.map((d) => d.deviceId);
+};
+
+// Method: Find an existing device entry by deviceId or hardware fingerprint
+appUserSchema.methods.findMatchingDevice = function (deviceId, fingerprint = null) {
+  this.syncDevicesList();
+  if (!deviceId && !fingerprint) return null;
+
+  let match = this.devices.find((d) => d.deviceId === deviceId);
+  if (!match && fingerprint) {
+    match = this.devices.find((d) => d.fingerprint && d.fingerprint === fingerprint);
+  }
+  return match || null;
+};
+
+// Method: Return clean formatted device list for client & admin responses
+appUserSchema.methods.getFormattedDevices = function (currentDeviceId = null, currentFingerprint = null) {
+  this.syncDevicesList();
+  const formatted = this.devices.map((d) => {
+    const isCurrent = Boolean(
+      (currentDeviceId && d.deviceId === currentDeviceId) ||
+        (currentFingerprint && d.fingerprint && d.fingerprint === currentFingerprint)
+    );
+    return {
+      deviceId: d.deviceId,
+      fingerprint: d.fingerprint || null,
+      deviceName: d.deviceName || "Desktop Device",
+      platform: d.platform || "unknown",
+      osVersion: d.osVersion || "",
+      arch: d.arch || "",
+      cpuModel: d.cpuModel || "",
+      appVersion: d.appVersion || "",
+      ipAddress: d.ipAddress || "",
+      firstLoginAt: d.firstLoginAt || null,
+      lastActiveAt: d.lastActiveAt || null,
+      isCurrent,
+    };
+  });
+
+  return formatted.sort((a, b) => {
+    if (a.isCurrent && !b.isCurrent) return -1;
+    if (!a.isCurrent && b.isCurrent) return 1;
+    const tA = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
+    const tB = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
+    return tB - tA;
+  });
+};
+
+// Method: Verify, register, or update a device (with optional replacement)
+appUserSchema.methods.registerOrUpdateDevice = function (
+  deviceMeta = {},
+  { replaceDeviceId = null } = {}
+) {
+  this.syncDevicesList();
+  const maxAllowed = this.maxDevices || 2;
+  const {
+    deviceId,
+    fingerprint = null,
+    deviceName = "Desktop Device",
+    platform = "unknown",
+    osVersion = "",
+    arch = "",
+    cpuModel = "",
+    appVersion = "",
+    ipAddress = "",
+  } = deviceMeta;
+
+  if (!deviceId) {
+    return {
+      allowed: true,
+      isNew: false,
+      device: null,
+      devices: this.getFormattedDevices(),
+      maxDevices: maxAllowed,
+    };
+  }
+
+  // Handle requested device replacement before checking limit
+  if (replaceDeviceId) {
+    if (replaceDeviceId === "ALL") {
+      this.devices = [];
+      this.allowedDevices = [];
+    } else {
+      this.removeDevice(replaceDeviceId);
+    }
+  }
+
+  const existing = this.findMatchingDevice(deviceId, fingerprint);
+  const now = new Date();
+
+  if (existing) {
+    existing.deviceId = deviceId;
+    if (fingerprint) existing.fingerprint = fingerprint;
+    if (deviceName && deviceName !== "Desktop Device") existing.deviceName = deviceName;
+    if (platform && platform !== "unknown") existing.platform = platform;
+    if (osVersion) existing.osVersion = osVersion;
+    if (arch) existing.arch = arch;
+    if (cpuModel) existing.cpuModel = cpuModel;
+    if (appVersion) existing.appVersion = appVersion;
+    if (ipAddress) existing.ipAddress = ipAddress;
+    existing.lastActiveAt = now;
+
+    this.allowedDevices = this.devices.map((d) => d.deviceId);
+    this.markModified("devices");
+    this.markModified("allowedDevices");
+
+    return {
+      allowed: true,
+      isNew: false,
+      device: existing,
+      devices: this.getFormattedDevices(deviceId, fingerprint),
+      maxDevices: maxAllowed,
+    };
+  }
+
+  if (this.devices.length >= maxAllowed) {
+    return {
+      allowed: false,
+      code: "DEVICE_LIMIT_REACHED",
+      devices: this.getFormattedDevices(deviceId, fingerprint),
+      maxDevices: maxAllowed,
+    };
+  }
+
+  const newDevice = {
+    deviceId,
+    fingerprint,
+    deviceName: deviceName || "Desktop Device",
+    platform: platform || "unknown",
+    osVersion: osVersion || "",
+    arch: arch || "",
+    cpuModel: cpuModel || "",
+    appVersion: appVersion || "",
+    ipAddress: ipAddress || "",
+    firstLoginAt: now,
+    lastActiveAt: now,
+  };
+
+  this.devices.push(newDevice);
+  this.allowedDevices = this.devices.map((d) => d.deviceId);
+  this.markModified("devices");
+  this.markModified("allowedDevices");
+
+  return {
+    allowed: true,
+    isNew: true,
+    device: newDevice,
+    devices: this.getFormattedDevices(deviceId, fingerprint),
+    maxDevices: maxAllowed,
+  };
+};
+
+// Method: Remove a single device by deviceId
+appUserSchema.methods.removeDevice = function (targetDeviceId) {
+  this.syncDevicesList();
+  if (!targetDeviceId) return false;
+  const beforeCount = this.devices.length;
+  this.devices = this.devices.filter((d) => d.deviceId !== targetDeviceId);
+  this.allowedDevices = this.devices.map((d) => d.deviceId);
+  this.markModified("devices");
+  this.markModified("allowedDevices");
+  return this.devices.length < beforeCount;
+};
+
+// Method: Reset all registered devices
+appUserSchema.methods.resetAllDevices = function () {
+  this.devices = [];
+  this.allowedDevices = [];
+  this.markModified("devices");
+  this.markModified("allowedDevices");
 };
 
 // Static: Daily maintenance batch runner

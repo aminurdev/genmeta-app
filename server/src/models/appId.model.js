@@ -6,7 +6,7 @@
  * serves as their unique App ID (desktop application identifier & license holder).
  */
 
-import { AppUser, AppKey, AppId } from "./appUser.model.js";
+import { AppUser, AppKey, AppId, extractDeviceMeta } from "./appUser.model.js";
 
-export { AppUser, AppKey, AppId };
+export { AppUser, AppKey, AppId, extractDeviceMeta };
 export default AppId;

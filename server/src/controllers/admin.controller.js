@@ -446,6 +446,8 @@ export const getAllUsers = asyncHandler(async (req, res) => {
       credit: keyDoc?.credit ?? 0,
       status: keyDoc?.status || (u.isDisabled ? "suspended" : "active"),
       allowedDevices: keyDoc?.allowedDevices || [],
+      devices: keyDoc?.devices || [],
+      maxDevices: keyDoc?.maxDevices || 2,
       totalProcess: keyDoc?.totalProcess || 0,
       expiresAt: keyDoc?.expiresAt || null,
     };
