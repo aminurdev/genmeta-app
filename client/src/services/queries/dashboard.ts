@@ -5,8 +5,9 @@ import {
   getOverview,
   getProfile,
   getReferralDetails,
+  removeDesktopDevice,
 } from "@/services/dashboard";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useOverviewQuery() {
   return useQuery({
@@ -48,4 +49,14 @@ export function useInvalidateDashboard() {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referralDetails });
   };
+}
+
+export function useRemoveDesktopDeviceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (deviceId: string) => removeDesktopDevice(deviceId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.overview });
+    },
+  });
 }

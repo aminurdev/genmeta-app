@@ -1,9 +1,10 @@
-import { ApiErrorResponse, ApiResponse } from "@/types";
+import { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import { api } from "@/services/api-client";
 import {
   Overview,
   Profile,
   ReferralData,
+  RemoveDesktopDeviceResponse,
   RequestWithdrawRes,
 } from "@/types/dashboard";
 
@@ -17,6 +18,29 @@ export const getOverview = async (): Promise<
 > => {
   const result = await api.get("/users/dashboard/overview");
   return result.data;
+};
+
+export const removeDesktopDevice = async (
+  deviceId: string
+): Promise<ApiResponse<RemoveDesktopDeviceResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.delete(
+      `/users/dashboard/devices/${encodeURIComponent(deviceId)}`
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message:
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to remove desktop device",
+      }
+    );
+  }
 };
 
 export const getProfile = async (): Promise<

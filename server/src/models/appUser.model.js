@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { PLAN_TYPES } from "../constants/index.js";
 
+const DEVICE_REMOVAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 const appUserSchema = new mongoose.Schema(
   {
     userId: {
@@ -70,6 +72,10 @@ const appUserSchema = new mongoose.Schema(
         lastActiveAt: { type: Date, default: Date.now },
       },
     ],
+    lastDeviceRemovalAt: {
+      type: Date,
+      default: null,
+    },
     plan: {
       type: {
         type: String,
@@ -283,8 +289,8 @@ appUserSchema.methods.incrementProcessCount = async function (count = 1) {
   this.totalProcess += count;
 
   const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const dayKey = now.toISOString().split("T")[0];
+  const monthKey = dayKey.substring(0, 7);
 
   if (!this.monthlyProcess) this.monthlyProcess = new Map();
   if (!this.dailyProcess) this.dailyProcess = new Map();
@@ -306,9 +312,8 @@ appUserSchema.methods.cleanupOldDailyData = function () {
   const now = new Date();
   const recentDays = new Set();
 
-  for (let i = 0; i < 3; i++) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
     recentDays.add(d.toISOString().split("T")[0]);
   }
 
@@ -325,9 +330,8 @@ appUserSchema.methods.cleanupOldMonthlyData = function () {
   const recentMonths = new Set();
 
   for (let i = 0; i < 12; i++) {
-    const d = new Date();
-    d.setMonth(now.getMonth() - i);
-    recentMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    recentMonths.add(d.toISOString().slice(0, 7));
   }
 
   for (const key of this.monthlyProcess.keys()) {
@@ -708,6 +712,38 @@ appUserSchema.methods.resetAllDevices = function () {
   this.allowedDevices = [];
   this.markModified("devices");
   this.markModified("allowedDevices");
+};
+
+// Method: Compute self-service device removal cooldown status (1 removal per 24h)
+appUserSchema.methods.getDeviceRemovalStatus = function (now = new Date()) {
+  if (!this.lastDeviceRemovalAt) {
+    return {
+      canRemoveDevice: true,
+      lastDeviceRemovalAt: null,
+      nextDeviceRemovalAt: null,
+      remainingMs: 0,
+    };
+  }
+
+  const lastAt = new Date(this.lastDeviceRemovalAt);
+  if (Number.isNaN(lastAt.getTime())) {
+    return {
+      canRemoveDevice: true,
+      lastDeviceRemovalAt: null,
+      nextDeviceRemovalAt: null,
+      remainingMs: 0,
+    };
+  }
+
+  const nextAtMs = lastAt.getTime() + DEVICE_REMOVAL_COOLDOWN_MS;
+  const remainingMs = Math.max(0, nextAtMs - now.getTime());
+
+  return {
+    canRemoveDevice: remainingMs === 0,
+    lastDeviceRemovalAt: lastAt.toISOString(),
+    nextDeviceRemovalAt: remainingMs > 0 ? new Date(nextAtMs).toISOString() : null,
+    remainingMs,
+  };
 };
 
 // Static: Daily maintenance batch runner

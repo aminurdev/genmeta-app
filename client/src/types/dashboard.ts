@@ -1,3 +1,32 @@
+export interface DesktopDevice {
+  deviceId: string;
+  fingerprint: string | null;
+  deviceName: string;
+  platform: string;
+  osVersion: string;
+  arch: string;
+  cpuModel: string;
+  appVersion: string;
+  ipAddress: string;
+  firstLoginAt: string | null;
+  lastActiveAt: string | null;
+  isCurrent: boolean;
+}
+
+export interface DeviceRemovalStatus {
+  canRemoveDevice: boolean;
+  lastDeviceRemovalAt: string | null;
+  nextDeviceRemovalAt: string | null;
+  remainingMs: number;
+}
+
+export interface RemoveDesktopDeviceResponse {
+  removedDeviceId: string;
+  devices: DesktopDevice[];
+  maxDevices: number;
+  deviceRemoval: DeviceRemovalStatus;
+}
+
 export interface OverviewRecentItem {
   _id: string;
   trxID: string;
@@ -12,6 +41,13 @@ export interface OverviewRecentItem {
   source?: "payment";
 }
 
+export interface ProcessMetricPoint {
+  date?: string;
+  day?: string;
+  month?: string;
+  count: number;
+}
+
 export interface Overview {
   user: {
     id?: string;
@@ -23,31 +59,29 @@ export interface Overview {
     loginProvider?: ("google" | "email")[];
     createdAt?: string;
   };
-  plan?: {
+  plan: {
     type: "free" | "credit" | "subscription";
-    name?: string;
-    id?: string;
+    name: string;
+    id?: string | null;
   };
-  credit?: number | null;
-  remainingDays?: number | null;
-  totalSpent?: number;
-  totalProcess?: number;
-  todayProcess?: number;
-  currentMonthProcess?: number;
-  last6MonthProcess?: {
+  credit: number | null;
+  remainingDays: number | null;
+  totalSpent: number;
+  totalProcess: number;
+  todayProcess: number;
+  currentMonthProcess: number;
+  last6MonthProcess: {
     month: string;
     count: number;
   }[];
-  last7DaysProcess?: {
-    date?: string;
-    day?: string;
+  last7DaysProcess: {
+    date: string;
     count: number;
   }[];
-  recentHistory?: OverviewRecentItem[];
+  recentHistory: OverviewRecentItem[];
 
-  appUser?: {
+  appUser: {
     exists: boolean;
-    key?: string | null;
     totalProcess: number;
     todayUsage: number;
     thisMonthUsage: number;
@@ -56,33 +90,22 @@ export interface Overview {
       count: number;
     }[];
     last7DaysProcess: {
-      day?: string;
-      date?: string;
+      date: string;
       count: number;
     }[];
     creditRemaining: number | null;
     planType: "free" | "credit" | "subscription";
     planId: string | null;
+    planName: string;
     expiresAt: string | null;
     daysLeft: number | null;
+    isActive: boolean;
+    status: "active" | "suspended";
     isSuspended: boolean;
     isManuallyDisabled: boolean;
-    allowedDevices?: string[];
-    devices?: Array<Record<string, unknown>>;
-    maxDevices?: number;
-  };
-  payments?: {
-    totalSpent: number;
-    last5Payments: {
-      id: string;
-      trxID: string;
-      plan: {
-        id: string;
-        type: string;
-      };
-      amount: number;
-      createdAt: string;
-    }[];
+    devices: DesktopDevice[];
+    maxDevices: number;
+    deviceRemoval: DeviceRemovalStatus;
   };
 }
 

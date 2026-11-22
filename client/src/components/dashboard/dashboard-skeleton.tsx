@@ -9,8 +9,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
-  Key,
-  Copy,
   Sparkles,
   Download,
   RefreshCw,
@@ -26,7 +24,7 @@ import {
 export function UserDashboardSkeleton() {
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
-      {/* 1. Header Banner - Static text with dynamic user & plan skeleton */}
+      {/* 1. Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -37,14 +35,19 @@ export function UserDashboardSkeleton() {
             <Skeleton className="h-5 w-20 rounded-full" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Manage your AI processing quota, view your desktop App ID, and track daily activity.
+            Manage your AI processing quota, connected desktop devices, and daily
+            activity.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" disabled className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Refresh
+          </Button>
+          <Button variant="secondary" size="sm" disabled className="gap-2">
+            <Download className="h-4 w-4" />
+            Download App
           </Button>
           <Button size="sm" disabled className="gap-2">
             <Sparkles className="h-4 w-4" />
@@ -53,41 +56,7 @@ export function UserDashboardSkeleton() {
         </div>
       </div>
 
-      {/* 2. App Key Strip - Static labels, only dynamic key is skeleton */}
-      <Card className="border-primary/20 bg-primary/2">
-        <CardContent className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Key className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">Desktop App ID</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Active
-                </span>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <Skeleton className="h-7 w-56 sm:w-64 rounded font-mono" />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-            <Button variant="outline" size="sm" disabled className="gap-1.5 text-xs font-medium">
-              <Copy className="h-3.5 w-3.5" />
-              Copy App ID
-            </Button>
-            <Button variant="secondary" size="sm" disabled className="gap-1.5 text-xs font-medium">
-              <Download className="h-3.5 w-3.5" />
-              Download App
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 3. Four Core Metric Cards - Static titles & icons, dynamic values skeletonized */}
+      {/* 2. Four Core Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Plan */}
         <Card>
@@ -154,22 +123,32 @@ export function UserDashboardSkeleton() {
         </Card>
       </div>
 
-      {/* 4. Analytics & Activity Grid - Static titles, only dynamic chart & badges are skeletons */}
+      {/* 3. Analytics & Activity Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2/3): Process Activity Chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div>
-              <CardTitle className="text-base font-semibold">Processing Activity</CardTitle>
+              <CardTitle className="text-base font-semibold">
+                Processing Activity
+              </CardTitle>
               <CardDescription>
                 Files processed with AI metadata generation.
               </CardDescription>
             </div>
             <div className="flex items-center rounded-lg border bg-muted p-0.5">
-              <Button variant="default" size="sm" className="h-7 px-2.5 text-xs rounded-md pointer-events-none">
+              <Button
+                variant="default"
+                size="sm"
+                className="h-7 px-2.5 text-xs rounded-md pointer-events-none"
+              >
                 7 Days
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs rounded-md pointer-events-none">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-xs rounded-md pointer-events-none"
+              >
                 6 Months
               </Button>
             </div>
@@ -178,7 +157,10 @@ export function UserDashboardSkeleton() {
             <div className="h-[280px] w-full pt-4 flex flex-col justify-end space-y-4">
               <div className="h-[220px] w-full flex items-end justify-between gap-2 px-2 sm:px-4 border-b border-border/40 pb-2">
                 {[45, 75, 55, 90, 60, 85, 70].map((h, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                  <div
+                    key={i}
+                    className="flex-1 flex flex-col items-center gap-2 h-full justify-end"
+                  >
                     <Skeleton
                       className="w-full max-w-[42px] rounded-t-md opacity-80"
                       style={{ height: `${h}%` }}
@@ -199,14 +181,18 @@ export function UserDashboardSkeleton() {
         <Card className="flex flex-col justify-between">
           <div>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Account Quota</CardTitle>
+              <CardTitle className="text-base font-semibold">
+                Account Quota
+              </CardTitle>
               <CardDescription>Device and subscription limits</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                 <div className="flex items-center gap-2.5">
                   <Laptop className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Authorized Devices</span>
+                  <span className="text-sm font-medium">
+                    Authorized Devices
+                  </span>
                 </div>
                 <Skeleton className="h-5 w-20 rounded-md" />
               </div>
@@ -230,11 +216,19 @@ export function UserDashboardSkeleton() {
           </div>
 
           <div className="p-6 pt-0 space-y-2">
-            <Button variant="outline" disabled className="w-full justify-between text-xs font-medium">
+            <Button
+              variant="outline"
+              disabled
+              className="w-full justify-between text-xs font-medium"
+            >
               <span>View Account Profile</span>
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" disabled className="w-full justify-between text-xs text-muted-foreground">
+            <Button
+              variant="ghost"
+              disabled
+              className="w-full justify-between text-xs text-muted-foreground"
+            >
               <span>Referral Partner Hub</span>
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Button>
@@ -242,11 +236,51 @@ export function UserDashboardSkeleton() {
         </Card>
       </div>
 
+      {/* 4. Desktop App Login Devices Skeleton */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-semibold">
+              Desktop App Devices
+            </CardTitle>
+            <Skeleton className="h-5 w-20 rounded-md" />
+          </div>
+          <CardDescription>
+            Computers signed in to the GenMeta desktop app. You can remove 1
+            desktop device every 24 hours.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {[1, 2].map((item) => (
+              <div
+                key={item}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-56" />
+                    <Skeleton className="h-3 w-44" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-20 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 5. Recent Activity Ledger */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
-          <CardDescription>Your latest plan upgrades and credit renewals.</CardDescription>
+          <CardTitle className="text-base font-semibold">
+            Recent Transactions
+          </CardTitle>
+          <CardDescription>
+            Your latest plan upgrades and credit renewals.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-hidden">
@@ -259,7 +293,10 @@ export function UserDashboardSkeleton() {
             </div>
             <div className="divide-y divide-border/60">
               {[1, 2, 3].map((row) => (
-                <div key={row} className="p-3.5 flex justify-between items-center gap-4">
+                <div
+                  key={row}
+                  className="p-3.5 flex justify-between items-center gap-4"
+                >
                   <Skeleton className="h-4 w-20" />
                   <Skeleton className="h-4 w-20" />
                   <Skeleton className="h-3.5 w-36 hidden sm:block font-mono" />
