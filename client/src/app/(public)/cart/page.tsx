@@ -1,12 +1,12 @@
 import React from "react";
 import Cart from "./cart";
 
-const CartPage = async ({
-  searchParams,
-}: {
-  searchParams: Promise<{ planId: string }>;
-}) => {
-  const planId = (await searchParams).planId;
+interface CartPageProps {
+  searchParams: Promise<{ planId?: string }>;
+}
+
+const CartPage = async ({ searchParams }: CartPageProps) => {
+  const { planId } = await searchParams;
   return <Cart planId={planId} />;
 };
 

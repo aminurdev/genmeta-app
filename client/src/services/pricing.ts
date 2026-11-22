@@ -90,10 +90,14 @@ export const getPaymentStatus = async (
 };
 
 export const validPromoCode = async (
-  promoCode: string
+  promoCode: string,
+  planType?: "subscription" | "credit"
 ): Promise<ApiResponse<PromoCodeRes> | ApiErrorResponse> => {
   try {
-    const result = await api.post("/promo-codes/validate", { code: promoCode });
+    const result = await api.post("/promo-codes/validate", {
+      code: promoCode,
+      ...(planType ? { planType } : {}),
+    });
     return result.data;
   } catch (error) {
     const err = error as AxiosApiError;

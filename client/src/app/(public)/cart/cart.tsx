@@ -1,28 +1,34 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   ArrowLeft,
-  Loader2,
-  ChevronRight,
-  ChevronDown,
-  X,
-  CheckCircle,
-  CreditCard,
+  Calendar,
   Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Coins,
+  CreditCard,
+  Infinity as InfinityIcon,
+  Loader2,
+  Lock,
+  Receipt,
+  ShieldCheck,
+  Sparkles,
   Tag,
-  Phone,
+  X,
+  Zap,
 } from "lucide-react";
+import { toast } from "sonner";
+
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   Card,
   CardContent,
@@ -30,41 +36,48 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { getCurrentUser } from "@/services/auth-services";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAllPricing } from "@/services/queries/pricing";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import type { PricingPlan } from "@/services/admin-dashboard";
+import { getCurrentUser } from "@/services/auth-services";
 import { createPayment, validPromoCode } from "@/services/pricing";
-import { PromoCodeRes } from "@/types/pricing";
-import { PricingPlan } from "@/services/admin-dashboard";
+import { useAllPricing } from "@/services/queries/pricing";
+import type { PromoCodeRes } from "@/types/pricing";
 import { creditFeatures, premiumFeatures } from "../pricing/features";
-
-// import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CartSkeleton } from "./loading";
 
 interface PaymentMethod {
   id: string;
   name: string;
   description: string;
+  channels: string[];
   logo: string;
   available: boolean;
-  comingSoon?: boolean;
 }
 
-const paymentMethods: PaymentMethod[] = [
+const PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: "paystation",
     name: "PayStation",
-    description: "Secure payment gateway",
+    description: "Pay securely via mobile banking or card",
+    channels: ["bKash", "Nagad", "Rocket", "Cards"],
     logo: "/paystation-logo.png",
     available: true,
   },
@@ -80,133 +93,142 @@ const generateIdempotencyKey = (): string => {
   return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
-export default function Cart({ planId }: { planId: string }) {
+function getEffectivePlanPrice(plan: PricingPlan): number {
+  if (plan.discountPrice !== undefined && plan.discountPrice > 0) {
+    return roundBdt(plan.discountPrice);
+  }
+  if (plan.discountPercent > 0) {
+    return roundBdt(plan.basePrice * (1 - plan.discountPercent / 100));
+  }
+  return roundBdt(plan.basePrice);
+}
+
+function getDurationLabel(days: number): string {
+  if (days === 7) return "7 days";
+  if (days === 30) return "30 days (Monthly)";
+  if (days === 90 || days === 91) return `${days} days (Quarterly)`;
+  if (days === 180 || days === 182) return `${days} days (Half-yearly)`;
+  if (days === 365) return "365 days (Annual)";
+  return `${days} days`;
+}
+
+export default function Cart({ planId }: { planId?: string }) {
   const router = useRouter();
-  const [plan, setPlan] = useState<PricingPlan | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Plan selection states
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-
-  // Payment method & contact state
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState("paystation");
-  const [customerPhone, setCustomerPhone] = useState<string>("");
-  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() =>
-    generateIdempotencyKey()
+    generateIdempotencyKey(),
   );
+  const [logoError, setLogoError] = useState(false);
 
-  // Promo code states
-  const [promoCode, setPromoCode] = useState<string>("");
+  // Promo code state
+  const [promoCode, setPromoCode] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [validPromo, setValidPromo] = useState<PromoCodeRes | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
 
-  // Use React Query hook instead of manual fetching
-  const { data: pricingData, isLoading: isPricingLoading } = useAllPricing();
+  // Submission state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Derive plans from React Query data
-  const creditPlans =
-    (pricingData?.success && pricingData?.data?.creditPlans) || [];
-  const subscriptionPlans =
-    (pricingData?.success && pricingData?.data?.subscriptionPlans) || [];
+  const {
+    data: pricingData,
+    isLoading: isPricingLoading,
+    isError: isPricingError,
+    refetch: refetchPricing,
+  } = useAllPricing();
 
-  useEffect(() => {
-    // Set initial plan when pricing data is loaded
-    if (pricingData?.success && pricingData?.data) {
-      const { creditPlans: credits, subscriptionPlans: subs } =
-        pricingData.data;
+  const { creditPlans, subscriptionPlans, activePlan, planNotFound } =
+    useMemo(() => {
+      const payload = pricingData?.success ? pricingData.data : undefined;
+      const credits = (payload?.creditPlans ?? []) as unknown as PricingPlan[];
+      const subs = (payload?.subscriptionPlans ?? []) as unknown as PricingPlan[];
       const allPlans = [...credits, ...subs];
 
-      if (planId) {
-        const foundPlan = allPlans.find((p) => p._id === planId);
-        if (foundPlan) {
-          setPlan(foundPlan as PricingPlan);
-          setSelectedPlanId(foundPlan._id);
-        } else {
-          setError("Plan not found. Please select a valid plan.");
+      const explicitId = selectedPlanId ?? planId;
+      let resolved: PricingPlan | null = null;
+      let notFound = false;
+
+      if (explicitId) {
+        const match = allPlans.find((p) => p._id === explicitId);
+        if (match) {
+          resolved = match;
+        } else if (allPlans.length > 0 && !selectedPlanId && planId) {
+          notFound = true;
         }
       } else {
-        // Default to first credit plan
-        if (credits.length > 0) {
-          setPlan(credits[0] as PricingPlan);
-          setSelectedPlanId(credits[0]._id);
-        } else if (subs.length > 0) {
-          setPlan(subs[0] as PricingPlan);
-          setSelectedPlanId(subs[0]._id);
-        }
+        resolved = credits[0] ?? subs[0] ?? null;
       }
-      setIsLoading(false);
-    } else if (pricingData && !pricingData.success) {
-      setError("Failed to load plan details. Please try again.");
-      setIsLoading(false);
-    } else if (isPricingLoading) {
-      setIsLoading(true);
-    }
-  }, [pricingData, planId, isPricingLoading]);
 
-  const handleBackToPricing = () => {
-    router.push("/pricing");
-  };
+      return {
+        creditPlans: credits,
+        subscriptionPlans: subs,
+        activePlan: resolved,
+        planNotFound: notFound,
+      };
+    }, [pricingData, planId, selectedPlanId]);
 
-  const calculateDiscountedPrice = (
-    basePrice: number,
-    discountPercent: number,
-  ) => {
-    return ((basePrice * (100 - discountPercent)) / 100).toFixed(2);
+  const handlePlanChange = (nextPlanId: string) => {
+    setSelectedPlanId(nextPlanId);
+    setValidPromo(null);
+    setPromoCode("");
+    setPromoError(null);
+    setIdempotencyKey(generateIdempotencyKey());
   };
 
   const handleApplyPromoCode = async () => {
-    if (!promoCode.trim()) {
+    const cleanedCode = promoCode.trim().toUpperCase();
+    if (!cleanedCode) {
       setPromoError("Please enter a promo code");
       return;
     }
-    if (!plan) return;
+    if (!activePlan) return;
 
     setPromoError(null);
     setIsApplyingPromo(true);
 
-    const res = await validPromoCode(promoCode.trim());
+    try {
+      const res = await validPromoCode(cleanedCode, activePlan.type);
 
-    if (!res.success) {
-      setPromoError(res.message || "Invalid promo code");
+      if (!res.success || !res.data?.promoCode) {
+        setPromoError(
+          !res.success ? res.message || "Invalid promo code" : "Invalid promo code",
+        );
+        setValidPromo(null);
+        return;
+      }
+
+      const promo = res.data.promoCode;
+
+      if (promo.appliesTo !== "both" && promo.appliesTo !== activePlan.type) {
+        setPromoError(
+          `This promo code only applies to ${promo.appliesTo} plans`,
+        );
+        setValidPromo(null);
+        return;
+      }
+
+      if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
+        setPromoError("This promo code has expired");
+        setValidPromo(null);
+        return;
+      }
+
+      setValidPromo(res.data);
+      setPromoCode(promo.code);
+      setIdempotencyKey(generateIdempotencyKey());
+      toast.success(
+        `Promo code applied: ${promo.discountPercent}% additional discount`,
+      );
+    } catch {
+      setPromoError("Unable to validate promo code right now");
       setValidPromo(null);
+    } finally {
       setIsApplyingPromo(false);
-      return;
     }
-
-    const promoResult = res.data;
-
-    if (
-      promoResult?.promoCode?.appliesTo !== "both" &&
-      promoResult?.promoCode?.appliesTo !== plan.type
-    ) {
-      setPromoError("This promo code is not valid for your plan");
-      setValidPromo(null);
-      setIsApplyingPromo(false);
-      return;
-    }
-
-    // Check if promo code is expired
-    const validUntil = new Date(promoResult.promoCode.validUntil);
-    if (validUntil < new Date()) {
-      setPromoError("This promo code has expired");
-      setValidPromo(null);
-      setIsApplyingPromo(false);
-      return;
-    }
-
-    setValidPromo(res.data);
-    setIdempotencyKey(generateIdempotencyKey());
-    toast.success(
-      `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`,
-    );
-    setIsApplyingPromo(false);
   };
 
   const handleClearPromoCode = () => {
@@ -216,275 +238,342 @@ export default function Cart({ planId }: { planId: string }) {
     setIdempotencyKey(generateIdempotencyKey());
   };
 
-  const handlePlanChange = (planId: string) => {
-    const allPlans = [...creditPlans, ...subscriptionPlans];
-    const selectedPlan = allPlans.find((p) => p._id === planId);
-    if (selectedPlan) {
-      setPlan(selectedPlan as PricingPlan);
-      setSelectedPlanId(planId);
-      setValidPromo(null);
-      setPromoCode("");
-      setPromoError(null);
-      setIdempotencyKey(generateIdempotencyKey());
-    }
-  };
-
-  const handleCheckout = async (
-    id: string,
-    type: string,
-    promoCode?: string,
-  ) => {
-    if (isProcessing || isRedirecting) return;
-
-    const cleanedPhone = customerPhone.replace(/[\s\-()]/g, "").trim();
-    if (cleanedPhone && !/^(?:\+?88)?01[3-9]\d{8}$/.test(cleanedPhone)) {
-      setPhoneError(
-        "Please enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX)"
-      );
-      return;
-    }
-    setPhoneError(null);
+  const handleCheckout = async () => {
+    if (!activePlan || isProcessing || isRedirecting) return;
 
     try {
-      // Check if user is logged in
       const user = await getCurrentUser();
       if (!user) {
-        // Redirect to login with current cart page as redirect path
-        const currentPath = `/cart${planId ? `?planId=${planId}` : ""}`;
-        router.push(`/login?redirectPath=${encodeURIComponent(currentPath)}`);
+        const redirectTarget = `/cart?planId=${encodeURIComponent(activePlan._id)}`;
+        router.push(
+          `/login?redirectPath=${encodeURIComponent(redirectTarget)}`,
+        );
         return;
       }
 
       setIsProcessing(true);
 
-      const data = await createPayment({
-        planId: id,
-        type,
-        promoCode,
+      const res = await createPayment({
+        planId: activePlan._id,
+        type: activePlan.type,
+        promoCode: validPromo?.promoCode.code,
         paymentMethod: selectedPaymentMethod,
-        customerPhone: cleanedPhone || undefined,
         idempotencyKey,
       });
 
-      if (!data.success) {
-        throw new Error(data.message || "Failed to process payment");
+      if (!res.success) {
+        throw new Error(res.message || "Failed to initiate payment");
       }
 
-      if (data.data?.paymentUrl) {
+      if (res.data?.paymentUrl) {
         setIsRedirecting(true);
-        window.location.href = data.data.paymentUrl;
+        window.location.href = res.data.paymentUrl;
         return;
-      } else {
-        throw new Error("Payment URL not received from payment gateway");
       }
-    } catch (error) {
-      console.error("Error processing payment:", error);
+
+      throw new Error("Payment URL not received from payment gateway");
+    } catch (err) {
       setIdempotencyKey(generateIdempotencyKey());
       toast.error(
-        error instanceof Error ? error.message : "Payment processing failed",
+        err instanceof Error ? err.message : "Payment processing failed",
       );
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (isLoading) {
+  if (isPricingLoading && !pricingData) {
+    return <CartSkeleton />;
+  }
+
+  const apiFailed =
+    isPricingError || (pricingData !== undefined && !pricingData.success);
+
+  if (apiFailed || planNotFound || !activePlan) {
+    const fallbackPlan = creditPlans[0] ?? subscriptionPlans[0] ?? null;
+
     return (
       <div className="min-h-screen bg-background">
-        <MaxWidthWrapper className="py-24">
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="w-16 h-16 border-4 border-muted rounded-full animate-spin border-t-primary mb-8"></div>
-            <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold text-foreground">
-                Loading your cart
-              </h2>
-              <p className="text-muted-foreground">
-                Please wait while we prepare your order
-              </p>
-            </div>
-          </div>
+        <MaxWidthWrapper className="py-20 sm:py-24">
+          <Card className="max-w-md mx-auto text-center">
+            <CardContent className="p-8 space-y-5">
+              <div className="w-14 h-14 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="h-7 w-7 text-destructive" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-foreground">
+                  {planNotFound
+                    ? "Selected plan unavailable"
+                    : "Unable to load checkout"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {planNotFound
+                    ? "The requested plan could not be found or is no longer active."
+                    : "Failed to load pricing plans. Please try again."}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
+                {planNotFound && fallbackPlan && (
+                  <Button
+                    type="button"
+                    onClick={() => handlePlanChange(fallbackPlan._id)}
+                  >
+                    Select {fallbackPlan.name}
+                  </Button>
+                )}
+                {apiFailed && (
+                  <Button type="button" onClick={() => refetchPricing()}>
+                    Try Again
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/pricing")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Pricing
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </MaxWidthWrapper>
       </div>
     );
   }
 
-  if (error || !plan) {
-    return (
-      <div className="min-h-screen bg-background">
-        <MaxWidthWrapper className="py-24">
-          <div className="max-w-md mx-auto text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-destructive/10 flex items-center justify-center">
-              <X className="h-8 w-8 text-destructive" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground mb-4">
-              Something went wrong
-            </h2>
-            <p className="text-muted-foreground mb-8">
-              {error || "We couldn't load your plan details. Please try again."}
-            </p>
-            <Button onClick={handleBackToPricing} variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Pricing
-            </Button>
-          </div>
-        </MaxWidthWrapper>
-      </div>
-    );
-  }
-
-  // Calculate the price with discounts (matching authoritative server rounding)
-  const priceAfterPlanDiscount =
-    plan.discountPrice && plan.discountPrice > 0
-      ? roundBdt(plan.discountPrice)
-      : plan.discountPercent > 0
-        ? roundBdt(
-            Number.parseFloat(
-              calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
-            )
-          )
-        : roundBdt(plan.basePrice);
-
+  // Price calculation aligned with server payment.service calculateOrderPricing
+  const basePrice = roundBdt(activePlan.basePrice);
+  const priceAfterPlanDiscount = getEffectivePlanPrice(activePlan);
+  const planDiscountAmount = roundBdt(
+    Math.max(0, basePrice - priceAfterPlanDiscount),
+  );
   const promoDiscountAmount = validPromo
     ? roundBdt(
-        (priceAfterPlanDiscount * validPromo.promoCode.discountPercent) / 100
+        (priceAfterPlanDiscount * validPromo.promoCode.discountPercent) / 100,
       )
     : 0;
-
   const finalPrice = Math.max(
     1,
-    roundBdt(priceAfterPlanDiscount - promoDiscountAmount)
+    roundBdt(priceAfterPlanDiscount - promoDiscountAmount),
+  );
+  const totalSavings = roundBdt(Math.max(0, basePrice - finalPrice));
+
+  const isCredit = activePlan.type === "credit";
+  const featuresList = isCredit ? creditFeatures : premiumFeatures;
+  const activePaymentMethod = PAYMENT_METHODS.find(
+    (m) => m.id === selectedPaymentMethod,
   );
 
   return (
     <div className="min-h-screen bg-background">
-      <MaxWidthWrapper className="py-8 lg:py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Complete Your Purchase
-          </h1>
-          <p className="text-muted-foreground">Secure checkout with GenMeta</p>
+      <MaxWidthWrapper className="py-8 sm:py-12 space-y-8">
+        {/* Top Bar */}
+        <div className="space-y-4 border-b pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              asChild
+              className="-ml-2.5 text-muted-foreground hover:text-foreground gap-1.5"
+            >
+              <Link href="/pricing">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Pricing</span>
+              </Link>
+            </Button>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
+              <Lock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>256-bit Encrypted Checkout</span>
+            </div>
+          </div>
+
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Complete your purchase
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Review your plan, apply an optional promo code, and pay securely
+              via PayStation.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Plan Selection */}
+        {/* Main 2-Column Checkout Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Left Column: Plan Configuration & Payment Method */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Selected Plan Card */}
             <Card>
-              <CardHeader>
-                <CardTitle>Select Your Plan</CardTitle>
-                <CardDescription>
-                  Choose the plan that works best for you
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Select value={selectedPlanId} onValueChange={handlePlanChange}>
-                  <SelectTrigger className="w-full">
+              <CardHeader className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      Selected Plan
+                    </CardTitle>
+                    <CardDescription>
+                      Switch plans anytime before proceeding to payment
+                    </CardDescription>
+                  </div>
+                </div>
+
+                {/* Plan Switcher */}
+                <Select
+                  value={activePlan._id}
+                  onValueChange={handlePlanChange}
+                  disabled={isProcessing || isRedirecting}
+                >
+                  <SelectTrigger className="w-full h-11">
                     <SelectValue placeholder="Choose a plan" />
                   </SelectTrigger>
                   <SelectContent>
                     {creditPlans.length > 0 && (
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                        Credit Plans
-                      </div>
+                      <SelectGroup>
+                        <SelectLabel>Credit Packs (No API key needed)</SelectLabel>
+                        {creditPlans.map((option) => (
+                          <SelectItem key={option._id} value={option._id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{option.name}</span>
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                ৳{getEffectivePlanPrice(option).toLocaleString()}
+                                {" · "}
+                                {(option.credit ?? 0).toLocaleString()} credits
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     )}
-                    {creditPlans.map((planOption) => (
-                      <SelectItem key={planOption._id} value={planOption._id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{planOption.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            ৳
-                            {planOption.discountPrice
-                              ? planOption.discountPrice
-                              : planOption.discountPercent > 0
-                                ? (
-                                    (planOption.basePrice *
-                                      (100 - planOption.discountPercent)) /
-                                    100
-                                  ).toFixed(0)
-                                : planOption.basePrice.toFixed(0)}{" "}
-                            • {planOption.credit.toLocaleString()} credits
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
+
                     {subscriptionPlans.length > 0 && (
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
-                        Subscription Plans
-                      </div>
+                      <SelectGroup>
+                        <SelectLabel>
+                          Subscription Plans (Unlimited with your key)
+                        </SelectLabel>
+                        {subscriptionPlans.map((option) => (
+                          <SelectItem key={option._id} value={option._id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{option.name}</span>
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                ৳{getEffectivePlanPrice(option).toLocaleString()}
+                                {" / "}
+                                {option.planDuration === 30
+                                  ? "month"
+                                  : option.planDuration === 365
+                                    ? "year"
+                                    : `${option.planDuration} days`}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     )}
-                    {subscriptionPlans.map((planOption) => {
-                      return (
-                        <SelectItem
-                          key={planOption._id}
-                          value={planOption._id}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              {planOption.name}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              ৳
-                              {planOption.discountPrice
-                                ? planOption.discountPrice
-                                : planOption.discountPercent > 0
-                                  ? (
-                                      (planOption.basePrice *
-                                        (100 - planOption.discountPercent)) /
-                                      100
-                                    ).toFixed(0)
-                                  : planOption.basePrice.toFixed(0)}
-                              {planOption.planDuration === 30
-                                ? "/month"
-                                : planOption.planDuration === 365
-                                  ? "/year"
-                                  : `/${planOption.planDuration} days`}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
                   </SelectContent>
                 </Select>
-              </CardContent>
-            </Card>
-
-            {/* Plan Details */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <CardDescription>
-                      {plan.type === "subscription"
-                        ? `${plan.planDuration} days of unlimited access to all premium features`
-                        : (() => {
-                            // Calculate image and video counts based on credits
-                            const imageCount = (
-                              (plan?.credit ?? 0) * 5
-                            ).toLocaleString();
-                            const videoCount = (
-                              plan?.credit ?? 0
-                            ).toLocaleString();
-                            return `${imageCount} images or ${videoCount} videos metadata generations for ${plan.planDuration} days`;
-                          })()}
-                    </CardDescription>
-                  </div>
-                </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <h3 className="font-semibold">What&apos;s included:</h3>
-                  <div className="grid gap-2">
-                    {(plan.type === "subscription"
-                      ? premiumFeatures
-                      : creditFeatures
-                    ).map((feature, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-2 text-sm"
+
+              <CardContent className="space-y-6">
+                {/* Highlighted Plan Box */}
+                <div className="rounded-xl border bg-muted/30 p-5 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "gap-1 font-medium",
+                          isCredit
+                            ? "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400"
+                            : "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400",
+                        )}
                       >
-                        <Check className="h-4 w-4 text-primary" />
+                        {isCredit ? (
+                          <Coins className="h-3 w-3" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        {isCredit ? "Credit Pack" : "Subscription"}
+                      </Badge>
+
+                      <Badge variant="secondary" className="gap-1 font-normal">
+                        <Calendar className="h-3 w-3" />
+                        {getDurationLabel(activePlan.planDuration)}
+                      </Badge>
+                    </div>
+
+                    {planDiscountAmount > 0 && (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                      >
+                        Save ৳{planDiscountAmount.toLocaleString()}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                    <div className="space-y-1">
+                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+                        {activePlan.name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {isCredit
+                          ? `${((activePlan.credit ?? 0) * 5).toLocaleString()} images or ${(activePlan.credit ?? 0).toLocaleString()} videos across ${activePlan.planDuration} days`
+                          : `Unlimited metadata generation for ${activePlan.planDuration} days`}
+                      </p>
+                    </div>
+
+                    <div className="sm:text-right shrink-0 tabular-nums">
+                      <div className="text-2xl font-bold">
+                        ৳{priceAfterPlanDiscount.toLocaleString()}
+                      </div>
+                      {planDiscountAmount > 0 && (
+                        <div className="text-xs text-muted-foreground line-through">
+                          ৳{basePrice.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {isCredit ? (
+                    <div className="flex items-center gap-2 pt-2 border-t text-xs text-muted-foreground">
+                      <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>
+                        Includes{" "}
+                        <strong className="text-foreground font-semibold">
+                          {(activePlan.credit ?? 0).toLocaleString()} credits
+                        </strong>{" "}
+                        with built-in API access
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 pt-2 border-t text-xs text-muted-foreground">
+                      <InfinityIcon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <span>
+                        <strong className="text-foreground font-semibold">
+                          Unlimited generation
+                        </strong>{" "}
+                        using your own Gemini API key
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Included Features */}
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    What&apos;s included
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {featuresList.map((feature, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2.5 text-sm text-foreground/90"
+                      >
+                        <div className="mt-0.5 h-4 w-4 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Check className="h-3 w-3 text-primary" />
+                        </div>
                         <span>{feature}</span>
                       </div>
                     ))}
@@ -492,16 +581,112 @@ export default function Cart({ planId }: { planId: string }) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Payment Method Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">
+                  Payment Method
+                </CardTitle>
+                <CardDescription>
+                  Select your preferred payment gateway
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <RadioGroup
+                  value={selectedPaymentMethod}
+                  onValueChange={setSelectedPaymentMethod}
+                >
+                  {PAYMENT_METHODS.map((method) => {
+                    const isSelected = selectedPaymentMethod === method.id;
+                    return (
+                      <Label
+                        key={method.id}
+                        htmlFor={method.id}
+                        className={cn(
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border-2 transition-colors cursor-pointer",
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-muted-foreground/40",
+                        )}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <RadioGroupItem value={method.id} id={method.id} />
+                          <div className="w-11 h-11 rounded-lg bg-background border flex items-center justify-center shrink-0 overflow-hidden">
+                            {logoError ? (
+                              <CreditCard className="h-5 w-5 text-primary" />
+                            ) : (
+                              <Image
+                                src={method.logo}
+                                alt={method.name}
+                                width={32}
+                                height={32}
+                                className="w-8 h-8 object-contain"
+                                onError={() => setLogoError(true)}
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-foreground">
+                              {method.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {method.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end pl-7 sm:pl-0">
+                          {method.channels.map((ch) => (
+                            <span
+                              key={ch}
+                              className="px-2 py-0.5 text-[11px] font-medium rounded-md border bg-background text-muted-foreground"
+                            >
+                              {ch}
+                            </span>
+                          ))}
+                        </div>
+                      </Label>
+                    );
+                  })}
+                </RadioGroup>
+
+                {/* Trust Strip */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    <Zap className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    <span>Instant plan activation</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    <span>Verified by PayStation</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    <Receipt className="h-3.5 w-3.5 text-foreground shrink-0" />
+                    <span>Email invoice receipt</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6">
+          {/* Right Column: Sticky Order Summary */}
+          <div className="lg:col-span-5">
+            <div className="lg:sticky lg:top-24">
               <Card>
-                <CardContent className="space-y-5 pt-6">
-                  {/* Promo Code */}
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base font-semibold">
+                    Order Summary
+                  </CardTitle>
+                  <CardDescription>
+                    Authoritative pricing in BDT
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-5">
+                  {/* Promo Code Section */}
                   <Collapsible
-                    open={isPromoOpen || !!validPromo}
+                    open={isPromoOpen || Boolean(validPromo)}
                     onOpenChange={setIsPromoOpen}
                     className="space-y-3"
                   >
@@ -516,38 +701,45 @@ export default function Cart({ planId }: { planId: string }) {
                           <ChevronDown
                             className={cn(
                               "h-4 w-4 transition-transform duration-200",
-                              (isPromoOpen || !!validPromo) && "rotate-180"
+                              (isPromoOpen || Boolean(validPromo)) &&
+                                "rotate-180",
                             )}
                           />
                         </button>
                       </CollapsibleTrigger>
+
                       {validPromo && (
-                        <span className="text-xs font-semibold text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 text-[11px]"
+                        >
                           Applied
-                        </span>
+                        </Badge>
                       )}
                     </div>
 
-                    <CollapsibleContent className="space-y-3 pt-1">
+                    <CollapsibleContent className="space-y-2.5 pt-1">
                       {validPromo ? (
-                        <div className="flex items-center justify-between p-2.5 border rounded-lg bg-muted/50">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle className="h-5 w-5 text-green-600 shrink-0" />
-                            <div>
-                              <p className="font-medium font-mono text-sm">
+                        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/40">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-mono font-semibold text-sm truncate">
                                 {validPromo.promoCode.code}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {validPromo.promoCode.discountPercent}% discount
-                                applied
+                                {validPromo.promoCode.discountPercent}% promo
+                                discount applied
                               </p>
                             </div>
                           </div>
                           <Button
+                            type="button"
                             variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
+                            size="icon"
+                            className="h-7 w-7 shrink-0"
                             onClick={handleClearPromoCode}
+                            aria-label="Remove promo code"
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -567,11 +759,18 @@ export default function Cart({ planId }: { planId: string }) {
                               setPromoCode(e.target.value.toUpperCase());
                               if (promoError) setPromoError(null);
                             }}
-                            className="font-mono text-sm"
+                            disabled={isApplyingPromo || isProcessing || isRedirecting}
+                            className="font-mono text-sm uppercase"
                           />
                           <Button
                             type="submit"
-                            disabled={isApplyingPromo || !promoCode.trim()}
+                            variant="outline"
+                            disabled={
+                              isApplyingPromo ||
+                              !promoCode.trim() ||
+                              isProcessing ||
+                              isRedirecting
+                            }
                           >
                             {isApplyingPromo ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -581,13 +780,19 @@ export default function Cart({ planId }: { planId: string }) {
                           </Button>
                         </form>
                       )}
+
                       {promoError && (
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                          <X
-                            className="h-4 w-4 shrink-0 hover:cursor-pointer"
+                        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span className="flex-1">{promoError}</span>
+                          <button
+                            type="button"
                             onClick={() => setPromoError(null)}
-                          />
-                          <p>{promoError}</p>
+                            aria-label="Dismiss promo error"
+                            className="shrink-0 hover:opacity-80"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       )}
                     </CollapsibleContent>
@@ -595,188 +800,119 @@ export default function Cart({ planId }: { planId: string }) {
 
                   <Separator />
 
-                  {/* Order Summary */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold">Order Summary</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span>{plan.name}</span>
-                        <span className="font-medium">
-                          ৳{plan.basePrice.toFixed(2)}
+                  {/* Price Line Items */}
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground truncate">
+                        {activePlan.name}
+                      </span>
+                      <span className="font-medium tabular-nums shrink-0">
+                        ৳{basePrice.toFixed(2)}
+                      </span>
+                    </div>
+
+                    {planDiscountAmount > 0 && (
+                      <div className="flex items-center justify-between gap-3 text-emerald-600 dark:text-emerald-400">
+                        <span>
+                          Plan discount
+                          {activePlan.discountPercent > 0
+                            ? ` (${activePlan.discountPercent}%)`
+                            : ""}
+                        </span>
+                        <span className="tabular-nums shrink-0">
+                          -৳{planDiscountAmount.toFixed(2)}
                         </span>
                       </div>
-                      {plan.discountPercent > 0 && (
-                        <div className="flex justify-between text-sm text-green-500">
-                          <span>Discount ({plan.discountPercent}%)</span>
-                          <span>
-                            -৳
-                            {(plan.basePrice - priceAfterPlanDiscount).toFixed(
-                              2,
-                            )}
-                          </span>
-                        </div>
-                      )}
-                      {validPromo && (
-                        <div className="flex justify-between text-sm text-green-500">
-                          <span>
-                            Promo ({validPromo.promoCode.discountPercent}%)
-                          </span>
-                          <span>
-                            -৳{(priceAfterPlanDiscount - finalPrice).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between items-end">
-                      <span className="font-semibold">Total</span>
-                      <div className="text-right">
-                        <span className="text-2xl font-bold">
+                    )}
+
+                    {validPromo && promoDiscountAmount > 0 && (
+                      <div className="flex items-center justify-between gap-3 text-emerald-600 dark:text-emerald-400">
+                        <span>
+                          Promo {validPromo.promoCode.code} (
+                          {validPromo.promoCode.discountPercent}%)
+                        </span>
+                        <span className="tabular-nums shrink-0">
+                          -৳{promoDiscountAmount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Final Total */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="font-semibold text-base">
+                        Total Due
+                      </span>
+                      <div className="text-right tabular-nums">
+                        <span className="text-2xl sm:text-3xl font-bold tracking-tight">
                           ৳{finalPrice.toFixed(2)}
                         </span>
+                        <span className="text-xs text-muted-foreground ml-1">
+                          BDT
+                        </span>
                       </div>
                     </div>
-                  </div>
 
-                  <Separator />
-
-                  {/* Payment Method */}
-                  <div className="space-y-3">
-                    <h3 className="font-semibold">Payment Method</h3>
-                    <RadioGroup
-                      value={selectedPaymentMethod}
-                      onValueChange={setSelectedPaymentMethod}
-                    >
-                      {paymentMethods.map((method) => (
-                        <div
-                          key={method.id}
-                          className={`flex items-center space-x-4 p-4 rounded-lg border-2 transition-colors ${
-                            selectedPaymentMethod === method.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-muted-foreground/40"
-                          } ${
-                            !method.available
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer"
-                          }`}
-                        >
-                          <RadioGroupItem
-                            value={method.id}
-                            id={method.id}
-                            disabled={!method.available}
-                          />
-                          <Label
-                            htmlFor={method.id}
-                            className={`flex items-center gap-4 flex-1 ${
-                              !method.available
-                                ? "cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
-                          >
-                            <div className="w-12 h-12 rounded-lg bg-background border flex items-center justify-center">
-                              <img
-                                src={method.logo || "/placeholder.svg"}
-                                alt={method.name}
-                                className="w-8 h-8 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.src =
-                                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23e91e63' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'%3E%3Crect width='20' height='14' x='2' y='5' rx='2'/%3E%3Cline x1='2' x2='22' y1='10' y2='10'/%3E%3C/svg%3E";
-                                }}
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">
-                                {method.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {method.description}
-                              </p>
-                            </div>
-                            {selectedPaymentMethod === method.id &&
-                              method.available && (
-                                <Check className="h-5 w-5 text-primary" />
-                              )}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-
-                  <Separator />
-
-                  {/* Optional Mobile Phone */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="customerPhone"
-                      className="flex items-center gap-2 text-sm font-medium"
-                    >
-                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                      Mobile Number{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        (Optional)
-                      </span>
-                    </Label>
-                    <Input
-                      id="customerPhone"
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="017XXXXXXXX"
-                      value={customerPhone}
-                      onChange={(e) => {
-                        setCustomerPhone(e.target.value);
-                        if (phoneError) setPhoneError(null);
-                      }}
-                      disabled={isProcessing || isRedirecting}
-                      aria-invalid={Boolean(phoneError)}
-                    />
-                    {phoneError ? (
-                      <p className="text-xs text-destructive">{phoneError}</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Used by PayStation for transaction receipt notifications
+                    {totalSavings > 0 && (
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400 text-right tabular-nums">
+                        You save ৳{totalSavings.toFixed(2)} on this order
                       </p>
                     )}
                   </div>
 
-                  <Separator />
-
-                  {/* Checkout Button */}
+                  {/* Checkout CTA */}
                   <Button
-                    className="w-full h-12 font-medium"
-                    onClick={() =>
-                      handleCheckout(
-                        plan._id,
-                        plan.type,
-                        validPromo?.promoCode.code,
-                      )
-                    }
+                    type="button"
+                    size="lg"
+                    className="w-full h-12 font-semibold gap-2"
+                    onClick={handleCheckout}
                     disabled={
                       isProcessing ||
                       isRedirecting ||
-                      !paymentMethods.find(
-                        (m) => m.id === selectedPaymentMethod,
-                      )?.available
+                      !activePaymentMethod?.available
                     }
-                    size="lg"
                   >
                     {isRedirecting ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Redirecting to PayStation...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Redirecting to PayStation...</span>
                       </>
                     ) : isProcessing ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Preparing Checkout...</span>
                       </>
                     ) : (
                       <>
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        Continue to Payment
-                        <ChevronRight className="ml-2 h-4 w-4" />
+                        <CreditCard className="h-4 w-4" />
+                        <span>
+                          Pay ৳{finalPrice.toLocaleString()} with PayStation
+                        </span>
+                        <ChevronRight className="h-4 w-4" />
                       </>
                     )}
                   </Button>
+
+                  <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
+                    By continuing, you agree to our{" "}
+                    <Link
+                      href="/terms"
+                      className="underline hover:text-foreground"
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/refund-policy"
+                      className="underline hover:text-foreground"
+                    >
+                      Refund Policy
+                    </Link>
+                    .
+                  </p>
                 </CardContent>
               </Card>
             </div>
