@@ -19,7 +19,7 @@ export default async function RootLayout({
     <>
       <SidebarProvider>
         <AppSidebar user={user} type="admin" />
-        <SidebarInset>
+        <SidebarInset className="min-w-0">
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 border-b px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
@@ -30,7 +30,7 @@ export default async function RootLayout({
               <AdminNotificationPanel />
             </div>
           </header>
-          <main className="p-5">{children}</main>
+          <div className="min-w-0 flex-1 p-4 sm:p-5 lg:p-6">{children}</div>
         </SidebarInset>
       </SidebarProvider>
     </>

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
+import { ApiUsageLog } from "../models/apiUsageLog.model.js";
 import { User } from "../models/user.model.js";
 import { Session } from "../models/session.model.js";
 import { Referral } from "../models/referral.model.js";
@@ -8,25 +9,105 @@ import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { USER_ROLES, WITHDRAWAL_STATUS } from "../constants/index.js";
+import { PLAN_TYPES, USER_ROLES, WITHDRAWAL_STATUS } from "../constants/index.js";
+
+const toUtcDateKey = (date) => new Date(date).toISOString().split("T")[0];
+const toUtcMonthKey = (date) => new Date(date).toISOString().slice(0, 7);
+
+function calcGrowthPercentage(current, previous) {
+  if (previous > 0) {
+    return Number((((current - previous) / previous) * 100).toFixed(2));
+  }
+  return current > 0 ? 100 : 0;
+}
 
 export const getAdminDashboardStats = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+
   const now = new Date();
-  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const isExplicitRefresh =
+    req.query.refresh === "true" || req.query.refresh === "1";
 
-  const formatMonthKey = (date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  // On explicit refresh, reconcile active paid accounts whose plan expired or ran out of credits
+  let syncedExpiredPlans = 0;
+  if (isExplicitRefresh) {
+    const stalePaidUsers = await AppUser.find({
+      isActive: true,
+      status: "active",
+      $or: [
+        { "plan.type": PLAN_TYPES.SUBSCRIPTION, expiresAt: { $lte: now } },
+        { "plan.type": PLAN_TYPES.CREDIT, expiresAt: { $lte: now } },
+        { "plan.type": PLAN_TYPES.CREDIT, credit: { $lte: 0 } },
+      ],
+    });
 
-  const monthlyKeys = {};
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    monthlyKeys[formatMonthKey(d)] = 0;
+    if (stalePaidUsers.length > 0) {
+      await Promise.all(
+        stalePaidUsers.map(async (doc) => {
+          const reason =
+            doc.plan?.type === PLAN_TYPES.SUBSCRIPTION
+              ? "subscription_expired_refresh"
+              : doc.expiresAt && now >= doc.expiresAt
+              ? "credit_plan_expired_refresh"
+              : "zero_credit_refresh";
+          doc.downgradeToPlan(PLAN_TYPES.FREE, reason);
+          await doc.save();
+        })
+      );
+      syncedExpiredPlans = stalePaidUsers.length;
+    }
   }
+
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  const thisMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const lastMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+  );
+  const sevenDaysStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6)
+  );
+  const sixMonthsStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1)
+  );
+
+  const last7DateKeys = Array.from({ length: 7 }, (_, i) =>
+    toUtcDateKey(
+      new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (6 - i))
+      )
+    )
+  );
+
+  const last6MonthKeys = Array.from({ length: 6 }, (_, i) =>
+    toUtcMonthKey(
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (5 - i), 1))
+    )
+  );
+
+  const isActiveAppUserExpr = {
+    $and: [{ $eq: ["$isActive", true] }, { $eq: ["$status", "active"] }],
+  };
+  const hasExpiredDateExpr = {
+    $and: [
+      { $eq: [{ $type: "$expiresAt" }, "date"] },
+      { $lte: ["$expiresAt", now] },
+    ],
+  };
+  const isNotExpiredExpr = {
+    $or: [
+      { $ne: [{ $type: "$expiresAt" }, "date"] },
+      { $gt: ["$expiresAt", now] },
+    ],
+  };
 
   const [
     paymentStats,
     appUserStats,
+    usageLogStats,
     userStats,
     referralStats,
     topUsageDocs,
@@ -42,6 +123,11 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
               $group: {
                 _id: null,
                 total: { $sum: "$amount" },
+                today: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", todayStart] }, "$amount", 0],
+                  },
+                },
                 currentMonth: {
                   $sum: {
                     $cond: [{ $gte: ["$createdAt", thisMonth] }, "$amount", 0],
@@ -61,14 +147,61 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
                     ],
                   },
                 },
+                avgOrderValue: { $avg: "$amount" },
+                totalCount: { $sum: 1 },
+                todayCount: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", todayStart] }, 1, 0],
+                  },
+                },
+                newThisMonth: {
+                  $sum: {
+                    $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0],
+                  },
+                },
+                lastMonthCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $gte: ["$createdAt", lastMonth] },
+                          { $lt: ["$createdAt", thisMonth] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
               },
             },
           ],
           monthlyRevenue: [
+            { $match: { createdAt: { $gte: sixMonthsStart } } },
             {
               $group: {
                 _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
                 amount: { $sum: "$amount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          dailyRevenue: [
+            { $match: { createdAt: { $gte: sevenDaysStart } } },
+            {
+              $group: {
+                _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+                amount: { $sum: "$amount" },
+                count: { $sum: 1 },
+              },
+            },
+          ],
+          byPlanType: [
+            {
+              $group: {
+                _id: { $ifNull: ["$plan.type", "other"] },
+                amount: { $sum: "$amount" },
+                count: { $sum: 1 },
               },
             },
           ],
@@ -78,27 +211,28 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
             {
               $lookup: {
                 from: "users",
-                localField: "userId",
-                foreignField: "_id",
+                let: { uid: "$userId" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+                  { $project: { _id: 1, name: 1, email: 1, avatar: 1 } },
+                ],
                 as: "user",
               },
             },
             {
               $project: {
+                _id: 1,
                 amount: 1,
+                currency: 1,
+                gateway: 1,
+                status: 1,
                 createdAt: 1,
                 plan: 1,
                 trxID: 1,
+                paymentID: 1,
                 userId: { $arrayElemAt: ["$user", 0] },
               },
             },
-          ],
-          count: [{ $count: "total" }],
-          newThisMonth: [
-            {
-              $match: { createdAt: { $gte: thisMonth } },
-            },
-            { $count: "total" },
           ],
         },
       },
@@ -117,27 +251,15 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
                   $sum: { $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0] },
                 },
                 active: {
-                  $sum: {
-                    $cond: [
-                      {
-                        $and: [
-                          { $eq: ["$isActive", true] },
-                          { $eq: ["$status", "active"] },
-                        ],
-                      },
-                      1,
-                      0,
-                    ],
-                  },
+                  $sum: { $cond: [isActiveAppUserExpr, 1, 0] },
                 },
-                activePremium: {
+                suspended: {
                   $sum: {
                     $cond: [
                       {
-                        $and: [
-                          { $eq: ["$isActive", true] },
-                          { $eq: ["$status", "active"] },
-                          { $ne: ["$plan.type", "free"] },
+                        $or: [
+                          { $eq: ["$status", "suspended"] },
+                          { $eq: ["$isActive", false] },
                         ],
                       },
                       1,
@@ -150,9 +272,9 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$isActive", true] },
-                          { $eq: ["$status", "active"] },
-                          { $eq: ["$plan.type", "subscription"] },
+                          isActiveAppUserExpr,
+                          { $eq: ["$plan.type", PLAN_TYPES.SUBSCRIPTION] },
+                          isNotExpiredExpr,
                         ],
                       },
                       1,
@@ -165,13 +287,76 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
                     $cond: [
                       {
                         $and: [
-                          { $eq: ["$isActive", true] },
-                          { $eq: ["$status", "active"] },
-                          { $eq: ["$plan.type", "credit"] },
+                          isActiveAppUserExpr,
+                          { $eq: ["$plan.type", PLAN_TYPES.CREDIT] },
+                          isNotExpiredExpr,
+                          { $gt: ["$credit", 0] },
                         ],
                       },
                       1,
                       0,
+                    ],
+                  },
+                },
+                freePlanCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          isActiveAppUserExpr,
+                          { $eq: ["$plan.type", PLAN_TYPES.FREE] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                expiredPendingDowngrade: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          isActiveAppUserExpr,
+                          {
+                            $or: [
+                              {
+                                $and: [
+                                  { $eq: ["$plan.type", PLAN_TYPES.SUBSCRIPTION] },
+                                  hasExpiredDateExpr,
+                                ],
+                              },
+                              {
+                                $and: [
+                                  { $eq: ["$plan.type", PLAN_TYPES.CREDIT] },
+                                  {
+                                    $or: [
+                                      hasExpiredDateExpr,
+                                      { $lte: ["$credit", 0] },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+                totalDevices: {
+                  $sum: {
+                    $max: [
+                      { $cond: [{ $isArray: "$devices" }, { $size: "$devices" }, 0] },
+                      {
+                        $cond: [
+                          { $isArray: "$allowedDevices" },
+                          { $size: "$allowedDevices" },
+                          0,
+                        ],
+                      },
                     ],
                   },
                 },
@@ -182,8 +367,58 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
             {
               $group: {
                 _id: null,
-                total: { $sum: "$totalProcess" },
-                totalFailed: { $sum: "$totalFailedProcess" },
+                total: { $sum: { $ifNull: ["$totalProcess", 0] } },
+                totalFailed: { $sum: { $ifNull: ["$totalFailedProcess", 0] } },
+              },
+            },
+          ],
+          monthlyProcesses: [
+            {
+              $project: {
+                entries: {
+                  $cond: [
+                    { $eq: [{ $type: "$monthlyProcess" }, "object"] },
+                    { $objectToArray: "$monthlyProcess" },
+                    [],
+                  ],
+                },
+              },
+            },
+            { $unwind: "$entries" },
+            { $match: { "entries.k": { $in: last6MonthKeys } } },
+            {
+              $group: {
+                _id: "$entries.k",
+                count: {
+                  $sum: {
+                    $cond: [{ $isNumber: "$entries.v" }, "$entries.v", 0],
+                  },
+                },
+              },
+            },
+          ],
+          dailyProcesses: [
+            {
+              $project: {
+                entries: {
+                  $cond: [
+                    { $eq: [{ $type: "$dailyProcess" }, "object"] },
+                    { $objectToArray: "$dailyProcess" },
+                    [],
+                  ],
+                },
+              },
+            },
+            { $unwind: "$entries" },
+            { $match: { "entries.k": { $in: last7DateKeys } } },
+            {
+              $group: {
+                _id: "$entries.k",
+                count: {
+                  $sum: {
+                    $cond: [{ $isNumber: "$entries.v" }, "$entries.v", 0],
+                  },
+                },
               },
             },
           ],
@@ -191,7 +426,51 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 3. User Aggregation
+    // 3. Normalized Usage Log Aggregation
+    ApiUsageLog.aggregate([
+      {
+        $facet: {
+          daily: [
+            { $match: { date: { $in: last7DateKeys } } },
+            {
+              $group: {
+                _id: "$date",
+                count: {
+                  $sum: {
+                    $cond: [
+                      { $gt: ["$fileCount", 0] },
+                      "$fileCount",
+                      { $ifNull: ["$processCount", 0] },
+                    ],
+                  },
+                },
+                failed: { $sum: { $ifNull: ["$failedCount", 0] } },
+              },
+            },
+          ],
+          monthly: [
+            { $match: { date: { $gte: `${last6MonthKeys[0]}-01` } } },
+            {
+              $group: {
+                _id: { $substrBytes: ["$date", 0, 7] },
+                count: {
+                  $sum: {
+                    $cond: [
+                      { $gt: ["$fileCount", 0] },
+                      "$fileCount",
+                      { $ifNull: ["$processCount", 0] },
+                    ],
+                  },
+                },
+                failed: { $sum: { $ifNull: ["$failedCount", 0] } },
+              },
+            },
+          ],
+        },
+      },
+    ]),
+
+    // 4. User Aggregation
     User.aggregate([
       {
         $facet: {
@@ -201,8 +480,27 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
                 _id: null,
                 total: { $sum: 1 },
                 verified: { $sum: { $cond: ["$isVerified", 1, 0] } },
+                unverified: { $sum: { $cond: ["$isVerified", 0, 1] } },
+                disabled: { $sum: { $cond: ["$isDisabled", 1, 0] } },
+                newToday: {
+                  $sum: { $cond: [{ $gte: ["$createdAt", todayStart] }, 1, 0] },
+                },
                 newThisMonth: {
                   $sum: { $cond: [{ $gte: ["$createdAt", thisMonth] }, 1, 0] },
+                },
+                newLastMonth: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $gte: ["$createdAt", lastMonth] },
+                          { $lt: ["$createdAt", thisMonth] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
                 },
               },
             },
@@ -211,15 +509,94 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 4. Referral Aggregation
+    // 5. Referral Aggregation
     Referral.aggregate([
       {
         $facet: {
           totals: [
             {
+              $project: {
+                availableBalance: { $ifNull: ["$availableBalance", 0] },
+                referredCount: {
+                  $cond: [
+                    { $isArray: "$referredUsers" },
+                    { $size: "$referredUsers" },
+                    0,
+                  ],
+                },
+                earnedAmount: {
+                  $reduce: {
+                    input: {
+                      $cond: [
+                        { $isArray: "$earnedHistory" },
+                        "$earnedHistory",
+                        [],
+                      ],
+                    },
+                    initialValue: 0,
+                    in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+                  },
+                },
+                pendingWithdrawalsList: {
+                  $filter: {
+                    input: {
+                      $cond: [
+                        { $isArray: "$withdrawHistory" },
+                        "$withdrawHistory",
+                        [],
+                      ],
+                    },
+                    as: "w",
+                    cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.PENDING] },
+                  },
+                },
+                completedWithdrawalsList: {
+                  $filter: {
+                    input: {
+                      $cond: [
+                        { $isArray: "$withdrawHistory" },
+                        "$withdrawHistory",
+                        [],
+                      ],
+                    },
+                    as: "w",
+                    cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.COMPLETED] },
+                  },
+                },
+              },
+            },
+            {
               $group: {
                 _id: null,
+                totalReferrers: { $sum: 1 },
+                totalReferredUsers: { $sum: "$referredCount" },
                 totalAvailable: { $sum: "$availableBalance" },
+                totalEarned: { $sum: "$earnedAmount" },
+                pendingWithdrawalsCount: {
+                  $sum: { $size: "$pendingWithdrawalsList" },
+                },
+                pendingWithdrawalsAmount: {
+                  $sum: {
+                    $reduce: {
+                      input: "$pendingWithdrawalsList",
+                      initialValue: 0,
+                      in: {
+                        $add: ["$$value", { $ifNull: ["$$this.amount", 0] }],
+                      },
+                    },
+                  },
+                },
+                completedWithdrawalsAmount: {
+                  $sum: {
+                    $reduce: {
+                      input: "$completedWithdrawalsList",
+                      initialValue: 0,
+                      in: {
+                        $add: ["$$value", { $ifNull: ["$$this.amount", 0] }],
+                      },
+                    },
+                  },
+                },
               },
             },
           ],
@@ -227,23 +604,34 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 5. Top Usage (AppUser)
+    // 6. Top Usage (AppUser)
     AppUser.find({ totalProcess: { $gt: 0 } })
-      .populate("userId", "name email")
+      .select("userId username key plan totalProcess totalFailedProcess status")
+      .populate("userId", "name email avatar")
       .sort({ totalProcess: -1 })
       .limit(5)
       .lean(),
 
-    // 6. Top Spenders
+    // 7. Top Spenders
     AppPayment.aggregate([
-      { $group: { _id: "$userId", totalSpent: { $sum: "$amount" } } },
+      {
+        $group: {
+          _id: "$userId",
+          totalSpent: { $sum: "$amount" },
+          paymentCount: { $sum: 1 },
+          lastPaymentAt: { $max: "$createdAt" },
+        },
+      },
       { $sort: { totalSpent: -1 } },
       { $limit: 5 },
       {
         $lookup: {
           from: "users",
-          localField: "_id",
-          foreignField: "_id",
+          let: { uid: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+            { $project: { _id: 1, name: 1, email: 1, avatar: 1 } },
+          ],
           as: "user",
         },
       },
@@ -251,124 +639,379 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
         $project: {
           _id: 1,
           totalSpent: 1,
+          paymentCount: 1,
+          lastPaymentAt: 1,
           user: { $arrayElemAt: ["$user", 0] },
         },
       },
     ]),
 
-    // 7. Top Referrers
+    // 8. Top Referrers
     Referral.aggregate([
       {
         $project: {
           referrer: 1,
-          referredCount: { $size: { $ifNull: ["$referredUsers", []] } },
-          availableBalance: 1,
+          referralCode: 1,
+          referredCount: {
+            $cond: [
+              { $isArray: "$referredUsers" },
+              { $size: "$referredUsers" },
+              0,
+            ],
+          },
+          availableBalance: { $ifNull: ["$availableBalance", 0] },
+          totalEarned: {
+            $reduce: {
+              input: {
+                $cond: [
+                  { $isArray: "$earnedHistory" },
+                  "$earnedHistory",
+                  [],
+                ],
+              },
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+            },
+          },
         },
       },
-      { $sort: { referredCount: -1 } },
+      {
+        $match: {
+          $or: [{ referredCount: { $gt: 0 } }, { totalEarned: { $gt: 0 } }],
+        },
+      },
+      { $sort: { referredCount: -1, totalEarned: -1 } },
       { $limit: 5 },
       {
         $lookup: {
           from: "users",
-          localField: "referrer",
-          foreignField: "_id",
+          let: { uid: "$referrer" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+            { $project: { _id: 1, name: 1, email: 1, avatar: 1 } },
+          ],
           as: "user",
         },
       },
       {
         $project: {
           _id: 1,
+          referrer: 1,
+          referralCode: 1,
           referredCount: 1,
           availableBalance: 1,
+          totalEarned: 1,
           user: { $arrayElemAt: ["$user", 0] },
         },
       },
     ]),
   ]);
 
-  const revData = paymentStats[0]?.revenue[0] || { total: 0, currentMonth: 0, lastMonth: 0 };
-  const monthlyRevenueMap = { ...monthlyKeys };
-  (paymentStats[0]?.monthlyRevenue || []).forEach((item) => {
-    if (monthlyRevenueMap[item._id] !== undefined) {
-      monthlyRevenueMap[item._id] = item.amount;
-    }
+  // Normalize payment stats
+  const paymentFacet = paymentStats[0] || {};
+  const revData = paymentFacet.revenue?.[0] || {
+    total: 0,
+    today: 0,
+    currentMonth: 0,
+    lastMonth: 0,
+    avgOrderValue: 0,
+    totalCount: 0,
+    todayCount: 0,
+    newThisMonth: 0,
+    lastMonthCount: 0,
+  };
+
+  const monthlyRevenueRows = new Map(
+    (paymentFacet.monthlyRevenue || []).map((item) => [
+      item._id,
+      { amount: item.amount || 0, count: item.count || 0 },
+    ])
+  );
+  const dailyRevenueRows = new Map(
+    (paymentFacet.dailyRevenue || []).map((item) => [
+      item._id,
+      { amount: item.amount || 0, count: item.count || 0 },
+    ])
+  );
+
+  const monthlyRevenueMap = {};
+  const last6MonthRevenue = last6MonthKeys.map((month) => {
+    const entry = monthlyRevenueRows.get(month) || { amount: 0, count: 0 };
+    monthlyRevenueMap[month] = entry.amount;
+    return { month, amount: entry.amount, count: entry.count };
   });
 
-  const growthPercentage =
-    revData.lastMonth > 0
-      ? ((revData.currentMonth - revData.lastMonth) / revData.lastMonth) * 100
-      : revData.currentMonth > 0
-      ? 100
+  const last7DaysRevenue = last7DateKeys.map((date) => {
+    const entry = dailyRevenueRows.get(date) || { amount: 0, count: 0 };
+    return { date, amount: entry.amount, count: entry.count };
+  });
+
+  const byPlanType = {
+    subscription: { amount: 0, count: 0 },
+    credit: { amount: 0, count: 0 },
+    other: { amount: 0, count: 0 },
+  };
+  for (const row of paymentFacet.byPlanType || []) {
+    const key =
+      row._id === PLAN_TYPES.SUBSCRIPTION || row._id === PLAN_TYPES.CREDIT
+        ? row._id
+        : "other";
+    byPlanType[key].amount += row.amount || 0;
+    byPlanType[key].count += row.count || 0;
+  }
+
+  const recentPayments = (paymentFacet.recent || []).map((item) => ({
+    _id: item._id,
+    trxID: item.trxID || "",
+    paymentID: item.paymentID || "",
+    amount: item.amount || 0,
+    currency: item.currency || "BDT",
+    gateway: item.gateway || "paystation",
+    status: item.status || "Completed",
+    plan: {
+      id: item.plan?.id || "",
+      name: item.plan?.name || item.plan?.type || "Standard",
+      type: item.plan?.type || "subscription",
+    },
+    createdAt: item.createdAt,
+    userId: item.userId || {
+      _id: "",
+      name: "Unknown User",
+      email: "N/A",
+      avatar: null,
+    },
+  }));
+
+  // Normalize process time-series by combining AppUser maps & ApiUsageLog aggregations
+  const appUserFacet = appUserStats[0] || {};
+  const usageFacet = usageLogStats[0] || {};
+
+  const appMonthlyMap = new Map(
+    (appUserFacet.monthlyProcesses || []).map((row) => [row._id, row.count || 0])
+  );
+  const logMonthlyMap = new Map(
+    (usageFacet.monthly || []).map((row) => [
+      row._id,
+      { count: row.count || 0, failed: row.failed || 0 },
+    ])
+  );
+
+  const monthlyProcessMap = {};
+  const last6MonthProcess = last6MonthKeys.map((month) => {
+    const logEntry = logMonthlyMap.get(month) || { count: 0, failed: 0 };
+    const count = Math.max(appMonthlyMap.get(month) || 0, logEntry.count);
+    monthlyProcessMap[month] = count;
+    return { month, count, failed: logEntry.failed };
+  });
+
+  const appDailyMap = new Map(
+    (appUserFacet.dailyProcesses || []).map((row) => [row._id, row.count || 0])
+  );
+  const logDailyMap = new Map(
+    (usageFacet.daily || []).map((row) => [
+      row._id,
+      { count: row.count || 0, failed: row.failed || 0 },
+    ])
+  );
+
+  const last7DaysProcess = last7DateKeys.map((date) => {
+    const logEntry = logDailyMap.get(date) || { count: 0, failed: 0 };
+    const count = Math.max(appDailyMap.get(date) || 0, logEntry.count);
+    return { date, count, failed: logEntry.failed };
+  });
+
+  const todayProcesses = last7DaysProcess[last7DaysProcess.length - 1]?.count || 0;
+  const currentMonthProcesses =
+    last6MonthProcess[last6MonthProcess.length - 1]?.count || 0;
+  const lastMonthProcesses =
+    last6MonthProcess.length >= 2
+      ? last6MonthProcess[last6MonthProcess.length - 2].count
       : 0;
 
+  const totalProcessStats = appUserFacet.totalProcesses?.[0] || {
+    total: 0,
+    totalFailed: 0,
+  };
+  const totalProcessedCount = totalProcessStats.total || 0;
+  const totalFailedCount = totalProcessStats.totalFailed || 0;
+  const totalAttempted = totalProcessedCount + totalFailedCount;
+  const processSuccessRate =
+    totalAttempted > 0
+      ? Number(((totalProcessedCount / totalAttempted) * 100).toFixed(1))
+      : 100;
+
+  // Normalize user counts
+  const userCounts = userStats[0]?.counts?.[0] || {
+    total: 0,
+    verified: 0,
+    unverified: 0,
+    disabled: 0,
+    newToday: 0,
+    newThisMonth: 0,
+    newLastMonth: 0,
+  };
+  const userVerificationRate =
+    userCounts.total > 0
+      ? Number(((userCounts.verified / userCounts.total) * 100).toFixed(1))
+      : 0;
+
+  // Normalize app user counts
+  const appUserCounts = appUserFacet.counts?.[0] || {
+    total: 0,
+    newThisMonth: 0,
+    active: 0,
+    suspended: 0,
+    subscriptionPlanCount: 0,
+    creditPlanCount: 0,
+    freePlanCount: 0,
+    expiredPendingDowngrade: 0,
+    totalDevices: 0,
+  };
+  const activePremium =
+    (appUserCounts.subscriptionPlanCount || 0) +
+    (appUserCounts.creditPlanCount || 0);
+  const appConversionRate =
+    appUserCounts.active > 0
+      ? Number(((activePremium / appUserCounts.active) * 100).toFixed(1))
+      : 0;
+
+  // Normalize leaderboards
   const topUsage = topUsageDocs.map((item) => ({
     _id: item._id,
+    key: item.key || null,
+    planType: item.plan?.type || PLAN_TYPES.FREE,
     count: item.totalProcess || 0,
-    user: item.userId || { name: item.username || "Unknown", email: item.username || "N/A" },
+    failedCount: item.totalFailedProcess || 0,
+    user: item.userId || {
+      _id: "",
+      name: item.username || "Unknown",
+      email: item.username || "N/A",
+      avatar: null,
+    },
   }));
 
   const topSpenders = topSpendersDocs.map((item) => ({
     _id: item._id,
     totalSpent: item.totalSpent || 0,
-    user: item.user || { name: "Unknown", email: "N/A" },
+    paymentCount: item.paymentCount || 0,
+    lastPaymentAt: item.lastPaymentAt || null,
+    user: item.user || {
+      _id: item._id?.toString() || "",
+      name: "Unknown",
+      email: "N/A",
+      avatar: null,
+    },
   }));
 
   const topReferrers = topReferrersDocs.map((item) => ({
     _id: item._id,
+    userId: item.referrer ? item.referrer.toString() : "",
+    referralCode: item.referralCode || "",
     referredCount: item.referredCount || 0,
-    user: item.user || { name: "Unknown", email: "N/A" },
+    totalEarned: item.totalEarned || 0,
+    availableBalance: item.availableBalance || 0,
+    user: item.user || {
+      _id: item.referrer?.toString() || "",
+      name: "Unknown",
+      email: "N/A",
+      avatar: null,
+    },
   }));
 
-  const monthlyProcessMap = { ...monthlyKeys };
-  const totalProcessCount = appUserStats[0]?.totalProcesses[0]?.total || 0;
-  const currentMonthStr = formatMonthKey(now);
-  monthlyProcessMap[currentMonthStr] = Math.round(totalProcessCount * 0.4);
-
-  const appUserCounts = appUserStats[0]?.counts[0] || {
-    total: 0,
-    newThisMonth: 0,
-    active: 0,
-    activePremium: 0,
-    subscriptionPlanCount: 0,
-    creditPlanCount: 0,
+  const referralTotals = referralStats[0]?.totals?.[0] || {
+    totalReferrers: 0,
+    totalReferredUsers: 0,
+    totalAvailable: 0,
+    totalEarned: 0,
+    pendingWithdrawalsCount: 0,
+    pendingWithdrawalsAmount: 0,
+    completedWithdrawalsAmount: 0,
   };
-
-  const paymentCount = paymentStats[0]?.count[0]?.total || 0;
-  const paymentNewThisMonth = paymentStats[0]?.newThisMonth[0]?.total || 0;
 
   const responseData = {
     revenue: {
-      total: revData.total,
-      currentMonth: revData.currentMonth,
-      lastMonth: revData.lastMonth,
-      growthPercentage: Number(growthPercentage.toFixed(2)),
+      total: revData.total || 0,
+      today: revData.today || 0,
+      currentMonth: revData.currentMonth || 0,
+      lastMonth: revData.lastMonth || 0,
+      avgOrderValue: Number((revData.avgOrderValue || 0).toFixed(2)),
+      growthPercentage: calcGrowthPercentage(
+        revData.currentMonth || 0,
+        revData.lastMonth || 0
+      ),
       monthlyBreakdown: monthlyRevenueMap,
       monthlyRevenueList: monthlyRevenueMap,
+      last6MonthRevenue,
+      last7DaysRevenue,
+      byPlanType,
     },
-    users: userStats[0]?.counts[0] || { total: 0, verified: 0, newThisMonth: 0 },
+    users: {
+      total: userCounts.total || 0,
+      verified: userCounts.verified || 0,
+      unverified: userCounts.unverified || 0,
+      disabled: userCounts.disabled || 0,
+      newToday: userCounts.newToday || 0,
+      newThisMonth: userCounts.newThisMonth || 0,
+      newLastMonth: userCounts.newLastMonth || 0,
+      growthPercentage: calcGrowthPercentage(
+        userCounts.newThisMonth || 0,
+        userCounts.newLastMonth || 0
+      ),
+      verificationRate: userVerificationRate,
+    },
     appUsers: {
       total: appUserCounts.total || 0,
       newThisMonth: appUserCounts.newThisMonth || 0,
       active: appUserCounts.active || 0,
-      activePremium: appUserCounts.activePremium || 0,
+      suspended: appUserCounts.suspended || 0,
+      activePremium,
       subscriptionPlanCount: appUserCounts.subscriptionPlanCount || 0,
       creditPlanCount: appUserCounts.creditPlanCount || 0,
+      freePlanCount: appUserCounts.freePlanCount || 0,
+      expiredPendingDowngrade: appUserCounts.expiredPendingDowngrade || 0,
+      totalDevices: appUserCounts.totalDevices || 0,
+      conversionRate: appConversionRate,
       monthlyProcessList: monthlyProcessMap,
+      last6MonthProcess,
+      last7DaysProcess,
       topUsage,
     },
-    processes: appUserStats[0]?.totalProcesses[0] || { total: 0, totalFailed: 0 },
+    processes: {
+      total: totalProcessedCount,
+      totalFailed: totalFailedCount,
+      today: todayProcesses,
+      currentMonth: currentMonthProcesses,
+      lastMonth: lastMonthProcesses,
+      growthPercentage: calcGrowthPercentage(
+        currentMonthProcesses,
+        lastMonthProcesses
+      ),
+      successRate: processSuccessRate,
+    },
     payments: {
-      total: paymentCount,
-      newThisMonth: paymentNewThisMonth,
-      recent: paymentStats[0]?.recent || [],
+      total: revData.totalCount || 0,
+      today: revData.todayCount || 0,
+      newThisMonth: revData.newThisMonth || 0,
+      lastMonth: revData.lastMonthCount || 0,
+      recent: recentPayments,
       topSpenders,
     },
-    recentPayments: paymentStats[0]?.recent || [],
+    recentPayments,
     topReferrers,
-    referrals: referralStats[0]?.totals[0] || { totalAvailable: 0 },
+    referrals: referralTotals,
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+      syncedExpiredPlans,
+    },
   };
 
-  return new ApiResponse(200, true, "Admin dashboard stats retrieved", responseData).send(res);
+  return new ApiResponse(
+    200,
+    true,
+    "Admin dashboard stats retrieved",
+    responseData
+  ).send(res);
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {

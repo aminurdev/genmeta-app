@@ -21,6 +21,8 @@ interface AreaChartProps {
   color?: string;
   tooltipLabel?: string;
   height?: number;
+  yAxisWidth?: number;
+  emptyMessage?: string;
   valueFormatter?: (value: number) => string;
   yAxisFormatter?: (value: number) => string;
 }
@@ -30,20 +32,33 @@ export function AreaChart({
   color = "#8884d8",
   tooltipLabel = "Value",
   height = 280,
+  yAxisWidth = 48,
+  emptyMessage = "No activity recorded in this window",
   valueFormatter = (value: number) => value.toLocaleString(),
   yAxisFormatter,
 }: AreaChartProps) {
   const reactId = useId();
   const gradientId = `gradient-${reactId.replace(/:/g, "")}`;
 
+  if (!data || data.length === 0) {
+    return (
+      <div
+        className="w-full min-w-0 flex items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground"
+        style={{ height }}
+      >
+        {emptyMessage}
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full" style={{ height }}>
+    <div className="w-full min-w-0" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <RechartsAreaChart
           data={data}
           margin={{
             top: 10,
-            right: 16,
+            right: 12,
             left: 0,
             bottom: 0,
           }}
@@ -67,6 +82,7 @@ export function AreaChart({
             axisLine={false}
           />
           <YAxis
+            width={yAxisWidth}
             stroke="#888888"
             fontSize={12}
             tickLine={false}

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { ApiErrorResponse, ApiResponse } from "@/types";
+import { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import { api } from "./api-client";
 import {
   AllUsersResponse,
@@ -15,11 +15,21 @@ import {
   WithdrawalNotificationsResponse,
 } from "@/types/admin";
 
-export const getAdminOverview = async (): Promise<
-  ApiResponse<AdminDashboardStats> | ApiErrorResponse
-> => {
-  const result = await api.get("/admin/dashboard/stats");
-  return result.data;
+export const getAdminOverview = async (options?: {
+  refresh?: boolean;
+}): Promise<ApiResponse<AdminDashboardStats> | ApiErrorResponse> => {
+  try {
+    const result = await api.get("/admin/dashboard/stats", {
+      params: options?.refresh ? { refresh: "true" } : undefined,
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const getAllUsers = async (

@@ -31,7 +31,28 @@ import type { GetPaymentsHistoryParams } from "@/types/admin";
 export function useAdminOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.adminOverview,
-    queryFn: getAdminOverview,
+    queryFn: () => getAdminOverview(),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshAdminOverviewMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => getAdminOverview({ refresh: true }),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.setQueryData(QUERY_KEYS.adminOverview, res);
+      }
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+      });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.usersStats });
+    },
   });
 }
 

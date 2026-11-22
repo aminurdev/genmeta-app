@@ -1,70 +1,157 @@
+export interface AdminDashboardUserSummary {
+  _id: string;
+  name: string;
+  email: string;
+  avatar?: string | null;
+}
+
+export interface AdminDashboardMonthlyRevenuePoint {
+  month: string;
+  amount: number;
+  count: number;
+}
+
+export interface AdminDashboardDailyRevenuePoint {
+  date: string;
+  amount: number;
+  count: number;
+}
+
+export interface AdminDashboardMonthlyProcessPoint {
+  month: string;
+  count: number;
+  failed: number;
+}
+
+export interface AdminDashboardDailyProcessPoint {
+  date: string;
+  count: number;
+  failed: number;
+}
+
+export interface AdminDashboardRecentPayment {
+  _id: string;
+  trxID: string;
+  paymentID: string;
+  amount: number;
+  currency: string;
+  gateway: string;
+  status: string;
+  plan: {
+    id?: string;
+    name: string;
+    type: string;
+  };
+  createdAt: string;
+  userId: AdminDashboardUserSummary;
+}
+
+export interface AdminDashboardTopUsageItem {
+  _id: string;
+  key: string | null;
+  planType: string;
+  count: number;
+  failedCount: number;
+  user: AdminDashboardUserSummary;
+}
+
+export interface AdminDashboardTopSpenderItem {
+  _id: string;
+  totalSpent: number;
+  paymentCount: number;
+  lastPaymentAt?: string | null;
+  user: AdminDashboardUserSummary;
+}
+
+export interface AdminDashboardTopReferrerItem {
+  _id: string;
+  userId: string;
+  referralCode: string;
+  referredCount: number;
+  totalEarned: number;
+  availableBalance: number;
+  user: AdminDashboardUserSummary;
+}
+
 export type AdminDashboardStats = {
   revenue: {
     total: number;
+    today: number;
     currentMonth: number;
     lastMonth: number;
+    avgOrderValue: number;
     growthPercentage: number;
+    monthlyBreakdown: Record<string, number>;
     monthlyRevenueList: Record<string, number>;
-    monthlyBreakdown?: Record<string, number> | Array<Record<string, unknown>>;
+    last6MonthRevenue: AdminDashboardMonthlyRevenuePoint[];
+    last7DaysRevenue: AdminDashboardDailyRevenuePoint[];
+    byPlanType: {
+      subscription: { amount: number; count: number };
+      credit: { amount: number; count: number };
+      other: { amount: number; count: number };
+    };
+  };
+  users: {
+    total: number;
+    verified: number;
+    unverified: number;
+    disabled: number;
+    newToday: number;
+    newThisMonth: number;
+    newLastMonth: number;
+    growthPercentage: number;
+    verificationRate: number;
   };
   appUsers: {
     total: number;
     newThisMonth: number;
     active: number;
+    suspended: number;
     activePremium: number;
     subscriptionPlanCount: number;
     creditPlanCount: number;
+    freePlanCount: number;
+    expiredPendingDowngrade: number;
+    totalDevices: number;
+    conversionRate: number;
     monthlyProcessList: Record<string, number>;
-    topUsage: Array<{
-      _id: string;
-      count: number;
-      user: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
+    last6MonthProcess: AdminDashboardMonthlyProcessPoint[];
+    last7DaysProcess: AdminDashboardDailyProcessPoint[];
+    topUsage: AdminDashboardTopUsageItem[];
   };
-  users: {
+  processes: {
     total: number;
-    newThisMonth: number;
+    totalFailed: number;
+    today: number;
+    currentMonth: number;
+    lastMonth: number;
+    growthPercentage: number;
+    successRate: number;
   };
   payments: {
     total: number;
+    today: number;
     newThisMonth: number;
-    recent: Array<{
-      _id: string;
-      amount: number;
-      createdAt: string;
-      plan?: { name?: string; type?: string } | string;
-      userId: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
-    topSpenders: Array<{
-      _id: string;
-      totalSpent: number;
-      user: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
+    lastMonth: number;
+    recent: AdminDashboardRecentPayment[];
+    topSpenders: AdminDashboardTopSpenderItem[];
   };
-  topReferrers: Array<{
-    _id: string;
-    referredCount: number;
-    user: {
-      _id: string;
-      name: string;
-      email: string;
-    };
-  }>;
-  recentPayments?: Record<string, unknown>[];
-  monthlyBreakdown?: unknown;
-  processes?: unknown;
+  recentPayments: AdminDashboardRecentPayment[];
+  topReferrers: AdminDashboardTopReferrerItem[];
+  referrals: {
+    totalReferrers: number;
+    totalReferredUsers: number;
+    totalAvailable: number;
+    totalEarned: number;
+    pendingWithdrawalsCount: number;
+    pendingWithdrawalsAmount: number;
+    completedWithdrawalsAmount: number;
+  };
+  meta: {
+    generatedAt: string;
+    refreshed: boolean;
+    syncedExpiredPlans: number;
+  };
 };
 
 export interface AppUsers {
