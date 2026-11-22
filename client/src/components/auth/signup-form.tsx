@@ -119,7 +119,7 @@ const SignUpForm = () => {
     checks: Record<string, boolean>;
   } | null>(null);
 
-  let referral = searchParams?.get("ref");
+  const referral = searchParams?.get("ref");
 
   useEffect(() => {
     if (referral) {
@@ -190,9 +190,9 @@ const SignUpForm = () => {
     setSuccess("");
     setTransition(async () => {
       try {
-        referral = localStorage.getItem("referralCode");
+        const storedReferral = localStorage.getItem("referralCode");
 
-        const result = await registerUser(values, referral);
+        const result = await registerUser(values, storedReferral);
         if (result?.success) {
           setUserEmail(values.email);
           setShowEmailVerification(true);

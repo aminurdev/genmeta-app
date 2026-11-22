@@ -149,15 +149,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const [creditAmount, setCreditAmount] = useState<string>("50");
   const [isAddingCredit, setIsAddingCredit] = useState(false);
 
-  useEffect(() => {
-    if (appKey) {
-      fetchAppKeyDetails(appKey);
-    } else {
-      setError("No App ID provided");
-      setLoading(false);
-    }
-  }, [appKey]);
-
   const fetchAppKeyDetails = async (key: string) => {
     try {
       setLoading(true);
@@ -185,6 +176,15 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (appKey) {
+      fetchAppKeyDetails(appKey);
+    } else {
+      setError("No App ID provided");
+      setLoading(false);
+    }
+  }, [appKey]);
 
   const copyToClipboard = (text: string, message = "Copied to clipboard") => {
     navigator.clipboard.writeText(text);
