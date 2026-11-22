@@ -1,10 +1,8 @@
-import mongoose from "mongoose";
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
 import { checkTransactionStatus } from "../paystation/paystation.service.js";
-import { User } from "../../models/user.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
-import { AppKey } from "../../models/appKey.model.js";
+import { AppUser } from "../../models/appUser.model.js";
 import { AppPricing } from "../../models/appPricing.model.js";
 import planService from "../plan.service.js";
 import { PAYMENT_GATEWAYS } from "../../constants/index.js";
@@ -21,10 +19,10 @@ export const fetchAppUserData = async (username) => {
     if (!username) {
       throw new ApiError(400, "Username is required");
     }
-    const appKey = await AppKey.findOne({ username }).select(
+    const appUser = await AppUser.findOne({ username: username.toLowerCase().trim() }).select(
       "username key expiresAt isActive createdAt status"
     );
-    return appKey;
+    return appUser;
   } catch (error) {
     throw new ApiError(
       error.statusCode || 500,
@@ -64,7 +62,6 @@ export const processSuccessfulPaystationPayment = async (invoiceNumber, res) => 
     trxStatus,
     paymentAmount,
     reference,
-    checkoutItems,
   } = transactionDetails.data;
 
   const isSuccess =

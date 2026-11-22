@@ -7,25 +7,7 @@ export type AdminDashboardStats = {
     monthlyRevenueList: Record<string, number>;
     monthlyBreakdown?: Record<string, number> | Array<Record<string, unknown>>;
   };
-  appIds?: {
-    total: number;
-    newThisMonth: number;
-    active: number;
-    activePremium: number;
-    subscriptionPlanCount: number;
-    creditPlanCount: number;
-    monthlyProcessList: Record<string, number>;
-    topUsage: Array<{
-      _id: string;
-      count: number;
-      user: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
-  };
-  appKeys: {
+  appUsers: {
     total: number;
     newThisMonth: number;
     active: number;
@@ -80,37 +62,9 @@ export type AdminDashboardStats = {
       email: string;
     };
   }>;
-  orders: {
-    total: number;
-    totalAmount: number;
-    currentMonthCount: number;
-    currentMonthAmount: number;
-    lastMonthCount: number;
-    lastMonthAmount: number;
-    amountGrowthPercentage: number | null;
-    monthlyOrderAmountList: Record<string, number>;
-    recent: Array<{
-      _id: string;
-      amount: number;
-      status: "pending" | "completed" | "cancelled";
-      createdAt: string;
-      planSnapshot: {
-        name: string;
-        type: "subscription" | "credit";
-      };
-      promoCodeUsed?: string;
-      referralCode?: string;
-      user: {
-        _id: string;
-        name: string;
-        email: string;
-      };
-    }>;
-  };
   recentPayments?: Record<string, unknown>[];
   monthlyBreakdown?: unknown;
   processes?: unknown;
-  ordersSummary?: unknown;
 };
 
 export interface AppUsers {
@@ -120,8 +74,6 @@ export interface AppUsers {
   email?: string;
   name?: string;
   key: string;
-  appId?: string;
-  appKey?: string;
   credit: number | null;
   isActive: boolean;
   status: "active" | "suspended";
@@ -131,7 +83,7 @@ export interface AppUsers {
   dailyProcess: Record<string, number>;
   lastCreditRefresh: string;
   createdAt: string;
-  allowedDevices?: [string];
+  allowedDevices?: string[];
   expiresAt?: string;
   lastPlanChange: string;
   plan: {
@@ -318,7 +270,6 @@ export interface GetPaymentsHistoryParams {
   endDate?: string;
 }
 
-
 export interface SuperAdminOverview {
   environment: string;
   nodeVersion: string;
@@ -340,8 +291,7 @@ export interface SuperAdminOverview {
     admins: number;
     superAdmins: number;
     disabledUsers: number;
-    totalAppIds?: number;
-    totalAppKeys: number;
+    totalAppUsers: number;
     totalProcesses: number;
   };
 }

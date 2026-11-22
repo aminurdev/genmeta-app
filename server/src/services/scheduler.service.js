@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { CronExpressionParser } from "cron-parser";
-import { AppKey } from "../models/appKey.model.js";
+import { AppUser } from "../models/appUser.model.js";
 import backupService from "./backup.service.js";
 
 /**
@@ -37,8 +37,6 @@ class SchedulerService {
 
   /**
    * Start the daily maintenance scheduler and weekly backup scheduler
-   * Daily maintenance runs every day at 12:00 AM (00:00)
-   * Weekly backup runs every Friday at 12:00 PM (noon)
    */
   start() {
     if (this.isRunning) {
@@ -46,7 +44,6 @@ class SchedulerService {
       return;
     }
 
-    // Schedule daily maintenance at 12:00 AM
     this.dailyMaintenanceJob = cron.schedule(
       this.cronExpression,
       async () => {
@@ -54,11 +51,10 @@ class SchedulerService {
       },
       {
         scheduled: true,
-        timezone: "UTC", // Use UTC timezone for consistency
+        timezone: "UTC",
       }
     );
 
-    // Schedule weekly backup every Friday at 12:00 PM
     this.weeklyBackupJob = cron.schedule(
       this.backupCronExpression,
       async () => {
@@ -71,8 +67,6 @@ class SchedulerService {
     );
 
     this.isRunning = true;
-
-    // Optional: Run maintenance immediately on startup if it hasn't run today
     this.checkAndRunIfNeeded();
   }
 
@@ -102,8 +96,7 @@ class SchedulerService {
     try {
       this.stats.totalRuns++;
 
-      // Execute the daily maintenance
-      const result = await AppKey.performDailyMaintenance();
+      const result = await AppUser.performDailyMaintenance();
 
       if (result.success) {
         this.stats.successfulRuns++;
@@ -142,7 +135,6 @@ class SchedulerService {
     try {
       this.backupStats.totalBackups++;
 
-      // Execute the backup
       const result = await backupService.performBackup();
 
       if (result.success) {
@@ -244,7 +236,7 @@ class SchedulerService {
       cronExpression,
       async () => {
         await this.runDailyMaintenance();
-        oneTimeJob.stop(); // Stop after running once
+        oneTimeJob.stop();
       },
       {
         scheduled: true,
@@ -257,9 +249,6 @@ class SchedulerService {
   }
 }
 
-// Create and export singleton instance
 const schedulerService = new SchedulerService();
 export default schedulerService;
-
-// Export the class for testing purposes
 export { SchedulerService };

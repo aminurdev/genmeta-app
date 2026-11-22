@@ -82,13 +82,13 @@ import PaginationView from "@/components/pagination-view";
 import {
   addCredits,
   createUser,
+  deleteAppUser,
   resetDeviceId,
   updateUser,
   updateUserStats,
 } from "@/services/admin-dashboard";
 
-export default function AppIdList() {
-  // Pagination and search states
+export default function AppUserList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,7 +97,6 @@ export default function AppIdList() {
   const [selectedStatusFilter, setSelectedStatusFilter] =
     useState<string>("all");
 
-  // Build query parameters
   const buildQueryParams = () => {
     const queryParams = new URLSearchParams();
     queryParams.append("page", currentPage.toString());
@@ -118,15 +117,17 @@ export default function AppIdList() {
     return queryParams.toString();
   };
 
-  // Use React Query hook
   const { data, isLoading, error, refetch } =
     useAllUsersQuery(buildQueryParams());
 
-  // Extract data from React Query response
   const responseData = data && data.success ? data.data : undefined;
-  const appKeys = responseData?.users ?? [];
-  const totalPages = responseData?.totalPages ?? ((data as unknown as Record<string, Record<string, { totalPages?: number }>>)?.data?.pagination?.totalPages || 1);
-  const totalKeys = responseData?.total ?? ((data as unknown as Record<string, Record<string, { total?: number }>>)?.data?.pagination?.total || 0);
+  const appUsers = responseData?.users ?? [];
+  const totalPages =
+    responseData?.totalPages ??
+    ((data as unknown as Record<string, Record<string, { totalPages?: number }>>)?.data?.pagination?.totalPages || 1);
+  const totalUsers =
+    responseData?.total ??
+    ((data as unknown as Record<string, Record<string, { total?: number }>>)?.data?.pagination?.total || 0);
 
   // Action states
   const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
@@ -138,7 +139,7 @@ export default function AppIdList() {
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
 
-  // Create API key states
+  // Create App User states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createUsername, setCreateUsername] = useState("");
   const [createPlan, setCreatePlan] = useState("free");
@@ -147,11 +148,10 @@ export default function AppIdList() {
 
   // Add credit states
   const [addCreditDialogOpen, setAddCreditDialogOpen] = useState(false);
-  const [creditAppKey, setCreditAppKey] = useState<string>("");
+  const [creditAppUserKey, setCreditAppUserKey] = useState<string>("");
   const [creditAmount, setCreditAmount] = useState<string>("50");
   const [isAddingCredit, setIsAddingCredit] = useState(false);
 
-  // Handle search debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -161,14 +161,21 @@ export default function AppIdList() {
   }, [searchTerm]);
 
   const copyToClipboard = (text: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
-    toast("App ID has been copied to clipboard");
+    toast("Access key has been copied to clipboard");
   };
 
   const deleteUser = async (username: string) => {
     try {
       setDeletingUsername(username);
-      throw new Error("Failed to delete User");
+      const result = await deleteAppUser(username);
+      if (result.success) {
+        toast("App user deleted successfully");
+        await refetch();
+      } else {
+        throw new Error(result.message || "Failed to delete app user");
+      }
     } catch (err) {
       toast(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
@@ -176,16 +183,14 @@ export default function AppIdList() {
     }
   };
 
-  const handleResetDeviceId = async (appKey: string) => {
+  const handleResetDeviceId = async (key: string) => {
     try {
-      setProcessingKey(appKey);
+      setProcessingKey(key);
       setProcessingAction("reset-device");
-      const result = await resetDeviceId(appKey);
+      const result = await resetDeviceId(key);
 
       if (result.success) {
         toast("Device ID reset successfully");
-
-        // Refresh the API keys to get updated data
         await refetch();
       } else {
         throw new Error(result.message || "Failed to reset device ID");
@@ -198,27 +203,26 @@ export default function AppIdList() {
     }
   };
 
-  const handleUpdateKeyStatus = async (
-    appKey: string,
+  const handleUpdateUserStatus = async (
+    key: string,
     mode: "suspend" | "reactivate",
   ) => {
     try {
-      setProcessingKey(appKey);
+      setProcessingKey(key);
       setProcessingAction(mode);
 
-      const result = await updateUserStats(appKey, mode);
+      const result = await updateUserStats(key, mode);
 
       if (result.success) {
         toast(
           result.message ||
-          `App ID ${mode === "suspend" ? "suspended" : "reactivated"
-          } successfully`,
+            `App user ${
+              mode === "suspend" ? "suspended" : "reactivated"
+            } successfully`,
         );
-
-        // Refresh the API keys list
         await refetch();
       } else {
-        throw new Error(result.message || `Failed to ${mode} App ID`);
+        throw new Error(result.message || `Failed to ${mode} app user`);
       }
     } catch (err) {
       toast(err instanceof Error ? err.message : "An unknown error occurred");
@@ -265,11 +269,10 @@ export default function AppIdList() {
     }
   };
 
-  const updateAppKey = async () => {
+  const handleUpdateAppUser = async () => {
     try {
       setIsUpdating(true);
 
-      // Create the request body with only the necessary fields
       const requestBody: {
         username: string;
         plan?: string;
@@ -279,17 +282,14 @@ export default function AppIdList() {
         username: updateUsername,
       };
 
-      // Only include the plan if it's set
       if (updatePlan && updatePlan !== "N/A") {
         requestBody.plan = updatePlan;
       }
 
-      // Only include expiryDays if it's set and valid
       if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
         requestBody.expiryDays = Number.parseInt(updateExpiryDays);
       }
 
-      // Include credit if credit plan and value set
       if (updatePlan === "credit") {
         const creditInput = document.getElementById(
           "credit",
@@ -303,10 +303,7 @@ export default function AppIdList() {
 
       if (result.success) {
         toast("App user updated successfully");
-
-        // Refresh the API keys list
         await refetch();
-
         setUpdateDialogOpen(false);
       } else {
         throw new Error(result.message || "Failed to update app user");
@@ -318,11 +315,10 @@ export default function AppIdList() {
     }
   };
 
-  const createAppKey = async () => {
+  const handleCreateAppUser = async () => {
     try {
       setIsCreating(true);
 
-      // Build request body based on selected plan
       const requestBody: {
         username: string;
         plan?: string | { type: string; id: string };
@@ -333,10 +329,8 @@ export default function AppIdList() {
         expiryDays: Number.parseInt(createExpiryDays),
       };
 
-      // Handle different plan types
       if (createPlan === "credit") {
         requestBody.plan = "credit";
-        // Get initial credit from input field
         const initialCreditInput = document.getElementById(
           "initialCredit",
         ) as HTMLInputElement;
@@ -346,7 +340,7 @@ export default function AppIdList() {
       } else if (createPlan === "subscription") {
         requestBody.plan = {
           type: "subscription",
-          id: "premium_monthly", // Default value, could be made configurable
+          id: "premium_monthly",
         };
       } else {
         requestBody.plan = createPlan;
@@ -355,50 +349,46 @@ export default function AppIdList() {
       const result = await createUser(requestBody);
 
       if (result.success) {
-        // Refresh the API keys list to include the new key
         await refetch();
-
         toast("App user created successfully");
 
-        // Show the new API key in a toast for easy copying
-        toast(
-          <div className="mt-2 flex items-center space-x-2">
-            <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
-              {result.data?.appKey}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-2"
-              onClick={() => copyToClipboard(result.data?.appKey)}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-          </div>,
-        );
+        const createdKey = result.data?.key;
+        if (createdKey) {
+          toast(
+            <div className="mt-2 flex items-center space-x-2">
+              <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
+                {createdKey}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                onClick={() => copyToClipboard(createdKey)}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>,
+          );
+        }
 
         setCreateDialogOpen(false);
-        // Reset form
         setCreateUsername("");
         setCreatePlan("free");
         setCreateExpiryDays("7");
       } else {
-        
-      console.log(result)
         throw new Error(result.message || "Failed to create app user");
       }
     } catch (err) {
-      console.log(err)
       toast(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
       setIsCreating(false);
     }
   };
 
-  const openUpdateDialog = (appKey: AppUsers) => {
-    setUpdateUsername(appKey.username);
-    setUpdatePlan(appKey.plan?.type || "N/A");
-    setUpdateExpiryDays("30"); // Default to 30 days
+  const openUpdateDialog = (appUser: AppUsers) => {
+    setUpdateUsername(appUser.username || appUser.email || "");
+    setUpdatePlan(appUser.plan?.type || "N/A");
+    setUpdateExpiryDays("30");
     setUpdateDialogOpen(true);
   };
 
@@ -409,12 +399,11 @@ export default function AppIdList() {
     setCreateDialogOpen(true);
   };
 
-  const isProcessing = (appKey: string, action: string) => {
-    return processingKey === appKey && processingAction === action;
+  const isProcessing = (key: string, action: string) => {
+    return processingKey === key && processingAction === action;
   };
 
   const exportToCSV = () => {
-    // Create CSV content
     const headers = [
       "Username",
       "Access Key",
@@ -427,24 +416,21 @@ export default function AppIdList() {
     ];
     const csvRows = [headers];
 
-    appKeys.forEach((key) => {
+    appUsers.forEach((user) => {
       const row = [
-        key.username,
-        key.key,
-        key.plan?.type ?? "",
-        key.status,
-        key.expiresAt ?? "",
-        key.createdAt,
-        key.totalProcess?.toString() ?? "0",
-        (key.allowedDevices?.length ?? 0) > 0 ? "Yes" : "No",
+        user.username,
+        user.key,
+        user.plan?.type ?? "",
+        user.status,
+        user.expiresAt ?? "",
+        user.createdAt,
+        user.totalProcess?.toString() ?? "0",
+        (user.allowedDevices?.length ?? 0) > 0 ? "Yes" : "No",
       ];
       csvRows.push(row.map((value) => value?.toString() ?? ""));
     });
 
-    // Convert to CSV string
     const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-
-    // Create and download the file
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -464,8 +450,8 @@ export default function AppIdList() {
     setCurrentPage(page);
   };
 
-  const renderAppKeyTable = () => {
-    if (isLoading && appKeys.length === 0) {
+  const renderAppUserTable = () => {
+    if (isLoading && appUsers.length === 0) {
       return (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -477,11 +463,11 @@ export default function AppIdList() {
       );
     }
 
-    if (error && appKeys.length === 0) {
+    if (error && appUsers.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <XCircle className="h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-lg font-medium">Error loading API keys</h3>
+          <h3 className="text-lg font-medium">Error loading App Users</h3>
           <p className="text-muted-foreground mt-2 mb-4">
             {error instanceof Error
               ? error.message
@@ -495,19 +481,19 @@ export default function AppIdList() {
       );
     }
 
-    if (appKeys.length === 0) {
+    if (appUsers.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <User2 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No APP Users found</h3>
+          <h3 className="text-lg font-medium">No App Users found</h3>
           <p className="text-muted-foreground mt-2 mb-4">
             {debouncedSearchTerm
               ? `No results found for "${debouncedSearchTerm}"`
-              : "Create your first APP User to get started"}
+              : "Create your first App User to get started"}
           </p>
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
-            Create APP User
+            Create App User
           </Button>
         </div>
       );
@@ -518,47 +504,73 @@ export default function AppIdList() {
         <TableHeader>
           <TableRow>
             <TableHead>Username</TableHead>
-            <TableHead>App ID</TableHead>
+            <TableHead>Access Key</TableHead>
             <TableHead>Plan</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-center">Device Bound</TableHead>
             <TableHead className="text-center">Expires</TableHead>
             <TableHead className="text-center">Created</TableHead>
             <TableHead className="text-center">Processes</TableHead>
-            {appKeys.some((key) => key.credit !== undefined) && (
+            {appUsers.some((u) => u.credit !== undefined) && (
               <TableHead className="text-center">Credit</TableHead>
             )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {appKeys.map((appKey) => (
-            <TableRow key={appKey._id}>
-              <TableCell className="font-medium">{appKey.username || appKey.email || appKey.name || "User"}</TableCell>
+          {appUsers.map((appUser) => (
+            <TableRow key={appUser._id}>
+              <TableCell className="font-medium">
+                {appUser.username || appUser.email || appUser.name || "User"}
+              </TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
-                  {appKey.key ? (<><span className="font-mono text-xs">{appKey.key.length > 16 ? `${appKey.key.substring(0, 8)}...${appKey.key.substring(appKey.key.length - 8)}` : appKey.key}</span><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(appKey.key)}><Copy className="h-3.5 w-3.5" /></Button></>) : (<span className="text-xs text-muted-foreground italic">No App ID</span>)}
+                  {appUser.key ? (
+                    <>
+                      <span className="font-mono text-xs">
+                        {appUser.key.length > 16
+                          ? `${appUser.key.substring(0, 8)}...${appUser.key.substring(
+                              appUser.key.length - 8,
+                            )}`
+                          : appUser.key}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(appUser.key)}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">
+                      Not initialized
+                    </span>
+                  )}
                 </div>
               </TableCell>
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getPlanBadge(appKey.plan?.type || "")}
+                  className={getPlanBadge(appUser.plan?.type || "")}
                 >
-                  {appKey.plan?.type.replace("_", " ")}
-                  {appKey.plan?.id && ` (${appKey.plan.name})`}
+                  {appUser.plan?.type.replace("_", " ")}
+                  {appUser.plan?.id && appUser.plan?.name
+                    ? ` (${appUser.plan.name})`
+                    : ""}
                 </Badge>
               </TableCell>
               <TableCell>
                 <Badge
                   variant="outline"
-                  className={getStatusColor(appKey.status)}
+                  className={getStatusColor(appUser.status)}
                 >
-                  {appKey.status}
+                  {appUser.status}
                 </Badge>
               </TableCell>
               <TableCell className="flex justify-center">
-                {(appKey.allowedDevices?.length ?? 0) > 0 ? (
+                {(appUser.allowedDevices?.length ?? 0) > 0 ? (
                   <div className="flex items-center">
                     <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-xs text-muted-foreground">Yes</span>
@@ -571,22 +583,24 @@ export default function AppIdList() {
                 )}
               </TableCell>
               <TableCell className="text-center">
-                {formatDate(appKey?.expiresAt || "")}
+                {formatDate(appUser?.expiresAt || "")}
               </TableCell>
               <TableCell className="text-center">
-                {formatDate(appKey.createdAt)}
+                {formatDate(appUser.createdAt)}
               </TableCell>
               <TableCell className="text-center">
-                {appKey.totalProcess}
+                {appUser.totalProcess}
               </TableCell>
-              {appKeys.some((key) => key.credit !== undefined) && (
+              {appUsers.some((u) => u.credit !== undefined) && (
                 <TableCell className="text-center">
-                  {appKey.credit || 0}
+                  {appUser.plan?.type === "subscription"
+                    ? "Unlimited"
+                    : appUser.credit || 0}
                 </TableCell>
               )}
               <TableCell className="text-right flex items-center justify-end">
                 <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/users/${appKey.key || appKey._id}`}>
+                  <Link href={`/admin/users/${appUser.key || appUser._id}`}>
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View user details</span>
                   </Link>
@@ -599,78 +613,82 @@ export default function AppIdList() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => copyToClipboard(appKey.key)}
-                    >
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy App ID
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openUpdateDialog(appKey)}>
+                    {appUser.key && (
+                      <DropdownMenuItem
+                        onClick={() => copyToClipboard(appUser.key)}
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy Access Key
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => openUpdateDialog(appUser)}>
                       <Edit className="mr-2 h-4 w-4" />
                       Edit App User
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
 
-                    {appKey.plan?.type === "credit" && (
+                    {appUser.plan?.type === "credit" && appUser.key && (
                       <DropdownMenuItem
-                        onClick={() => openAddCreditDialog(appKey)}
+                        onClick={() => openAddCreditDialog(appUser)}
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Add Credits
                       </DropdownMenuItem>
                     )}
 
-                    {/* Reset Device ID option */}
-                    <DropdownMenuItem
-                      onClick={() => handleResetDeviceId(appKey.key)}
-                      disabled={isProcessing(appKey.key, "reset-device")}
-                    >
-                      {isProcessing(appKey.key, "reset-device") ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Smartphone className="mr-2 h-4 w-4" />
-                      )}
-                      {isProcessing(appKey.key, "reset-device")
-                        ? "Resetting..."
-                        : "Reset Device ID"}
-                    </DropdownMenuItem>
+                    {appUser.key && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => handleResetDeviceId(appUser.key)}
+                          disabled={isProcessing(appUser.key, "reset-device")}
+                        >
+                          {isProcessing(appUser.key, "reset-device") ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Smartphone className="mr-2 h-4 w-4" />
+                          )}
+                          {isProcessing(appUser.key, "reset-device")
+                            ? "Resetting..."
+                            : "Reset Device ID"}
+                        </DropdownMenuItem>
 
-                    {/* Suspend/Reactivate option */}
-                    {appKey.status === "active" ? (
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() =>
-                          handleUpdateKeyStatus(appKey.key, "suspend")
-                        }
-                        disabled={isProcessing(appKey.key, "suspend")}
-                      >
-                        {isProcessing(appKey.key, "suspend") ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {appUser.status === "active" ? (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() =>
+                              handleUpdateUserStatus(appUser.key, "suspend")
+                            }
+                            disabled={isProcessing(appUser.key, "suspend")}
+                          >
+                            {isProcessing(appUser.key, "suspend") ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <ShieldAlert className="mr-2 h-4 w-4" />
+                            )}
+                            {isProcessing(appUser.key, "suspend")
+                              ? "Suspending..."
+                              : "Suspend App User"}
+                          </DropdownMenuItem>
                         ) : (
-                          <ShieldAlert className="mr-2 h-4 w-4" />
+                          <DropdownMenuItem
+                            className="text-green-600"
+                            onClick={() =>
+                              handleUpdateUserStatus(appUser.key, "reactivate")
+                            }
+                            disabled={isProcessing(appUser.key, "reactivate")}
+                          >
+                            {isProcessing(appUser.key, "reactivate") ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="mr-2 h-4 w-4" />
+                            )}
+                            {isProcessing(appUser.key, "reactivate")
+                              ? "Reactivating..."
+                              : "Reactivate App User"}
+                          </DropdownMenuItem>
                         )}
-                        {isProcessing(appKey.key, "suspend")
-                          ? "Suspending..."
-                          : "Suspend App ID"}
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
-                        className="text-green-600"
-                        onClick={() =>
-                          handleUpdateKeyStatus(appKey.key, "reactivate")
-                        }
-                        disabled={isProcessing(appKey.key, "reactivate")}
-                      >
-                        {isProcessing(appKey.key, "reactivate") ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <ShieldCheck className="mr-2 h-4 w-4" />
-                        )}
-                        {isProcessing(appKey.key, "reactivate")
-                          ? "Reactivating..."
-                          : "Reactivate App ID"}
-                      </DropdownMenuItem>
+                      </>
                     )}
 
                     <DropdownMenuSeparator />
@@ -692,18 +710,18 @@ export default function AppIdList() {
                           </AlertDialogTitle>
                           <AlertDialogDescription>
                             This action cannot be undone. This will permanently
-                            delete the app user access for {appKey.username} and
+                            delete the app user access for {appUser.username} and
                             remove it from our servers.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => deleteUser(appKey.username)}
-                            disabled={deletingUsername === appKey.username}
+                            onClick={() => deleteUser(appUser.username)}
+                            disabled={deletingUsername === appUser.username}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            {deletingUsername === appKey.username ? (
+                            {deletingUsername === appUser.username ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Deleting...
@@ -729,14 +747,11 @@ export default function AppIdList() {
     try {
       setIsAddingCredit(true);
 
-      const result = await addCredits(creditAppKey, parseInt(creditAmount));
+      const result = await addCredits(creditAppUserKey, parseInt(creditAmount));
 
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);
-
-        // Refresh the API keys list
         await refetch();
-
         setAddCreditDialogOpen(false);
         setCreditAmount("50");
       } else {
@@ -749,8 +764,8 @@ export default function AppIdList() {
     }
   };
 
-  const openAddCreditDialog = (appKey: AppUsers) => {
-    setCreditAppKey(appKey.key);
+  const openAddCreditDialog = (appUser: AppUsers) => {
+    setCreditAppUserKey(appUser.key);
     setCreditAmount("50");
     setAddCreditDialogOpen(true);
   };
@@ -795,7 +810,7 @@ export default function AppIdList() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by username or App ID..."
+              placeholder="Search by username or access key..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
@@ -860,13 +875,13 @@ export default function AppIdList() {
           </div>
         </div>
 
-        {renderAppKeyTable()}
+        {renderAppUserTable()}
 
         <div className="mt-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {appKeys.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
-            {Math.min(currentPage * limit, totalKeys ?? 0)} of {totalKeys ?? 0}{" "}
-            APP Users
+            Showing {appUsers.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
+            {Math.min(currentPage * limit, totalUsers ?? 0)} of {totalUsers ?? 0}{" "}
+            App Users
           </div>
           <PaginationView
             currentPage={currentPage}
@@ -914,7 +929,6 @@ export default function AppIdList() {
             <div className="grid gap-2">
               {updatePlan !== "free" && (
                 <>
-                  {" "}
                   <Label htmlFor="expiryDays">Expiry Days</Label>
                   <Input
                     id="expiryDays"
@@ -947,7 +961,7 @@ export default function AppIdList() {
             >
               Cancel
             </Button>
-            <Button onClick={updateAppKey} disabled={isUpdating}>
+            <Button onClick={handleUpdateAppUser} disabled={isUpdating}>
               {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -967,8 +981,8 @@ export default function AppIdList() {
           <DialogHeader>
             <DialogTitle>Create New App User</DialogTitle>
             <DialogDescription>
-              Create a new app user access. The username must match an existing
-              user&apos;s email in the database.
+              Create a new app user access profile. The username must match an
+              existing user&apos;s email in the database.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -983,17 +997,6 @@ export default function AppIdList() {
                 required
               />
             </div>
-            <div className="hidden">
-              <Label htmlFor="createPlan">Plan</Label>
-              <Select value={createPlan} onValueChange={setCreatePlan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free Plan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -1003,7 +1006,7 @@ export default function AppIdList() {
               Cancel
             </Button>
             <Button
-              onClick={createAppKey}
+              onClick={handleCreateAppUser}
               disabled={isCreating || !createUsername.trim()}
               className="flex items-center gap-1"
             >
@@ -1067,6 +1070,3 @@ export default function AppIdList() {
     </Card>
   );
 }
-
-export { AppIdList as AppKeyList };
-

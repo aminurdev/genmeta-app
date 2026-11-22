@@ -10,12 +10,6 @@ export const PLAN_TYPES = {
   SUBSCRIPTION: "subscription",
 };
 
-export const ORDER_STATUS = {
-  PENDING: "pending",
-  COMPLETED: "completed",
-  CANCELLED: "cancelled",
-};
-
 export const WITHDRAWAL_STATUS = {
   PENDING: "pending",
   COMPLETED: "completed",

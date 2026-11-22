@@ -2,7 +2,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/api.error.js";
 import schedulerService from "../services/scheduler.service.js";
-import { AppKey } from "../models/appKey.model.js";
+import { AppUser } from "../models/appUser.model.js";
 
 /**
  * Get scheduler status and statistics
@@ -98,7 +98,7 @@ const getMaintenanceStats = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   // Get plan distribution
-  const planStats = await AppKey.aggregate([
+  const planStats = await AppUser.aggregate([
     {
       $match: {
         isActive: true,
@@ -116,21 +116,21 @@ const getMaintenanceStats = asyncHandler(async (req, res) => {
   ]);
 
   // Get users that need maintenance
-  const freeUsersNeedingRefresh = await AppKey.countDocuments({
+  const freeUsersNeedingRefresh = await AppUser.countDocuments({
     "plan.type": "free",
     isActive: true,
     status: "active",
     lastCreditRefresh: { $ne: today },
   });
 
-  const expiredSubscriptions = await AppKey.countDocuments({
+  const expiredSubscriptions = await AppUser.countDocuments({
     "plan.type": "subscription",
     isActive: true,
     status: "active",
     expiresAt: { $lte: new Date() },
   });
 
-  const zeroCreditPlans = await AppKey.countDocuments({
+  const zeroCreditPlans = await AppUser.countDocuments({
     "plan.type": "credit",
     isActive: true,
     status: "active",

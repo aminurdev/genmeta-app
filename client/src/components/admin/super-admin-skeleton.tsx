@@ -146,7 +146,7 @@ export function SuperAdminTelemetrySkeleton() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">DB: mongodb</p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <span>AppKeys:</span>
+              <span>App Users:</span>
               <Skeleton className="h-3 w-8" />
               <span>active</span>
             </div>

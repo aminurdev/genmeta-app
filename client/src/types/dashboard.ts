@@ -9,7 +9,7 @@ export interface OverviewRecentItem {
   amount: number;
   status: string;
   createdAt: string;
-  source?: "payment" | "order";
+  source?: "payment";
 }
 
 export interface Overview {
@@ -23,13 +23,12 @@ export interface Overview {
     loginProvider?: ("google" | "email")[];
     createdAt?: string;
   };
-  // Modern direct fields
   plan?: {
     type: "free" | "credit" | "subscription";
     name?: string;
     id?: string;
   };
-  credit?: number;
+  credit?: number | null;
   remainingDays?: number | null;
   totalSpent?: number;
   totalProcess?: number;
@@ -46,33 +45,7 @@ export interface Overview {
   }[];
   recentHistory?: OverviewRecentItem[];
 
-  // App ID information
-  appId?: {
-    exists: boolean;
-    id?: string | null;
-    key?: string | null;
-    totalProcess: number;
-    todayUsage: number;
-    thisMonthUsage: number;
-    last6MonthProcess: {
-      month: string;
-      count: number;
-    }[];
-    last7DaysProcess: {
-      day?: string;
-      date?: string;
-      count: number;
-    }[];
-    creditRemaining: number | null;
-    planType: "free" | "credit" | "subscription";
-    planId: string | null;
-    expiresAt: string | null;
-    daysLeft: number | null;
-    isSuspended: boolean;
-    isManuallyDisabled: boolean;
-  };
-  // Compatibility nested fields
-  appKey?: {
+  appUser?: {
     exists: boolean;
     key?: string | null;
     totalProcess: number;
@@ -94,6 +67,9 @@ export interface Overview {
     daysLeft: number | null;
     isSuspended: boolean;
     isManuallyDisabled: boolean;
+    allowedDevices?: string[];
+    devices?: Array<Record<string, unknown>>;
+    maxDevices?: number;
   };
   payments?: {
     totalSpent: number;
@@ -131,20 +107,7 @@ export interface Profile {
     role: string;
     createdAt?: string;
   };
-  appId?: {
-    key?: string;
-    plan: {
-      type: "subscription" | "credit" | "free";
-      id?: string;
-      name?: string;
-    };
-    totalProcess?: number;
-    credit: number | null;
-    isActive: boolean;
-    status: "active" | "suspended";
-    expiresAt: string | null;
-  } | null;
-  appKey?: {
+  appUser?: {
     key?: string;
     plan: {
       type: "subscription" | "credit" | "free";

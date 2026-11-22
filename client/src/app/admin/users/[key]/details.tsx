@@ -82,7 +82,7 @@ interface UserDetails {
   createdAt: string;
 }
 
-interface AppKeyDetails {
+interface AppUserDetails {
   id: string;
   userId: string;
   username: string;
@@ -99,7 +99,7 @@ interface AppKeyDetails {
   credit?: number | null;
   totalProcess: number;
   createdAt: string;
-  allowedDevices?: [string];
+  allowedDevices?: string[];
   monthlyUsage: Record<string, number>;
   isValid: boolean;
 }
@@ -115,22 +115,21 @@ interface Payment {
   id: string;
 }
 
-interface AppKeyDetailsResponse {
+interface AppUserDetailsResponse {
   user: UserDetails;
-  appKey: AppKeyDetails;
+  appUser: AppUserDetails;
   payments: Payment[];
 }
 
-export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
+export default function AppUserDetailsPage({ userKey }: { userKey: string }) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
-  const [appKeyDetails, setAppKeyDetails] = useState<AppKeyDetails | null>(
+  const [appUserDetails, setAppUserDetails] = useState<AppUserDetails | null>(
     null,
   );
-  console.log(appKeyDetails);
   const [payments, setPayments] = useState<Payment[]>([]);
 
   // Action states
@@ -149,24 +148,23 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const [creditAmount, setCreditAmount] = useState<string>("50");
   const [isAddingCredit, setIsAddingCredit] = useState(false);
 
-  const fetchAppKeyDetails = async (key: string) => {
+  const fetchAppUserDetails = async (key: string) => {
     try {
       setLoading(true);
-      const response = await api.get(`/app/appid/user/details/${key}`);
+      const response = await api.get(`/app/appuser/user/details/${key}`);
       const result = response.data;
 
       if (result.success) {
-        const responseData: AppKeyDetailsResponse = result.data;
+        const responseData: AppUserDetailsResponse = result.data;
         setUserDetails(responseData.user);
-        setAppKeyDetails(responseData.appKey);
+        setAppUserDetails(responseData.appUser);
         setPayments(responseData.payments);
 
-        // Initialize update form with current values
-        if (responseData.appKey) {
-          setUpdatePlan(responseData.appKey.plan.type);
+        if (responseData.appUser) {
+          setUpdatePlan(responseData.appUser.plan.type);
         }
       } else {
-        throw new Error(result.message || "Failed to fetch App ID details");
+        throw new Error(result.message || "Failed to fetch App User details");
       }
     } catch (err) {
       setError(
@@ -178,13 +176,13 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   };
 
   useEffect(() => {
-    if (appKey) {
-      fetchAppKeyDetails(appKey);
+    if (userKey) {
+      fetchAppUserDetails(userKey);
     } else {
-      setError("No App ID provided");
+      setError("No user key provided");
       setLoading(false);
     }
-  }, [appKey]);
+  }, [userKey]);
 
   const copyToClipboard = (text: string, message = "Copied to clipboard") => {
     navigator.clipboard.writeText(text);
@@ -194,7 +192,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "BDT",
     }).format(amount);
   };
 
@@ -228,8 +226,6 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     switch (plan?.toLowerCase()) {
       case "free":
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400";
-      case "free_trial":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400";
       case "credit":
         return "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400";
       case "subscription":
@@ -240,9 +236,9 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   };
 
   const getChartData = () => {
-    if (!appKeyDetails?.monthlyUsage) return [];
+    if (!appUserDetails?.monthlyUsage) return [];
 
-    return Object.entries(appKeyDetails.monthlyUsage)
+    return Object.entries(appUserDetails.monthlyUsage)
       .map(([month, count]) => ({
         month,
         usage: count,
@@ -252,8 +248,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       );
   };
 
-  const updateAppKey = async () => {
-    if (!appKeyDetails) return;
+  const handleUpdateAppUser = async () => {
+    if (!appUserDetails) return;
 
     try {
       setIsUpdating(true);
@@ -263,7 +259,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         expiryDays?: number;
         credit?: number;
       } = {
-        username: appKeyDetails.username,
+        username: appUserDetails.username,
       };
 
       if (updatePlan) {
@@ -283,15 +279,15 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         }
       }
 
-      const response = await api.put("/app/appid/update", requestBody);
+      const response = await api.put("/app/appuser/update", requestBody);
       const result = response.data;
 
       if (result.success) {
         toast("App user updated successfully");
         setUpdateDialogOpen(false);
 
-        if (appKey) {
-          fetchAppKeyDetails(appKey);
+        if (userKey) {
+          fetchAppUserDetails(userKey);
         }
       } else {
         throw new Error(result.message || "Failed to update app user");
@@ -306,20 +302,20 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   };
 
   const resetDeviceId = async () => {
-    if (!appKeyDetails) return;
+    if (!appUserDetails) return;
 
     try {
       setIsResetting(true);
-      const response = await api.put("/app/appid/reset-device", {
-        key: appKeyDetails.key,
+      const response = await api.put("/app/appuser/reset-device", {
+        key: appUserDetails.key,
       });
       const result = response.data;
 
       if (result.success) {
         toast("Device ID reset successfully");
 
-        if (appKey) {
-          fetchAppKeyDetails(appKey);
+        if (userKey) {
+          fetchAppUserDetails(userKey);
         }
       } else {
         throw new Error(result.message || "Failed to reset device ID");
@@ -333,13 +329,13 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     }
   };
 
-  const updateKeyStatus = async (mode: "suspend" | "reactivate") => {
-    if (!appKeyDetails) return;
+  const updateUserStatus = async (mode: "suspend" | "reactivate") => {
+    if (!appUserDetails) return;
 
     try {
       setIsChangingStatus(true);
-      const response = await api.put("/app/appid/update-status", {
-        key: appKeyDetails.key,
+      const response = await api.put("/app/appuser/update-status", {
+        key: appUserDetails.key,
         mode,
       });
       const result = response.data;
@@ -347,16 +343,16 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       if (result.success) {
         toast(
           result.message ||
-            `API key ${
+            `App user ${
               mode === "suspend" ? "suspended" : "reactivated"
             } successfully`,
         );
 
-        if (appKey) {
-          fetchAppKeyDetails(appKey);
+        if (userKey) {
+          fetchAppUserDetails(userKey);
         }
       } else {
-        throw new Error(result.message || `Failed to ${mode} App ID`);
+        throw new Error(result.message || `Failed to ${mode} App User`);
       }
     } catch (err) {
       toast.error(
@@ -367,21 +363,21 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     }
   };
 
-  const deleteAppKey = async () => {
-    if (!appKeyDetails) return;
+  const deleteAppUser = async () => {
+    if (!appUserDetails) return;
 
     try {
       setIsDeleting(true);
       const response = await api.delete(
-        `/app/appid/delete/${appKeyDetails.username}`
+        `/app/appuser/delete/${encodeURIComponent(appUserDetails.username)}`,
       );
       const result = response.data;
 
       if (result.success) {
-        toast("App ID deleted successfully");
+        toast("App user deleted successfully");
         router.push("/admin/users");
       } else {
-        throw new Error(result.message || "Failed to delete App ID");
+        throw new Error(result.message || "Failed to delete App User");
       }
     } catch (err) {
       toast.error(
@@ -393,20 +389,20 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   };
 
   const openUpdateDialog = () => {
-    if (!appKeyDetails) return;
+    if (!appUserDetails) return;
 
-    setUpdatePlan(appKeyDetails.plan.type);
+    setUpdatePlan(appUserDetails.plan.type);
     setUpdateExpiryDays("30");
     setUpdateDialogOpen(true);
   };
 
   const addCredits = async () => {
-    if (!appKeyDetails) return;
+    if (!appUserDetails) return;
 
     try {
       setIsAddingCredit(true);
-      const response = await api.put("/app/appid/add-credits", {
-        key: appKeyDetails.key,
+      const response = await api.put("/app/appuser/add-credits", {
+        key: appUserDetails.key,
         credits: Number.parseInt(creditAmount),
       });
       const result = response.data;
@@ -414,8 +410,8 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
       if (result.success) {
         toast(result.message || `${creditAmount} credits added successfully`);
 
-        if (appKey) {
-          fetchAppKeyDetails(appKey);
+        if (userKey) {
+          fetchAppUserDetails(userKey);
         }
 
         setAddCreditDialogOpen(false);
@@ -436,7 +432,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground">Loading App ID details...</p>
+        <p className="text-muted-foreground">Loading App User details...</p>
       </div>
     );
   }
@@ -445,17 +441,17 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-destructive mb-4" />
-        <h3 className="text-lg font-medium">Error loading App ID details</h3>
+        <h3 className="text-lg font-medium">Error loading App User details</h3>
         <p className="text-muted-foreground mt-2 mb-4">{error}</p>
         <div className="flex gap-4">
           <Button variant="outline" asChild>
             <Link href="/admin/users">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to APP Users
+              Back to App Users
             </Link>
           </Button>
-          {appKey && (
-            <Button onClick={() => fetchAppKeyDetails(appKey)}>
+          {userKey && (
+            <Button onClick={() => fetchAppUserDetails(userKey)}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Try Again
             </Button>
@@ -465,18 +461,18 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
     );
   }
 
-  if (!appKeyDetails || !userDetails) {
+  if (!appUserDetails || !userDetails) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium">App ID not found</h3>
+        <h3 className="text-lg font-medium">App User not found</h3>
         <p className="text-muted-foreground mt-2 mb-4">
-          The requested App ID could not be found.
+          The requested App User could not be found.
         </p>
         <Button variant="outline" asChild>
           <Link href="/admin/users" className="text-center">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to APP Users
+            Back to App Users
           </Link>
         </Button>
       </div>
@@ -484,7 +480,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
   }
 
   return (
-    <div className=" py-6 space-y-6 ">
+    <div className="py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" asChild>
@@ -493,15 +489,15 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold">App ID Details</h1>
+            <h1 className="text-2xl font-semibold">App User Details</h1>
             <p className="text-sm text-muted-foreground">
-              Manage and monitor App ID usage
+              Manage and monitor App User access & usage
             </p>
           </div>
         </div>
         <Button
           variant="outline"
-          onClick={() => fetchAppKeyDetails(appKey!)}
+          onClick={() => fetchAppUserDetails(userKey)}
           size="sm"
         >
           <RefreshCw className="mr-2 h-4 w-4" />
@@ -543,14 +539,14 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               <div className="font-medium text-muted-foreground">User ID</div>
               <div className="col-span-2 flex items-center gap-2">
                 <code className="text-xs bg-muted px-2 py-1 rounded">
-                  {userDetails.id.substring(0, 8)}...
-                  {userDetails.id.substring(userDetails.id.length - 8)}
+                  {String(userDetails.id).substring(0, 8)}...
+                  {String(userDetails.id).substring(String(userDetails.id).length - 8)}
                 </code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => copyToClipboard(userDetails.id)}
+                  onClick={() => copyToClipboard(String(userDetails.id))}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -566,24 +562,24 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           </CardContent>
         </Card>
 
-        {/* API Key Details */}
+        {/* App User License Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">App ID Details</CardTitle>
+            <CardTitle className="text-lg">App User Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="font-medium text-muted-foreground">App ID</div>
+              <div className="font-medium text-muted-foreground">Access Key</div>
               <div className="col-span-2 flex items-center gap-2">
                 <code className="text-xs bg-muted px-2 py-1 rounded">
-                  {appKeyDetails.key.substring(0, 8)}...
-                  {appKeyDetails.key.substring(appKeyDetails.key.length - 8)}
+                  {appUserDetails.key.substring(0, 8)}...
+                  {appUserDetails.key.substring(appUserDetails.key.length - 8)}
                 </code>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => copyToClipboard(appKeyDetails.key)}
+                  onClick={() => copyToClipboard(appUserDetails.key)}
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
@@ -591,26 +587,26 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
 
               <div className="font-medium text-muted-foreground">Status</div>
               <div className="col-span-2">
-                <Badge className={getStatusColor(appKeyDetails.status)}>
-                  {appKeyDetails.status}
+                <Badge className={getStatusColor(appUserDetails.status)}>
+                  {appUserDetails.status}
                 </Badge>
               </div>
 
               <div className="font-medium text-muted-foreground">Plan</div>
               <div className="col-span-2">
-                <Badge className={getPlanBadge(appKeyDetails.plan.type)}>
-                  {appKeyDetails.plan.type.replace("_", " ")}
+                <Badge className={getPlanBadge(appUserDetails.plan.type)}>
+                  {appUserDetails.plan.type.replace("_", " ")}
                 </Badge>
               </div>
 
-              {appKeyDetails.plan.type !== "subscription" &&
-                appKeyDetails.credit !== null && (
+              {appUserDetails.plan.type !== "subscription" &&
+                appUserDetails.credit !== null && (
                   <>
                     <div className="font-medium text-muted-foreground">
                       Credits
                     </div>
                     <div className="col-span-2 text-lg font-semibold text-green-600">
-                      {appKeyDetails.credit}
+                      {appUserDetails.credit}
                     </div>
                   </>
                 )}
@@ -619,9 +615,9 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Device Bound
               </div>
               <div className="col-span-2">
-                {(appKeyDetails?.allowedDevices?.length ?? 0) > 0 ? (
+                {(appUserDetails?.allowedDevices?.length ?? 0) > 0 ? (
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                    Yes
+                    Yes ({appUserDetails.allowedDevices?.length})
                   </Badge>
                 ) : (
                   <Badge variant="secondary">No</Badge>
@@ -632,17 +628,17 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Total Usage
               </div>
               <div className="col-span-2 text-lg font-semibold">
-                {appKeyDetails.totalProcess.toLocaleString()}
+                {appUserDetails.totalProcess.toLocaleString()}
               </div>
 
               <div className="font-medium text-muted-foreground">Created</div>
               <div className="col-span-2 text-sm">
-                {formatDate(appKeyDetails.createdAt)}
+                {formatDate(appUserDetails.createdAt)}
               </div>
 
               <div className="font-medium text-muted-foreground">Expires</div>
               <div className="col-span-2 text-sm">
-                {formatDate(appKeyDetails.expiresAt)}
+                {formatDate(appUserDetails.expiresAt)}
               </div>
             </div>
           </CardContent>
@@ -659,7 +655,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             <Button
               variant="outline"
               onClick={resetDeviceId}
-              disabled={isResetting || !appKeyDetails.allowedDevices?.length}
+              disabled={isResetting || !appUserDetails.allowedDevices?.length}
             >
               {isResetting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -668,10 +664,10 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               )}
               Reset Device
             </Button>
-            {appKeyDetails.status === "active" ? (
+            {appUserDetails.status === "active" ? (
               <Button
                 variant="outline"
-                onClick={() => updateKeyStatus("suspend")}
+                onClick={() => updateUserStatus("suspend")}
                 disabled={isChangingStatus}
               >
                 {isChangingStatus ? (
@@ -684,7 +680,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             ) : (
               <Button
                 variant="outline"
-                onClick={() => updateKeyStatus("reactivate")}
+                onClick={() => updateUserStatus("reactivate")}
                 disabled={isChangingStatus}
               >
                 {isChangingStatus ? (
@@ -695,7 +691,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 Reactivate
               </Button>
             )}
-            {appKeyDetails.plan.type !== "subscription" && (
+            {appUserDetails.plan.type !== "subscription" && (
               <Button
                 variant="outline"
                 onClick={() => setAddCreditDialogOpen(true)}
@@ -713,9 +709,9 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete API Key</AlertDialogTitle>
+                  <AlertDialogTitle>Delete App User</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete the API key for{" "}
+                    This will permanently delete the App User profile for{" "}
                     <span className="font-semibold">{userDetails.name}</span>.
                     This action cannot be undone.
                   </AlertDialogDescription>
@@ -723,7 +719,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={deleteAppKey}
+                    onClick={deleteAppUser}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
@@ -749,12 +745,11 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             <BarChart3 className="h-5 w-5" />
             Monthly Usage Statistics
           </CardTitle>
-          <CardDescription>API usage breakdown by month</CardDescription>
+          <CardDescription>Processing usage breakdown by month</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {getChartData().length > 0 ? (
             <div>
-              {/* Chart */}
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={getChartData()}>
@@ -793,13 +788,12 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                 </ResponsiveContainer>
               </div>
 
-              {/* Table */}
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Month</TableHead>
-                      <TableHead className="text-right">API Calls</TableHead>
+                      <TableHead className="text-right">Processes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -875,13 +869,12 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
         </CardContent>
       </Card>
 
-      {/* Dialogs remain the same */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Update API Key</DialogTitle>
+            <DialogTitle>Update App User</DialogTitle>
             <DialogDescription>
-              Update the plan, expiry days, or credit for the API key.
+              Update the plan, expiry days, or credit for this app user.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -889,7 +882,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
-                value={appKeyDetails.username}
+                value={appUserDetails.username}
                 disabled
                 className="bg-muted"
               />
@@ -908,7 +901,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </div>{" "}
+            </div>
             {updatePlan === "credit" && (
               <div className="grid gap-2">
                 <Label htmlFor="credit">Credit</Label>
@@ -917,7 +910,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
                   type="number"
                   min="0"
                   placeholder="Credit amount"
-                  defaultValue={appKeyDetails.credit?.toString() || "0"}
+                  defaultValue={appUserDetails.credit?.toString() || "0"}
                 />
               </div>
             )}
@@ -942,14 +935,14 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
             >
               Cancel
             </Button>
-            <Button onClick={updateAppKey} disabled={isUpdating}>
+            <Button onClick={handleUpdateAppUser} disabled={isUpdating}>
               {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Updating...
                 </>
               ) : (
-                "Update Key"
+                "Update User"
               )}
             </Button>
           </DialogFooter>
@@ -961,7 +954,7 @@ export default function AppKeyDetailsPage({ appKey }: { appKey: string }) {
           <DialogHeader>
             <DialogTitle>Add Credits</DialogTitle>
             <DialogDescription>
-              Add additional credits to this API key.
+              Add additional credits to this app user.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

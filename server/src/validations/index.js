@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { USER_ROLES, PLAN_TYPES, WITHDRAWAL_STATUS, PROMO_APPLIES_TO } from "../constants/index.js";
+import { PLAN_TYPES, PROMO_APPLIES_TO } from "../constants/index.js";
 
 // === AUTH SCHEMAS ===
 export const registerUserSchema = z.object({
@@ -41,33 +41,30 @@ export const resetPasswordSchema = z.object({
   path: ["confirmNewPassword"],
 });
 
-// === APP ID / APP KEY SCHEMAS ===
-export const createAppIdSchema = z.object({
+// === APP USER SCHEMAS ===
+export const createAppUserSchema = z.object({
   username: z.string().min(1, "Username (email) is required"),
   expiryDays: z.coerce.number().optional().default(3),
-  plan: z.union([z.string(), z.object({ type: z.string() })]).optional().default("free"),
+  plan: z.union([z.string(), z.object({ type: z.string(), id: z.string().optional() })]).optional().default("free"),
   initialCredit: z.coerce.number().optional(),
 });
-export const createAppKeySchema = createAppIdSchema;
 
-export const updateAppIdSchema = z.object({
+export const updateAppUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
-  plan: z.union([z.string(), z.object({ type: z.string() })]).optional(),
+  plan: z.union([z.string(), z.object({ type: z.string(), id: z.string().optional() })]).optional(),
   expiryDays: z.coerce.number().optional(),
   credit: z.coerce.number().optional(),
 });
-export const updateAppKeySchema = updateAppIdSchema;
 
 export const addCreditsSchema = z.object({
-  key: z.string().min(1, "App ID is required"),
+  key: z.string().min(1, "App user key is required"),
   credits: z.coerce.number().min(1, "Credits must be a positive number"),
 });
 
-export const updateAppIdStatusSchema = z.object({
-  key: z.string().min(1, "App ID is required"),
+export const updateAppUserStatusSchema = z.object({
+  key: z.string().min(1, "App user key is required"),
   mode: z.enum(["suspend", "reactivate"]),
 });
-export const updateAppKeyStatusSchema = updateAppIdStatusSchema;
 
 // === PRICING SCHEMAS ===
 export const createPricingPlanSchema = z.object({

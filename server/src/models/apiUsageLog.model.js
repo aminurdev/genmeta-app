@@ -8,11 +8,6 @@ const apiUsageLogSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    appKeyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "AppUser",
-      index: true,
-    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -49,7 +44,6 @@ const apiUsageLogSchema = new mongoose.Schema(
 );
 
 apiUsageLogSchema.index({ appUserId: 1, date: 1 }, { unique: true });
-apiUsageLogSchema.index({ appKeyId: 1, date: 1 });
 apiUsageLogSchema.index({ userId: 1, date: 1 });
 
 export const ApiUsageLog =

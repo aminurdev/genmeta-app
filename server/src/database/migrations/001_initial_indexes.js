@@ -28,15 +28,15 @@ export async function up(connection) {
   );
   await safeCreateIndex(users, { role: 1, isVerified: 1, createdAt: -1 });
 
-  console.log("  → Ensuring indexes on appkeys collection...");
-  const appkeys = db.collection("appkeys");
-  await safeCreateIndex(appkeys, { key: 1 }, { unique: true });
-  await safeCreateIndex(appkeys, { userId: 1 });
-  await safeCreateIndex(appkeys, { username: 1 });
-  await safeCreateIndex(appkeys, { "plan.type": 1, expiresAt: 1 });
-  await safeCreateIndex(appkeys, { "plan.type": 1, credit: 1 });
-  await safeCreateIndex(appkeys, { "plan.type": 1, lastCreditRefresh: 1 });
-  await safeCreateIndex(appkeys, { isActive: 1, status: 1 });
+  console.log("  → Ensuring indexes on appusers collection...");
+  const appusers = db.collection("appusers");
+  await safeCreateIndex(appusers, { key: 1 }, { unique: true });
+  await safeCreateIndex(appusers, { userId: 1 }, { unique: true });
+  await safeCreateIndex(appusers, { username: 1 }, { unique: true });
+  await safeCreateIndex(appusers, { "plan.type": 1, expiresAt: 1 });
+  await safeCreateIndex(appusers, { "plan.type": 1, credit: 1 });
+  await safeCreateIndex(appusers, { "plan.type": 1, lastCreditRefresh: 1 });
+  await safeCreateIndex(appusers, { isActive: 1, status: 1 });
 
   console.log("  → Ensuring indexes on apppricings collection...");
   const apppricings = db.collection("apppricings");
@@ -48,12 +48,6 @@ export async function up(connection) {
   await safeCreateIndex(apppayments, { trxID: 1 }, { unique: true });
   await safeCreateIndex(apppayments, { userId: 1, createdAt: -1 });
   await safeCreateIndex(apppayments, { createdAt: -1, status: 1 });
-
-  console.log("  → Ensuring indexes on orders collection...");
-  const orders = db.collection("orders");
-  await safeCreateIndex(orders, { userId: 1, createdAt: -1 });
-  await safeCreateIndex(orders, { status: 1, createdAt: -1 });
-  await safeCreateIndex(orders, { planId: 1 });
 
   console.log("  → Ensuring indexes on promocodes collection...");
   const promocodes = db.collection("promocodes");
@@ -69,6 +63,6 @@ export async function up(connection) {
   console.log("  ✓ All core indexes verified and established successfully.");
 }
 
-export async function down(connection) {
+export async function down() {
   // Rollback intentionally preserves critical unique constraints
 }

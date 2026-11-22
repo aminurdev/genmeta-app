@@ -129,7 +129,7 @@ export default function DashboardStats() {
     value: value || 0,
   }));
 
-  const monthlyProcesses = stats.appKeys?.monthlyProcessList || {};
+  const monthlyProcesses = stats.appUsers?.monthlyProcessList || {};
   const processData = Object.entries(monthlyProcesses).map(([month, value]) => ({
     label: formatMonthYear(month),
     value: value || 0,
@@ -138,7 +138,7 @@ export default function DashboardStats() {
   const recentPayments =
     stats.payments?.recent || stats.recentPayments || [];
 
-  const topUsage = stats.appKeys?.topUsage || [];
+  const topUsage = stats.appUsers?.topUsage || [];
   const topSpenders = stats.payments?.topSpenders || [];
   const topReferrers = stats.topReferrers || [];
 
@@ -237,16 +237,16 @@ export default function DashboardStats() {
           </CardContent>
         </Card>
 
-        {/* App Keys / Active Users Card */}
+        {/* App Users / Active Users Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">APP Users</CardTitle>
+            <CardTitle className="text-sm font-medium">App Users</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(stats.appKeys?.total ?? 0).toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(stats.appUsers?.total ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.appKeys?.active ?? 0} active keys
+              {stats.appUsers?.active ?? 0} active users
             </p>
           </CardContent>
         </Card>
@@ -259,11 +259,11 @@ export default function DashboardStats() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(stats.appKeys?.activePremium ?? 0).toLocaleString()}
+              {(stats.appUsers?.activePremium ?? 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.appKeys?.subscriptionPlanCount ?? 0} subs,{" "}
-              {stats.appKeys?.creditPlanCount ?? 0} credit
+              {stats.appUsers?.subscriptionPlanCount ?? 0} subs,{" "}
+              {stats.appUsers?.creditPlanCount ?? 0} credit
             </p>
           </CardContent>
         </Card>

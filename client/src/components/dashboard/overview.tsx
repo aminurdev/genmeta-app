@@ -86,17 +86,19 @@ export default function Overview() {
 
   // Normalized data extraction
   const user = data.user || { name: "Creator", email: "" };
-  const plan = data.plan || { type: data.appKey?.planType || "free", name: "Free Tier" };
-  const credit = data.credit ?? data.appKey?.creditRemaining ?? 0;
-  const remainingDays = data.remainingDays ?? data.appKey?.daysLeft ?? null;
-  const appKeyString = data.appId?.id || data.appId?.key || data.appKey?.key || "";
-  const totalProcess = data.totalProcess ?? data.appKey?.totalProcess ?? 0;
-  const todayProcess = data.todayProcess ?? data.appKey?.todayUsage ?? 0;
-  const thisMonthProcess = data.currentMonthProcess ?? data.appKey?.thisMonthUsage ?? 0;
+  const plan = data.plan || { type: data.appUser?.planType || "free", name: "Free Tier" };
+  const credit = data.credit ?? data.appUser?.creditRemaining ?? 0;
+  const remainingDays = data.remainingDays ?? data.appUser?.daysLeft ?? null;
+  const appUserKey = data.appUser?.key || "";
+  const totalProcess = data.totalProcess ?? data.appUser?.totalProcess ?? 0;
+  const todayProcess = data.todayProcess ?? data.appUser?.todayUsage ?? 0;
+  const thisMonthProcess = data.currentMonthProcess ?? data.appUser?.thisMonthUsage ?? 0;
 
-  const last7DaysProcess = data.last7DaysProcess || data.appKey?.last7DaysProcess || [];
-  const last6MonthProcess = data.last6MonthProcess || data.appKey?.last6MonthProcess || [];
+  const last7DaysProcess = data.last7DaysProcess || data.appUser?.last7DaysProcess || [];
+  const last6MonthProcess = data.last6MonthProcess || data.appUser?.last6MonthProcess || [];
   const recentHistory = data.recentHistory || [];
+  const activeDevicesCount = data.appUser?.devices?.length ?? data.appUser?.allowedDevices?.length ?? 0;
+  const maxDevices = data.appUser?.maxDevices ?? 2;
 
   const isSubscription = plan.type === "subscription";
 
@@ -159,13 +161,13 @@ export default function Overview() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <code className="text-xs font-mono px-2 py-1 bg-muted rounded border text-foreground select-all">
-                  {appKeyString
+                  {appUserKey
                     ? showKey
-                      ? appKeyString
-                      : `${appKeyString.slice(0, 8)}••••••••••••••••${appKeyString.slice(-6)}`
-                    : "No App ID Found"}
+                      ? appUserKey
+                      : `${appUserKey.slice(0, 8)}••••••••••••••••${appUserKey.slice(-6)}`
+                    : "No App Key Found"}
                 </code>
-                {appKeyString && (
+                {appUserKey && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -181,11 +183,11 @@ export default function Overview() {
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-            {appKeyString && (
+            {appUserKey && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleCopyKey(appKeyString)}
+                onClick={() => handleCopyKey(appUserKey)}
                 className="gap-1.5 text-xs font-medium"
               >
                 {copied ? (
@@ -358,7 +360,7 @@ export default function Overview() {
                   <span className="text-sm font-medium">Authorized Devices</span>
                 </div>
                 <Badge variant="outline" className="text-xs font-mono">
-                  1 / 1 Device
+                  {activeDevicesCount} / {maxDevices} Devices
                 </Badge>
               </div>
 

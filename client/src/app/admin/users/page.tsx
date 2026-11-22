@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatisticsContent from "./statistics-content";
-import AppIdList from "./appid-list";
+import AppUserList from "./appuser-list";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
@@ -32,8 +32,8 @@ export default function StatisticsPage() {
             <StatisticsContent />
           </Suspense>
 
-          <Suspense fallback={<AppKeyListLoading />}>
-            <AppIdList />
+          <Suspense fallback={<AppUserListLoading />}>
+            <AppUserList />
           </Suspense>
         </div>
       </div>
@@ -57,7 +57,7 @@ function StatisticsLoading() {
   );
 }
 
-function AppKeyListLoading() {
+function AppUserListLoading() {
   return (
     <div className="rounded-lg border-0 bg-card shadow-xs hover:shadow-md transition-shadow duration-200">
       <div className="p-4 sm:p-6 border-b border-border/50">

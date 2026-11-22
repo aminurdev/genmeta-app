@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import AppKeyDetailsPage from "./details";
+import AppUserDetailsPage from "./details";
 import { Loader2 } from "lucide-react";
 
 interface PageProps {
@@ -23,7 +23,7 @@ export default async function UserDetailsPage({ params }: PageProps) {
               </div>
             }
           >
-            <AppKeyDetailsPage appKey={key} />
+            <AppUserDetailsPage userKey={key} />
           </Suspense>
         </main>
       </div>

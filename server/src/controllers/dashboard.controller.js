@@ -1,6 +1,5 @@
-import { AppKey } from "../models/appKey.model.js";
+import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
-import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -13,8 +12,8 @@ export const getOverview = asyncHandler(async (req, res) => {
   const todayStr = dayjs(now).format("YYYY-MM-DD");
   const currentMonthKey = dayjs(now).format("YYYY-MM");
 
-  const [appKey, user, paymentStats, orders] = await Promise.all([
-    AppKey.findOne({ userId }).select(
+  const [appUser, user, paymentStats] = await Promise.all([
+    AppUser.findOne({ userId }).select(
       "key plan monthlyProcess dailyProcess totalProcess credit status isActive expiresAt allowedDevices devices maxDevices"
     ),
     User.findById(userId).select("name email isVerified loginProvider avatar role createdAt"),
@@ -32,7 +31,7 @@ export const getOverview = asyncHandler(async (req, res) => {
           ],
           recent: [
             { $sort: { createdAt: -1 } },
-            { $limit: 10 },
+            { $limit: 5 },
             {
               $project: {
                 _id: 1,
@@ -48,42 +47,17 @@ export const getOverview = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    Order.find({ userId, status: "completed" })
-      .select("planSnapshot amount status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean(),
   ]);
 
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  const totalSpentFromPayments = paymentStats[0]?.totalSpent[0]?.total || 0;
+  const totalSpent = paymentStats[0]?.totalSpent[0]?.total || 0;
   const recentPayments = paymentStats[0]?.recent || [];
 
-  const recentOrders = orders.map((order) => ({
-    _id: order._id,
-    trxID: order._id.toString().slice(-10),
-    plan: {
-      name: order.planSnapshot?.name || "Unknown",
-      type: order.planSnapshot?.type || "N/A",
-    },
-    amount: order.amount,
-    status: order.status,
-    createdAt: order.createdAt,
-    source: "order",
-  }));
-
-  const combinedHistory = [...recentPayments, ...recentOrders]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
-
-  const totalSpentFromOrders = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
-  const totalSpent = totalSpentFromPayments + totalSpentFromOrders;
-
-  const monthlyProcess = appKey?.monthlyProcess || new Map();
-  const dailyProcess = appKey?.dailyProcess || new Map();
+  const monthlyProcess = appUser?.monthlyProcess || new Map();
+  const dailyProcess = appUser?.dailyProcess || new Map();
 
   const last6MonthProcess = Array.from({ length: 6 })
     .map((_, i) => {
@@ -99,9 +73,11 @@ export const getOverview = asyncHandler(async (req, res) => {
     })
     .reverse();
 
-  const remainingDays = appKey?.expiresAt
-    ? Math.max(0, Math.ceil((new Date(appKey.expiresAt) - now) / (1000 * 60 * 60 * 24)))
+  const remainingDays = appUser?.expiresAt
+    ? Math.max(0, Math.ceil((new Date(appUser.expiresAt) - now) / (1000 * 60 * 60 * 24)))
     : null;
+
+  const creditValue = appUser?.credit === Infinity ? null : appUser?.credit ?? 0;
 
   return new ApiResponse(200, true, "Overview data retrieved", {
     user: {
@@ -113,56 +89,34 @@ export const getOverview = asyncHandler(async (req, res) => {
       role: user.role,
       createdAt: user.createdAt,
     },
-    plan: appKey?.plan || { type: "free" },
-    credit: appKey?.credit || 0,
+    plan: appUser?.plan || { type: "free" },
+    credit: creditValue,
     remainingDays,
     totalSpent,
-    totalProcess: appKey?.totalProcess || 0,
+    totalProcess: appUser?.totalProcess || 0,
     todayProcess: dailyProcess.get(todayStr) || 0,
     currentMonthProcess: monthlyProcess.get(currentMonthKey) || 0,
     last6MonthProcess,
     last7DaysProcess,
-    recentHistory: combinedHistory,
-    // App ID / License Information
-    appId: {
-      exists: !!appKey,
-      id: appKey?.key || null,
-      key: appKey?.key || null,
-      totalProcess: appKey?.totalProcess || 0,
+    recentHistory: recentPayments,
+    appUser: {
+      exists: !!appUser,
+      key: appUser?.key || null,
+      totalProcess: appUser?.totalProcess || 0,
       todayUsage: dailyProcess.get(todayStr) || 0,
       thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
       last6MonthProcess,
       last7DaysProcess,
-      creditRemaining: appKey?.credit ?? 0,
-      planType: appKey?.plan?.type || "free",
-      planId: appKey?.plan?.id || null,
-      expiresAt: appKey?.expiresAt || null,
+      creditRemaining: creditValue,
+      planType: appUser?.plan?.type || "free",
+      planId: appUser?.plan?.id || null,
+      expiresAt: appUser?.expiresAt || null,
       daysLeft: remainingDays,
-      isSuspended: appKey?.status === "suspended",
-      isManuallyDisabled: appKey ? !appKey.isActive : false,
-      allowedDevices: appKey?.allowedDevices || [],
-      devices: appKey?.devices || [],
-      maxDevices: appKey?.maxDevices || 2,
-    },
-    // Backward compatibility object
-    appKey: {
-      exists: !!appKey,
-      key: appKey?.key || null,
-      totalProcess: appKey?.totalProcess || 0,
-      todayUsage: dailyProcess.get(todayStr) || 0,
-      thisMonthUsage: monthlyProcess.get(currentMonthKey) || 0,
-      last6MonthProcess,
-      last7DaysProcess,
-      creditRemaining: appKey?.credit ?? 0,
-      planType: appKey?.plan?.type || "free",
-      planId: appKey?.plan?.id || null,
-      expiresAt: appKey?.expiresAt || null,
-      daysLeft: remainingDays,
-      isSuspended: appKey?.status === "suspended",
-      isManuallyDisabled: appKey ? !appKey.isActive : false,
-      allowedDevices: appKey?.allowedDevices || [],
-      devices: appKey?.devices || [],
-      maxDevices: appKey?.maxDevices || 2,
+      isSuspended: appUser?.status === "suspended",
+      isManuallyDisabled: appUser ? !appUser.isActive : false,
+      allowedDevices: appUser?.allowedDevices || [],
+      devices: appUser?.devices || [],
+      maxDevices: appUser?.maxDevices || 2,
     },
     payments: {
       totalSpent,
@@ -189,16 +143,21 @@ export const getProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
-  const appKey = await AppKey.findOne({ userId: user._id }).select(
+  const appUser = await AppUser.findOne({ userId: user._id }).select(
     "key plan credit status expiresAt isActive totalProcess"
   );
 
   const userObj = user.toObject();
+  const appUserObj = appUser
+    ? {
+        ...appUser.toObject(),
+        credit: appUser.credit === Infinity ? null : appUser.credit,
+      }
+    : null;
 
   return new ApiResponse(200, true, "Profile retrieved successfully", {
     ...userObj,
     user: userObj,
-    appId: appKey,
-    appKey,
+    appUser: appUserObj,
   }).send(res);
 });

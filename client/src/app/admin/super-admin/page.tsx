@@ -248,7 +248,7 @@ export default function SuperAdminPage() {
                   DB: {overview?.database?.name || "mongodb"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  AppKeys: {overview?.counts?.totalAppKeys?.toLocaleString() || 0} active
+                  App Users: {overview?.counts?.totalAppUsers?.toLocaleString() || 0} active
                 </p>
               </CardContent>
             </Card>

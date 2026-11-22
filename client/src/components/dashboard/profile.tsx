@@ -92,7 +92,7 @@ const Profile = () => {
   }
 
   const user = data.user || data;
-  const appKey = data.appId || data.appKey;
+  const appUser = data.appUser;
   const loginProviders: string[] = Array.isArray(user.loginProvider) && user.loginProvider.length > 0
     ? user.loginProvider
     : ["email"];
@@ -202,23 +202,23 @@ const Profile = () => {
             <CardDescription>Your desktop app account identifier and plan usage</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {appKey ? (
+            {appUser ? (
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Plan Type</span>
                   <Badge variant="outline" className="capitalize">
-                    {appKey.plan?.type || "free"} {appKey.plan?.name ? `(${appKey.plan.name})` : ""}
+                    {appUser.plan?.type || "free"} {appUser.plan?.name ? `(${appUser.plan.name})` : ""}
                   </Badge>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Status</span>
                   <div className="flex items-center gap-1">
-                    {appKey.isActive ? (
+                    {appUser.isActive ? (
                       <>
                         <div className="h-2 w-2 rounded-full bg-green-500" />
                         <Badge variant="default" className="capitalize">
-                          {appKey.status || "active"}
+                          {appUser.status || "active"}
                         </Badge>
                       </>
                     ) : (
@@ -233,27 +233,27 @@ const Profile = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Generates</span>
                   <span className="text-sm font-medium">
-                    {(appKey.totalProcess ?? 0).toLocaleString()}
+                    {(appUser.totalProcess ?? 0).toLocaleString()}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Available Credits</span>
                   <span className="text-sm font-medium">
-                    {formatCredit(appKey.credit)}
+                    {formatCredit(appUser.credit)}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Expires At</span>
                   <span className="text-sm font-medium">
-                    {formatDate(appKey.expiresAt)}
+                    {formatDate(appUser.expiresAt)}
                   </span>
                 </div>
               </div>
             ) : (
               <div className="py-6 text-center text-muted-foreground">
-                <p>No active App ID found for this account.</p>
+                <p>No active App User profile found for this account.</p>
               </div>
             )}
           </CardContent>

@@ -81,7 +81,7 @@ app.use(
       "Content-Type",
       "Content-Disposition",
       "x-api-key",
-      "x-app-id",
+      "x-app-user-key",
       "x-device-id",
       "x-device-fingerprint",
       "x-device-name",

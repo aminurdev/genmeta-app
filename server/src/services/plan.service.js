@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
-import { AppKey } from "../models/appKey.model.js";
+import { AppUser } from "../models/appUser.model.js";
 import { AppPricing } from "../models/appPricing.model.js";
 import { Referral } from "../models/referral.model.js";
 import { ReferralEarning } from "../models/referralEarning.model.js";
 import { PromoCode } from "../models/promocode.model.js";
 import { PromoCodeRedemption } from "../models/promoCodeRedemption.model.js";
-import { generateAppKey } from "../utils/index.js";
+import { generateAppUserKey } from "../utils/index.js";
 import { PLAN_TYPES } from "../constants/index.js";
 
 /**
@@ -15,7 +15,7 @@ import { PLAN_TYPES } from "../constants/index.js";
  */
 class PlanService {
   /**
-   * Update or assign a plan to a user's AppKey
+   * Update or assign a plan to a user's AppUser profile
    * @param {string|mongoose.Types.ObjectId} userId
    * @param {string|mongoose.Types.ObjectId} planId
    * @param {mongoose.ClientSession} [session] Optional session for transaction
@@ -45,20 +45,21 @@ class PlanService {
         expirationDate.setHours(23, 59, 59, 999);
       }
 
-      let appKey = await AppKey.findOne({ userId }).session(session);
+      let appUser = await AppUser.findOne({ userId }).session(session);
 
-      if (!appKey) {
-        // Create new AppKey
-        const key = generateAppKey();
+      if (!appUser) {
+        // Create new AppUser
+        const key = generateAppUserKey();
         const today = now.toISOString().split("T")[0];
 
-        appKey = new AppKey({
+        appUser = new AppUser({
           userId: user._id,
-          username: user.email || user.name,
+          username: (user.email || user.name).toLowerCase().trim(),
           key,
           plan: {
             type: planType,
             id: selectedPlan._id.toString(),
+            name: selectedPlan.name,
           },
           expiresAt: expirationDate,
           credit:
@@ -74,72 +75,73 @@ class PlanService {
           dailyProcess: new Map([[today, 0]]),
         });
 
-        await appKey.save({ session });
-        console.log(`[PlanService] Created new AppKey with plan ${selectedPlan.name} for user ${user.email}`);
+        await appUser.save({ session });
+        console.log(`[PlanService] Created new AppUser with plan ${selectedPlan.name} for user ${user.email}`);
         return true;
       }
 
-      // Update existing AppKey
-      const previousPlanType = appKey.plan?.type || PLAN_TYPES.FREE;
+      // Update existing AppUser
+      const previousPlanType = appUser.plan?.type || PLAN_TYPES.FREE;
 
       if (planType === PLAN_TYPES.SUBSCRIPTION) {
         if (previousPlanType === PLAN_TYPES.SUBSCRIPTION) {
-          const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
+          const isExpired = !appUser.expiresAt || now > appUser.expiresAt;
           if (isExpired) {
-            appKey.expiresAt = expirationDate;
-          } else if (appKey.expiresAt && selectedPlan.planDuration) {
-            const newExpiresAt = new Date(appKey.expiresAt);
+            appUser.expiresAt = expirationDate;
+          } else if (appUser.expiresAt && selectedPlan.planDuration) {
+            const newExpiresAt = new Date(appUser.expiresAt);
             newExpiresAt.setDate(newExpiresAt.getDate() + selectedPlan.planDuration);
             newExpiresAt.setHours(23, 59, 59, 999);
-            appKey.expiresAt = newExpiresAt;
+            appUser.expiresAt = newExpiresAt;
           }
         } else {
-          appKey.expiresAt = expirationDate;
+          appUser.expiresAt = expirationDate;
         }
-        appKey.credit = Infinity;
+        appUser.credit = Infinity;
       } else if (planType === PLAN_TYPES.CREDIT) {
         const additionalCredits = selectedPlan.credit || 0;
 
         if (previousPlanType === PLAN_TYPES.CREDIT) {
-          const currentCredit = isFinite(appKey.credit) ? appKey.credit : 0;
-          appKey.credit = currentCredit + additionalCredits;
+          const currentCredit = isFinite(appUser.credit) ? appUser.credit : 0;
+          appUser.credit = currentCredit + additionalCredits;
 
           if (expirationDate) {
-            const isExpired = !appKey.expiresAt || now > appKey.expiresAt;
+            const isExpired = !appUser.expiresAt || now > appUser.expiresAt;
             if (isExpired) {
-              appKey.expiresAt = expirationDate;
-            } else if (appKey.expiresAt && selectedPlan.planDuration) {
-              const newExpiresAt = new Date(appKey.expiresAt);
+              appUser.expiresAt = expirationDate;
+            } else if (appUser.expiresAt && selectedPlan.planDuration) {
+              const newExpiresAt = new Date(appUser.expiresAt);
               newExpiresAt.setDate(newExpiresAt.getDate() + selectedPlan.planDuration);
               newExpiresAt.setHours(23, 59, 59, 999);
-              appKey.expiresAt = newExpiresAt;
+              appUser.expiresAt = newExpiresAt;
             }
           }
         } else {
           // Free or Subscription -> Credit
-          appKey.credit = additionalCredits;
-          appKey.expiresAt = expirationDate;
+          appUser.credit = additionalCredits;
+          appUser.expiresAt = expirationDate;
         }
       }
 
       // Update plan metadata
-      appKey.plan = {
+      appUser.plan = {
         type: planType,
         id: selectedPlan._id.toString(),
+        name: selectedPlan.name,
       };
-      appKey.isActive = true;
-      appKey.status = "active";
-      if (appKey.suspendedAt) appKey.suspendedAt = null;
+      appUser.isActive = true;
+      appUser.status = "active";
+      if (appUser.suspendedAt) appUser.suspendedAt = null;
 
-      if (!appKey.planHistory) appKey.planHistory = [];
-      appKey.planHistory.push({
+      if (!appUser.planHistory) appUser.planHistory = [];
+      appUser.planHistory.push({
         planType,
         changedAt: new Date(),
         reason: "upgrade_or_purchase",
       });
 
-      await appKey.save({ session });
-      console.log(`[PlanService] Updated AppKey for ${user.email} to plan ${selectedPlan.name}`);
+      await appUser.save({ session });
+      console.log(`[PlanService] Updated AppUser for ${user.email} to plan ${selectedPlan.name}`);
       return true;
     } catch (error) {
       console.error("[PlanService] Plan update error:", error);
@@ -196,7 +198,6 @@ class PlanService {
             referrerId: referralDoc.referrer,
             referredUserId: payingUser._id,
             amount: rewardAmount,
-            orderId: meta.orderId || null,
             paymentId: meta.paymentId || null,
           },
         ],
@@ -239,7 +240,6 @@ class PlanService {
             promoCodeId: promo._id,
             code: promo.code,
             userId,
-            orderId: meta.orderId || null,
             paymentId: meta.paymentId || null,
             discountPercent: promo.discountPercent,
             discountAmount: meta.discountAmount || 0,

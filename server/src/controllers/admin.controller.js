@@ -1,10 +1,9 @@
 import mongoose from "mongoose";
-import { AppKey } from "../models/appKey.model.js";
+import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { User } from "../models/user.model.js";
 import { Referral } from "../models/referral.model.js";
 import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
-import { Order } from "../models/order.model.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -26,10 +25,9 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
 
   const [
     paymentStats,
-    appKeyStats,
+    appUserStats,
     userStats,
     referralStats,
-    orderStats,
     topUsageDocs,
     topSpendersDocs,
     topReferrersDocs,
@@ -105,8 +103,8 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 2. App Key Aggregation
-    AppKey.aggregate([
+    // 2. App User Aggregation
+    AppUser.aggregate([
       {
         $facet: {
           counts: [
@@ -228,25 +226,14 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 5. Orders Aggregation
-    Order.aggregate([
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
-          amount: { $sum: "$amount" },
-        },
-      },
-    ]),
-
-    // 6. Top Usage (AppKey)
-    AppKey.find({ totalProcess: { $gt: 0 } })
+    // 5. Top Usage (AppUser)
+    AppUser.find({ totalProcess: { $gt: 0 } })
       .populate("userId", "name email")
       .sort({ totalProcess: -1 })
       .limit(5)
       .lean(),
 
-    // 7. Top Spenders
+    // 6. Top Spenders
     AppPayment.aggregate([
       { $group: { _id: "$userId", totalSpent: { $sum: "$amount" } } },
       { $sort: { totalSpent: -1 } },
@@ -268,7 +255,7 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       },
     ]),
 
-    // 8. Top Referrers
+    // 7. Top Referrers
     Referral.aggregate([
       {
         $project: {
@@ -332,11 +319,11 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
   }));
 
   const monthlyProcessMap = { ...monthlyKeys };
-  const totalProcessCount = appKeyStats[0]?.totalProcesses[0]?.total || 0;
+  const totalProcessCount = appUserStats[0]?.totalProcesses[0]?.total || 0;
   const currentMonthStr = formatMonthKey(now);
   monthlyProcessMap[currentMonthStr] = Math.round(totalProcessCount * 0.4);
 
-  const appKeyCounts = appKeyStats[0]?.counts[0] || {
+  const appUserCounts = appUserStats[0]?.counts[0] || {
     total: 0,
     newThisMonth: 0,
     active: 0,
@@ -358,27 +345,17 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
       monthlyRevenueList: monthlyRevenueMap,
     },
     users: userStats[0]?.counts[0] || { total: 0, verified: 0, newThisMonth: 0 },
-    appIds: {
-      total: appKeyCounts.total || 0,
-      newThisMonth: appKeyCounts.newThisMonth || 0,
-      active: appKeyCounts.active || 0,
-      activePremium: appKeyCounts.activePremium || 0,
-      subscriptionPlanCount: appKeyCounts.subscriptionPlanCount || 0,
-      creditPlanCount: appKeyCounts.creditPlanCount || 0,
+    appUsers: {
+      total: appUserCounts.total || 0,
+      newThisMonth: appUserCounts.newThisMonth || 0,
+      active: appUserCounts.active || 0,
+      activePremium: appUserCounts.activePremium || 0,
+      subscriptionPlanCount: appUserCounts.subscriptionPlanCount || 0,
+      creditPlanCount: appUserCounts.creditPlanCount || 0,
       monthlyProcessList: monthlyProcessMap,
       topUsage,
     },
-    appKeys: {
-      total: appKeyCounts.total || 0,
-      newThisMonth: appKeyCounts.newThisMonth || 0,
-      active: appKeyCounts.active || 0,
-      activePremium: appKeyCounts.activePremium || 0,
-      subscriptionPlanCount: appKeyCounts.subscriptionPlanCount || 0,
-      creditPlanCount: appKeyCounts.creditPlanCount || 0,
-      monthlyProcessList: monthlyProcessMap,
-      topUsage,
-    },
-    processes: appKeyStats[0]?.totalProcesses[0] || { total: 0, totalFailed: 0 },
+    processes: appUserStats[0]?.totalProcesses[0] || { total: 0, totalFailed: 0 },
     payments: {
       total: paymentCount,
       newThisMonth: paymentNewThisMonth,
@@ -387,7 +364,6 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
     },
     recentPayments: paymentStats[0]?.recent || [],
     topReferrers,
-    ordersSummary: orderStats,
     referrals: referralStats[0]?.totals[0] || { totalAvailable: 0 },
   };
 
@@ -395,7 +371,7 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "", role, status } = req.query;
+  const { page = 1, limit = 10, search = "", role, status, plan } = req.query;
 
   const pageNum = Math.max(1, parseInt(page, 10));
   const limitNum = Math.max(1, parseInt(limit, 10));
@@ -403,21 +379,77 @@ export const getAllUsers = asyncHandler(async (req, res) => {
 
   const filter = {};
 
-  if (search) {
-    filter.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
-    ];
-  }
-
   if (role) {
     filter.role = role;
   }
 
+  // If filtering by plan, status, or searching by AppUser key/username
+  const appUserQuery = {};
+  let hasAppUserConstraint = false;
+
+  if (plan && plan !== "all") {
+    appUserQuery["plan.type"] = plan;
+    hasAppUserConstraint = true;
+  }
+
   if (status === "active") {
-    filter.isDisabled = false;
+    appUserQuery.status = "active";
   } else if (status === "disabled" || status === "suspended") {
-    filter.isDisabled = true;
+    appUserQuery.status = "suspended";
+    hasAppUserConstraint = true;
+  }
+
+  if (search) {
+    const matchingAppUsers = await AppUser.find({
+      $or: [
+        { username: { $regex: search, $options: "i" } },
+        { key: { $regex: search, $options: "i" } },
+      ],
+    })
+      .select("userId")
+      .lean();
+    const matchedIds = matchingAppUsers.map((a) => a.userId);
+
+    filter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      ...(matchedIds.length > 0 ? [{ _id: { $in: matchedIds } }] : []),
+    ];
+  }
+
+  if (hasAppUserConstraint) {
+    const constrainedAppUsers = await AppUser.find(appUserQuery).select("userId").lean();
+    const constrainedUserIds = constrainedAppUsers.map((a) => a.userId);
+    if (plan === "free" && (!status || status === "active")) {
+      // Include users who don't have a paid AppUser record yet
+      const nonFreeUsers = await AppUser.find({
+        $or: [
+          { "plan.type": { $ne: "free" } },
+          ...(status === "active" ? [{ status: "suspended" }] : []),
+        ],
+      })
+        .select("userId")
+        .lean();
+      filter._id = { $nin: nonFreeUsers.map((a) => a.userId) };
+    } else if (status === "suspended" && (!plan || plan === "all")) {
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [
+            { isDisabled: true },
+            { _id: { $in: constrainedUserIds } },
+          ],
+        },
+      ];
+    } else {
+      filter._id = { $in: constrainedUserIds };
+    }
+  } else if (status === "active") {
+    const suspendedAppUsers = await AppUser.find({ status: "suspended" }).select("userId").lean();
+    filter.isDisabled = false;
+    if (suspendedAppUsers.length > 0) {
+      filter._id = { $nin: suspendedAppUsers.map((a) => a.userId) };
+    }
   }
 
   const [users, total] = await Promise.all([
@@ -430,26 +462,27 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     User.countDocuments(filter),
   ]);
 
-  // Enrich users with their AppKey details so appkey-list UI works seamlessly
   const userIds = users.map((u) => u._id);
-  const appKeys = await AppKey.find({ userId: { $in: userIds } }).lean();
-  const appKeyMap = new Map(appKeys.map((k) => [k.userId.toString(), k]));
+  const appUsers = await AppUser.find({ userId: { $in: userIds } }).lean();
+  const appUserMap = new Map(appUsers.map((k) => [k.userId.toString(), k]));
 
   const enrichedUsers = users.map((u) => {
-    const keyDoc = appKeyMap.get(u._id.toString());
+    const appUserDoc = appUserMap.get(u._id.toString());
     return {
       ...u,
-      key: keyDoc?.key || null,
-      appId: keyDoc?.key || null,
-      appKey: keyDoc?.key || null,
-      plan: keyDoc?.plan || { type: "free", name: "Free" },
-      credit: keyDoc?.credit ?? 0,
-      status: keyDoc?.status || (u.isDisabled ? "suspended" : "active"),
-      allowedDevices: keyDoc?.allowedDevices || [],
-      devices: keyDoc?.devices || [],
-      maxDevices: keyDoc?.maxDevices || 2,
-      totalProcess: keyDoc?.totalProcess || 0,
-      expiresAt: keyDoc?.expiresAt || null,
+      username: appUserDoc?.username || u.email,
+      key: appUserDoc?.key || null,
+      plan: appUserDoc?.plan || { type: "free", name: "Free" },
+      credit:
+        appUserDoc?.credit === Infinity
+          ? null
+          : appUserDoc?.credit ?? 5,
+      status: appUserDoc?.status || (u.isDisabled ? "suspended" : "active"),
+      allowedDevices: appUserDoc?.allowedDevices || [],
+      devices: appUserDoc?.devices || [],
+      maxDevices: appUserDoc?.maxDevices || 2,
+      totalProcess: appUserDoc?.totalProcess || 0,
+      expiresAt: appUserDoc?.expiresAt || null,
     };
   });
 
@@ -473,7 +506,7 @@ export const getUserStats = asyncHandler(async (req, res) => {
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [userCounts, appKeyCounts, dailyNewUsers, planDistribution, roleStats] = await Promise.all([
+  const [userCounts, appUserCounts, dailyNewUsers, planDistribution, roleStats] = await Promise.all([
     User.aggregate([
       {
         $facet: {
@@ -492,11 +525,11 @@ export const getUserStats = asyncHandler(async (req, res) => {
         },
       },
     ]),
-    AppKey.aggregate([
+    AppUser.aggregate([
       {
         $group: {
           _id: null,
-          totalKeys: { $sum: 1 },
+          totalAppUsers: { $sum: 1 },
           totalProcesses: { $sum: "$totalProcess" },
         },
       },
@@ -512,7 +545,7 @@ export const getUserStats = asyncHandler(async (req, res) => {
       { $sort: { _id: -1 } },
       { $project: { _id: 0, date: "$_id", count: 1 } },
     ]),
-    AppKey.aggregate([
+    AppUser.aggregate([
       {
         $group: {
           _id: { $ifNull: ["$plan.type", "free"] },
@@ -538,7 +571,7 @@ export const getUserStats = asyncHandler(async (req, res) => {
     newUsers24h: 0,
   };
 
-  const a = appKeyCounts[0] || { totalKeys: 0, totalProcesses: 0 };
+  const a = appUserCounts[0] || { totalAppUsers: 0, totalProcesses: 0 };
   const totalProcesses = a.totalProcesses || 0;
   const avgProcessesPerUser = u.totalUsers > 0 ? totalProcesses / u.totalUsers : 0;
 
@@ -826,11 +859,11 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
  * @desc Get high-level system infrastructure & governance overview (SuperAdmin only)
  */
 export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
-  const [roleCounts, disabledCount, totalAppKeys, appKeyAgg] = await Promise.all([
+  const [roleCounts, disabledCount, totalAppUsers, appUserAgg] = await Promise.all([
     User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
     User.countDocuments({ isDisabled: true }),
-    AppKey.countDocuments(),
-    AppKey.aggregate([{ $group: { _id: null, totalProcesses: { $sum: "$totalProcess" } } }]),
+    AppUser.countDocuments(),
+    AppUser.aggregate([{ $group: { _id: null, totalProcesses: { $sum: "$totalProcess" } } }]),
   ]);
 
   const roleMap = { user: 0, admin: 0, superAdmin: 0 };
@@ -864,9 +897,8 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
       admins: roleMap.admin,
       superAdmins: roleMap.superAdmin,
       disabledUsers: disabledCount,
-      totalAppIds: totalAppKeys,
-      totalAppKeys,
-      totalProcesses: appKeyAgg[0]?.totalProcesses || 0,
+      totalAppUsers,
+      totalProcesses: appUserAgg[0]?.totalProcesses || 0,
     },
   };
 
@@ -975,7 +1007,6 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
  * @access Private (Admin & SuperAdmin)
  */
 export const getPendingWithdrawalNotifications = asyncHandler(async (req, res) => {
-  // Query only referrals that have active pending withdrawals
   const referralsWithPending = await Referral.find({
     "withdrawHistory.status": WITHDRAWAL_STATUS.PENDING,
   })
@@ -988,20 +1019,17 @@ export const getPendingWithdrawalNotifications = asyncHandler(async (req, res) =
     const referrer = ref.referrer;
     if (!referrer) continue;
 
-    // Filter strictly to pending items only
     const pendingWithdrawals = (ref.withdrawHistory || []).filter(
       (w) => w.status === WITHDRAWAL_STATUS.PENDING
     );
 
     if (pendingWithdrawals.length === 0) continue;
 
-    // Calculate total pending amount for this user
     const totalPendingAmount = pendingWithdrawals.reduce(
       (sum, item) => sum + (Number(item.amount) || 0),
       0
     );
 
-    // Get the latest pending request for account details and timestamp
     const sortedPending = pendingWithdrawals.sort(
       (a, b) =>
         new Date(b.requestedAt || b.createdAt || 0) -
@@ -1026,7 +1054,6 @@ export const getPendingWithdrawalNotifications = asyncHandler(async (req, res) =
     });
   }
 
-  // Sort by most recent request at top
   pendingUsers.sort(
     (a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)
   );

@@ -1,74 +1,63 @@
 import express from "express";
 import {
-  createAppId,
-  createAppKey,
-  deleteAppId,
-  deleteAppKey,
-  updateAppId,
-  updateAppKey,
-  validateAppId,
-  validateAppKey,
-  getAppIdStats,
-  getAppKeyStats,
+  createAppUser,
+  deleteAppUser,
+  updateAppUser,
+  validateAppUser,
+  getAppUserStats,
   getAppDevices,
   removeAppDevice,
-  updateAppIdStatus,
-  updateAppKeyStatus,
+  updateAppUserStatus,
   resetDevice,
-  getUserDetailsByAppId,
-  getUserDetailsByKey,
+  getUserDetailsByAppUser,
   addCredits,
   processAppUsage,
-  processApiUsage,
-} from "../controllers/appId.controller.js";
+} from "../controllers/appUser.controller.js";
 import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
-  createAppIdSchema,
-  createAppKeySchema,
-  updateAppIdSchema,
-  updateAppKeySchema,
+  createAppUserSchema,
+  updateAppUserSchema,
   addCreditsSchema,
-  updateAppIdStatusSchema,
-  updateAppKeyStatusSchema,
+  updateAppUserStatusSchema,
 } from "../validations/index.js";
 
 const router = express.Router();
 
 /* -------------------------------------------------------------------------- */
-/*                           Modern App ID Endpoints                          */
+/*                             App User Endpoints                             */
 /* -------------------------------------------------------------------------- */
-router.post("/appid/create", authenticateAndVerifyAdmin, validate(createAppIdSchema), createAppId);
-router.put("/appid/update", authenticateAndVerifyAdmin, validate(updateAppIdSchema), updateAppId);
-router.delete("/appid/delete/:username", authenticateAndVerifyAdmin, deleteAppId);
-router.put("/appid/reset-device", authenticateAndVerifyAdmin, resetDevice);
-router.put("/appid/update-status", authenticateAndVerifyAdmin, validate(updateAppIdStatusSchema), updateAppIdStatus);
-router.put("/appid/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
-router.get("/appid/user/details/:appId", authenticateAndVerifyAdmin, getUserDetailsByAppId);
+router.post("/appuser/create", authenticateAndVerifyAdmin, validate(createAppUserSchema), createAppUser);
+router.put("/appuser/update", authenticateAndVerifyAdmin, validate(updateAppUserSchema), updateAppUser);
+router.delete("/appuser/delete/:username", authenticateAndVerifyAdmin, deleteAppUser);
+router.put("/appuser/reset-device", authenticateAndVerifyAdmin, resetDevice);
+router.put("/appuser/update-status", authenticateAndVerifyAdmin, validate(updateAppUserStatusSchema), updateAppUserStatus);
+router.put("/appuser/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
+router.get("/appuser/user/details/:key", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
 
-router.post("/appid/validate", validateAppId);
-router.get("/appid/stats", getAppIdStats);
-router.get("/appid/devices", getAppDevices);
-router.delete("/appid/devices/:deviceId", removeAppDevice);
-router.post("/appid/uses", processAppUsage);
-router.post("/appid/usage", processAppUsage);
+router.post("/appuser/validate", validateAppUser);
+router.get("/appuser/stats", getAppUserStats);
+router.get("/appuser/devices", getAppDevices);
+router.delete("/appuser/devices/:deviceId", removeAppDevice);
+router.post("/appuser/uses", processAppUsage);
+router.post("/appuser/usage", processAppUsage);
 
 /* -------------------------------------------------------------------------- */
-/*                    Backward-compatible AppKey Endpoints                    */
+/*                       Direct /api/v1/app/* Endpoints                       */
 /* -------------------------------------------------------------------------- */
-router.post("/appkey/create", authenticateAndVerifyAdmin, validate(createAppKeySchema), createAppKey);
-router.put("/appkey/update", authenticateAndVerifyAdmin, validate(updateAppKeySchema), updateAppKey);
-router.delete("/appkey/delete/:username", authenticateAndVerifyAdmin, deleteAppKey);
-router.put("/appkey/reset-device", authenticateAndVerifyAdmin, resetDevice);
-router.put("/appkey/update-status", authenticateAndVerifyAdmin, validate(updateAppKeyStatusSchema), updateAppKeyStatus);
-router.put("/appkey/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
-router.get("/appkey/user/details/:key", authenticateAndVerifyAdmin, getUserDetailsByKey);
+router.post("/create", authenticateAndVerifyAdmin, validate(createAppUserSchema), createAppUser);
+router.put("/update", authenticateAndVerifyAdmin, validate(updateAppUserSchema), updateAppUser);
+router.delete("/delete/:username", authenticateAndVerifyAdmin, deleteAppUser);
+router.put("/reset-device", authenticateAndVerifyAdmin, resetDevice);
+router.put("/update-status", authenticateAndVerifyAdmin, validate(updateAppUserStatusSchema), updateAppUserStatus);
+router.put("/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
+router.get("/user/details/:key", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
 
-router.post("/appkey/validate", validateAppKey);
-router.get("/appkey/stats", getAppKeyStats);
-router.get("/appkey/devices", getAppDevices);
-router.delete("/appkey/devices/:deviceId", removeAppDevice);
-router.post("/appkey/uses", processApiUsage);
-router.post("/appkey/usage", processApiUsage);
+router.post("/validate", validateAppUser);
+router.get("/stats", getAppUserStats);
+router.get("/devices", getAppDevices);
+router.delete("/devices/:deviceId", removeAppDevice);
+router.post("/uses", processAppUsage);
+router.post("/usage", processAppUsage);
 
 export default router;

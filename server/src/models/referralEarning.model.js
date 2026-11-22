@@ -25,10 +25,6 @@ const referralEarningSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    orderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
-    },
     paymentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AppPayment",
