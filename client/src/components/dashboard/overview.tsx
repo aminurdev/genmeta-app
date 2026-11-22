@@ -143,7 +143,7 @@ export default function Overview() {
       </div>
 
       {/* 2. App Key Integration Strip */}
-      <Card className="border-primary/20 bg-primary/[0.02]">
+      <Card className="border-primary/20 bg-primary/2">
         <CardContent className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
             <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0">

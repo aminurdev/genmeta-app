@@ -50,12 +50,12 @@ export default async function PaymentStatus({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-gray-950 dark:via-emerald-950/20 dark:to-gray-950">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-gray-950 dark:via-emerald-950/20 dark:to-gray-950">
       <div className="w-full max-w-5xl">
         {/* Success Animation Card */}
         <Card className="border-2 border-green-200 dark:border-green-800 shadow-2xl overflow-hidden">
           {/* Header with animated gradient */}
-          <div className="bg-gradient-to-br from-emerald-500/20 to-background p-8 text-white relative overflow-hidden">
+          <div className="bg-linear-to-br from-emerald-500/20 to-background p-8 text-white relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjEiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-30"></div>
 
             <CardHeader className="flex flex-col items-center gap-4 p-0 relative z-10">
@@ -69,7 +69,7 @@ export default async function PaymentStatus({
               </div>
 
               <div className="text-center">
-                <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground drop-shadow-sm">
+                <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground drop-shadow-xs">
                   Payment Successful!
                 </h1>
                 <p className="text-muted-foreground text-lg">
@@ -89,7 +89,7 @@ export default async function PaymentStatus({
                     <h2>Transaction Details</h2>
                   </div>
 
-                  <div className="rounded-xl p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border border-gray-200 dark:border-gray-700 space-y-4">
+                  <div className="rounded-xl p-6 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border border-gray-200 dark:border-gray-700 space-y-4">
                     {trxID && (
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground flex items-center gap-2">
@@ -118,7 +118,7 @@ export default async function PaymentStatus({
 
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Plan Type</span>
-                      <span className="font-semibold capitalize px-3 py-1 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-300">
+                      <span className="font-semibold capitalize px-3 py-1 rounded-full bg-linear-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-300">
                         {planType || "Subscription"}
                       </span>
                     </div>
@@ -132,7 +132,7 @@ export default async function PaymentStatus({
                     <h2>Plan Details</h2>
                   </div>
 
-                  <div className="rounded-xl p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-2 border-green-200 dark:border-green-800 space-y-5">
+                  <div className="rounded-xl p-6 bg-linear-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-2 border-green-200 dark:border-green-800 space-y-5">
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Plan Name</span>
                       <span className="font-bold text-lg capitalize text-foreground">
@@ -189,7 +189,7 @@ export default async function PaymentStatus({
             </Button>
             <Button
               asChild
-              className="gap-2 w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/30"
+              className="gap-2 w-full sm:w-auto bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/30"
             >
               <Link href="/download" aria-label="Get the App">
                 <Laptop className="h-4 w-4" />

@@ -19,7 +19,7 @@ export default function Loading() {
       <div className="space-y-8">
         {/* Static Tabs */}
         <div className="grid w-full grid-cols-3 h-12 rounded-lg bg-muted p-1">
-          <div className="rounded-md bg-background shadow-sm flex items-center justify-center text-sm font-medium">
+          <div className="rounded-md bg-background shadow-xs flex items-center justify-center text-sm font-medium">
             Credit Plans
           </div>
           <div className="flex items-center justify-center text-sm font-medium text-muted-foreground">

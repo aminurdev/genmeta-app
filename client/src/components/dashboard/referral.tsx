@@ -201,9 +201,9 @@ export function ReferralDashboard() {
   return (
     <div className="p-4 space-y-6">
 
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
+      <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <DollarSign className="h-6 w-6 text-green-600" />
           </div>
           <div>

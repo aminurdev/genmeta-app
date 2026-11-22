@@ -168,7 +168,7 @@ export function NavUser({ user }: Props) {
             variant="ghost"
             className={cn(
               "w-full h-auto p-3 justify-start transition-all duration-300 ease-in-out",
-              "hover:bg-muted/50 hover:scale-[1.02] hover:shadow-sm",
+              "hover:bg-muted/50 hover:scale-[1.02] hover:shadow-xs",
               isDropdownOpen && "bg-muted/50 scale-[1.01]",
               isMobile && "rounded-lg"
             )}

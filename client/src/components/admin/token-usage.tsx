@@ -49,7 +49,7 @@ export function TokenUsage({ data }: TokenUsageProps) {
               )?.value;
 
               return (
-                <div className="rounded-lg border bg-background p-2 shadow-sm">
+                <div className="rounded-lg border bg-background p-2 shadow-xs">
                   <div className="text-sm font-bold">{label}</div>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex flex-col">

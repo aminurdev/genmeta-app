@@ -546,7 +546,7 @@ export default function Cart({ planId }: { planId: string }) {
                       {promoError && (
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                           <X
-                            className="h-4 w-4 flex-shrink-0 hover:cursor-pointer"
+                            className="h-4 w-4 shrink-0 hover:cursor-pointer"
                             onClick={() => setPromoError(null)}
                           />
                           <p>{promoError}</p>

@@ -365,7 +365,7 @@ const PricingContent = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background pt-16 pb-24">
+      <div className="relative overflow-hidden bg-linear-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background pt-16 pb-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,80,255,0.15),transparent_70%)] -z-10"></div>
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center justify-center space-y-6 text-center">
@@ -376,7 +376,7 @@ const PricingContent = () => {
 
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               Choose the Perfect Plan <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 bg-clip-text text-transparent">
                 for Your Workflow
               </span>
             </h1>
@@ -454,7 +454,7 @@ const PricingContent = () => {
               <div className="space-y-3">
                 {features.slice(0, 5).map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 rounded-full bg-muted p-1 text-muted-foreground">
+                    <div className="shrink-0 rounded-full bg-muted p-1 text-muted-foreground">
                       {feature.freeIcon}
                     </div>
                     <span className="text-sm">{feature.free}</span>
@@ -493,7 +493,7 @@ const PricingContent = () => {
             id="premium"
             className="relative overflow-hidden border-violet-200 dark:border-violet-800 shadow-md transition-all hover:shadow-lg"
           >
-            <div className="absolute -right-10 top-5 rotate-45 bg-gradient-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
+            <div className="absolute -right-10 top-5 rotate-45 bg-linear-to-r from-violet-600 to-indigo-600 px-10 py-1 text-xs font-semibold text-white">
               Recommended
             </div>
             <Badge className="absolute left-4 top-4 bg-green-500 hover:bg-green-600">
@@ -544,7 +544,7 @@ const PricingContent = () => {
               <div className="space-y-3">
                 {features.slice(0, 5).map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <div className="flex-shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/50 p-1 text-violet-600 dark:text-violet-400">
+                    <div className="shrink-0 rounded-full bg-violet-100 dark:bg-violet-900/50 p-1 text-violet-600 dark:text-violet-400">
                       {feature.premiumIcon}
                     </div>
                     <span
@@ -573,7 +573,7 @@ const PricingContent = () => {
             </CardContent>
             <CardFooter>
               <Button
-                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
                 size="lg"
                 onClick={() =>
                   handlePurchase(
@@ -675,7 +675,7 @@ const PricingContent = () => {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button
               size="lg"
-              className="px-8 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+              className="px-8 bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
               asChild
             >
               <a href="#premium">Get Premium</a>
@@ -731,7 +731,7 @@ const PricingContent = () => {
                 </CardContent>
                 <CardFooter>
                   <Button
-                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                    className="w-full bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
                     onClick={() => handlePurchase(plan._id, "credit")}
                   >
                     <Star className="mr-2 h-4 w-4" />
@@ -745,14 +745,14 @@ const PricingContent = () => {
       </div>
 
       {/* App Screenshot */}
-      <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
+      <div className="bg-linear-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-5xl">
             <h2 className="mb-8 text-center text-3xl font-bold">
               Powerful Desktop Experience
             </h2>
 
-            <div className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800 bg-gradient-to-b from-background to-violet-50/50 dark:from-background dark:to-violet-950/20 p-2 shadow-lg">
+            <div className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-800 bg-linear-to-b from-background to-violet-50/50 dark:from-background dark:to-violet-950/20 p-2 shadow-lg">
               <div className="overflow-hidden rounded-lg">
                 <Image
                   src="/Assets/app.png"
@@ -765,7 +765,7 @@ const PricingContent = () => {
             </div>
 
             <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+              <div className="rounded-lg bg-card p-6 shadow-xs transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
                 <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
                   <Zap className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                 </div>
@@ -777,7 +777,7 @@ const PricingContent = () => {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+              <div className="rounded-lg bg-card p-6 shadow-xs transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
                 <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
                   <Shield className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                 </div>
@@ -790,7 +790,7 @@ const PricingContent = () => {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-card p-6 shadow-sm transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
+              <div className="rounded-lg bg-card p-6 shadow-xs transition-all hover:shadow-md border border-violet-100 dark:border-violet-900">
                 <div className="mb-4 rounded-full bg-violet-100 dark:bg-violet-900/50 p-3 w-fit">
                   <BarChart3 className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                 </div>
@@ -837,7 +837,7 @@ const PricingContent = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gradient-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
+      <div className="bg-linear-to-b from-violet-50 to-background dark:from-violet-950/20 dark:to-background py-20">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-3xl rounded-2xl bg-card p-8 shadow-lg border border-violet-200 dark:border-violet-800">
             <div className="text-center">
@@ -856,7 +856,7 @@ const PricingContent = () => {
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto px-8 gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
+                  className="w-full sm:w-auto px-8 gap-2 bg-linear-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/20"
                   asChild
                 >
                   <a href="#premium">

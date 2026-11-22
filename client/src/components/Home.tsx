@@ -377,7 +377,7 @@ export default function HomePage({ releaseInfo }: Props) {
             <div className="border-b px-6 py-4 text-sm text-muted-foreground md:px-12">
               Formatted for major stock marketplaces
             </div>
-            <div className="relative flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+            <div className="relative flex overflow-hidden mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
               <div className="flex animate-[ticker_28s_linear_infinite] shrink-0">
                 {[...PLATFORMS, ...PLATFORMS].map((name, i) => (
                   <div
@@ -741,8 +741,8 @@ function Section({
 }) {
   return (
     <section id={id} className={cn("relative border-t", className)}>
-      <span aria-hidden className="lp-cross -left-[7px] -top-[7px] z-10 hidden md:block" />
-      <span aria-hidden className="lp-cross -right-[7px] -top-[7px] z-10 hidden md:block" />
+      <span aria-hidden className="lp-cross left-[-7px] top-[-7px] z-10 hidden md:block" />
+      <span aria-hidden className="lp-cross right-[-7px] top-[-7px] z-10 hidden md:block" />
       {children}
     </section>
   );
@@ -879,7 +879,7 @@ function BentoCell({
       {highlight && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-foreground/[0.03] to-transparent"
+          className="pointer-events-none absolute inset-0 bg-linear-to-br from-foreground/3 to-transparent"
         />
       )}
       <Icon

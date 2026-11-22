@@ -83,7 +83,7 @@ export function AppearanceForm() {
               }`}
             >
               <CardContent className="p-0">
-                <div className="bg-gradient-to-r from-white to-gray-950 p-6 flex flex-col items-center gap-2">
+                <div className="bg-linear-to-r from-white to-gray-950 p-6 flex flex-col items-center gap-2">
                   <Laptop className="h-8 w-8 text-purple-500" />
                   <div className="font-medium text-gray-700 dark:text-gray-300">
                     System
@@ -92,9 +92,9 @@ export function AppearanceForm() {
                     Follow system preference
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-gray-100 to-gray-900 p-4 flex flex-col gap-2">
-                  <div className="h-2 w-3/4 bg-gradient-to-r from-gray-200 to-gray-800 rounded" />
-                  <div className="h-2 w-1/2 bg-gradient-to-r from-gray-200 to-gray-800 rounded" />
+                <div className="bg-linear-to-r from-gray-100 to-gray-900 p-4 flex flex-col gap-2">
+                  <div className="h-2 w-3/4 bg-linear-to-r from-gray-200 to-gray-800 rounded" />
+                  <div className="h-2 w-1/2 bg-linear-to-r from-gray-200 to-gray-800 rounded" />
                 </div>
               </CardContent>
             </Card>

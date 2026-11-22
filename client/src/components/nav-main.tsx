@@ -92,8 +92,8 @@ export function NavMain({ label, items }: Props) {
                 isActive={active}
                 className={cn(
                   "transition-all duration-300 ease-in-out",
-                  "hover:scale-105 hover:shadow-sm",
-                  active && "bg-primary/10 border-l-2 border-primary shadow-sm",
+                  "hover:scale-105 hover:shadow-xs",
+                  active && "bg-primary/10 border-l-2 border-primary shadow-xs",
                   isHovered && !active && "bg-muted/50 scale-[1.02]",
                   isClicked && isMobile && "bg-primary/20 scale-95 shadow-lg",
                   isCollapsed && !isMobile && "justify-center px-2",

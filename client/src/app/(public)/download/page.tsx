@@ -107,11 +107,11 @@ export default async function DownloadPage() {
         <section className="relative border-t overflow-hidden">
           <span
             aria-hidden
-            className="lp-cross -left-[7px] -top-[7px] z-10 hidden md:block"
+            className="lp-cross left-[-7px] top-[-7px] z-10 hidden md:block"
           />
           <span
             aria-hidden
-            className="lp-cross -right-[7px] -top-[7px] z-10 hidden md:block"
+            className="lp-cross right-[-7px] top-[-7px] z-10 hidden md:block"
           />
           <div
             aria-hidden

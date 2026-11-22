@@ -117,8 +117,8 @@ export function Navigation({ propUser }: NavigationProps) {
       <nav
         className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
           isScrolled
-            ? "bg-background/90 backdrop-blur-md border-b border-border shadow-sm"
-            : "bg-background/60 backdrop-blur-sm border-b border-border/50"
+            ? "bg-background/90 backdrop-blur-md border-b border-border shadow-xs"
+            : "bg-background/60 backdrop-blur-xs border-b border-border/50"
         }`}
       >
         {/* Inner wrapper — matches home page max-width & border */}
@@ -131,7 +131,7 @@ export function Navigation({ propUser }: NavigationProps) {
             {/* Logo */}
             <Link
               href="/"
-              className="flex items-center gap-2.5 transition-opacity hover:opacity-80 focus:outline-none"
+              className="flex items-center gap-2.5 transition-opacity hover:opacity-80 focus:outline-hidden"
               aria-label="GenMeta home"
             >
               <GenMetaLogo />

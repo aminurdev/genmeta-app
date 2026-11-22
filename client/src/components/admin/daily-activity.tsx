@@ -139,7 +139,7 @@ export function DailyActivity() {
       {/* Tooltip */}
       {tooltip.show && tooltip.data && (
         <div
-          className="absolute rounded-lg border bg-background p-2 shadow-sm text-xs"
+          className="absolute rounded-lg border bg-background p-2 shadow-xs text-xs"
           style={{
             left: tooltip.x + 10,
             top: tooltip.y - 40,

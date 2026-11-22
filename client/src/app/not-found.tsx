@@ -8,7 +8,7 @@ export default function NotFound() {
         <h1 className="text-9xl font-bold text-violet-500 dark:text-violet-400">
           404
         </h1>
-        <div className="h-2 w-20 bg-gradient-to-r from-violet-500 to-indigo-500 mx-auto rounded-full"></div>
+        <div className="h-2 w-20 bg-linear-to-r from-violet-500 to-indigo-500 mx-auto rounded-full"></div>
       </div>
 
       <h2 className="text-3xl font-bold mb-4">Page Not Found</h2>
@@ -39,8 +39,8 @@ export default function NotFound() {
       </div>
 
       <div className="mt-16 relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-100 to-indigo-100 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-lg -z-10 blur-xl opacity-50"></div>
-        <div className="p-6 border border-violet-200 dark:border-violet-800 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+        <div className="absolute inset-0 bg-linear-to-r from-violet-100 to-indigo-100 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-lg -z-10 blur-xl opacity-50"></div>
+        <div className="p-6 border border-violet-200 dark:border-violet-800 rounded-lg bg-white/50 dark:bg-black/20 backdrop-blur-xs">
           <p className="text-sm text-muted-foreground">
             If you believe this is an error, please{" "}
             <Link

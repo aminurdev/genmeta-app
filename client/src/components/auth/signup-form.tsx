@@ -293,7 +293,7 @@ const SignUpForm = () => {
   // Step 2: Email Verification
   if (showEmailVerification) {
     return (
-      <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm text-center">
+      <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted/40">
           <Shield className="h-5 w-5 text-foreground" />
         </div>
@@ -382,7 +382,7 @@ const SignUpForm = () => {
 
   // Step 1: Sign Up Form
   return (
-    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs">
       {/* Heading */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">

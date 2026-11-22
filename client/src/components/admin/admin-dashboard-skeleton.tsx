@@ -36,7 +36,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
       {showHeader && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-linear-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
               Admin Dashboard
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -55,7 +55,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
       {/* 2. 6 Summary Cards - Real titles & icons, only dynamic numbers skeletonized */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {/* Total Revenue */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -67,7 +67,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* Current Month */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Month</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -82,7 +82,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* Previous Month */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Previous Month</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -94,7 +94,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* Total Users */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -110,7 +110,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* APP Users */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">APP Users</CardTitle>
             <Key className="h-4 w-4 text-muted-foreground" />
@@ -125,7 +125,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* Premium Users */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Premium Users</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -143,7 +143,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
       {/* 3. 2 Area Charts - Static titles & axes, animated SVG wave skeleton */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {/* Revenue Chart */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader>
             <CardTitle>Revenue Overview</CardTitle>
             <CardDescription>Monthly revenue trends</CardDescription>
@@ -172,7 +172,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
         </Card>
 
         {/* Processing Chart */}
-        <Card className="border shadow-sm">
+        <Card className="border shadow-xs">
           <CardHeader>
             <CardTitle>Image Processing Overview</CardTitle>
             <CardDescription>Processing volume trends</CardDescription>
@@ -202,7 +202,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
       </div>
 
       {/* 4. Recent Payments Table - Static headers, dynamic rows */}
-      <Card className="border shadow-sm">
+      <Card className="border shadow-xs">
         <CardHeader>
           <CardTitle>Recent Payments</CardTitle>
           <CardDescription>Latest payment transactions</CardDescription>
@@ -250,7 +250,7 @@ export function AdminDashboardSkeleton({ showHeader = true }: AdminDashboardSkel
           { title: "Top Spenders", desc: "Highest contributing accounts", colHeader: "Total Spent" },
           { title: "Top Referrers", desc: "Leading referral affiliates", colHeader: "Earnings" },
         ].map((section, idx) => (
-          <Card key={idx} className="border shadow-sm">
+          <Card key={idx} className="border shadow-xs">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{section.title}</CardTitle>
               <CardDescription className="text-xs">{section.desc}</CardDescription>

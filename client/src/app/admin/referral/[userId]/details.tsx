@@ -130,7 +130,7 @@ export default function AdminUserReferralDashboard({
   return (
     <div className="space-y-6">
       {/* User Header */}
-      <div className="bg-gradient-to-r from-muted/50 to-muted/30 rounded-lg p-6 border">
+      <div className="bg-linear-to-r from-muted/50 to-muted/30 rounded-lg p-6 border">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">

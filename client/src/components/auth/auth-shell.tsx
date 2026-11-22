@@ -79,7 +79,7 @@ export function AuthShell({ children, mode }: AuthShellProps) {
         <header className="border-b border-border/60 py-3.5 px-6 md:px-12 flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2.5 transition-opacity hover:opacity-80 focus:outline-none"
+            className="flex items-center gap-2.5 transition-opacity hover:opacity-80 focus:outline-hidden"
             aria-label="GenMeta home"
           >
             <svg

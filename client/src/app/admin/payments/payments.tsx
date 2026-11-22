@@ -225,7 +225,7 @@ export function PaymentHistoryPage() {
 
   if (isError || (paymentsResponse && !paymentsResponse.success)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
+      <div className="min-h-screen bg-linear-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
         <div>
           <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20">
             <CardContent className="p-6">
@@ -254,12 +254,12 @@ export function PaymentHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
+    <div className="min-h-screen bg-linear-to-br from-violet-50 via-white to-indigo-50 dark:from-violet-950/20 dark:via-background dark:to-indigo-950/20 p-6">
       <div>
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-linear-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
               Payment History
             </h1>
             <p className="text-muted-foreground mt-1">

@@ -332,7 +332,7 @@ export function BackupDashboard() {
               </div>
               {statusData.lastBackup.error && (
                 <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-red-900">Error</p>
                     <p className="text-sm text-red-700">
@@ -363,7 +363,7 @@ export function BackupDashboard() {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center space-x-4 flex-1">
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       {backup.success ? (
                         <CheckCircle2 className="h-8 w-8 text-green-600" />
                       ) : (

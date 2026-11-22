@@ -49,7 +49,7 @@ const FEATURES = [
     icon: Sparkles,
     title: "Accurate Video Titles",
     description:
-      "Generates clear, descriptive footage titles such as 'Aerial view of city traffic at dusk with motion blur' without fluffy marketing jargon.",
+      "Generates clear, descriptive footage titles such as 'Aerial view of city traffic at dusk with motion blur-sm' without fluffy marketing jargon.",
   },
   {
     icon: ListOrdered,

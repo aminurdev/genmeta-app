@@ -98,8 +98,8 @@ function Section({
 }) {
   return (
     <section id={id} className={cn("relative border-t", className)}>
-      <span aria-hidden className="lp-cross -left-[7px] -top-[7px] z-10 hidden md:block" />
-      <span aria-hidden className="lp-cross -right-[7px] -top-[7px] z-10 hidden md:block" />
+      <span aria-hidden className="lp-cross left-[-7px] top-[-7px] z-10 hidden md:block" />
+      <span aria-hidden className="lp-cross right-[-7px] top-[-7px] z-10 hidden md:block" />
       {children}
     </section>
   );
@@ -139,7 +139,7 @@ const PlanCard = memo(function PlanCard({
       {highlight && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-foreground/[0.03] to-transparent"
+          className="pointer-events-none absolute inset-0 bg-linear-to-br from-foreground/3 to-transparent"
         />
       )}
       <div className="relative flex items-center justify-between gap-3">
@@ -427,7 +427,7 @@ Please provide payment instructions for international payment. Thank you!`;
           {/* ------------------- Filter & Currency Bar ------------------- */}
           <div className="flex items-center justify-between gap-2 border-b bg-muted/15 px-3 py-4 sm:gap-4 sm:px-6 md:px-12 backdrop-blur-xs">
             {/* Duration Filter */}
-            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-xs backdrop-blur-sm sm:gap-1 sm:p-1">
+            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-2xs backdrop-blur-xs sm:gap-1 sm:p-1">
               {[
                 { id: "1", label: "1 Month" },
                 { id: "3", label: "3 Month" },
@@ -442,7 +442,7 @@ Please provide payment instructions for international payment. Thank you!`;
                   className={cn(
                     "rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:px-3.5 sm:text-sm",
                     selectedDuration === tab.id
-                      ? "bg-foreground text-background shadow-xs"
+                      ? "bg-foreground text-background shadow-2xs"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -452,14 +452,14 @@ Please provide payment instructions for international payment. Thank you!`;
             </div>
 
             {/* Currency Switcher */}
-            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-xs backdrop-blur-sm sm:gap-1 sm:p-1">
+            <div className="inline-flex items-center gap-0.5 rounded-full border bg-background/90 p-0.5 shadow-2xs backdrop-blur-xs sm:gap-1 sm:p-1">
               <button
                 type="button"
                 onClick={() => handleCurrencyChange("USD")}
                 className={cn(
                   "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:gap-1.5 sm:px-3.5 sm:text-sm",
                   currency === "USD"
-                    ? "bg-foreground text-background shadow-xs"
+                    ? "bg-foreground text-background shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -471,7 +471,7 @@ Please provide payment instructions for international payment. Thank you!`;
                 className={cn(
                   "flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all cursor-pointer sm:gap-1.5 sm:px-3.5 sm:text-sm",
                   currency === "BDT"
-                    ? "bg-foreground text-background shadow-xs"
+                    ? "bg-foreground text-background shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >

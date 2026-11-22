@@ -164,7 +164,7 @@ export function PricingDashboard() {
         </div>
 
         <TabsContent value="subscription" className="mt-6">
-          <div className="bg-card rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-xs">
             <PricingTable
               plans={subscriptionPlans}
               loading={plansLoading}
@@ -174,7 +174,7 @@ export function PricingDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="credit" className="mt-6">
-          <div className="bg-card rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-xs">
             <PricingTable
               plans={creditPlans}
               loading={plansLoading}
@@ -184,7 +184,7 @@ export function PricingDashboard() {
           </div>
         </TabsContent>
         <TabsContent value="promocodes" className="mt-6">
-          <div className="bg-card rounded-lg border shadow-sm">
+          <div className="bg-card rounded-lg border shadow-xs">
             <PromoCodeTable
               promoCodes={promoCodes}
               loading={promoLoading}

@@ -5,12 +5,12 @@ import { RefreshCw } from "lucide-react";
 
 export default function Loading() {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-gradient-to-br from-background via-background to-muted/20 animate-in fade-in-50 duration-200">
+    <div className="flex min-h-screen w-full flex-col bg-linear-to-br from-background via-background to-muted/20 animate-in fade-in-50 duration-200">
       <div className="flex flex-col p-3 sm:p-4 lg:p-6 w-full">
         {/* Static Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight bg-linear-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
               App Users
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
@@ -20,7 +20,7 @@ export default function Loading() {
           <Button
             variant="outline"
             disabled
-            className="h-9 sm:h-10 px-3 sm:px-4 text-sm border-0 shadow-sm"
+            className="h-9 sm:h-10 px-3 sm:px-4 text-sm border-0 shadow-xs"
           >
             <RefreshCw className="mr-1 sm:mr-2 h-4 w-4" />
             <span>Refresh</span>
@@ -33,7 +33,7 @@ export default function Loading() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-lg border bg-card p-4 sm:p-6 shadow-sm"
+                className="rounded-lg border bg-card p-4 sm:p-6 shadow-xs"
               >
                 <div className="flex items-center justify-between pb-2">
                   <Skeleton className="h-4 w-24" />
@@ -46,7 +46,7 @@ export default function Loading() {
           </div>
 
           {/* App Key Table Skeleton */}
-          <div className="rounded-lg border bg-card p-4 sm:p-6 shadow-sm space-y-4">
+          <div className="rounded-lg border bg-card p-4 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row justify-between gap-4">
               <Skeleton className="h-10 w-full sm:w-72" />
               <div className="flex gap-2">

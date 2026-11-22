@@ -270,7 +270,7 @@ function ResetPasswordContent() {
   };
 
   return (
-    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm">
+    <div className="w-full rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-xs">
       {/* Step 1: Email Form */}
       {step === 1 && (
         <div className="text-center">

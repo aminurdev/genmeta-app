@@ -63,12 +63,12 @@ export function AdminNotificationPanel() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none"
+          className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
           aria-label="View notifications"
         >
           <Bell className="h-4 w-4" />
           {pendingCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-xs ring-2 ring-background">
               {pendingCount > 9 ? "9+" : pendingCount}
             </span>
           )}

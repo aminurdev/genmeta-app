@@ -31,7 +31,7 @@ export function PaymentsSkeleton() {
       {/* Static Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-linear-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
             Payment History
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
