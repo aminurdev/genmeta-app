@@ -3,15 +3,15 @@ import AppUserDetailsPage from "./details";
 import { UserProfileSkeleton } from "@/components/admin/users/users-skeleton";
 
 interface PageProps {
-  params: Promise<{ key: string }>;
+  params: Promise<{ userId: string }>;
 }
 
 export default async function UserDetailsPage({ params }: PageProps) {
-  const { key } = await params;
+  const { userId } = await params;
 
   return (
     <Suspense fallback={<UserProfileSkeleton />}>
-      <AppUserDetailsPage userKey={decodeURIComponent(key)} />
+      <AppUserDetailsPage userId={decodeURIComponent(userId)} />
     </Suspense>
   );
 }

@@ -160,7 +160,7 @@ function getInitials(name?: string): string {
   return initials || "U";
 }
 
-export default function AppUserDetailsPage({ userKey }: { userKey: string }) {
+export default function AppUserDetailsPage({ userId }: { userId: string }) {
   const router = useRouter();
   const [chartView, setChartView] = useState<"7days" | "6months">("7days");
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
@@ -174,9 +174,9 @@ export default function AppUserDetailsPage({ userKey }: { userKey: string }) {
     isRefetching,
     error,
     refetch,
-  } = useAppUserDetailsQuery(userKey);
+  } = useAppUserDetailsQuery(userId);
 
-  const refreshMutation = useRefreshAppUserDetailsMutation(userKey);
+  const refreshMutation = useRefreshAppUserDetailsMutation(userId);
   const resetDeviceMutation = useResetDeviceMutation();
   const statusMutation = useUpdateAppUserStatusMutation();
   const deleteMutation = useDeleteAppUserMutation();
