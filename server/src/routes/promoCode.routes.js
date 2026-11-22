@@ -16,6 +16,7 @@ import {
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   createPromoCodeSchema,
+  updatePromoCodeSchema,
   validatePromoCodeSchema,
 } from "../validations/index.js";
 
@@ -29,7 +30,7 @@ router
 router
   .route("/:id")
   .get(authenticateAndVerifyAdmin, getPromoCodeById)
-  .patch(authenticateAndVerifyAdmin, updatePromoCode)
+  .patch(authenticateAndVerifyAdmin, validate(updatePromoCodeSchema), updatePromoCode)
   .delete(authenticateAndVerifyAdmin, deletePromoCode);
 
 router.post("/validate", validate(validatePromoCodeSchema), validatePromoCode);

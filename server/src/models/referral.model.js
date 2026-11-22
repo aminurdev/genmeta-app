@@ -11,6 +11,7 @@ const withdrawalItemSchema = new mongoose.Schema({
   withdrawAccount: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   trx: { type: String, default: null },
+  notes: { type: String, default: null, trim: true },
   issuedAt: { type: Date, default: null },
   requestedAt: { type: Date, default: Date.now },
 });

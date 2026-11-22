@@ -175,37 +175,52 @@ export const updateAppUserStatusSchema = z.object({
 
 // === PRICING SCHEMAS ===
 export const createPricingPlanSchema = z.object({
-  name: z.string().min(1, "Plan name is required"),
+  name: z.string().trim().min(1, "Plan name is required"),
   type: z.enum([PLAN_TYPES.SUBSCRIPTION, PLAN_TYPES.CREDIT]),
   basePrice: z.coerce.number().min(0, "Base price cannot be negative"),
   discountPrice: z.coerce.number().min(0).optional(),
   discountPercent: z.coerce.number().min(0).max(100).optional(),
   isActive: z.boolean().optional().default(true),
-  credit: z.coerce.number().min(1).optional(),
+  credit: z.coerce.number().min(1).nullable().optional(),
   planDuration: z.coerce.number().min(1, "Plan duration must be at least 1 day"),
 });
 
 export const updatePricingPlanSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().trim().min(1).optional(),
   type: z.enum([PLAN_TYPES.SUBSCRIPTION, PLAN_TYPES.CREDIT]).optional(),
   basePrice: z.coerce.number().min(0).optional(),
   discountPrice: z.coerce.number().min(0).optional(),
   discountPercent: z.coerce.number().min(0).max(100).optional(),
   isActive: z.boolean().optional(),
-  credit: z.coerce.number().min(1).optional(),
+  credit: z.coerce.number().min(1).nullable().optional(),
   planDuration: z.coerce.number().min(1).optional(),
 });
 
 // === PROMO CODE SCHEMAS ===
+const promoUsageLimitSchema = z
+  .union([z.coerce.number().int().min(1), z.null(), z.literal("")])
+  .optional();
+
 export const createPromoCodeSchema = z.object({
-  code: z.string().min(2, "Code must be at least 2 characters").toUpperCase(),
+  code: z.string().trim().min(2, "Code must be at least 2 characters").toUpperCase(),
   description: z.string().optional(),
   discountPercent: z.coerce.number().min(1).max(100),
   isActive: z.boolean().optional().default(true),
   appliesTo: z.enum([PROMO_APPLIES_TO.SUBSCRIPTION, PROMO_APPLIES_TO.CREDIT, PROMO_APPLIES_TO.BOTH]).optional().default(PROMO_APPLIES_TO.BOTH),
-  usageLimit: z.coerce.number().nullable().optional(),
+  usageLimit: promoUsageLimitSchema,
   validFrom: z.string().or(z.date()),
   validUntil: z.string().or(z.date()),
+});
+
+export const updatePromoCodeSchema = z.object({
+  code: z.string().trim().min(2, "Code must be at least 2 characters").toUpperCase().optional(),
+  description: z.string().optional(),
+  discountPercent: z.coerce.number().min(1).max(100).optional(),
+  isActive: z.boolean().optional(),
+  appliesTo: z.enum([PROMO_APPLIES_TO.SUBSCRIPTION, PROMO_APPLIES_TO.CREDIT, PROMO_APPLIES_TO.BOTH]).optional(),
+  usageLimit: promoUsageLimitSchema,
+  validFrom: z.string().or(z.date()).optional(),
+  validUntil: z.string().or(z.date()).optional(),
 });
 
 export const validatePromoCodeSchema = z.object({

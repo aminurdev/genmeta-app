@@ -1,3 +1,10 @@
+import type {
+  GetAllReferralsParams,
+  GetPaymentsHistoryParams,
+  GetPricingPlansParams,
+  GetPromoCodesParams,
+} from "@/types/admin";
+
 export const QUERY_KEYS = {
   overview: ["dashboard", "overview"],
   profile: ["dashboard", "profile"],
@@ -20,24 +27,25 @@ export const QUERY_KEYS = {
     "download",
     queryParams ?? "",
   ],
-  allReferral: (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) => ["admin", "referral", "all", params],
+  allReferral: (params?: GetAllReferralsParams) => [
+    "admin",
+    "referral",
+    "all",
+    params,
+  ],
   referralByUser: (userId: string) => ["admin", "referral", "user", userId],
-  pricingPlans: (params?: {
-    isActive?: boolean;
-    type?: "subscription" | "credit";
-    page?: number;
-    limit?: number;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-  }) => ["admin", "pricing", "plans", params],
-  promoCodes: (params?: {
-    active?: boolean;
-    appliesTo?: "subscription" | "credit" | "both";
-  }) => ["admin", "promo", "codes", params],
+  pricingPlans: (params?: GetPricingPlansParams) => [
+    "admin",
+    "pricing",
+    "plans",
+    params,
+  ],
+  promoCodes: (params?: GetPromoCodesParams) => [
+    "admin",
+    "promo",
+    "codes",
+    params,
+  ],
   schedulerStatus: ["admin", "scheduler", "status"],
   maintenanceStats: ["admin", "scheduler", "stats"],
 
@@ -51,4 +59,3 @@ export const MUTATION_KEYS = {
   login: "login",
   logout: "logout",
 } as const;
-import type { GetPaymentsHistoryParams } from "@/types/admin";

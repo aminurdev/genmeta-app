@@ -35,8 +35,12 @@ import {
 } from "../admin-dashboard";
 import type {
   CreateAppUserPayload,
+  GetAllReferralsParams,
   GetPaymentsHistoryParams,
+  GetPricingPlansParams,
+  GetPromoCodesParams,
   UpdateAppUserPayload,
+  UpdateWithdrawalPayload,
 } from "@/types/admin";
 
 export function useAdminOverviewQuery() {
@@ -249,14 +253,33 @@ export function useDownloadPaymentHistoryQuery(
   });
 }
 
-export function useAllReferralQuery(params?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-}) {
+export function useAllReferralQuery(params?: GetAllReferralsParams) {
   return useQuery({
     queryKey: QUERY_KEYS.allReferral(params),
     queryFn: () => getAllReferral(params),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshReferralsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params?: GetAllReferralsParams) =>
+      getAllReferral(params, { refresh: true }),
+    onSuccess: (res, params) => {
+      if (res.success) {
+        queryClient.setQueryData(QUERY_KEYS.allReferral(params), res);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+      });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+    },
   });
 }
 
@@ -264,31 +287,81 @@ export function useReferralByUserIdQuery(userId: string) {
   return useQuery({
     queryKey: QUERY_KEYS.referralByUser(userId),
     queryFn: () => getAllReferralByUserId(userId),
-    enabled: !!userId,
+    enabled: Boolean(userId),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
-export function usePricingPlansQuery(params?: {
-  isActive?: boolean;
-  type?: "subscription" | "credit";
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}) {
+export function useRefreshReferralByUserMutation(userId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => getAllReferralByUserId(userId, { refresh: true }),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.setQueryData(QUERY_KEYS.referralByUser(userId), res);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+      });
+    },
+  });
+}
+
+export function usePricingPlansQuery(params?: GetPricingPlansParams) {
   return useQuery({
     queryKey: QUERY_KEYS.pricingPlans(params),
     queryFn: () => getPricingPlans(params),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
-export function usePromoCodesQuery(params?: {
-  active?: boolean;
-  appliesTo?: "subscription" | "credit" | "both";
-}) {
+export function usePromoCodesQuery(params?: GetPromoCodesParams) {
   return useQuery({
     queryKey: QUERY_KEYS.promoCodes(params),
     queryFn: () => getPromoCodes(params),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshPricingManagementMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      plansParams,
+      promoParams,
+    }: {
+      plansParams?: GetPricingPlansParams;
+      promoParams?: GetPromoCodesParams;
+    }) => {
+      const [plansRes, promoRes] = await Promise.all([
+        getPricingPlans(plansParams, { refresh: true }),
+        getPromoCodes(promoParams, { refresh: true }),
+      ]);
+      return { plansRes, promoRes, plansParams, promoParams };
+    },
+    onSuccess: ({ plansRes, promoRes, plansParams, promoParams }) => {
+      if (plansRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.pricingPlans(plansParams), plansRes);
+      }
+      if (promoRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.promoCodes(promoParams), promoRes);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+      queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+    },
   });
 }
 
@@ -316,10 +389,11 @@ export function useCreatePricingPlanMutation() {
 
   return useMutation({
     mutationFn: createPricingPlan,
-    onSuccess: () => {
-      // Invalidate all pricing plan queries to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
-      queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
+        queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+      }
     },
   });
 }
@@ -330,10 +404,11 @@ export function useUpdatePricingPlanMutation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updatePricingPlan>[1] }) =>
       updatePricingPlan(id, data),
-    onSuccess: () => {
-      // Invalidate all pricing plan queries
-      queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
-      queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
+        queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+      }
     },
   });
 }
@@ -343,10 +418,11 @@ export function useDeletePricingPlanMutation() {
 
   return useMutation({
     mutationFn: deletePricingPlan,
-    onSuccess: () => {
-      // Invalidate all pricing plan queries
-      queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
-      queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
+        queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+      }
     },
   });
 }
@@ -357,9 +433,10 @@ export function useCreatePromoCodeMutation() {
 
   return useMutation({
     mutationFn: createPromoCode,
-    onSuccess: () => {
-      // Invalidate all promo code queries
-      queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+      }
     },
   });
 }
@@ -370,9 +447,10 @@ export function useUpdatePromoCodeMutation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updatePromoCode>[1] }) =>
       updatePromoCode(id, data),
-    onSuccess: () => {
-      // Invalidate all promo code queries
-      queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+      }
     },
   });
 }
@@ -382,9 +460,10 @@ export function useDeletePromoCodeMutation() {
 
   return useMutation({
     mutationFn: deletePromoCode,
-    onSuccess: () => {
-      // Invalidate all promo code queries
-      queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
+      }
     },
   });
 }
@@ -436,16 +515,19 @@ export function useUpdateWithdrawalMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, withdrawalId, status, trx }: {
-      userId: string;
-      withdrawalId: string;
-      status: string;
-      trx: string;
-    }) => updateWithdrawal(userId, withdrawalId, status, trx),
-    onSuccess: () => {
-      // Invalidate referral queries to refetch fresh data
-            queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminWithdrawalNotifications });
+    mutationFn: ({ userId, withdrawalId, status, trx, notes }: UpdateWithdrawalPayload) =>
+      updateWithdrawal(userId, withdrawalId, status, trx, notes),
+    onSuccess: (res, variables) => {
+      if (res.success) {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.referralByUser(variables.userId),
+        });
+        queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+        });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+      }
     },
   });
 }

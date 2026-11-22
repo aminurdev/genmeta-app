@@ -15,11 +15,29 @@ import {
   PaymentResponse,
   DownloadPaymentHistory,
   AllReferralsResponse,
+  GetAllReferralsParams,
   ReferralDetails,
   UpdateWithdrawalRes,
   GetPaymentsHistoryParams,
   WithdrawalNotificationsResponse,
+  PricingPlan,
+  PaginationData,
+  PricingPlansResponse,
+  GetPricingPlansParams,
+  PromoCode,
+  PromoCodesResponse,
+  GetPromoCodesParams,
 } from "@/types/admin";
+
+export type {
+  PricingPlan,
+  PaginationData,
+  PricingPlansResponse,
+  GetPricingPlansParams,
+  PromoCode,
+  PromoCodesResponse,
+  GetPromoCodesParams,
+};
 
 export const getAdminOverview = async (options?: {
   refresh?: boolean;
@@ -232,151 +250,181 @@ export const downloadPaymentHistory = async (
   return result.data;
 };
 
-export const getAllReferral = async (params?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-}): Promise<ApiResponse<AllReferralsResponse>> => {
-  const queryParams = new URLSearchParams();
+export const getAllReferral = async (
+  params?: GetAllReferralsParams,
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<AllReferralsResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
 
-  if (params?.page) queryParams.append("page", params.page.toString());
-  if (params?.limit) queryParams.append("limit", params.limit.toString());
-  if (params?.search) queryParams.append("search", params.search);
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
+    if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+    if (options?.refresh) queryParams.append("refresh", "true");
 
-  const queryString = queryParams.toString();
-  const result = await api.get(
-    `/admin/referral${queryString ? `?${queryString}` : ""}`,
-  );
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/admin/referral${queryString ? `?${queryString}` : ""}`,
+    );
 
-  return result.data;
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const getAllReferralByUserId = async (
   userId: string,
-): Promise<ApiResponse<ReferralDetails>> => {
-  const result = await api.get(`/admin/referral/${userId}`);
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<ReferralDetails> | ApiErrorResponse> => {
+  try {
+    const result = await api.get(
+      `/admin/referral/${encodeURIComponent(userId)}`,
+      {
+        params: options?.refresh ? { refresh: "true" } : undefined,
+      },
+    );
 
-  return result.data;
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const updateWithdrawal = async (
   userId: string,
   withdrawalId: string,
-  status: string,
-  trx: string,
-): Promise<ApiResponse<UpdateWithdrawalRes>> => {
-  const result = await api.patch(
-    `/admin/referral/${userId}/withdrawals/${withdrawalId}`,
-    {
-      status,
-      trx,
-    },
-  );
-  return result.data;
+  status: "completed" | "rejected",
+  trx?: string,
+  notes?: string,
+): Promise<ApiResponse<UpdateWithdrawalRes> | ApiErrorResponse> => {
+  try {
+    const result = await api.patch(
+      `/admin/referral/${encodeURIComponent(userId)}/withdrawals/${encodeURIComponent(withdrawalId)}`,
+      {
+        status,
+        ...(trx ? { trx } : {}),
+        ...(notes ? { notes } : {}),
+      },
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
-// Pricing Plans
-export interface PricingPlan {
-  _id: string;
-  name: string;
-  type: "subscription" | "credit";
-  basePrice: number;
-  discountPrice?: number;
-  discountPercent: number;
-  isActive: boolean;
-  planDuration: number;
-  credit?: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export const getPricingPlans = async (
+  params?: GetPricingPlansParams,
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<PricingPlansResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
 
-export interface PaginationData {
-  total: number;
-  page: number;
-  limit: number;
-  pages: number;
-}
-
-export interface PricingPlansResponse {
-  plans: PricingPlan[];
-  pagination: PaginationData;
-}
-
-export interface PromoCode {
-  _id: string;
-  code: string;
-  description?: string;
-  discountPercent: number;
-  isActive: boolean;
-  appliesTo: "subscription" | "credit" | "both";
-  usageLimit: number | null;
-  usedCount: number;
-  validFrom: string;
-  validUntil: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PromoCodesResponse {
-  promoCodes: PromoCode[];
-}
-
-export const getPricingPlans = async (params?: {
-  isActive?: boolean;
-  type?: "subscription" | "credit";
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}): Promise<ApiResponse<PricingPlansResponse> | ApiErrorResponse> => {
-  const queryParams = new URLSearchParams();
-
-  if (params) {
-    if (params.isActive !== undefined) {
-      queryParams.append("isActive", params.isActive.toString());
+    if (params) {
+      if (params.search) {
+        queryParams.append("search", params.search);
+      }
+      if (params.isActive !== undefined) {
+        queryParams.append("isActive", params.isActive.toString());
+      }
+      if (params.type) {
+        queryParams.append("type", params.type);
+      }
+      if (params.page) {
+        queryParams.append("page", params.page.toString());
+      }
+      if (params.limit) {
+        queryParams.append("limit", params.limit.toString());
+      }
+      if (params.sortBy) {
+        queryParams.append("sortBy", params.sortBy);
+      }
+      if (params.sortOrder) {
+        queryParams.append("sortOrder", params.sortOrder);
+      }
     }
-    if (params.type) {
-      queryParams.append("type", params.type);
+    if (options?.refresh) {
+      queryParams.append("refresh", "true");
     }
-    if (params.page) {
-      queryParams.append("page", params.page.toString());
+
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/pricing${queryString ? `?${queryString}` : ""}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
     }
-    if (params.limit) {
-      queryParams.append("limit", params.limit.toString());
+    throw error;
+  }
+};
+
+export const getPromoCodes = async (
+  params?: GetPromoCodesParams,
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<PromoCodesResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (params?.search) {
+      queryParams.append("search", params.search);
     }
-    if (params.sortBy) {
+    if (params?.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params?.active !== undefined) {
+      queryParams.append("active", params.active.toString());
+    }
+    if (params?.appliesTo) {
+      queryParams.append("appliesTo", params.appliesTo);
+    }
+    if (params?.sortBy) {
       queryParams.append("sortBy", params.sortBy);
     }
-    if (params.sortOrder) {
+    if (params?.sortOrder) {
       queryParams.append("sortOrder", params.sortOrder);
     }
+    if (params?.page) {
+      queryParams.append("page", params.page.toString());
+    }
+    if (params?.limit) {
+      queryParams.append("limit", params.limit.toString());
+    }
+    if (options?.refresh) {
+      queryParams.append("refresh", "true");
+    }
+
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/promo-codes${queryString ? `?${queryString}` : ""}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
   }
-
-  const queryString = queryParams.toString();
-  const result = await api.get(
-    `/pricing${queryString ? `?${queryString}` : ""}`,
-  );
-  return result.data;
-};
-
-export const getPromoCodes = async (params?: {
-  active?: boolean;
-  appliesTo?: "subscription" | "credit" | "both";
-}): Promise<ApiResponse<PromoCodesResponse> | ApiErrorResponse> => {
-  const queryParams = new URLSearchParams();
-
-  if (params?.active !== undefined) {
-    queryParams.append("active", params.active.toString());
-  }
-  if (params?.appliesTo) {
-    queryParams.append("appliesTo", params.appliesTo);
-  }
-
-  const queryString = queryParams.toString();
-  const result = await api.get(
-    `/promo-codes${queryString ? `?${queryString}` : ""}`,
-  );
-  return result.data;
 };
 
 // Pricing Plan Mutations
@@ -385,12 +433,21 @@ export const createPricingPlan = async (data: {
   type: "subscription" | "credit";
   basePrice: number;
   discountPrice?: number;
+  discountPercent?: number;
   isActive?: boolean;
   planDuration: number;
   credit?: number;
 }): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
-  const result = await api.post("/pricing", data);
-  return result.data;
+  try {
+    const result = await api.post("/pricing", data);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const updatePricingPlan = async (
@@ -400,21 +457,37 @@ export const updatePricingPlan = async (
     type: "subscription" | "credit";
     basePrice: number;
     discountPrice?: number;
-    discountPercent: number;
+    discountPercent?: number;
     isActive: boolean;
     planDuration: number;
-    credit?: number;
+    credit?: number | null;
   }>,
 ): Promise<ApiResponse<PricingPlan> | ApiErrorResponse> => {
-  const result = await api.put(`/pricing/${id}`, data);
-  return result.data;
+  try {
+    const result = await api.put(`/pricing/${encodeURIComponent(id)}`, data);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const deletePricingPlan = async (
   id: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.delete(`/pricing/${id}`);
-  return result.data;
+  try {
+    const result = await api.delete(`/pricing/${encodeURIComponent(id)}`);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 // Promo Code Mutations
@@ -428,8 +501,16 @@ export const createPromoCode = async (data: {
   validFrom: string;
   validUntil: string;
 }): Promise<ApiResponse<{ promoCode: PromoCode }> | ApiErrorResponse> => {
-  const result = await api.post("/promo-codes", data);
-  return result.data;
+  try {
+    const result = await api.post("/promo-codes", data);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const updatePromoCode = async (
@@ -445,15 +526,31 @@ export const updatePromoCode = async (
     validUntil?: string;
   }>,
 ): Promise<ApiResponse<{ promoCode: PromoCode }> | ApiErrorResponse> => {
-  const result = await api.patch(`/promo-codes/${id}`, data);
-  return result.data;
+  try {
+    const result = await api.patch(`/promo-codes/${encodeURIComponent(id)}`, data);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const deletePromoCode = async (
   id: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.delete(`/promo-codes/${id}`);
-  return result.data;
+  try {
+    const result = await api.delete(`/promo-codes/${encodeURIComponent(id)}`);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 // Scheduler Management

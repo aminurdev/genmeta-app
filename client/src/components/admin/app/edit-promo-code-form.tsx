@@ -3,6 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -17,32 +20,54 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { PromoCode } from "@/services/admin-dashboard";
+import type { PromoCode } from "@/types/admin";
 import { useUpdatePromoCodeMutation } from "@/services/queries/admin-dashboard";
-import { toast } from "sonner";
 
 interface EditPromoCodeFormProps {
   promoCode: PromoCode;
   onSuccess: () => void;
 }
 
-const formSchema = z.object({
-  description: z.string().optional(),
-  discountPercent: z.coerce.number().min(1).max(100, {
-    message: "Discount must be between 1 and 100.",
-  }),
-  isActive: z.boolean().default(true),
-  appliesTo: z.enum(["subscription", "credit", "both"], {
-    required_error: "You need to select what this promo code applies to.",
-  }),
-  usageLimit: z.coerce.number().optional(),
-  validFrom: z.string().min(1, {
-    message: "Valid from date is required.",
-  }),
-  validUntil: z.string().min(1, {
-    message: "Valid until date is required.",
-  }),
-});
+const formSchema = z
+  .object({
+    description: z.string().optional(),
+    discountPercent: z.coerce
+      .number()
+      .min(1, "Discount must be at least 1%.")
+      .max(100, "Discount cannot exceed 100%."),
+    isActive: z.boolean().default(true),
+    appliesTo: z.enum(["subscription", "credit", "both"], {
+      required_error: "Please select what this promo code applies to.",
+    }),
+    usageLimit: z
+      .string()
+      .optional()
+      .refine(
+        (val) => {
+          const trimmed = (val ?? "").trim();
+          if (!trimmed) return true;
+          const n = Number(trimmed);
+          return Number.isInteger(n) && n >= 1;
+        },
+        { message: "Usage limit must be a whole number of at least 1." },
+      ),
+    validFrom: z.string().min(1, {
+      message: "Start date is required.",
+    }),
+    validUntil: z.string().min(1, {
+      message: "End date is required.",
+    }),
+  })
+  .refine((data) => new Date(data.validUntil) > new Date(data.validFrom), {
+    message: "End date must be after start date.",
+    path: ["validUntil"],
+  });
+
+function formatDateForInput(dateString: string): string {
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().split("T")[0];
+  return d.toISOString().split("T")[0];
+}
 
 export function EditPromoCodeForm({
   promoCode,
@@ -50,10 +75,9 @@ export function EditPromoCodeForm({
 }: EditPromoCodeFormProps) {
   const updatePromoCodeMutation = useUpdatePromoCodeMutation();
 
-  // Format date for input fields
-  const formatDateForInput = (dateString: string) => {
-    return new Date(dateString).toISOString().split("T")[0];
-  };
+  const numericUsedCount = Array.isArray(promoCode.usedCount)
+    ? promoCode.usedCount.length
+    : Number(promoCode.usedCount) || 0;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,7 +86,10 @@ export function EditPromoCodeForm({
       discountPercent: promoCode.discountPercent,
       isActive: promoCode.isActive,
       appliesTo: promoCode.appliesTo,
-      usageLimit: promoCode.usageLimit || undefined,
+      usageLimit:
+        promoCode.usageLimit !== null && promoCode.usageLimit !== undefined
+          ? String(promoCode.usageLimit)
+          : "",
       validFrom: formatDateForInput(promoCode.validFrom),
       validUntil: formatDateForInput(promoCode.validUntil),
     },
@@ -70,29 +97,51 @@ export function EditPromoCodeForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Convert dates to ISO strings
-      const formattedValues = {
-        ...values,
-        validFrom: new Date(values.validFrom).toISOString(),
-        validUntil: new Date(values.validUntil).toISOString(),
-      };
+      const trimmedLimit = (values.usageLimit ?? "").trim();
+      const usageLimit = trimmedLimit ? Number.parseInt(trimmedLimit, 10) : null;
 
-      await updatePromoCodeMutation.mutateAsync({ id: promoCode._id, data: formattedValues });
-      onSuccess();
+      const res = await updatePromoCodeMutation.mutateAsync({
+        id: promoCode._id,
+        data: {
+          description: values.description?.trim() || "",
+          discountPercent: values.discountPercent,
+          isActive: values.isActive,
+          appliesTo: values.appliesTo,
+          usageLimit,
+          validFrom: new Date(`${values.validFrom}T00:00:00.000Z`).toISOString(),
+          validUntil: new Date(`${values.validUntil}T23:59:59.999Z`).toISOString(),
+        },
+      });
+
+      if (!res.success) {
+        toast.error(res.message || "Failed to update promo code");
+        return;
+      }
+
       toast.success("Promo code updated successfully");
-    } catch {
-      toast.error("Failed to update promo code");
+      onSuccess();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update promo code",
+      );
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-6">
-        <div className="bg-muted p-3 rounded-md mb-4">
-          <p className="text-sm font-medium">Promo Code: {promoCode.code}</p>
-          <p className="text-xs text-muted-foreground">
-            Used {promoCode.usedCount} times
-          </p>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
+        <div className="rounded-lg border bg-muted/40 p-3 flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold font-mono">{promoCode.code}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Redeemed {numericUsedCount} time
+              {numericUsedCount === 1 ? "" : "s"}
+            </p>
+          </div>
+          <Badge variant="outline" className="capitalize">
+            {promoCode.lifecycleStatus ||
+              (promoCode.isActive ? "live" : "inactive")}
+          </Badge>
         </div>
 
         <FormField
@@ -100,67 +149,89 @@ export function EditPromoCodeForm({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>Description (optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Summer promotion discount" {...field} />
+                <Textarea
+                  rows={2}
+                  placeholder="Seasonal campaign discount"
+                  {...field}
+                />
               </FormControl>
-              <FormDescription>
-                Optional description of the promo code
-              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="discountPercent"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Discount (%)</FormLabel>
-              <FormControl>
-                <Input type="number" min="1" max="100" {...field} />
-              </FormControl>
-              <FormDescription>Percentage discount to apply</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="discountPercent"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Discount (%)</FormLabel>
+                <FormControl>
+                  <Input type="number" min="1" max="100" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="usageLimit"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Usage Limit</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Unlimited (clear to remove)"
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
           name="appliesTo"
           render={({ field }) => (
-            <FormItem className="space-y-3">
+            <FormItem className="space-y-2.5">
               <FormLabel>Applies To</FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  className="flex flex-col space-y-1"
+                  value={field.value}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-2.5"
                 >
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="subscription" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Subscription Plans Only
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
-                    <FormControl>
-                      <RadioGroupItem value="credit" />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Credit Plans Only
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-3 space-y-0">
+                  <FormItem className="flex items-center space-x-2 space-y-0 rounded-md border p-2.5">
                     <FormControl>
                       <RadioGroupItem value="both" />
                     </FormControl>
-                    <FormLabel className="font-normal">
-                      Both Plan Types
+                    <FormLabel className="font-normal text-xs cursor-pointer">
+                      Both Types
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0 rounded-md border p-2.5">
+                    <FormControl>
+                      <RadioGroupItem value="credit" />
+                    </FormControl>
+                    <FormLabel className="font-normal text-xs cursor-pointer">
+                      Credit Only
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2 space-y-0 rounded-md border p-2.5">
+                    <FormControl>
+                      <RadioGroupItem value="subscription" />
+                    </FormControl>
+                    <FormLabel className="font-normal text-xs cursor-pointer">
+                      Subscription
                     </FormLabel>
                   </FormItem>
                 </RadioGroup>
@@ -170,31 +241,7 @@ export function EditPromoCodeForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="usageLimit"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Usage Limit</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="Leave empty for unlimited"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormDescription>
-                Maximum number of times this code can be used (leave empty for
-                unlimited)
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="validFrom"
@@ -228,11 +275,13 @@ export function EditPromoCodeForm({
           control={form.control}
           name="isActive"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3.5">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Active Status</FormLabel>
-                <FormDescription>
-                  Make this promo code available to customers
+                <FormLabel className="text-sm font-medium">
+                  Active Status
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Enable this promo code for customer checkout
                 </FormDescription>
               </div>
               <FormControl>
@@ -245,8 +294,14 @@ export function EditPromoCodeForm({
           )}
         />
 
-        <Button type="submit" className="w-full" disabled={updatePromoCodeMutation.isPending}>
-          {updatePromoCodeMutation.isPending ? "Updating..." : "Update Promo Code"}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={updatePromoCodeMutation.isPending}
+        >
+          {updatePromoCodeMutation.isPending
+            ? "Updating..."
+            : "Update Promo Code"}
         </Button>
       </form>
     </Form>

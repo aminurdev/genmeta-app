@@ -529,38 +529,86 @@ export interface DownloadPaymentHistory {
   }[];
 }
 
+export interface ReferralSummary {
+  totalReferrers: number;
+  totalReferredUsers: number;
+  totalEarned: number;
+  totalAvailable: number;
+  pendingWithdrawalsCount: number;
+  pendingWithdrawalsAmount: number;
+  completedWithdrawalsCount: number;
+  completedWithdrawalsAmount: number;
+  referrersWithPending: number;
+}
+
 export interface ReferralRes {
+  _id: string;
   referrer: {
     _id: string;
     name: string;
     email: string;
+    avatar?: string | null;
   };
   referralCode: string;
   referredCount: number;
+  convertedCount: number;
   totalEarned: number;
+  totalWithdrawn: number;
   availableBalance: number;
   withdrawAccount: string | null;
   pendingWithdrawals: number;
+  pendingWithdrawalAmount: number;
+  latestPendingAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AllReferralsResponse {
   referrals: ReferralRes[];
+  summary: ReferralSummary;
   total: number;
   page: number;
   limit: number;
   totalPages: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  meta: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface GetAllReferralsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "all" | "pending" | "has_balance" | "has_referrals";
+  sortBy?: "pending" | "balance" | "earned" | "referred" | "recent";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface Referrer {
   _id: string;
   name: string;
   email: string;
+  avatar?: string | null;
+  isVerified?: boolean;
+  isDisabled?: boolean;
+  createdAt?: string | null;
 }
 
 export interface ReferredUser {
   _id: string;
   name: string;
   email: string;
+  avatar?: string | null;
+  createdAt?: string | null;
+  hasConverted?: boolean;
+  earnedAmount?: number;
 }
 
 export interface EarnedHistory {
@@ -569,6 +617,7 @@ export interface EarnedHistory {
     _id: string;
     name: string;
     email: string;
+    avatar?: string | null;
   };
   amount: number;
   createdAt: string;
@@ -580,30 +629,158 @@ export interface WithdrawHistory {
   status: "pending" | "completed" | "rejected";
   withdrawAccount: string;
   trx: string | null;
+  notes?: string | null;
   createdAt: string;
+  requestedAt?: string;
   issuedAt: string | null;
 }
 
 export interface ReferralDetails {
+  _id: string;
   referrer: Referrer;
   referralCode: string;
   availableBalance: number;
   withdrawAccount: string | null;
   referralCount: number;
+  convertedCount: number;
+  conversionRate: number;
   totalEarned: number;
+  totalWithdrawn: number;
+  pendingWithdrawalsCount: number;
+  pendingWithdrawalsAmount: number;
+  completedWithdrawalsCount: number;
+  rejectedWithdrawalsCount: number;
   referredUsers: ReferredUser[];
   earnedHistory: EarnedHistory[];
   withdrawHistory: WithdrawHistory[];
+  createdAt?: string;
+  updatedAt?: string;
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface UpdateWithdrawalPayload {
+  userId: string;
+  withdrawalId: string;
+  status: "completed" | "rejected";
+  trx?: string;
+  notes?: string;
 }
 
 export interface UpdateWithdrawalRes {
+  withdrawal: WithdrawHistory;
+  availableBalance: number;
+}
+
+export interface PricingPlan {
   _id: string;
-  amount: number;
-  status: "completed" | "rejected";
-  withdrawAccount: string;
-  trx: string | null;
-  createdAt: Date;
-  issuedAt: Date;
+  name: string;
+  type: "subscription" | "credit";
+  basePrice: number;
+  discountPrice?: number;
+  discountPercent: number;
+  isActive: boolean;
+  planDuration: number;
+  credit?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PricingSummary {
+  totalPlans: number;
+  activePlans: number;
+  inactivePlans: number;
+  subscriptionPlans: number;
+  activeSubscriptionPlans: number;
+  creditPlans: number;
+  activeCreditPlans: number;
+  avgDiscountPercent: number;
+}
+
+export interface PaginationData {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  pages?: number;
+}
+
+export interface PricingPlansResponse {
+  plans: PricingPlan[];
+  summary?: PricingSummary;
+  pagination: PaginationData;
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface GetPricingPlansParams {
+  search?: string;
+  isActive?: boolean;
+  type?: "subscription" | "credit";
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export type PromoCodeLifecycleStatus =
+  | "live"
+  | "scheduled"
+  | "expired"
+  | "exhausted"
+  | "inactive";
+
+export interface PromoCode {
+  _id: string;
+  code: string;
+  description?: string;
+  discountPercent: number;
+  isActive: boolean;
+  appliesTo: "subscription" | "credit" | "both";
+  usageLimit: number | null;
+  usedCount: number;
+  usedBy?: string[];
+  lifecycleStatus?: PromoCodeLifecycleStatus;
+  remainingUses?: number | null;
+  validFrom: string;
+  validUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromoCodeSummary {
+  totalPromoCodes: number;
+  livePromoCodes: number;
+  scheduledPromoCodes: number;
+  expiredPromoCodes: number;
+  exhaustedPromoCodes: number;
+  inactivePromoCodes: number;
+  totalRedemptions: number;
+}
+
+export interface PromoCodesResponse {
+  promoCodes: PromoCode[];
+  summary?: PromoCodeSummary;
+  pagination?: PaginationData;
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface GetPromoCodesParams {
+  search?: string;
+  status?: "all" | PromoCodeLifecycleStatus;
+  active?: boolean;
+  appliesTo?: "subscription" | "credit" | "both";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  limit?: number;
 }
 
 export interface GetPaymentsHistoryParams {

@@ -12,6 +12,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { PLAN_TYPES, USER_ROLES, WITHDRAWAL_STATUS } from "../constants/index.js";
 
+const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toUtcDateKey = (date) => new Date(date).toISOString().split("T")[0];
 const toUtcMonthKey = (date) => new Date(date).toISOString().slice(0, 7);
 
@@ -1674,100 +1675,590 @@ export const downloadPaymentsHistory = asyncHandler(async (req, res) => {
 });
 
 export const getAllReferrals = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "" } = req.query;
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
-  const pageNum = Math.max(1, parseInt(page, 10));
-  const limitNum = Math.max(1, parseInt(limit, 10));
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "all",
+    sortBy = "pending",
+    sortOrder = "desc",
+    refresh,
+  } = req.query;
+
+  const now = new Date();
+  const isExplicitRefresh = refresh === "true" || refresh === "1";
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
+  const sortDir = sortOrder === "asc" ? 1 : -1;
 
   const filter = {};
-  if (search) {
+  const trimmedSearch = String(search || "").trim();
+  if (trimmedSearch) {
+    const safeSearch = escapeRegex(trimmedSearch);
     const matchingUsers = await User.find({
       $or: [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { name: { $regex: safeSearch, $options: "i" } },
+        { email: { $regex: safeSearch, $options: "i" } },
       ],
-    }).select("_id");
+    })
+      .select("_id")
+      .lean();
     const userIds = matchingUsers.map((u) => u._id);
     filter.$or = [
-      { referrer: { $in: userIds } },
-      { referralCode: { $regex: search, $options: "i" } },
+      ...(userIds.length > 0 ? [{ referrer: { $in: userIds } }] : []),
+      { referralCode: { $regex: safeSearch, $options: "i" } },
+      { withdrawAccount: { $regex: safeSearch, $options: "i" } },
     ];
   }
 
-  const [referrals, total] = await Promise.all([
-    Referral.find(filter)
-      .populate("referrer", "name email")
-      .sort({ availableBalance: -1 })
-      .skip(skip)
-      .limit(limitNum)
-      .lean(),
-    Referral.countDocuments(filter),
+  if (status === "pending") {
+    filter["withdrawHistory.status"] = WITHDRAWAL_STATUS.PENDING;
+  } else if (status === "has_balance") {
+    filter.availableBalance = { $gt: 0 };
+  } else if (status === "has_referrals") {
+    filter["referredUsers.0"] = { $exists: true };
+  }
+
+  let sortStage = {
+    pendingWithdrawals: sortDir,
+    pendingWithdrawalAmount: sortDir,
+    availableBalance: -1,
+    createdAt: -1,
+  };
+  if (sortBy === "balance") {
+    sortStage = { availableBalance: sortDir, totalEarned: -1, createdAt: -1 };
+  } else if (sortBy === "earned") {
+    sortStage = { totalEarned: sortDir, availableBalance: -1, createdAt: -1 };
+  } else if (sortBy === "referred") {
+    sortStage = { referredCount: sortDir, totalEarned: -1, createdAt: -1 };
+  } else if (sortBy === "recent") {
+    sortStage = { createdAt: sortDir };
+  }
+
+  const [listFacetResult, summaryAgg] = await Promise.all([
+    Referral.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          referredCount: {
+            $cond: [
+              { $isArray: "$referredUsers" },
+              { $size: "$referredUsers" },
+              0,
+            ],
+          },
+          totalEarned: {
+            $reduce: {
+              input: {
+                $cond: [
+                  { $isArray: "$earnedHistory" },
+                  "$earnedHistory",
+                  [],
+                ],
+              },
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+            },
+          },
+          convertedUserIds: {
+            $setUnion: [
+              {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: {
+                        $cond: [
+                          { $isArray: "$earnedHistory" },
+                          "$earnedHistory",
+                          [],
+                        ],
+                      },
+                      as: "e",
+                      cond: { $ne: ["$$e.user", null] },
+                    },
+                  },
+                  as: "e",
+                  in: "$$e.user",
+                },
+              },
+              [],
+            ],
+          },
+          pendingWithdrawalsList: {
+            $filter: {
+              input: {
+                $cond: [
+                  { $isArray: "$withdrawHistory" },
+                  "$withdrawHistory",
+                  [],
+                ],
+              },
+              as: "w",
+              cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.PENDING] },
+            },
+          },
+          completedWithdrawalsList: {
+            $filter: {
+              input: {
+                $cond: [
+                  { $isArray: "$withdrawHistory" },
+                  "$withdrawHistory",
+                  [],
+                ],
+              },
+              as: "w",
+              cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.COMPLETED] },
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          convertedCount: { $size: "$convertedUserIds" },
+          pendingWithdrawals: { $size: "$pendingWithdrawalsList" },
+          pendingWithdrawalAmount: {
+            $reduce: {
+              input: "$pendingWithdrawalsList",
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+            },
+          },
+          totalWithdrawn: {
+            $reduce: {
+              input: "$completedWithdrawalsList",
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+            },
+          },
+          latestPendingAt: {
+            $max: {
+              $map: {
+                input: "$pendingWithdrawalsList",
+                as: "pw",
+                in: { $ifNull: ["$$pw.requestedAt", "$$pw.createdAt"] },
+              },
+            },
+          },
+        },
+      },
+      { $sort: sortStage },
+      {
+        $facet: {
+          items: [
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+              $lookup: {
+                from: "users",
+                let: { uid: "$referrer" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$uid"] } } },
+                  { $project: { _id: 1, name: 1, email: 1, avatar: 1 } },
+                ],
+                as: "referrerUser",
+              },
+            },
+            {
+              $unwind: {
+                path: "$referrerUser",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                referrer: {
+                  _id: { $ifNull: ["$referrerUser._id", "$referrer"] },
+                  name: { $ifNull: ["$referrerUser.name", "Unknown User"] },
+                  email: { $ifNull: ["$referrerUser.email", "N/A"] },
+                  avatar: { $ifNull: ["$referrerUser.avatar", null] },
+                },
+                referralCode: 1,
+                referredCount: 1,
+                convertedCount: 1,
+                totalEarned: 1,
+                totalWithdrawn: 1,
+                availableBalance: { $ifNull: ["$availableBalance", 0] },
+                pendingWithdrawals: 1,
+                pendingWithdrawalAmount: 1,
+                latestPendingAt: { $ifNull: ["$latestPendingAt", null] },
+                withdrawAccount: { $ifNull: ["$withdrawAccount", null] },
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]),
+    Referral.aggregate([
+      {
+        $project: {
+          availableBalance: { $ifNull: ["$availableBalance", 0] },
+          referredCount: {
+            $cond: [
+              { $isArray: "$referredUsers" },
+              { $size: "$referredUsers" },
+              0,
+            ],
+          },
+          totalEarned: {
+            $reduce: {
+              input: {
+                $cond: [
+                  { $isArray: "$earnedHistory" },
+                  "$earnedHistory",
+                  [],
+                ],
+              },
+              initialValue: 0,
+              in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+            },
+          },
+          pendingList: {
+            $filter: {
+              input: {
+                $cond: [
+                  { $isArray: "$withdrawHistory" },
+                  "$withdrawHistory",
+                  [],
+                ],
+              },
+              as: "w",
+              cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.PENDING] },
+            },
+          },
+          completedList: {
+            $filter: {
+              input: {
+                $cond: [
+                  { $isArray: "$withdrawHistory" },
+                  "$withdrawHistory",
+                  [],
+                ],
+              },
+              as: "w",
+              cond: { $eq: ["$$w.status", WITHDRAWAL_STATUS.COMPLETED] },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalReferrers: { $sum: 1 },
+          totalReferredUsers: { $sum: "$referredCount" },
+          totalEarned: { $sum: "$totalEarned" },
+          totalAvailable: { $sum: "$availableBalance" },
+          referrersWithPending: {
+            $sum: {
+              $cond: [{ $gt: [{ $size: "$pendingList" }, 0] }, 1, 0],
+            },
+          },
+          pendingWithdrawalsCount: { $sum: { $size: "$pendingList" } },
+          pendingWithdrawalsAmount: {
+            $sum: {
+              $reduce: {
+                input: "$pendingList",
+                initialValue: 0,
+                in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+              },
+            },
+          },
+          completedWithdrawalsCount: { $sum: { $size: "$completedList" } },
+          completedWithdrawalsAmount: {
+            $sum: {
+              $reduce: {
+                input: "$completedList",
+                initialValue: 0,
+                in: { $add: ["$$value", { $ifNull: ["$$this.amount", 0] }] },
+              },
+            },
+          },
+        },
+      },
+    ]),
   ]);
 
-  const transformedReferrals = referrals.map((r) => {
-    const totalEarned = (r.earnedHistory || []).reduce(
-      (sum, e) => sum + (e.amount || 0),
-      0
-    );
-    const pendingWithdrawals = (r.withdrawHistory || []).filter(
-      (w) => w.status === WITHDRAWAL_STATUS.PENDING
-    ).length;
-    const referredCount = Array.isArray(r.referredUsers)
-      ? r.referredUsers.length
-      : 0;
+  const items = listFacetResult[0]?.items || [];
+  const total = listFacetResult[0]?.totalCount?.[0]?.count || 0;
+  const totalPages = Math.ceil(total / limitNum);
 
-    return {
-      _id: r._id,
-      referrer: r.referrer || { name: "Unknown User", email: "N/A" },
-      referralCode: r.referralCode,
-      referredCount,
-      totalEarned,
-      availableBalance: r.availableBalance || 0,
-      pendingWithdrawals,
-      withdrawAccount: r.withdrawAccount || null,
-      earnedHistory: r.earnedHistory || [],
-      withdrawHistory: r.withdrawHistory || [],
-      createdAt: r.createdAt,
-    };
-  });
+  const summary = summaryAgg[0]
+    ? {
+        totalReferrers: summaryAgg[0].totalReferrers || 0,
+        totalReferredUsers: summaryAgg[0].totalReferredUsers || 0,
+        totalEarned: summaryAgg[0].totalEarned || 0,
+        totalAvailable: summaryAgg[0].totalAvailable || 0,
+        pendingWithdrawalsCount: summaryAgg[0].pendingWithdrawalsCount || 0,
+        pendingWithdrawalsAmount: summaryAgg[0].pendingWithdrawalsAmount || 0,
+        completedWithdrawalsCount: summaryAgg[0].completedWithdrawalsCount || 0,
+        completedWithdrawalsAmount: summaryAgg[0].completedWithdrawalsAmount || 0,
+        referrersWithPending: summaryAgg[0].referrersWithPending || 0,
+      }
+    : {
+        totalReferrers: 0,
+        totalReferredUsers: 0,
+        totalEarned: 0,
+        totalAvailable: 0,
+        pendingWithdrawalsCount: 0,
+        pendingWithdrawalsAmount: 0,
+        completedWithdrawalsCount: 0,
+        completedWithdrawalsAmount: 0,
+        referrersWithPending: 0,
+      };
 
   return new ApiResponse(200, true, "Referrals retrieved", {
-    referrals: transformedReferrals,
+    referrals: items,
+    summary,
     total,
-    totalPages: Math.ceil(total / limitNum),
+    totalPages,
     page: pageNum,
     limit: limitNum,
     pagination: {
       total,
       page: pageNum,
       limit: limitNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages,
+    },
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
     },
   }).send(res);
 });
 
 export const getReferralByUserId = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const { userId } = req.params;
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID format");
+  }
+
+  const now = new Date();
+  const isExplicitRefresh =
+    req.query.refresh === "true" || req.query.refresh === "1";
+
   const referral = await Referral.findOne({ referrer: userId })
-    .populate("referrer", "name email")
-    .populate("referredUsers", "name email createdAt")
-    .populate("earnedHistory.user", "name email");
+    .populate("referrer", "name email avatar isVerified isDisabled createdAt")
+    .populate("referredUsers", "name email avatar createdAt")
+    .populate("earnedHistory.user", "name email avatar")
+    .lean();
 
   if (!referral) {
     throw new ApiError(404, "Referral record not found for this user");
   }
 
-  return new ApiResponse(200, true, "Referral details retrieved", referral).send(res);
+  const ledgerWithdrawals = await ReferralWithdrawal.find({
+    referralId: referral._id,
+  })
+    .select("_id amount status withdrawAccount trx notes requestedAt issuedAt createdAt")
+    .lean();
+
+  const ledgerById = new Map(
+    ledgerWithdrawals.map((item) => [String(item._id), item])
+  );
+
+  // Track earnings contributed per referred user
+  const earnedByUserMap = new Map();
+  let totalEarned = 0;
+  const rawEarnedHistory = Array.isArray(referral.earnedHistory)
+    ? referral.earnedHistory
+    : [];
+
+  for (const item of rawEarnedHistory) {
+    const amt = Number(item.amount) || 0;
+    totalEarned += amt;
+    const uid =
+      item.user && typeof item.user === "object"
+        ? String(item.user._id)
+        : item.user
+        ? String(item.user)
+        : null;
+    if (uid) {
+      earnedByUserMap.set(uid, (earnedByUserMap.get(uid) || 0) + amt);
+    }
+  }
+
+  const earnedHistory = rawEarnedHistory
+    .map((item) => {
+      const u =
+        item.user && typeof item.user === "object" ? item.user : null;
+      return {
+        _id: String(item._id),
+        user: u
+          ? {
+              _id: String(u._id),
+              name: u.name || "Unknown User",
+              email: u.email || "N/A",
+              avatar: u.avatar || null,
+            }
+          : {
+              _id: item.user ? String(item.user) : "",
+              name: "Unknown User",
+              email: "N/A",
+              avatar: null,
+            },
+        amount: Number(item.amount) || 0,
+        createdAt: item.createdAt,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+    );
+
+  const rawReferredUsers = Array.isArray(referral.referredUsers)
+    ? referral.referredUsers
+    : [];
+  const referredUsers = rawReferredUsers
+    .map((u) => {
+      const obj = u && typeof u === "object" ? u : { _id: u };
+      const uid = String(obj._id || "");
+      const earnedAmount = earnedByUserMap.get(uid) || 0;
+      return {
+        _id: uid,
+        name: obj.name || "Unknown User",
+        email: obj.email || "N/A",
+        avatar: obj.avatar || null,
+        createdAt: obj.createdAt || null,
+        hasConverted: earnedAmount > 0,
+        earnedAmount,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+    );
+
+  const rawWithdrawHistory = Array.isArray(referral.withdrawHistory)
+    ? referral.withdrawHistory
+    : [];
+
+  let totalWithdrawn = 0;
+  let pendingWithdrawalsCount = 0;
+  let pendingWithdrawalsAmount = 0;
+  let completedWithdrawalsCount = 0;
+  let rejectedWithdrawalsCount = 0;
+
+  const withdrawHistory = rawWithdrawHistory
+    .map((w) => {
+      const amt = Number(w.amount) || 0;
+      if (w.status === WITHDRAWAL_STATUS.COMPLETED) {
+        totalWithdrawn += amt;
+        completedWithdrawalsCount += 1;
+      } else if (w.status === WITHDRAWAL_STATUS.PENDING) {
+        pendingWithdrawalsCount += 1;
+        pendingWithdrawalsAmount += amt;
+      } else if (w.status === WITHDRAWAL_STATUS.REJECTED) {
+        rejectedWithdrawalsCount += 1;
+      }
+
+      const directLedger = ledgerById.get(String(w._id));
+      const fallbackLedger =
+        directLedger ||
+        ledgerWithdrawals.find(
+          (lw) =>
+            lw.status === w.status &&
+            Number(lw.amount) === amt &&
+            Math.abs(
+              new Date(lw.requestedAt || lw.createdAt || 0).getTime() -
+                new Date(w.requestedAt || w.createdAt || 0).getTime()
+            ) < 60000
+        );
+
+      return {
+        _id: String(w._id),
+        amount: amt,
+        status: w.status,
+        withdrawAccount: w.withdrawAccount,
+        trx: w.trx || fallbackLedger?.trx || null,
+        notes: w.notes ?? fallbackLedger?.notes ?? null,
+        createdAt: w.createdAt,
+        requestedAt: w.requestedAt || w.createdAt,
+        issuedAt: w.issuedAt || fallbackLedger?.issuedAt || null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.requestedAt || b.createdAt || 0).getTime() -
+        new Date(a.requestedAt || a.createdAt || 0).getTime()
+    );
+
+  const referralCount = referredUsers.length;
+  const convertedCount = earnedByUserMap.size;
+  const conversionRate =
+    referralCount > 0
+      ? Number(((convertedCount / referralCount) * 100).toFixed(1))
+      : 0;
+
+  const referrerObj =
+    referral.referrer && typeof referral.referrer === "object"
+      ? {
+          _id: String(referral.referrer._id),
+          name: referral.referrer.name || "Unknown User",
+          email: referral.referrer.email || "N/A",
+          avatar: referral.referrer.avatar || null,
+          isVerified: Boolean(referral.referrer.isVerified),
+          isDisabled: Boolean(referral.referrer.isDisabled),
+          createdAt: referral.referrer.createdAt || null,
+        }
+      : {
+          _id: String(referral.referrer || userId),
+          name: "Unknown User",
+          email: "N/A",
+          avatar: null,
+        };
+
+  return new ApiResponse(200, true, "Referral details retrieved", {
+    _id: String(referral._id),
+    referrer: referrerObj,
+    referralCode: referral.referralCode,
+    availableBalance: referral.availableBalance || 0,
+    withdrawAccount: referral.withdrawAccount || null,
+    referralCount,
+    convertedCount,
+    conversionRate,
+    totalEarned,
+    totalWithdrawn,
+    pendingWithdrawalsCount,
+    pendingWithdrawalsAmount,
+    completedWithdrawalsCount,
+    rejectedWithdrawalsCount,
+    referredUsers,
+    earnedHistory,
+    withdrawHistory,
+    createdAt: referral.createdAt,
+    updatedAt: referral.updatedAt,
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+    },
+  }).send(res);
 });
 
 export const updateWithdrawal = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const { userId, withdrawalId } = req.params;
   const { status, trx, notes } = req.body;
 
-  if (!status || !Object.values(WITHDRAWAL_STATUS).includes(status)) {
-    throw new ApiError(400, "Invalid withdrawal status");
+  if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(withdrawalId)) {
+    throw new ApiError(400, "Invalid user ID or withdrawal ID");
+  }
+
+  if (
+    !status ||
+    ![WITHDRAWAL_STATUS.COMPLETED, WITHDRAWAL_STATUS.REJECTED].includes(status)
+  ) {
+    throw new ApiError(400, "Status must be either 'completed' or 'rejected'");
   }
 
   const referral = await Referral.findOne({ referrer: userId });
@@ -1780,15 +2271,37 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Withdrawal request not found");
   }
 
-  const previousStatus = withdrawal.status;
-  withdrawal.status = status;
-  if (trx) withdrawal.trx = trx;
-  withdrawal.issuedAt = new Date();
+  if (withdrawal.status !== WITHDRAWAL_STATUS.PENDING) {
+    throw new ApiError(
+      400,
+      `Withdrawal request has already been ${withdrawal.status}`
+    );
+  }
 
-  // If rejected from pending, refund balance atomically
-  if (status === WITHDRAWAL_STATUS.REJECTED && previousStatus === WITHDRAWAL_STATUS.PENDING) {
+  const cleanTrx = typeof trx === "string" ? trx.trim() : "";
+  const cleanNotes = typeof notes === "string" ? notes.trim() : "";
+
+  if (status === WITHDRAWAL_STATUS.COMPLETED) {
+    if (!cleanTrx) {
+      throw new ApiError(400, "Transaction ID is required to approve a withdrawal");
+    }
+    withdrawal.trx = cleanTrx;
+    if (cleanNotes) {
+      withdrawal.notes = cleanNotes;
+    }
+  } else if (status === WITHDRAWAL_STATUS.REJECTED) {
+    // Support legacy callers passing reason in trx if notes is omitted
+    const rejectionReason = cleanNotes || cleanTrx;
+    if (!rejectionReason) {
+      throw new ApiError(400, "Rejection reason is required to reject a withdrawal");
+    }
+    withdrawal.notes = rejectionReason;
+    withdrawal.trx = null;
     referral.availableBalance += withdrawal.amount;
   }
+
+  withdrawal.status = status;
+  withdrawal.issuedAt = new Date();
 
   await referral.save();
 
@@ -1804,10 +2317,11 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
       },
       {
         $set: {
-          status,
-          trx: trx || null,
-          notes: notes || null,
-          issuedAt: new Date(),
+          status: withdrawal.status,
+          trx: withdrawal.trx || null,
+          notes: withdrawal.notes || null,
+          issuedAt: withdrawal.issuedAt,
+          ...(req.user?._id ? { processedBy: req.user._id } : {}),
         },
       }
     );
@@ -1980,6 +2494,7 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
  * @access Private (Admin & SuperAdmin)
  */
 export const getPendingWithdrawalNotifications = asyncHandler(async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   const referralsWithPending = await Referral.find({
     "withdrawHistory.status": WITHDRAWAL_STATUS.PENDING,
   })
