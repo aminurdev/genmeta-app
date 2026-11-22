@@ -3,12 +3,30 @@ import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { ApiUsageLog } from "../models/apiUsageLog.model.js";
 import { AppPricing } from "../models/appPricing.model.js";
+import { Session } from "../models/session.model.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/api.error.js";
 
 const DEVICE_REMOVAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+async function resolvePlanName(plan) {
+  const planType = plan?.type || "free";
+  const planId = plan?.id || null;
+  if (plan?.name) return plan.name;
+
+  if (planId && mongoose.Types.ObjectId.isValid(planId)) {
+    const pricingDoc = await AppPricing.findById(planId).select("name").lean();
+    if (pricingDoc?.name) {
+      return pricingDoc.name;
+    }
+  }
+
+  if (planType === "subscription") return "Subscription";
+  if (planType === "credit") return "Credit Pack";
+  return "Free Tier";
+}
 
 function toUtcDateKey(date) {
   return new Date(date).toISOString().split("T")[0];
@@ -121,23 +139,7 @@ export const getOverview = asyncHandler(async (req, res) => {
 
   const planType = appUser?.plan?.type || "free";
   const planId = appUser?.plan?.id || null;
-  let planName = appUser?.plan?.name || null;
-
-  if (planId && !planName && mongoose.Types.ObjectId.isValid(planId)) {
-    const pricingDoc = await AppPricing.findById(planId).select("name").lean();
-    if (pricingDoc?.name) {
-      planName = pricingDoc.name;
-    }
-  }
-
-  if (!planName) {
-    planName =
-      planType === "subscription"
-        ? "Subscription"
-        : planType === "credit"
-          ? "Credit Pack"
-          : "Free Tier";
-  }
+  const planName = await resolvePlanName(appUser?.plan);
 
   const totalSpent = paymentStats[0]?.totalSpent[0]?.total || 0;
   const recentPayments = paymentStats[0]?.recent || [];
@@ -252,17 +254,31 @@ export const getOverview = asyncHandler(async (req, res) => {
 });
 
 export const getProfile = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id)
-    .select("-password -refreshToken -verificationToken")
-    .populate("referred", "referralCode");
+  const userId = req.user._id;
+  const now = new Date();
+
+  const [user, appUser, activeSessionsCount] = await Promise.all([
+    User.findById(userId)
+      .select(
+        "name email avatar loginProvider isVerified isDisabled role createdAt updatedAt lastLoginAt passwordChangedAt referred password"
+      )
+      .populate("referred", "referralCode"),
+    AppUser.findOne({ userId }),
+    Session.countDocuments({
+      userId,
+      revokedAt: null,
+      expiresAt: { $gt: now },
+    }),
+  ]);
 
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  const appUser = await AppUser.findOne({ userId: user._id });
+  const hasPassword = Boolean(user.password);
 
   if (appUser) {
+    appUser.syncDevicesList();
     if (appUser.isActive && appUser.status === "active") {
       appUser.isValid();
       appUser.calculateCredit();
@@ -272,23 +288,66 @@ export const getProfile = asyncHandler(async (req, res) => {
     }
   }
 
-  const userObj = user.toObject();
-  const appUserObj = appUser
-    ? {
-        key: appUser.key,
-        plan: appUser.plan,
-        credit: appUser.credit === Infinity ? null : appUser.credit,
-        status: appUser.status,
-        expiresAt: appUser.expiresAt || null,
-        isActive: appUser.isActive,
-        totalProcess: appUser.totalProcess || 0,
-      }
-    : null;
+  let formattedAppUser = null;
+  if (appUser) {
+    const planType = appUser.plan?.type || "free";
+    const planId = appUser.plan?.id || null;
+    const planName = await resolvePlanName(appUser.plan);
+    const remainingDays = appUser.expiresAt
+      ? Math.max(0, Math.ceil((new Date(appUser.expiresAt) - now) / (1000 * 60 * 60 * 24)))
+      : null;
+    const rawCredit = appUser.credit;
+    const creditValue =
+      rawCredit === Infinity || rawCredit === null ? null : rawCredit ?? 0;
+
+    formattedAppUser = {
+      exists: true,
+      plan: {
+        type: planType,
+        id: planId,
+        name: planName,
+      },
+      totalProcess: appUser.totalProcess || 0,
+      credit: creditValue,
+      isActive: Boolean(appUser.isActive),
+      status: appUser.status || "active",
+      isSuspended: appUser.status === "suspended",
+      expiresAt: appUser.expiresAt || null,
+      remainingDays,
+      devicesCount: appUser.getFormattedDevices().length,
+      maxDevices: appUser.maxDevices || 2,
+    };
+  }
+
+  const loginProvider =
+    Array.isArray(user.loginProvider) && user.loginProvider.length > 0
+      ? user.loginProvider
+      : ["email"];
 
   return new ApiResponse(200, true, "Profile retrieved successfully", {
-    ...userObj,
-    user: userObj,
-    appUser: appUserObj,
+    user: {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar || null,
+      loginProvider,
+      hasPassword,
+      isVerified: Boolean(user.isVerified),
+      isDisabled: Boolean(user.isDisabled),
+      role: user.role,
+      lastLoginAt: user.lastLoginAt || null,
+      passwordChangedAt: user.passwordChangedAt || null,
+      referredBy: user.referred?.referralCode || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    },
+    appUser: formattedAppUser,
+    security: {
+      activeSessionsCount,
+      hasPassword,
+      passwordChangedAt: user.passwordChangedAt || null,
+      lastLoginAt: user.lastLoginAt || null,
+    },
   }).send(res);
 });
 

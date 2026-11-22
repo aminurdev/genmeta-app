@@ -109,40 +109,52 @@ export interface Overview {
   };
 }
 
-export interface Profile {
-  _id?: string;
+export interface ProfileUser {
+  id: string;
   name: string;
   email: string;
-  avatar?: string | null;
-  loginProvider?: ("google" | "email")[];
+  avatar: string | null;
+  loginProvider: ("google" | "email")[];
+  hasPassword: boolean;
   isVerified: boolean;
-  isDisabled?: boolean;
-  createdAt?: string;
+  isDisabled: boolean;
   role: string;
-  user?: {
-    _id?: string;
+  lastLoginAt: string | null;
+  passwordChangedAt: string | null;
+  referredBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileAppUser {
+  exists: boolean;
+  plan: {
+    type: "subscription" | "credit" | "free";
+    id: string | null;
     name: string;
-    email: string;
-    avatar?: string | null;
-    loginProvider?: ("google" | "email")[];
-    isVerified: boolean;
-    isDisabled?: boolean;
-    role: string;
-    createdAt?: string;
   };
-  appUser?: {
-    key?: string;
-    plan: {
-      type: "subscription" | "credit" | "free";
-      id?: string;
-      name?: string;
-    };
-    totalProcess?: number;
-    credit: number | null;
-    isActive: boolean;
-    status: "active" | "suspended";
-    expiresAt: string | null;
-  } | null;
+  totalProcess: number;
+  credit: number | null;
+  isActive: boolean;
+  status: "active" | "suspended";
+  isSuspended: boolean;
+  expiresAt: string | null;
+  remainingDays: number | null;
+  devicesCount: number;
+  maxDevices: number;
+}
+
+export interface ProfileSecurity {
+  activeSessionsCount: number;
+  hasPassword: boolean;
+  passwordChangedAt: string | null;
+  lastLoginAt: string | null;
+}
+
+export interface Profile {
+  user: ProfileUser;
+  appUser: ProfileAppUser | null;
+  security: ProfileSecurity;
 }
 
 export interface EarnedHistoryItem {

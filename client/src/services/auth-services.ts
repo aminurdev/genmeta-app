@@ -248,16 +248,25 @@ export const resetPassword = async (
 };
 
 export const changePassword = async (
-  currentPassword: string,
+  currentPassword: string | undefined,
   newPassword: string,
   confirmPassword: string
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
-    const result = await api.patch("/users/change-password", {
-      currentPassword,
+    const payload: {
+      currentPassword?: string;
+      newPassword: string;
+      confirmPassword: string;
+    } = {
       newPassword,
       confirmPassword,
-    });
+    };
+
+    if (currentPassword && currentPassword.trim().length > 0) {
+      payload.currentPassword = currentPassword;
+    }
+
+    const result = await api.patch("/users/change-password", payload);
     return result.data;
   } catch (error) {
     return formatApiError(error, "Failed to change password");

@@ -7,164 +7,182 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, AppWindowMac, Shield, Sparkles } from "lucide-react";
+import {
+  Laptop,
+  Layers,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  User as UserIcon,
+  Zap,
+} from "lucide-react";
 
 export function ProfileSkeleton() {
   return (
-    <div className="space-y-6 p-4 pt-0 max-w-7xl mx-auto animate-in fade-in-50 duration-200">
-      {/* Static Page Header */}
-      <div>
-        <h3 className="text-2xl font-bold tracking-tight">Profile</h3>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences
-        </p>
+    <div className="w-full space-y-6 animate-in fade-in-50 duration-200">
+      {/* 1. Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Account Profile
+            </h1>
+            <Skeleton className="h-5 w-16 rounded-md" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Manage your personal information, subscription quota, active
+            sessions, and security.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" disabled className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button size="sm" disabled className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Manage Plan
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Personal Information Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Personal Information
-            </CardTitle>
-            <CardDescription>Your basic account information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full shrink-0" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-5 w-36" />
-                <Skeleton className="h-4 w-48" />
-                <div className="flex items-center gap-2 pt-1">
-                  <Skeleton className="h-5 w-16 rounded-md" />
-                  <Skeleton className="h-5 w-20 rounded-md" />
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Login Methods</span>
-                <Skeleton className="h-5 w-16 rounded" />
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Account Status</span>
+      {/* 2. Identity Hero Card */}
+      <Card>
+        <CardContent className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <Skeleton className="h-16 w-16 rounded-full shrink-0" />
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-5 w-20 rounded-md" />
                 <Skeleton className="h-5 w-16 rounded-md" />
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Member Since</span>
-                <Skeleton className="h-4 w-28" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Desktop App ID Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AppWindowMac className="h-5 w-5" />
-              Desktop App ID
-            </CardTitle>
-            <CardDescription>Your desktop app account identifier and plan usage</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Plan Type</span>
+              <Skeleton className="h-4 w-56" />
+              <div className="flex gap-1.5 pt-0.5">
                 <Skeleton className="h-5 w-24 rounded-md" />
               </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Status</span>
-                <div className="flex items-center gap-1.5">
-                  <Skeleton className="h-2 w-2 rounded-full" />
-                  <Skeleton className="h-5 w-16 rounded-md" />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Total Generates</span>
-                <Skeleton className="h-4 w-16" />
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Available Credits</span>
-                <Skeleton className="h-4 w-20" />
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium">Expires At</span>
-                <Skeleton className="h-4 w-28" />
-              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 shrink-0">
+            <div className="rounded-lg border bg-muted/30 px-3.5 py-2.5 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="rounded-lg border bg-muted/30 px-3.5 py-2.5 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. Four-Card Summary Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          { title: "Current Plan", icon: Sparkles },
+          { title: "Available Credits", icon: Zap },
+          { title: "Total Generates", icon: Layers },
+          { title: "Devices & Sessions", icon: Laptop },
+        ].map(({ title, icon: Icon }) => (
+          <Card key={title}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {title}
+              </CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-24 mb-2" />
+              <Skeleton className="h-3.5 w-32" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Plan Management Strip Skeleton */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-primary" />
-            Plan & Quota Subscription
-          </CardTitle>
-          <CardDescription>
-            Current subscription details and upgrade options
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1, 2, 3].map((tier) => (
-              <div key={tier} className="p-4 rounded-lg border bg-card/60 space-y-3">
-                <div className="flex justify-between items-center">
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-4 w-12" />
-                </div>
-                <Skeleton className="h-6 w-24" />
-                <div className="space-y-1.5 pt-2">
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-4/5" />
-                </div>
-                <Skeleton className="h-8 w-full rounded-md pt-2" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* 4. Full-Width 12-Column Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="xl:col-span-5 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <UserIcon className="h-4 w-4 text-primary" />
+                Account & Plan Details
+              </CardTitle>
+              <CardDescription>
+                Summary of your web account and desktop license state.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[1, 2, 3, 4, 5, 6].map((row) => (
+                <React.Fragment key={row}>
+                  <div className="flex items-center justify-between gap-4">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  {row < 6 && <Separator />}
+                </React.Fragment>
+              ))}
+            </CardContent>
+          </Card>
 
-      {/* Security & Password Change */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Shield className="h-4 w-4" />
-            Security & Credentials
-          </CardTitle>
-          <CardDescription>
-            Update password and manage authentication settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 max-w-md">
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground">Current Password</span>
-            <Skeleton className="h-9 w-full rounded-md" />
-          </div>
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-muted-foreground">New Password</span>
-            <Skeleton className="h-9 w-full rounded-md" />
-          </div>
-          <Skeleton className="h-9 w-32 rounded-md" />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Change Password
+              </CardTitle>
+              <CardDescription>
+                Update your password to keep your account secure.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="xl:col-span-7">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                Active Web Sessions
+              </CardTitle>
+              <CardDescription>
+                Browsers and devices currently signed in to your web account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y divide-border rounded-lg border border-border">
+                {[1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-8 w-20 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default ProfileSkeleton;
-

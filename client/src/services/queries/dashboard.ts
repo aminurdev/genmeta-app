@@ -2,6 +2,11 @@
 
 import { QUERY_KEYS } from "@/services/constants";
 import {
+  getActiveSessions,
+  logoutAllSessions,
+  revokeSession,
+} from "@/services/auth-services";
+import {
   getOverview,
   getProfile,
   getReferralDetails,
@@ -31,6 +36,17 @@ export function useProfileQuery() {
   });
 }
 
+export function useActiveSessionsQuery() {
+  return useQuery({
+    queryKey: QUERY_KEYS.activeSessions,
+    queryFn: getActiveSessions,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
 export function useReferralDetailsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.referralDetails,
@@ -47,6 +63,7 @@ export function useInvalidateDashboard() {
   return () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.overview });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activeSessions });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referralDetails });
   };
 }
@@ -57,6 +74,28 @@ export function useRemoveDesktopDeviceMutation() {
     mutationFn: (deviceId: string) => removeDesktopDevice(deviceId),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.overview });
+    },
+  });
+}
+
+export function useRevokeSessionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) => revokeSession(sessionId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activeSessions });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+    },
+  });
+}
+
+export function useLogoutAllSessionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => logoutAllSessions(),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activeSessions });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
     },
   });
 }

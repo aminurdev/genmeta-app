@@ -1,17 +1,33 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
+import { format } from "date-fns";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { changePassword } from "@/services/auth-services";
 
-export function PasswordChangeForm() {
+interface PasswordChangeFormProps {
+  hasPassword?: boolean;
+  passwordChangedAt?: string | null;
+  onPasswordUpdated?: () => void;
+}
+
+export function PasswordChangeForm({
+  hasPassword = true,
+  passwordChangedAt = null,
+  onPasswordUpdated,
+}: PasswordChangeFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -22,7 +38,7 @@ export function PasswordChangeForm() {
     confirmPassword: "",
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -31,6 +47,11 @@ export function PasswordChangeForm() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (hasPassword && !formData.currentPassword.trim()) {
+      toast.error("Please enter your current password.");
+      return;
+    }
 
     if (formData.newPassword !== formData.confirmPassword) {
       toast.error("New password and confirm password do not match.");
@@ -51,7 +72,7 @@ export function PasswordChangeForm() {
 
     try {
       const result = await changePassword(
-        formData.currentPassword,
+        hasPassword ? formData.currentPassword : undefined,
         formData.newPassword,
         formData.confirmPassword
       );
@@ -61,12 +82,12 @@ export function PasswordChangeForm() {
           result.message ||
             "Your password has been updated and other sessions were signed out."
         );
-        // Reset form
         setFormData({
           currentPassword: "",
           newPassword: "",
           confirmPassword: "",
         });
+        onPasswordUpdated?.();
       } else {
         toast.error(
           result.message || "Failed to update password. Please try again."
@@ -79,40 +100,76 @@ export function PasswordChangeForm() {
     }
   };
 
+  const formattedLastChanged = (() => {
+    if (!passwordChangedAt) return null;
+    const date = new Date(passwordChangedAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return format(date, "MMM d, yyyy 'at' h:mm a");
+  })();
+
   return (
-    <div className="space-y-6">
-      {/* Change Password Form */}
-      <div>
-        <h4 className="text-lg font-medium mb-4">Change Password</h4>
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <div className="relative">
-              <Input
-                id="currentPassword"
-                type={showCurrentPassword ? "text" : "password"}
-                value={formData.currentPassword}
-                onChange={(e) =>
-                  handleInputChange("currentPassword", e.target.value)
-                }
-                placeholder="Enter your current password"
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-              >
-                {showCurrentPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <ShieldCheck className="h-4 w-4 text-primary" />
+          {hasPassword ? "Change Password" : "Set Account Password"}
+        </CardTitle>
+        <CardDescription>
+          {hasPassword
+            ? "Update your password to keep your account secure. Changing your password signs out other web sessions."
+            : "Add a password to enable email and password sign-in alongside Google."}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {formattedLastChanged && (
+          <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            Last changed on{" "}
+            <span className="font-medium text-foreground">
+              {formattedLastChanged}
+            </span>
           </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          {hasPassword && (
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={formData.currentPassword}
+                  onChange={(e) =>
+                    handleInputChange("currentPassword", e.target.value)
+                  }
+                  placeholder="Enter your current password"
+                  className="pr-10"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={
+                    showCurrentPassword
+                      ? "Hide current password"
+                      : "Show current password"
+                  }
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() =>
+                    setShowCurrentPassword((prev) => !prev)
+                  }
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="newPassword">New Password</Label>
@@ -124,15 +181,19 @@ export function PasswordChangeForm() {
                 onChange={(e) =>
                   handleInputChange("newPassword", e.target.value)
                 }
-                placeholder="Enter your new password"
+                placeholder="At least 8 characters"
+                className="pr-10"
                 required
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                aria-label={
+                  showNewPassword ? "Hide new password" : "Show new password"
+                }
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowNewPassword(!showNewPassword)}
+                onClick={() => setShowNewPassword((prev) => !prev)}
               >
                 {showNewPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -154,14 +215,20 @@ export function PasswordChangeForm() {
                   handleInputChange("confirmPassword", e.target.value)
                 }
                 placeholder="Confirm your new password"
+                className="pr-10"
                 required
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                aria-label={
+                  showConfirmPassword
+                    ? "Hide confirm password"
+                    : "Show confirm password"
+                }
                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="h-4 w-4" />
@@ -172,21 +239,21 @@ export function PasswordChangeForm() {
             </div>
           </div>
 
-          <Button type="submit" disabled={isLoading} className="w-full">
+          <Button type="submit" disabled={isLoading} className="w-full gap-2">
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Updating Password...
               </>
             ) : (
               <>
-                <Lock className="mr-2 h-4 w-4" />
-                Update Password
+                <Lock className="h-4 w-4" />
+                {hasPassword ? "Update Password" : "Set Password"}
               </>
             )}
           </Button>
         </form>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

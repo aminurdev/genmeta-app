@@ -1,6 +1,7 @@
 export const QUERY_KEYS = {
   overview: ["dashboard", "overview"],
   profile: ["dashboard", "profile"],
+  activeSessions: ["dashboard", "activeSessions"],
   referralDetails: ["dashboard", "referralDetails"],
 
   adminOverview: ["admin", "overview"],
