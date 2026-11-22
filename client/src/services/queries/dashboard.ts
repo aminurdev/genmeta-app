@@ -11,7 +11,9 @@ import {
   getProfile,
   getReferralDetails,
   removeDesktopDevice,
+  requestWithdraw,
 } from "@/services/dashboard";
+import { RequestWithdrawPayload } from "@/types/dashboard";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useOverviewQuery() {
@@ -96,6 +98,16 @@ export function useLogoutAllSessionsMutation() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activeSessions });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+    },
+  });
+}
+
+export function useRequestWithdrawMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: RequestWithdrawPayload) => requestWithdraw(payload),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.referralDetails });
     },
   });
 }

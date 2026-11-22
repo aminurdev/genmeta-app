@@ -157,7 +157,18 @@ export interface Profile {
   security: ProfileSecurity;
 }
 
+export interface ReferredUserItem {
+  id: string;
+  name: string;
+  email: string;
+  joinedAt: string;
+  status: "subscribed" | "pending";
+  earnedAmount: number;
+  earnedAt: string | null;
+}
+
 export interface EarnedHistoryItem {
+  _id?: string;
   user: {
     _id: string;
     name: string;
@@ -171,26 +182,43 @@ export interface WithdrawHistoryItem {
   _id?: string;
   amount: number;
   status: "pending" | "completed" | "rejected";
+  requestedAt: string;
   createdAt: string;
   issuedAt: string | null;
   trx: string | null;
-  withdrawAccount?: string;
+  withdrawAccount: string | null;
 }
 
 export interface ReferralData {
   referralCode: string;
   withdrawAccount: string | null;
   referralCount: number;
+  convertedCount: number;
   totalEarned: number;
+  thisMonthEarned: number;
   availableBalance: number;
   totalWithdrawn: number;
-  earnedHistory?: EarnedHistoryItem[];
-  withdrawHistory?: WithdrawHistoryItem[];
+  pendingWithdrawalAmount: number;
+  pendingWithdrawalCount: number;
+  commissionPerReferral: number;
+  minimumWithdrawAmount: number;
+  referredUsers: ReferredUserItem[];
+  earnedHistory: EarnedHistoryItem[];
+  withdrawHistory: WithdrawHistoryItem[];
+}
+
+export interface RequestWithdrawPayload {
+  withdrawAccount: string;
+  amount: number;
 }
 
 export interface RequestWithdrawRes {
-  amount: number;
-  withdrawAccount?: string;
-  status?: string;
-  requestedAt?: Date | string;
+  withdrawal: {
+    id: string;
+    amount: number;
+    status: "pending" | "completed" | "rejected";
+    withdrawAccount: string;
+    requestedAt: string;
+    availableBalance: number;
+  };
 }

@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { useReferralDetailsQuery } from "@/services/queries/dashboard";
+import { format } from "date-fns";
+import {
+  useReferralDetailsQuery,
+  useRequestWithdrawMutation,
+} from "@/services/queries/dashboard";
 import {
   Card,
   CardContent,
@@ -13,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -31,453 +36,739 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertCircle,
+  ArrowUpRight,
+  Check,
+  CheckCircle2,
+  Clock,
   Copy,
   DollarSign,
+  Gift,
+  Phone,
+  RefreshCw,
+  Share2,
   Users,
   Wallet,
-  TrendingUp,
-  ExternalLink,
-  Check,
-  Phone,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { requestWithdraw } from "@/services/dashboard";
 import { useBaseUrl } from "@/hooks/use-baseUrl";
 import { ReferralDashboardSkeleton } from "@/components/dashboard/referral-skeleton";
 
+function formatBdt(amount: number | undefined | null): string {
+  const numeric = Number(amount) || 0;
+  return `৳${numeric.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatDate(dateString?: string | null, fallback = "—"): string {
+  if (!dateString) return fallback;
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  return format(parsed, "MMM d, yyyy");
+}
+
+function WithdrawalStatusBadge({
+  status,
+}: {
+  status: "pending" | "completed" | "rejected";
+}) {
+  if (status === "completed") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10"
+      >
+        Completed
+      </Badge>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs font-medium text-amber-600 dark:text-amber-400 border-amber-500/25 bg-amber-500/10"
+      >
+        Pending
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className="text-xs font-medium text-destructive border-destructive/30 bg-destructive/10"
+    >
+      Rejected
+    </Badge>
+  );
+}
+
 export function ReferralDashboard() {
-  // All hooks must be at the top
   const {
     data: referralResponse,
     isLoading,
+    isRefetching,
+    refetch,
     isError,
     error,
   } = useReferralDetailsQuery();
+
+  const requestWithdrawMutation = useRequestWithdrawMutation();
+
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
-  const [mobileNumber, setMobileNumber] = useState(
-    referralResponse?.data?.withdrawAccount || "",
-  );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [withdrawAmountInput, setWithdrawAmountInput] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
   const baseUrl = useBaseUrl();
 
-  // Loading state
+  const handleRefresh = async () => {
+    const result = await refetch();
+    if (result.isError || !result.data?.success) {
+      toast.error(
+        (result.data && !result.data.success ? result.data.message : null) ||
+          (result.error as Error)?.message ||
+          "Failed to refresh referral data"
+      );
+      return;
+    }
+    toast.success("Referral data refreshed");
+  };
+
   if (isLoading) {
     return <ReferralDashboardSkeleton />;
   }
 
-  // Error state
-  if (isError || !referralResponse?.success) {
+  if (isError || !referralResponse?.success || !referralResponse.data) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-destructive mb-2">
-            Failed to load referral data
-          </h2>
-          <p className="text-muted-foreground">
-            {referralResponse?.message ||
-              (error as Error)?.message ||
-              "An error occurred"}
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center p-8 min-h-[350px] rounded-xl border border-dashed border-destructive/40 text-center">
+        <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+        <h3 className="text-lg font-semibold text-foreground">
+          Failed to load referral data
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1 max-w-md">
+          {referralResponse?.message ||
+            (error as Error)?.message ||
+            "An unexpected error occurred while loading your referral details."}
+        </p>
+        <Button onClick={handleRefresh} variant="outline" className="mt-4 gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Try Again
+        </Button>
       </div>
     );
   }
 
   const referralData = referralResponse.data;
+  const commissionPerReferral = referralData.commissionPerReferral || 50;
+  const minimumWithdrawAmount = referralData.minimumWithdrawAmount || 100;
+  const availableBalance = Number(referralData.availableBalance) || 0;
+  const totalEarned = Number(referralData.totalEarned) || 0;
+  const thisMonthEarned = Number(referralData.thisMonthEarned) || 0;
+  const totalWithdrawn = Number(referralData.totalWithdrawn) || 0;
+  const pendingWithdrawalAmount =
+    Number(referralData.pendingWithdrawalAmount) || 0;
+  const pendingWithdrawalCount = referralData.pendingWithdrawalCount || 0;
+  const referralCount = referralData.referralCount || 0;
+  const convertedCount = referralData.convertedCount || 0;
+  const awaitingPackageCount = Math.max(0, referralCount - convertedCount);
 
-  // Safety check for data
-  if (!referralData) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-destructive mb-2">
-            No data available
-          </h2>
-          <p className="text-muted-foreground">Unable to load referral data</p>
-        </div>
-      </div>
-    );
-  }
+  const referredUsers = referralData.referredUsers || [];
+  const earnedHistory = referralData.earnedHistory || [];
+  const withdrawHistory = referralData.withdrawHistory || [];
 
   const referralUrl = `${baseUrl}/signup?ref=${referralData.referralCode}`;
 
-  // Helper function to calculate this month's earnings
-  const calculateThisMonthEarnings = (): number => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    return (referralData.earnedHistory || []).reduce((sum, earning) => {
-      const earningDate = new Date(earning.createdAt);
-      if (
-        earningDate.getMonth() === currentMonth &&
-        earningDate.getFullYear() === currentYear
-      ) {
-        return sum + earning.amount;
-      }
-      return sum;
-    }, 0);
-  };
-
-  // Transform earnedHistory to referredUsers format
-  const referredUsers = (referralData.earnedHistory || []).map(
-    (earning, index) => ({
-      id: index + 1,
-      name: earning.user.name,
-      email: earning.user.email,
-      status: "Active", // All users in earnedHistory are active
-      joinDate: new Date(earning.createdAt).toISOString().split("T")[0],
-      earnings: earning.amount,
-    }),
-  );
-
-  // Transform withdrawHistory to match UI format
-  const withdrawHistory = (referralData.withdrawHistory || []).map(
-    (withdrawal, index) => ({
-      id: index + 1,
-      amount: withdrawal.amount,
-      status:
-        withdrawal.status === "completed"
-          ? ("Complete" as const)
-          : withdrawal.status === "pending"
-            ? ("Pending" as const)
-            : ("Rejected" as const),
-      requestDate: new Date(withdrawal.createdAt).toISOString().split("T")[0],
-      completedDate: withdrawal.issuedAt
-        ? new Date(withdrawal.issuedAt).toISOString().split("T")[0]
-        : null,
-      trx: withdrawal.trx,
-      account: withdrawal.withdrawAccount,
-    }),
-  );
-
-  const earnings = {
-    total: referralData.totalEarned,
-    thisMonth: calculateThisMonthEarnings(),
-    availableBalance: referralData.availableBalance,
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast("Copied to clipboard!");
-  };
-
-  const handleWithdrawRequest = async () => {
-    const amount = earnings.availableBalance;
-
-    if (!mobileNumber.trim()) {
-      toast.error("Please enter your mobile number");
-      return;
-    }
-
-    if (amount < 100) {
-      toast.error("Minimum withdrawal amount is ৳100");
-      return;
-    }
-
-    if (amount > earnings.availableBalance) {
-      toast.error("Insufficient balance");
-      return;
-    }
-
-    setIsSubmitting(true);
-
+  const handleCopyText = async (
+    value: string,
+    kind: "link" | "code"
+  ): Promise<void> => {
     try {
-      await requestWithdraw({
-        withdrawAccount: mobileNumber,
-        amount: amount,
-      });
-      toast.success("Withdrawal request submitted successfully!");
-      setIsWithdrawModalOpen(false);
-      setMobileNumber("");
+      await navigator.clipboard.writeText(value);
+      if (kind === "link") {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+        toast.success("Referral link copied to clipboard");
+      } else {
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2500);
+        toast.success("Referral code copied to clipboard");
+      }
     } catch {
-      toast.error("Failed to submit withdrawal request");
-    } finally {
-      setIsSubmitting(false);
+      toast.error("Unable to copy to clipboard");
     }
   };
+
+  const handleShare = async () => {
+    const shareText = `Join me on GenMeta using my referral link: ${referralUrl}`;
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "Join GenMeta",
+          text: "Sign up to GenMeta with my referral link:",
+          url: referralUrl,
+        });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") {
+          return;
+        }
+      }
+    }
+    await handleCopyText(shareText, "link");
+  };
+
+  const handleWithdrawDialogChange = (open: boolean) => {
+    if (open) {
+      setMobileNumber(referralData.withdrawAccount || "");
+      setWithdrawAmountInput(
+        availableBalance > 0 ? String(availableBalance) : ""
+      );
+    }
+    setIsWithdrawModalOpen(open);
+  };
+
+  const handleWithdrawRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanAccount = mobileNumber.trim();
+    const parsedAmount = Number(withdrawAmountInput);
+
+    if (!cleanAccount || cleanAccount.length < 3) {
+      toast.error("Please enter a valid bKash Personal number");
+      return;
+    }
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error("Please enter a valid withdrawal amount");
+      return;
+    }
+
+    if (parsedAmount < minimumWithdrawAmount) {
+      toast.error(
+        `Minimum withdrawal amount is ৳${minimumWithdrawAmount} BDT`
+      );
+      return;
+    }
+
+    if (parsedAmount > availableBalance) {
+      toast.error("Requested amount exceeds your available balance");
+      return;
+    }
+
+    const res = await requestWithdrawMutation.mutateAsync({
+      withdrawAccount: cleanAccount,
+      amount: parsedAmount,
+    });
+
+    if (!res.success) {
+      toast.error(res.message || "Failed to submit withdrawal request");
+      return;
+    }
+
+    toast.success(res.message || "Withdrawal request submitted successfully!");
+    setIsWithdrawModalOpen(false);
+  };
+
+  const canWithdraw = availableBalance >= minimumWithdrawAmount;
+  const remainingForMinimum = Math.max(
+    0,
+    minimumWithdrawAmount - availableBalance
+  );
 
   return (
-    <div className="p-4 space-y-6">
-
-      <div className="bg-linear-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="shrink-0">
-            <DollarSign className="h-6 w-6 text-green-600" />
+    <div className="w-full space-y-6">
+      {/* 1. Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+        <div>
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Referral Program
+            </h1>
+            <Badge
+              variant="outline"
+              className="gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10"
+            >
+              <Gift className="h-3 w-3" />
+              ৳{commissionPerReferral} BDT / Subscriber
+            </Badge>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-green-800">
-              Earn ৳50 BDT Commission
-            </h3>
-            <p className="text-sm text-green-700">
-              Every single user you refer will earn you ৳50 BDT commission when
-              they join our platform!
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Refer friends to GenMeta and earn a ৳{commissionPerReferral} BDT
+            bonus when they subscribe to any package.
+          </p>
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefetching}
+          className="gap-2 self-start sm:self-auto"
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </Button>
       </div>
 
-      <div className="border-b pb-4">
-        <h1 className="text-2xl font-semibold text-balance">
-          Referral Program
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Earn commissions by referring new users to our platform
-        </p>
+      {/* 2. Referral Bonus Rule Callout */}
+      <Card className="border-emerald-500/25 bg-emerald-500/5">
+        <CardContent className="p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Gift className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base sm:text-lg font-semibold text-foreground">
+                Earn ৳{commissionPerReferral} BDT When Your Referred User
+                Subscribes
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                If you refer a user, the{" "}
+                <span className="font-semibold text-foreground">
+                  ৳{commissionPerReferral} BDT referral bonus is added when the
+                  referred user subscribes to any package
+                </span>{" "}
+                (any subscription or credit plan). Creating an account alone
+                marks them as pending until their first package purchase is
+                completed.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Step 1 · Share Link
+              </p>
+              <p className="text-sm font-medium mt-0.5">
+                Friend registers with your link or code
+              </p>
+            </div>
+            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Step 2 · Package Purchase
+              </p>
+              <p className="text-sm font-medium mt-0.5">
+                Referred user subscribes to any package
+              </p>
+            </div>
+            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Step 3 · Bonus Credited
+              </p>
+              <p className="text-sm font-medium mt-0.5">
+                ৳{commissionPerReferral} BDT added (min. ৳
+                {minimumWithdrawAmount} to withdraw)
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 3. Four-Card KPI Summary Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Available Balance
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {formatBdt(availableBalance)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {canWithdraw
+                ? "Ready to withdraw via bKash"
+                : `${formatBdt(remainingForMinimum)} more to reach ৳${minimumWithdrawAmount} min.`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Total Earned
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatBdt(totalEarned)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatBdt(thisMonthEarned)} earned this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Total Withdrawn
+            </CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatBdt(totalWithdrawn)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {pendingWithdrawalCount > 0
+                ? `${formatBdt(pendingWithdrawalAmount)} pending (${pendingWithdrawalCount})`
+                : "No pending payouts"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Referred Users
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{referralCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {convertedCount} subscribed · {awaitingPackageCount} awaiting
+              package
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Total Earned
-                </p>
-                <p className="text-xl font-bold mt-1">
-                  ৳{earnings.total.toFixed(2)}
-                </p>
-              </div>
-              <DollarSign className="h-5 w-5 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  This Month
-                </p>
-                <p className="text-xl font-bold mt-1">
-                  ৳{earnings.thisMonth.toFixed(2)}
-                </p>
-              </div>
-              <TrendingUp className="h-5 w-5 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Available
-                </p>
-                <p className="text-xl font-bold mt-1 text-emerald-600">
-                  ৳{earnings.availableBalance.toFixed(2)}
-                </p>
-              </div>
-              <Wallet className="h-5 w-5 text-emerald-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Referrals
-                </p>
-                <p className="text-xl font-bold mt-1">
-                  {referralData.referralCount}
-                </p>
-              </div>
-              <Users className="h-5 w-5 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-5">
-        <div className="grid md:grid-cols-2 gap-5">
-          <Card className="md:col-span-1">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Share & Earn</CardTitle>
-              <CardDescription className="text-sm">
-                Your unique referral link
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
+      {/* 4. Action Grid: Share Link & Withdraw Funds */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <Card className="lg:col-span-7">
+          <CardHeader>
+            <CardTitle className="text-lg">Share & Earn</CardTitle>
+            <CardDescription>
+              Invite creators with your unique referral URL or code.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label
+                htmlFor="referral-link"
+                className="text-xs uppercase tracking-wider text-muted-foreground"
+              >
+                Referral Link
+              </Label>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
+                  id="referral-link"
                   value={referralUrl}
                   readOnly
-                  className="text-xs font-mono"
+                  className="font-mono text-xs sm:text-sm"
                 />
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    copyToClipboard(referralUrl);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 3000);
-                  }}
-                  className="shrink-0"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  Code:{" "}
-                  <code className="font-mono bg-muted px-1 py-0.5 rounded">
-                    {referralData.referralCode}
-                  </code>
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-1 text-xs"
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Share
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-1">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Withdraw Funds</CardTitle>
-              <CardDescription className="text-sm">
-                Minimum withdrawal: ৳100
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">Available Balance</p>
-                    <p className="text-lg font-bold text-emerald-600">
-                      ৳{earnings.availableBalance.toFixed(2)}
-                    </p>
-                  </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleCopyText(referralUrl, "link")}
+                    className="flex-1 sm:flex-none gap-2"
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-600" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy Link
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleShare}
+                    className="flex-1 sm:flex-none gap-2"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share
+                  </Button>
                 </div>
-                <Dialog
-                  open={isWithdrawModalOpen}
-                  onOpenChange={setIsWithdrawModalOpen}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Referral Code
+                </span>
+                <code className="rounded bg-background border px-2.5 py-1 text-sm font-mono font-semibold tracking-wider">
+                  {referralData.referralCode}
+                </code>
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleCopyText(referralData.referralCode, "code")}
+                className="gap-1.5 text-xs"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    Code Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy Code
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-5 flex flex-col justify-between">
+          <CardHeader>
+            <CardTitle className="text-lg">Withdraw Funds</CardTitle>
+            <CardDescription>
+              Request payout to your bKash Personal account (minimum ৳
+              {minimumWithdrawAmount} BDT).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Available to Withdraw
+                </span>
+                <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatBdt(availableBalance)}
+                </span>
+              </div>
+
+              {referralData.withdrawAccount && (
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground border-t pt-2">
+                  <span>Saved bKash Account</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {referralData.withdrawAccount}
+                  </span>
+                </div>
+              )}
+
+              {pendingWithdrawalCount > 0 && (
+                <div className="flex items-center justify-between gap-2 text-xs text-amber-600 dark:text-amber-400 border-t pt-2">
+                  <span>Pending Requests ({pendingWithdrawalCount})</span>
+                  <span className="font-medium">
+                    {formatBdt(pendingWithdrawalAmount)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Dialog
+              open={isWithdrawModalOpen}
+              onOpenChange={handleWithdrawDialogChange}
+            >
+              <DialogTrigger asChild>
+                <Button
+                  disabled={!canWithdraw}
+                  className="w-full gap-2"
                 >
-                  <DialogTrigger asChild>
-                    <Button
-                      disabled={earnings.availableBalance < 100}
-                      className="w-full"
-                      size="sm"
-                    >
-                      <Wallet className="h-4 w-4 mr-2" />
-                      Request Withdrawal
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5" />
-                        Withdrawal Request
-                      </DialogTitle>
-                      <DialogDescription>
-                        Submit your withdrawal request. Payment will be
-                        processed within 1-3 business days.
-                      </DialogDescription>
-                    </DialogHeader>
+                  <Wallet className="h-4 w-4" />
+                  Request Withdrawal
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <form onSubmit={handleWithdrawRequest} className="space-y-4">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5" />
+                      Withdrawal Request
+                    </DialogTitle>
+                    <DialogDescription>
+                      Submit your withdrawal request. Payouts are processed via
+                      bKash Personal within 1-3 business days.
+                    </DialogDescription>
+                  </DialogHeader>
 
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="mobile">
-                          Enter your Bkash Personal Number
-                        </Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="mobile"
-                            placeholder="Enter your mobile number"
-                            value={mobileNumber}
-                            onChange={(e) => setMobileNumber(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="amount">Withdrawal Amount (BDT)</Label>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile">bKash Personal Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          id="amount"
-                          type="text"
-                          value={`Withdrawal Amount: ${earnings.availableBalance}`}
-                          disabled
+                          id="mobile"
+                          placeholder="01XXXXXXXXX"
+                          value={mobileNumber}
+                          onChange={(e) => setMobileNumber(e.target.value)}
+                          className="pl-10"
+                          disabled={requestWithdrawMutation.isPending}
+                          required
                         />
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <AlertCircle className="h-3 w-3" />
-                          Available: ৳{earnings.availableBalance.toFixed(2)}
-                        </div>
                       </div>
                     </div>
 
-                    <DialogFooter className="gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsWithdrawModalOpen(false)}
-                        disabled={isSubmitting}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleWithdrawRequest}
-                        disabled={isSubmitting || !mobileNumber.trim()}
-                        className="min-w-[100px]"
-                      >
-                        {isSubmitting ? "Processing..." : "Submit Request"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="amount">Withdrawal Amount (BDT)</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setWithdrawAmountInput(String(availableBalance))
+                          }
+                          disabled={requestWithdrawMutation.isPending}
+                          className="h-auto px-1.5 py-0.5 text-xs"
+                        >
+                          Use Max ({formatBdt(availableBalance)})
+                        </Button>
+                      </div>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="any"
+                        min={minimumWithdrawAmount}
+                        max={availableBalance}
+                        placeholder={String(availableBalance)}
+                        value={withdrawAmountInput}
+                        onChange={(e) => setWithdrawAmountInput(e.target.value)}
+                        disabled={requestWithdrawMutation.isPending}
+                        required
+                      />
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span>
+                          Min: ৳{minimumWithdrawAmount} · Available:{" "}
+                          {formatBdt(availableBalance)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Earning History</CardTitle>
+                  <DialogFooter className="gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsWithdrawModalOpen(false)}
+                      disabled={requestWithdrawMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={
+                        requestWithdrawMutation.isPending ||
+                        !mobileNumber.trim()
+                      }
+                      className="min-w-[120px]"
+                    >
+                      {requestWithdrawMutation.isPending
+                        ? "Submitting..."
+                        : "Submit Request"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 5. Tabbed Referral & Payout Activity */}
+      <Card>
+        <Tabs defaultValue="referred" className="w-full">
+          <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg">Referral Activity</CardTitle>
               <CardDescription>
-                Track your referral earnings and commissions
+                Track referred signups, bonus credits unlocked by package
+                subscriptions, and payouts.
               </CardDescription>
-            </CardHeader>
-            <CardContent>
+            </div>
+
+            <TabsList className="grid w-full md:w-auto grid-cols-3 h-auto">
+              <TabsTrigger value="referred" className="text-xs sm:text-sm py-1.5">
+                Referred ({referredUsers.length})
+              </TabsTrigger>
+              <TabsTrigger value="earnings" className="text-xs sm:text-sm py-1.5">
+                Earnings ({earnedHistory.length})
+              </TabsTrigger>
+              <TabsTrigger value="withdrawals" className="text-xs sm:text-sm py-1.5">
+                Payouts ({withdrawHistory.length})
+              </TabsTrigger>
+            </TabsList>
+          </CardHeader>
+
+          <CardContent>
+            <TabsContent value="referred" className="mt-0">
               {referredUsers.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-lg border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-muted/40">
                         <TableHead>User</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Earnings</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead>Package Status</TableHead>
+                        <TableHead className="text-right">Bonus</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {referredUsers.map((user) => (
-                        <TableRow key={user.id}>
+                      {referredUsers.map((refUser) => (
+                        <TableRow key={refUser.id}>
                           <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{user.name}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {user.email}
+                            <div className="flex flex-col min-w-[160px]">
+                              <span className="font-medium text-foreground">
+                                {refUser.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {refUser.email}
                               </span>
                             </div>
                           </TableCell>
-
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(user.joinDate).toLocaleDateString()}
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDate(refUser.joinedAt)}
                           </TableCell>
-                          <TableCell className="text-right font-medium text-green-600">
-                            ৳{user.earnings.toFixed(2)}
+                          <TableCell className="whitespace-nowrap">
+                            {refUser.status === "subscribed" ? (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  Subscribed
+                                </Badge>
+                                {refUser.earnedAt && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Credited {formatDate(refUser.earnedAt)}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 border-amber-500/25 bg-amber-500/10"
+                              >
+                                <Clock className="h-3 w-3" />
+                                Pending Package
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-medium whitespace-nowrap">
+                            {refUser.status === "subscribed" ? (
+                              <span className="text-emerald-600 dark:text-emerald-400">
+                                +{formatBdt(refUser.earnedAmount)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                {formatBdt(0)}
+                              </span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -485,80 +776,113 @@ export function ReferralDashboard() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>
-                    No earnings yet. Start referring users to earn commissions!
+                <div className="text-center py-10 text-muted-foreground rounded-lg border border-dashed">
+                  <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium text-foreground">
+                    No referred users yet
+                  </p>
+                  <p className="text-sm mt-1 max-w-md mx-auto">
+                    Share your referral link above. You earn ৳
+                    {commissionPerReferral} BDT once a referred user subscribes
+                    to any package.
                   </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </TabsContent>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Withdrawal History</CardTitle>
-              <CardDescription>
-                Track your withdrawal requests and payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {withdrawHistory.length > 0 ? (
-                <div className="rounded-md border">
+            <TabsContent value="earnings" className="mt-0">
+              {earnedHistory.length > 0 ? (
+                <div className="rounded-lg border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>Referred Subscriber</TableHead>
+                        <TableHead>Credited Date</TableHead>
+                        <TableHead className="text-right">Bonus</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {earnedHistory.map((item, idx) => (
+                        <TableRow
+                          key={item._id || `${item.user._id}-${item.createdAt}-${idx}`}
+                        >
+                          <TableCell>
+                            <div className="flex flex-col min-w-[160px]">
+                              <span className="font-medium text-foreground">
+                                {item.user.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {item.user.email}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDate(item.createdAt)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                            +{formatBdt(item.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground rounded-lg border border-dashed">
+                  <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium text-foreground">
+                    No referral bonuses credited yet
+                  </p>
+                  <p className="text-sm mt-1 max-w-md mx-auto">
+                    Your ৳{commissionPerReferral} BDT bonus is credited
+                    automatically as soon as a referred user subscribes to any
+                    package.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="withdrawals" className="mt-0">
+              {withdrawHistory.length > 0 ? (
+                <div className="rounded-lg border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
                         <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Request Date</TableHead>
-                        <TableHead>Issued Date</TableHead>
+                        <TableHead>Requested</TableHead>
+                        <TableHead>Issued</TableHead>
                         <TableHead>Account</TableHead>
                         <TableHead className="text-right">TRX</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {withdrawHistory.map((withdrawal) => (
-                        <TableRow key={withdrawal.id}>
-                          <TableCell className="font-medium">
-                            ৳{withdrawal.amount.toFixed(2)}
+                      {withdrawHistory.map((withdrawal, idx) => (
+                        <TableRow
+                          key={
+                            withdrawal._id ||
+                            `${withdrawal.requestedAt}-${withdrawal.amount}-${idx}`
+                          }
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {formatBdt(withdrawal.amount)}
                           </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                withdrawal.status === "Complete"
-                                  ? "default"
-                                  : withdrawal.status === "Pending"
-                                    ? "secondary"
-                                    : "destructive"
-                              }
-                              className={`text-xs ${
-                                withdrawal.status === "Complete"
-                                  ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                  : withdrawal.status === "Pending"
-                                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
-                                    : "bg-red-100 text-red-800 hover:bg-red-100"
-                              }`}
-                            >
-                              {withdrawal.status}
-                            </Badge>
+                          <TableCell className="whitespace-nowrap">
+                            <WithdrawalStatusBadge status={withdrawal.status} />
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(
-                              withdrawal.requestDate,
-                            ).toLocaleDateString()}
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDate(
+                              withdrawal.requestedAt || withdrawal.createdAt
+                            )}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {withdrawal.completedDate
-                              ? new Date(
-                                  withdrawal.completedDate,
-                                ).toLocaleDateString()
-                              : "-"}
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDate(withdrawal.issuedAt)}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {withdrawal.account ? withdrawal.account : "-"}
+                          <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
+                            {withdrawal.withdrawAccount || "—"}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground text-right">
-                            {withdrawal.trx ? withdrawal.trx : "-"}
+                          <TableCell className="text-sm font-mono text-muted-foreground text-right whitespace-nowrap">
+                            {withdrawal.trx || "—"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -566,18 +890,21 @@ export function ReferralDashboard() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>
-                    No withdrawal requests yet. Request your first withdrawal
-                    above!
+                <div className="text-center py-10 text-muted-foreground rounded-lg border border-dashed">
+                  <Wallet className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium text-foreground">
+                    No withdrawal requests yet
+                  </p>
+                  <p className="text-sm mt-1 max-w-md mx-auto">
+                    Once your available balance reaches ৳{minimumWithdrawAmount}{" "}
+                    BDT, you can request a payout above.
                   </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
     </div>
   );
 }
