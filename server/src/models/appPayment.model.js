@@ -49,6 +49,17 @@ const paymentSchema = new mongoose.Schema(
       default: "Completed",
       index: true,
     },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PaymentTransaction",
+      default: null,
+      index: true,
+    },
+    paymentMethod: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     paymentDetails: {
       type: mongoose.Schema.Types.Mixed,
       required: true,

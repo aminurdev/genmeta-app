@@ -1,6 +1,7 @@
 import { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import {
   PaymentCreateResponse,
+  PaymentStatusData,
   PricingResponse,
   PromoCodeRes,
 } from "@/types/pricing";
@@ -18,6 +19,8 @@ type createPaymentParams = {
   type: string;
   promoCode?: string;
   paymentMethod?: string;
+  customerPhone?: string;
+  idempotencyKey?: string;
 };
 
 export const createPayment = async ({
@@ -25,16 +28,54 @@ export const createPayment = async ({
   type,
   promoCode,
   paymentMethod = "paystation",
+  customerPhone,
+  idempotencyKey,
 }: createPaymentParams): Promise<
   ApiResponse<PaymentCreateResponse> | ApiErrorResponse
 > => {
   try {
-    const result = await api.post("/payment/create-paystation-payment", {
-      planId,
-      type,
-      promoCode,
-      paymentMethod,
-    });
+    const result = await api.post(
+      "/payment/create-paystation-payment",
+      {
+        planId,
+        type,
+        promoCode,
+        paymentMethod,
+        ...(customerPhone ? { customerPhone } : {}),
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      },
+      idempotencyKey
+        ? {
+            headers: {
+              "Idempotency-Key": idempotencyKey,
+            },
+          }
+        : undefined
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    return (
+      err.response?.data ?? {
+        success: false,
+        statusCode: err.response?.status ?? 500,
+        message: err.message || "Unexpected error occurred",
+      }
+    );
+  }
+};
+
+export const getPaymentStatus = async (
+  invoiceNumber: string,
+  options?: { refresh?: boolean }
+): Promise<ApiResponse<{ transaction: PaymentStatusData }> | ApiErrorResponse> => {
+  try {
+    const result = await api.get(
+      `/payment/status/${encodeURIComponent(invoiceNumber)}`,
+      {
+        params: options?.refresh ? { refresh: "true" } : undefined,
+      }
+    );
     return result.data;
   } catch (error) {
     const err = error as AxiosApiError;

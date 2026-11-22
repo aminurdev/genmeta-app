@@ -13,6 +13,7 @@ import {
   CreditCard,
   Check,
   Tag,
+  Phone,
 } from "lucide-react";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import { Button } from "@/components/ui/button";
@@ -69,19 +70,35 @@ const paymentMethods: PaymentMethod[] = [
   },
 ];
 
+const roundBdt = (value: number): number =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
+
+const generateIdempotencyKey = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 export default function Cart({ planId }: { planId: string }) {
   const router = useRouter();
   const [plan, setPlan] = useState<PricingPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   // Plan selection states
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
 
-  // Payment method state
+  // Payment method & contact state
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState("paystation");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() =>
+    generateIdempotencyKey()
+  );
 
   // Promo code states
   const [promoCode, setPromoCode] = useState<string>("");
@@ -185,6 +202,7 @@ export default function Cart({ planId }: { planId: string }) {
     }
 
     setValidPromo(res.data);
+    setIdempotencyKey(generateIdempotencyKey());
     toast.success(
       `Promo code applied: ${promoResult.promoCode.discountPercent}% discount`,
     );
@@ -195,6 +213,7 @@ export default function Cart({ planId }: { planId: string }) {
     setPromoCode("");
     setValidPromo(null);
     setPromoError(null);
+    setIdempotencyKey(generateIdempotencyKey());
   };
 
   const handlePlanChange = (planId: string) => {
@@ -206,6 +225,7 @@ export default function Cart({ planId }: { planId: string }) {
       setValidPromo(null);
       setPromoCode("");
       setPromoError(null);
+      setIdempotencyKey(generateIdempotencyKey());
     }
   };
 
@@ -214,6 +234,17 @@ export default function Cart({ planId }: { planId: string }) {
     type: string,
     promoCode?: string,
   ) => {
+    if (isProcessing || isRedirecting) return;
+
+    const cleanedPhone = customerPhone.replace(/[\s\-()]/g, "").trim();
+    if (cleanedPhone && !/^(?:\+?88)?01[3-9]\d{8}$/.test(cleanedPhone)) {
+      setPhoneError(
+        "Please enter a valid Bangladeshi mobile number (e.g. 017XXXXXXXX)"
+      );
+      return;
+    }
+    setPhoneError(null);
+
     try {
       // Check if user is logged in
       const user = await getCurrentUser();
@@ -231,22 +262,24 @@ export default function Cart({ planId }: { planId: string }) {
         type,
         promoCode,
         paymentMethod: selectedPaymentMethod,
+        customerPhone: cleanedPhone || undefined,
+        idempotencyKey,
       });
-
-      console.log("Payment response:", data);
 
       if (!data.success) {
         throw new Error(data.message || "Failed to process payment");
       }
 
       if (data.data?.paymentUrl) {
-        console.log("Redirecting to payment gateway:", data.data.paymentUrl);
+        setIsRedirecting(true);
         window.location.href = data.data.paymentUrl;
+        return;
       } else {
         throw new Error("Payment URL not received from payment gateway");
       }
     } catch (error) {
       console.error("Error processing payment:", error);
+      setIdempotencyKey(generateIdempotencyKey());
       toast.error(
         error instanceof Error ? error.message : "Payment processing failed",
       );
@@ -299,23 +332,28 @@ export default function Cart({ planId }: { planId: string }) {
     );
   }
 
-  // Calculate the price with discounts
-  const priceAfterPlanDiscount = plan.discountPrice
-    ? plan.discountPrice
-    : plan.discountPercent > 0
-      ? Number.parseFloat(
-          calculateDiscountedPrice(plan.basePrice, plan.discountPercent),
-        )
-      : plan.basePrice;
+  // Calculate the price with discounts (matching authoritative server rounding)
+  const priceAfterPlanDiscount =
+    plan.discountPrice && plan.discountPrice > 0
+      ? roundBdt(plan.discountPrice)
+      : plan.discountPercent > 0
+        ? roundBdt(
+            Number.parseFloat(
+              calculateDiscountedPrice(plan.basePrice, plan.discountPercent)
+            )
+          )
+        : roundBdt(plan.basePrice);
 
-  const finalPrice = validPromo
-    ? Number.parseFloat(
-        calculateDiscountedPrice(
-          priceAfterPlanDiscount,
-          validPromo.promoCode.discountPercent,
-        ),
+  const promoDiscountAmount = validPromo
+    ? roundBdt(
+        (priceAfterPlanDiscount * validPromo.promoCode.discountPercent) / 100
       )
-    : priceAfterPlanDiscount;
+    : 0;
+
+  const finalPrice = Math.max(
+    1,
+    roundBdt(priceAfterPlanDiscount - promoDiscountAmount)
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -666,6 +704,42 @@ export default function Cart({ planId }: { planId: string }) {
 
                   <Separator />
 
+                  {/* Optional Mobile Phone */}
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="customerPhone"
+                      className="flex items-center gap-2 text-sm font-medium"
+                    >
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      Mobile Number{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (Optional)
+                      </span>
+                    </Label>
+                    <Input
+                      id="customerPhone"
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="017XXXXXXXX"
+                      value={customerPhone}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value);
+                        if (phoneError) setPhoneError(null);
+                      }}
+                      disabled={isProcessing || isRedirecting}
+                      aria-invalid={Boolean(phoneError)}
+                    />
+                    {phoneError ? (
+                      <p className="text-xs text-destructive">{phoneError}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Used by PayStation for transaction receipt notifications
+                      </p>
+                    )}
+                  </div>
+
+                  <Separator />
+
                   {/* Checkout Button */}
                   <Button
                     className="w-full h-12 font-medium"
@@ -678,13 +752,19 @@ export default function Cart({ planId }: { planId: string }) {
                     }
                     disabled={
                       isProcessing ||
+                      isRedirecting ||
                       !paymentMethods.find(
                         (m) => m.id === selectedPaymentMethod,
                       )?.available
                     }
                     size="lg"
                   >
-                    {isProcessing ? (
+                    {isRedirecting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redirecting to PayStation...
+                      </>
+                    ) : isProcessing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...

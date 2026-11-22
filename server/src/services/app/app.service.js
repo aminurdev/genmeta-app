@@ -1,11 +1,7 @@
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
-import { checkTransactionStatus } from "../paystation/paystation.service.js";
-import { AppPayment } from "../../models/appPayment.model.js";
 import { AppUser } from "../../models/appUser.model.js";
-import { AppPricing } from "../../models/appPricing.model.js";
-import planService from "../plan.service.js";
-import { PAYMENT_GATEWAYS } from "../../constants/index.js";
+import paymentService from "../payment/payment.service.js";
 
 // Structured Logger
 export const logger = {
@@ -32,101 +28,71 @@ export const fetchAppUserData = async (username) => {
 };
 
 export const redirectToPricing = (res, message, reason = "") => {
-  let redirectURL = `${config.cors_origin}/pricing?message=${encodeURIComponent(message)}`;
+  const base = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const params = new URLSearchParams({ message });
   if (reason) {
-    redirectURL += `&reason=${encodeURIComponent(reason)}`;
+    params.set("reason", reason);
   }
-  return res.redirect(redirectURL);
+  return res.redirect(`${base}/pricing?${params.toString()}`);
+};
+
+export const redirectToPaymentStatus = (res, paramsObj = {}) => {
+  const base = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(paramsObj)) {
+    if (v !== undefined && v !== null && v !== "") {
+      params.set(k, String(v));
+    }
+  }
+  return res.redirect(`${base}/payment-status?${params.toString()}`);
 };
 
 /**
- * Process Successful PayStation Payment
+ * Process PayStation Callback via authoritative verification and safe URLSearchParams redirect
  */
-export const processSuccessfulPaystationPayment = async (invoiceNumber, res) => {
-  let transactionDetails;
-
+export const processSuccessfulPaystationPayment = async (
+  invoiceNumber,
+  res,
+  gatewayHints = {}
+) => {
   try {
-    transactionDetails = await checkTransactionStatus(invoiceNumber);
-  } catch (error) {
-    logger.error("PayStation verification failed", { invoiceNumber, error: error.message });
-    return redirectToPricing(res, "Payment verification failed", error.message || "verification_error");
-  }
-
-  if (!transactionDetails || !transactionDetails.data) {
-    logger.error("Missing PayStation transaction data", { invoiceNumber });
-    return redirectToPricing(res, "Payment failed", "verification_failed");
-  }
-
-  const {
-    trxId,
-    trxStatus,
-    paymentAmount,
-    reference,
-  } = transactionDetails.data;
-
-  const isSuccess =
-    trxStatus?.toLowerCase() === "success" ||
-    trxStatus?.toLowerCase() === "successful";
-
-  if (!isSuccess) {
-    logger.warn("PayStation transaction unsuccessful", { invoiceNumber, trxStatus });
-    return redirectToPricing(res, `Payment ${trxStatus || "failed"}`, "payment_not_completed");
-  }
-
-  try {
-    const parts = (reference || "").split("-");
-    const userId = parts[0];
-    const planId = parts[1];
-    const promoCodeId = parts[2] || null;
-
-    const planDetails = await AppPricing.findById(planId);
-    if (!planDetails) {
-      logger.error("Plan not found for PayStation invoice", { planId, invoiceNumber });
-      return redirectToPricing(res, "Payment failed", "plan_not_found");
-    }
-
-    // Check if duplicate
-    const existingPayment = await AppPayment.findOne({
-      $or: [{ paymentID: invoiceNumber }, { trxID: trxId }],
-    });
-
-    if (existingPayment) {
-      return res.redirect(
-        `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}`
-      );
-    }
-
-    const payment = await AppPayment.create({
-      userId,
-      paymentID: invoiceNumber,
-      trxID: trxId,
-      amount: parseFloat(paymentAmount),
-      gateway: PAYMENT_GATEWAYS.PAYSTATION,
-      plan: {
-        id: planId,
-        name: planDetails.name,
-        type: planDetails.type,
-      },
-      paymentDetails: transactionDetails.data,
-      status: "Completed",
-    });
-
-    // 1. Update plan
-    await planService.updateUserPlan(userId, planId);
-
-    // 2. Referral rewards
-    await planService.processReferralReward(userId, { paymentId: payment._id });
-
-    // 3. Promo code redemption
-    if (promoCodeId) {
-      await planService.recordPromoCodeUsage(userId, promoCodeId, { paymentId: payment._id });
-    }
-
-    return res.redirect(
-      `${config.cors_origin}/payment-status?status=success&amount=${paymentAmount}&plan=${planDetails.name}&trxID=${trxId}&planType=${planDetails.type}&duration=${planDetails.planDuration || "N/A"}${planDetails.type === "credit" ? `&credit=${planDetails.credit || 0}` : ""}`
+    const result = await paymentService.verifyAndFulfillTransaction(
+      invoiceNumber,
+      {
+        source: "callback",
+        gatewayHints,
+      }
     );
+
+    if (result.outcome === "not_found") {
+      logger.warn("PayStation callback invoice not found", { invoiceNumber });
+      return redirectToPaymentStatus(res, {
+        invoice: invoiceNumber,
+        status: "failed",
+        message: "Payment record not found",
+      });
+    }
+
+    if (result.outcome === "completed") {
+      return redirectToPaymentStatus(res, {
+        invoice: invoiceNumber,
+        status: "completed",
+      });
+    }
+
+    return redirectToPaymentStatus(res, {
+      invoice: invoiceNumber,
+      status: result.outcome || "pending",
+    });
   } catch (error) {
-    logger.error("Error finalizing PayStation payment", { invoiceNumber, error: error.message });
-    return redirectToPricing(res, "Payment processing error", "processing_error");
+    logger.error("Error processing PayStation callback", {
+      invoiceNumber,
+      error: error.message,
+    });
+    return redirectToPaymentStatus(res, {
+      invoice: invoiceNumber,
+      status: "verification_error",
+      message: "Payment verification error",
+    });
   }
 };

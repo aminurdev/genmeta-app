@@ -97,6 +97,7 @@ app.use(
       "x-device-cpu",
       "x-app-version",
       "x-request-id",
+      "Idempotency-Key",
     ],
     exposedHeaders: ["Content-Disposition", "X-Request-Id"],
   })
@@ -130,7 +131,7 @@ app.use((req, res, next) => {
 
   // Exempt third-party payment callbacks/webhooks
   const reqPath = req.originalUrl || req.url || "";
-  if (/^\/api\/v1\/payment\/(webhook|ipn|paystation-callback|success|fail|cancel)/.test(reqPath)) {
+  if (/^\/api\/v1\/payment\/(webhook|ipn|paystation-ipn|paystation-callback|success|fail|cancel)/.test(reqPath)) {
     return next();
   }
 

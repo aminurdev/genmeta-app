@@ -233,3 +233,38 @@ export const requestWithdrawalSchema = z.object({
   amount: z.coerce.number().min(100, "Minimum withdrawal amount is 100"),
   withdrawAccount: z.string().min(3, "Withdrawal account details required"),
 });
+
+// === PAYMENT SCHEMAS ===
+export const createPaystationPaymentSchema = z.object({
+  planId: z
+    .string()
+    .trim()
+    .regex(/^[a-fA-F0-9]{24}$/, "Valid Plan ID is required"),
+  promoCode: z.string().trim().max(64).nullable().optional(),
+  customerPhone: z
+    .string()
+    .trim()
+    .max(20)
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const cleaned = val.replace(/[\s\-()]/g, "");
+        return /^(?:\+?88)?01[3-9]\d{8}$/.test(cleaned);
+      },
+      { message: "Please provide a valid Bangladeshi mobile number (e.g. 017XXXXXXXX)" }
+    )
+    .nullable()
+    .optional(),
+  idempotencyKey: z.string().trim().max(128).nullable().optional(),
+  type: z.string().trim().max(32).optional(),
+  paymentMethod: z.string().trim().max(32).optional(),
+});
+
+export const paymentInvoiceParamSchema = z.object({
+  invoiceNumber: z
+    .string()
+    .trim()
+    .min(4, "Valid invoice number is required")
+    .max(80, "Invoice number is too long")
+    .regex(/^[A-Za-z0-9_-]+$/, "Invalid invoice number format"),
+});

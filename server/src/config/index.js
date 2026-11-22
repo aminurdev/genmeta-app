@@ -6,6 +6,12 @@ dotenv.config({
   path: path.resolve(process.cwd(), ".env"),
 });
 
+const emptyToUndefined = (val) =>
+  typeof val === "string" && val.trim() === "" ? undefined : val;
+
+const optionalNumberEnv = (schema) =>
+  z.preprocess(emptyToUndefined, schema);
+
 const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z
@@ -45,10 +51,33 @@ const envSchema = z.object({
 
   RESEND_API_KEY: z.string().optional().default(""),
 
-  PAYSTATION_BASE_URL: z.string().optional().default("https://sandbox.paystation.com.bd"),
+  PAYSTATION_BASE_URL: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().default("https://sandbox.paystation.com.bd")
+  ),
   PAYSTATION_MERCHANT_ID: z.string().optional().default(""),
   PAYSTATION_PASSWORD: z.string().optional().default(""),
-  PAYSTATION_CALLBACK_URL: z.string().optional().default("http://localhost:5000/api/v1/payment/paystation-callback"),
+  PAYSTATION_CALLBACK_URL: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().default("http://localhost:5000/api/v1/payment/paystation-callback")
+  ),
+  PAYSTATION_PAY_WITH_CHARGE: optionalNumberEnv(
+    z.coerce.number().int().min(0).max(1).default(0)
+  ),
+  PAYSTATION_TIMEOUT_MS: optionalNumberEnv(
+    z.coerce.number().int().min(3000).max(60000).default(15000)
+  ),
+  PAYSTATION_PAYMENT_EXPIRY_MINUTES: optionalNumberEnv(
+    z.coerce.number().int().min(5).max(1440).default(30)
+  ),
+  PAYSTATION_DEFAULT_PHONE: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().default("01700000000")
+  ),
+  PAYSTATION_RECONCILE_CRON: z.preprocess(
+    emptyToUndefined,
+    z.string().trim().default("*/10 * * * *")
+  ),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -108,11 +137,34 @@ const config = {
   resend_api_key: rawEnv.RESEND_API_KEY || "",
 
   paystation: {
-    base_url: rawEnv.PAYSTATION_BASE_URL,
-    merchant_id: rawEnv.PAYSTATION_MERCHANT_ID,
-    password: rawEnv.PAYSTATION_PASSWORD,
-    callback_url: rawEnv.PAYSTATION_CALLBACK_URL,
+    base_url: String(rawEnv.PAYSTATION_BASE_URL || "https://sandbox.paystation.com.bd")
+      .trim()
+      .replace(/\/+$/, ""),
+    merchant_id: String(rawEnv.PAYSTATION_MERCHANT_ID || "").trim(),
+    password: String(rawEnv.PAYSTATION_PASSWORD || "").trim(),
+    callback_url: String(
+      rawEnv.PAYSTATION_CALLBACK_URL ||
+        "http://localhost:5000/api/v1/payment/paystation-callback"
+    ).trim(),
+    pay_with_charge: Number(rawEnv.PAYSTATION_PAY_WITH_CHARGE) === 1 ? 1 : 0,
+    timeout_ms: Number(rawEnv.PAYSTATION_TIMEOUT_MS) || 15000,
+    payment_expiry_minutes: Number(rawEnv.PAYSTATION_PAYMENT_EXPIRY_MINUTES) || 30,
+    default_phone: String(rawEnv.PAYSTATION_DEFAULT_PHONE || "01700000000").trim(),
+    reconcile_cron: String(rawEnv.PAYSTATION_RECONCILE_CRON || "*/10 * * * *").trim(),
   },
 };
+
+if (config.isProduction) {
+  if (!config.paystation.merchant_id || !config.paystation.password) {
+    console.warn(
+      "⚠ PayStation merchant credentials are not configured in production."
+    );
+  }
+  if (config.paystation.base_url.includes("sandbox.paystation.com.bd")) {
+    console.warn(
+      "⚠ PAYSTATION_BASE_URL is pointing to sandbox in production mode."
+    );
+  }
+}
 
 export default config;

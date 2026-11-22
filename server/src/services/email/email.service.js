@@ -138,3 +138,118 @@ export const sendPasswordResetOTP = async (email, name, otp) => {
 
 // Backwards-compatible alias
 export const sendOTPEmail = sendPasswordResetOTP;
+
+export const sendPaymentConfirmationEmail = async ({
+  email,
+  name,
+  invoiceNumber,
+  trxId,
+  amount,
+  currency = "BDT",
+  planName,
+  planType,
+  planDuration,
+  credit,
+  paymentMethod,
+  paidAt,
+}) => {
+  if (!email) return;
+
+  if (!resend) {
+    console.log(
+      `[EmailService] Resend not configured. Payment confirmation for ${email}: invoice=${invoiceNumber}, trxId=${trxId}, amount=${amount} ${currency}`
+    );
+    return;
+  }
+
+  const safeName = escapeHtml(name || "there");
+  const safeInvoice = escapeHtml(invoiceNumber || "");
+  const safeTrxId = escapeHtml(trxId || "");
+  const safePlanName = escapeHtml(planName || "GenMeta Plan");
+  const safePlanType = escapeHtml(
+    planType === "credit" ? "Credit Plan" : "Subscription Plan"
+  );
+  const safeMethod = escapeHtml(paymentMethod || "PayStation");
+  const formattedAmount =
+    currency === "BDT"
+      ? `৳${Number(amount || 0).toLocaleString("en-US")}`
+      : `${escapeHtml(currency)} ${Number(amount || 0).toLocaleString("en-US")}`;
+  const formattedDate = paidAt
+    ? new Date(paidAt).toUTCString()
+    : new Date().toUTCString();
+  const dashboardUrl = escapeHtml(
+    `${String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "")}/dashboard`
+  );
+
+  const extraPlanRows = [
+    planDuration
+      ? `<tr><td style="padding: 8px 0; color: #666;">Duration</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(String(planDuration))} days</td></tr>`
+      : "",
+    planType === "credit" && credit
+      ? `<tr><td style="padding: 8px 0; color: #666;">Credits Added</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(Number(credit).toLocaleString("en-US"))} credits</td></tr>`
+      : "",
+  ].join("");
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>Payment Receipt - GenMeta</title></head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 10px;">
+      ${emailHeader}
+      <div style="padding: 20px; background-color: #ffffff; border: 1px solid #eaeaea; border-radius: 8px;">
+        <h2 style="color: #16a34a; margin-top: 0; font-size: 20px;">Payment Confirmed</h2>
+        <p>Assalamu a'laikum, ${safeName},</p>
+        <p>Thank you for your purchase! Your GenMeta plan has been activated and is ready to use.</p>
+
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Amount Paid</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 16px; color: #16a34a;">${formattedAmount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Plan</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600;">${safePlanName} (${safePlanType})</td>
+            </tr>
+            ${extraPlanRows}
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Payment Method</td>
+              <td style="padding: 8px 0; text-align: right;">${safeMethod}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Invoice Number</td>
+              <td style="padding: 8px 0; text-align: right; font-family: monospace;">${safeInvoice}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Transaction ID</td>
+              <td style="padding: 8px 0; text-align: right; font-family: monospace;">${safeTrxId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #666;">Date</td>
+              <td style="padding: 8px 0; text-align: right;">${escapeHtml(formattedDate)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${dashboardUrl}" style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; font-weight: bold; padding: 12px 28px; border-radius: 6px; font-size: 15px;">
+            Open Dashboard
+          </a>
+        </div>
+      </div>
+      ${emailFooter}
+    </body>
+    </html>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "GenMeta Billing <billing@genmeta.app>",
+      to: email,
+      subject: `Payment Receipt (${invoiceNumber}) - GenMeta`,
+      html: emailHtml,
+    });
+  } catch (error) {
+    console.error("Payment confirmation email send failed:", error.message);
+  }
+};

@@ -19,9 +19,11 @@ class PlanService {
    * @param {string|mongoose.Types.ObjectId} userId
    * @param {string|mongoose.Types.ObjectId} planId
    * @param {mongoose.ClientSession} [session] Optional session for transaction
+   * @param {Object} [options={}] Optional flags { allowInactivePlan, planSnapshot }
    * @returns {Promise<boolean>}
    */
-  async updateUserPlan(userId, planId, session = null) {
+  async updateUserPlan(userId, planId, session = null, options = {}) {
+    const { allowInactivePlan = false, planSnapshot = null } = options || {};
     try {
       const user = await User.findById(userId).session(session);
       if (!user) {
@@ -29,8 +31,19 @@ class PlanService {
         return false;
       }
 
-      const selectedPlan = await AppPricing.findById(planId).session(session);
-      if (!selectedPlan || !selectedPlan.isActive) {
+      let selectedPlan = await AppPricing.findById(planId).session(session);
+      if (!selectedPlan && planSnapshot) {
+        selectedPlan = {
+          _id: planSnapshot.id || planId,
+          name: planSnapshot.name,
+          type: planSnapshot.type,
+          planDuration: planSnapshot.planDuration ?? null,
+          credit: planSnapshot.credit ?? null,
+          isActive: true,
+        };
+      }
+
+      if (!selectedPlan || (!selectedPlan.isActive && !allowInactivePlan)) {
         console.error("[PlanService] Selected plan not found or inactive:", planId);
         return false;
       }
@@ -180,27 +193,41 @@ class PlanService {
 
       const rewardAmount = 50; // standard commission
 
-      // 1. Atomic update to Referral document
-      referralDoc.availableBalance += rewardAmount;
-      if (!referralDoc.earnedHistory) referralDoc.earnedHistory = [];
-      referralDoc.earnedHistory.push({
-        user: payingUser._id,
-        amount: rewardAmount,
-        createdAt: new Date(),
-      });
-      await referralDoc.save({ session });
+      // 1. Insert into normalized ledger FIRST so concurrent calls hit unique index (code 11000)
+      try {
+        await ReferralEarning.create(
+          [
+            {
+              referralId: referralDoc._id,
+              referrerId: referralDoc.referrer,
+              referredUserId: payingUser._id,
+              amount: rewardAmount,
+              paymentId: meta.paymentId || null,
+            },
+          ],
+          { session }
+        );
+      } catch (createErr) {
+        if (createErr?.code === 11000) {
+          console.log(`[PlanService] Referral reward already granted for user ${payingUser._id}`);
+          return;
+        }
+        throw createErr;
+      }
 
-      // 2. Insert into normalized ledger
-      await ReferralEarning.create(
-        [
-          {
-            referralId: referralDoc._id,
-            referrerId: referralDoc.referrer,
-            referredUserId: payingUser._id,
-            amount: rewardAmount,
-            paymentId: meta.paymentId || null,
+      // 2. Atomically credit Referral balance only after ledger insert succeeds
+      await Referral.updateOne(
+        { _id: referralDoc._id },
+        {
+          $inc: { availableBalance: rewardAmount },
+          $push: {
+            earnedHistory: {
+              user: payingUser._id,
+              amount: rewardAmount,
+              createdAt: new Date(),
+            },
           },
-        ],
+        },
         { session }
       );
 

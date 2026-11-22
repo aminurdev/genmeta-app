@@ -52,3 +52,27 @@ export const refreshLimiter = createRateLimiter({
   max: 60,
   message: "Too many token refresh requests. Please slow down.",
 });
+
+export const paymentInitiateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: "Too many payment initiation requests. Please wait a few minutes before retrying.",
+});
+
+export const paymentCallbackLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Too many payment callback requests.",
+});
+
+export const paymentWebhookLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  message: "Too many webhook requests.",
+});
+
+export const paymentStatusLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: "Too many payment status checks. Please slow down.",
+});

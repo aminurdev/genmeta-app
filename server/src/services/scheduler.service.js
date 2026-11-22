@@ -1,7 +1,9 @@
 import cron from "node-cron";
 import { CronExpressionParser } from "cron-parser";
+import config from "../config/index.js";
 import { AppUser } from "../models/appUser.model.js";
 import backupService from "./backup.service.js";
+import paymentService from "./payment/payment.service.js";
 
 /**
  * Scheduler Service for Automatic Daily Maintenance and Backups
@@ -18,8 +20,11 @@ class SchedulerService {
     this.lastRun = null;
     this.cronExpression = "0 0 * * *"; // Daily at midnight UTC
     this.backupCronExpression = "0 12 * * 5"; // Every Friday at 12:00 PM UTC
+    this.paymentReconcileCronExpression =
+      config.paystation?.reconcile_cron || "*/10 * * * *";
     this.dailyMaintenanceJob = null;
     this.weeklyBackupJob = null;
+    this.paymentReconciliationJob = null;
     this.stats = {
       totalRuns: 0,
       successfulRuns: 0,
@@ -32,6 +37,13 @@ class SchedulerService {
       failedBackups: 0,
       lastBackup: null,
       lastBackupResult: null,
+    };
+    this.paymentReconciliationStats = {
+      totalRuns: 0,
+      successfulRuns: 0,
+      failedRuns: 0,
+      lastRun: null,
+      lastResult: null,
     };
   }
 
@@ -66,6 +78,17 @@ class SchedulerService {
       }
     );
 
+    this.paymentReconciliationJob = cron.schedule(
+      this.paymentReconcileCronExpression,
+      async () => {
+        await this.runPaymentReconciliation();
+      },
+      {
+        scheduled: true,
+        timezone: "UTC",
+      }
+    );
+
     this.isRunning = true;
     this.checkAndRunIfNeeded();
   }
@@ -80,6 +103,10 @@ class SchedulerService {
 
     if (this.weeklyBackupJob) {
       this.weeklyBackupJob.stop();
+    }
+
+    if (this.paymentReconciliationJob) {
+      this.paymentReconciliationJob.stop();
     }
 
     this.isRunning = false;
@@ -165,6 +192,35 @@ class SchedulerService {
   }
 
   /**
+   * Reconcile pending PayStation transactions
+   */
+  async runPaymentReconciliation() {
+    const startTime = new Date();
+    try {
+      this.paymentReconciliationStats.totalRuns++;
+      const result = await paymentService.reconcilePendingTransactions();
+      this.paymentReconciliationStats.successfulRuns++;
+      this.paymentReconciliationStats.lastRun = startTime;
+      this.paymentReconciliationStats.lastResult = result;
+      if (result.completed > 0 || result.errors > 0) {
+        console.log("✓ PayStation reconciliation sweep:", result);
+      }
+      return result;
+    } catch (error) {
+      this.paymentReconciliationStats.failedRuns++;
+      const errorResult = {
+        success: false,
+        error: error.message,
+        timestamp: startTime.toISOString(),
+      };
+      this.paymentReconciliationStats.lastRun = startTime;
+      this.paymentReconciliationStats.lastResult = errorResult;
+      console.error("✗ PayStation reconciliation error:", error.message);
+      return errorResult;
+    }
+  }
+
+  /**
    * Check if maintenance has run today, if not run it
    */
   async checkAndRunIfNeeded() {
@@ -184,6 +240,7 @@ class SchedulerService {
   getStatus() {
     let nextRun = null;
     let nextBackup = null;
+    let nextPaymentReconcile = null;
 
     if (this.isRunning && this.cronExpression) {
       try {
@@ -207,6 +264,18 @@ class SchedulerService {
       }
     }
 
+    if (this.isRunning && this.paymentReconcileCronExpression) {
+      try {
+        const reconcileInterval = CronExpressionParser.parse(
+          this.paymentReconcileCronExpression,
+          { tz: "UTC" }
+        );
+        nextPaymentReconcile = reconcileInterval.next().toISOString();
+      } catch (error) {
+        console.error("Error calculating next reconciliation time:", error);
+      }
+    }
+
     return {
       isRunning: this.isRunning,
       maintenance: {
@@ -220,6 +289,12 @@ class SchedulerService {
         nextBackup: nextBackup,
         cronExpression: this.backupCronExpression || "0 12 * * 5",
         stats: this.backupStats,
+      },
+      paymentReconciliation: {
+        lastRun: this.paymentReconciliationStats.lastRun,
+        nextRun: nextPaymentReconcile,
+        cronExpression: this.paymentReconcileCronExpression || "*/10 * * * *",
+        stats: this.paymentReconciliationStats,
       },
       timezone: "UTC",
     };

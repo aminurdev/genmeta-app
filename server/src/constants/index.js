@@ -22,6 +22,18 @@ export const PAYMENT_GATEWAYS = {
   MANUAL: "manual",
 };
 
+export const PAYMENT_STATUS = {
+  INITIATED: "initiated",
+  PENDING: "pending",
+  PROCESSING: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELED: "canceled",
+  EXPIRED: "expired",
+  AMOUNT_MISMATCH: "amount_mismatch",
+  REFUNDED: "refunded",
+};
+
 export const PROMO_APPLIES_TO = {
   SUBSCRIPTION: "subscription",
   CREDIT: "credit",

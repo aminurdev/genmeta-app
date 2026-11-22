@@ -34,7 +34,11 @@ router.get(
   authenticateAndVerifyAdmin,
   getPaymentsHistory
 );
-router.get("/paymentHistory/download", downloadPaymentsHistory);
+router.get(
+  "/paymentHistory/download",
+  authenticateAndVerifyAdmin,
+  downloadPaymentsHistory
+);
 
 router.get("/referral", authenticateAndVerifyAdmin, getAllReferrals);
 router.get(
