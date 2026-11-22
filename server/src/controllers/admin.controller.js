@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
+import { AppPricing } from "../models/appPricing.model.js";
 import { ApiUsageLog } from "../models/apiUsageLog.model.js";
 import { User } from "../models/user.model.js";
 import { Session } from "../models/session.model.js";
@@ -21,6 +22,37 @@ function calcGrowthPercentage(current, previous) {
   return current > 0 ? 100 : 0;
 }
 
+async function reconcileExpiredPaidAppUsers(now = new Date()) {
+  const stalePaidUsers = await AppUser.find({
+    isActive: true,
+    status: "active",
+    $or: [
+      { "plan.type": PLAN_TYPES.SUBSCRIPTION, expiresAt: { $lte: now } },
+      { "plan.type": PLAN_TYPES.CREDIT, expiresAt: { $lte: now } },
+      { "plan.type": PLAN_TYPES.CREDIT, credit: { $lte: 0 } },
+    ],
+  });
+
+  if (stalePaidUsers.length === 0) {
+    return 0;
+  }
+
+  await Promise.all(
+    stalePaidUsers.map(async (doc) => {
+      const reason =
+        doc.plan?.type === PLAN_TYPES.SUBSCRIPTION
+          ? "subscription_expired_refresh"
+          : doc.expiresAt && now >= doc.expiresAt
+          ? "credit_plan_expired_refresh"
+          : "zero_credit_refresh";
+      doc.downgradeToPlan(PLAN_TYPES.FREE, reason);
+      await doc.save();
+    })
+  );
+
+  return stalePaidUsers.length;
+}
+
 export const getAdminDashboardStats = asyncHandler(async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
@@ -29,34 +61,9 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
     req.query.refresh === "true" || req.query.refresh === "1";
 
   // On explicit refresh, reconcile active paid accounts whose plan expired or ran out of credits
-  let syncedExpiredPlans = 0;
-  if (isExplicitRefresh) {
-    const stalePaidUsers = await AppUser.find({
-      isActive: true,
-      status: "active",
-      $or: [
-        { "plan.type": PLAN_TYPES.SUBSCRIPTION, expiresAt: { $lte: now } },
-        { "plan.type": PLAN_TYPES.CREDIT, expiresAt: { $lte: now } },
-        { "plan.type": PLAN_TYPES.CREDIT, credit: { $lte: 0 } },
-      ],
-    });
-
-    if (stalePaidUsers.length > 0) {
-      await Promise.all(
-        stalePaidUsers.map(async (doc) => {
-          const reason =
-            doc.plan?.type === PLAN_TYPES.SUBSCRIPTION
-              ? "subscription_expired_refresh"
-              : doc.expiresAt && now >= doc.expiresAt
-              ? "credit_plan_expired_refresh"
-              : "zero_credit_refresh";
-          doc.downgradeToPlan(PLAN_TYPES.FREE, reason);
-          await doc.save();
-        })
-      );
-      syncedExpiredPlans = stalePaidUsers.length;
-    }
-  }
+  const syncedExpiredPlans = isExplicitRefresh
+    ? await reconcileExpiredPaidAppUsers(now)
+    : 0;
 
   const todayStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
@@ -1015,86 +1022,112 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = "", role, status, plan } = req.query;
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
-  const pageNum = Math.max(1, parseInt(page, 10));
-  const limitNum = Math.max(1, parseInt(limit, 10));
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    role,
+    status,
+    plan,
+    verified,
+  } = req.query;
+
+  const now = new Date();
+  const isExplicitRefresh =
+    req.query.refresh === "true" || req.query.refresh === "1";
+
+  const syncedExpiredPlans = isExplicitRefresh
+    ? await reconcileExpiredPaidAppUsers(now)
+    : 0;
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
 
-  const filter = {};
+  const andConditions = [];
 
-  if (role) {
-    filter.role = role;
+  if (role && role !== "all") {
+    andConditions.push({ role });
   }
 
-  // If filtering by plan, status, or searching by AppUser key/username
-  const appUserQuery = {};
-  let hasAppUserConstraint = false;
-
-  if (plan && plan !== "all") {
-    appUserQuery["plan.type"] = plan;
-    hasAppUserConstraint = true;
+  if (verified === "verified") {
+    andConditions.push({ isVerified: true });
+  } else if (verified === "unverified") {
+    andConditions.push({ isVerified: false });
   }
 
-  if (status === "active") {
-    appUserQuery.status = "active";
-  } else if (status === "disabled" || status === "suspended") {
-    appUserQuery.status = "suspended";
-    hasAppUserConstraint = true;
-  }
-
-  if (search) {
+  const trimmedSearch = String(search || "").trim();
+  if (trimmedSearch) {
     const matchingAppUsers = await AppUser.find({
       $or: [
-        { username: { $regex: search, $options: "i" } },
-        { key: { $regex: search, $options: "i" } },
+        { username: { $regex: trimmedSearch, $options: "i" } },
+        { key: { $regex: trimmedSearch, $options: "i" } },
       ],
     })
       .select("userId")
       .lean();
     const matchedIds = matchingAppUsers.map((a) => a.userId);
 
-    filter.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
-      ...(matchedIds.length > 0 ? [{ _id: { $in: matchedIds } }] : []),
-    ];
+    andConditions.push({
+      $or: [
+        { name: { $regex: trimmedSearch, $options: "i" } },
+        { email: { $regex: trimmedSearch, $options: "i" } },
+        ...(matchedIds.length > 0 ? [{ _id: { $in: matchedIds } }] : []),
+      ],
+    });
   }
 
-  if (hasAppUserConstraint) {
-    const constrainedAppUsers = await AppUser.find(appUserQuery).select("userId").lean();
-    const constrainedUserIds = constrainedAppUsers.map((a) => a.userId);
-    if (plan === "free" && (!status || status === "active")) {
-      // Include users who don't have a paid AppUser record yet
-      const nonFreeUsers = await AppUser.find({
-        $or: [
-          { "plan.type": { $ne: "free" } },
-          ...(status === "active" ? [{ status: "suspended" }] : []),
-        ],
+  if (plan && plan !== "all") {
+    if (plan === PLAN_TYPES.FREE) {
+      const paidAppUsers = await AppUser.find({
+        "plan.type": { $in: [PLAN_TYPES.CREDIT, PLAN_TYPES.SUBSCRIPTION] },
       })
         .select("userId")
         .lean();
-      filter._id = { $nin: nonFreeUsers.map((a) => a.userId) };
-    } else if (status === "suspended" && (!plan || plan === "all")) {
-      filter.$and = [
-        ...(filter.$and || []),
-        {
-          $or: [
-            { isDisabled: true },
-            { _id: { $in: constrainedUserIds } },
-          ],
-        },
-      ];
+      const paidUserIds = paidAppUsers.map((a) => a.userId);
+      if (paidUserIds.length > 0) {
+        andConditions.push({ _id: { $nin: paidUserIds } });
+      }
     } else {
-      filter._id = { $in: constrainedUserIds };
-    }
-  } else if (status === "active") {
-    const suspendedAppUsers = await AppUser.find({ status: "suspended" }).select("userId").lean();
-    filter.isDisabled = false;
-    if (suspendedAppUsers.length > 0) {
-      filter._id = { $nin: suspendedAppUsers.map((a) => a.userId) };
+      const planAppUsers = await AppUser.find({ "plan.type": plan })
+        .select("userId")
+        .lean();
+      andConditions.push({
+        _id: { $in: planAppUsers.map((a) => a.userId) },
+      });
     }
   }
+
+  if (status === "active") {
+    const suspendedAppUsers = await AppUser.find({
+      $or: [{ status: "suspended" }, { isActive: false }],
+    })
+      .select("userId")
+      .lean();
+    andConditions.push({ isDisabled: false });
+    if (suspendedAppUsers.length > 0) {
+      andConditions.push({
+        _id: { $nin: suspendedAppUsers.map((a) => a.userId) },
+      });
+    }
+  } else if (status === "disabled" || status === "suspended") {
+    const suspendedAppUsers = await AppUser.find({
+      $or: [{ status: "suspended" }, { isActive: false }],
+    })
+      .select("userId")
+      .lean();
+    const suspendedIds = suspendedAppUsers.map((a) => a.userId);
+    andConditions.push({
+      $or: [
+        { isDisabled: true },
+        ...(suspendedIds.length > 0 ? [{ _id: { $in: suspendedIds } }] : []),
+      ],
+    });
+  }
+
+  const filter = andConditions.length > 0 ? { $and: andConditions } : {};
 
   const [users, total] = await Promise.all([
     User.find(filter)
@@ -1110,136 +1143,425 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   const appUsers = await AppUser.find({ userId: { $in: userIds } }).lean();
   const appUserMap = new Map(appUsers.map((k) => [k.userId.toString(), k]));
 
+  // Batch resolve plan names from AppPricing where plan.name is missing
+  const planIdsToResolve = [
+    ...new Set(
+      appUsers
+        .map((a) => a.plan?.id)
+        .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
+    ),
+  ];
+  const pricingDocs =
+    planIdsToResolve.length > 0
+      ? await AppPricing.find({ _id: { $in: planIdsToResolve } })
+          .select("name")
+          .lean()
+      : [];
+  const pricingNameMap = new Map(
+    pricingDocs.map((p) => [p._id.toString(), p.name])
+  );
+
   const enrichedUsers = users.map((u) => {
     const appUserDoc = appUserMap.get(u._id.toString());
+    const planType = appUserDoc?.plan?.type || PLAN_TYPES.FREE;
+    const planId = appUserDoc?.plan?.id || null;
+    const resolvedPlanName =
+      appUserDoc?.plan?.name ||
+      (planId && pricingNameMap.get(planId.toString())) ||
+      (planType === PLAN_TYPES.SUBSCRIPTION
+        ? "Subscription"
+        : planType === PLAN_TYPES.CREDIT
+        ? "Credit Pack"
+        : "Free Tier");
+
+    const devicesArr = Array.isArray(appUserDoc?.devices) ? appUserDoc.devices : [];
+    const allowedDevicesArr = Array.isArray(appUserDoc?.allowedDevices)
+      ? appUserDoc.allowedDevices
+      : [];
+    const devicesCount = Math.max(devicesArr.length, allowedDevicesArr.length);
+
+    const isPaidPlan =
+      planType === PLAN_TYPES.SUBSCRIPTION || planType === PLAN_TYPES.CREDIT;
+    const isExpired = Boolean(
+      isPaidPlan &&
+        ((appUserDoc?.expiresAt && new Date(appUserDoc.expiresAt) <= now) ||
+          (planType === PLAN_TYPES.CREDIT && (appUserDoc?.credit ?? 0) <= 0))
+    );
+
+    const effectiveStatus =
+      appUserDoc?.status === "suspended" ||
+      appUserDoc?.isActive === false ||
+      u.isDisabled
+        ? "suspended"
+        : "active";
+
     return {
       ...u,
+      userId: u._id.toString(),
+      appUserId: appUserDoc?._id?.toString() || null,
+      hasAppUser: Boolean(appUserDoc),
       username: appUserDoc?.username || u.email,
       key: appUserDoc?.key || null,
-      plan: appUserDoc?.plan || { type: "free", name: "Free" },
+      plan: {
+        type: planType,
+        id: planId,
+        name: resolvedPlanName,
+      },
       credit:
+        planType === PLAN_TYPES.SUBSCRIPTION ||
         appUserDoc?.credit === Infinity
           ? null
           : appUserDoc?.credit ?? 5,
-      status: appUserDoc?.status || (u.isDisabled ? "suspended" : "active"),
-      allowedDevices: appUserDoc?.allowedDevices || [],
-      devices: appUserDoc?.devices || [],
+      isActive: appUserDoc ? Boolean(appUserDoc.isActive) : !u.isDisabled,
+      status: effectiveStatus,
+      suspendedAt: appUserDoc?.suspendedAt || null,
+      allowedDevices: allowedDevicesArr,
+      devices: devicesArr,
+      devicesCount,
       maxDevices: appUserDoc?.maxDevices || 2,
       totalProcess: appUserDoc?.totalProcess || 0,
+      totalFailedProcess: appUserDoc?.totalFailedProcess || 0,
       expiresAt: appUserDoc?.expiresAt || null,
+      isExpired,
+      appCreatedAt: appUserDoc?.createdAt || null,
     };
   });
+
+  const totalPages = Math.max(1, Math.ceil(total / limitNum));
 
   return new ApiResponse(200, true, "Users retrieved successfully", {
     users: enrichedUsers,
     total,
-    totalPages: Math.ceil(total / limitNum),
+    currentPage: pageNum,
+    totalPages,
     page: pageNum,
     limit: limitNum,
     pagination: {
       total,
       page: pageNum,
       limit: limitNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages,
+    },
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+      syncedExpiredPlans,
     },
   }).send(res);
 });
 
 export const getUserStats = asyncHandler(async (req, res) => {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
-  const [userCounts, appUserCounts, dailyNewUsers, planDistribution, roleStats] = await Promise.all([
-    User.aggregate([
-      {
-        $facet: {
-          totals: [
-            {
-              $group: {
-                _id: null,
-                totalUsers: { $sum: 1 },
-                activeUsers: { $sum: { $cond: [{ $eq: ["$isDisabled", false] }, 1, 0] } },
-                suspendedUsers: { $sum: { $cond: [{ $eq: ["$isDisabled", true] }, 1, 0] } },
-                verifiedUsers: { $sum: { $cond: ["$isVerified", 1, 0] } },
-                newUsers24h: { $sum: { $cond: [{ $gte: ["$createdAt", yesterday] }, 1, 0] } },
+  const now = new Date();
+  const isExplicitRefresh =
+    req.query.refresh === "true" || req.query.refresh === "1";
+
+  const syncedExpiredPlans = isExplicitRefresh
+    ? await reconcileExpiredPaidAppUsers(now)
+    : 0;
+
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const thisMonthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const sevenDaysStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6)
+  );
+
+  const last7DateKeys = Array.from({ length: 7 }, (_, i) =>
+    toUtcDateKey(
+      new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (6 - i))
+      )
+    )
+  );
+
+  const isActiveAppUserExpr = {
+    $and: [{ $eq: ["$isActive", true] }, { $eq: ["$status", "active"] }],
+  };
+  const hasExpiredDateExpr = {
+    $and: [
+      { $eq: [{ $type: "$expiresAt" }, "date"] },
+      { $lte: ["$expiresAt", now] },
+    ],
+  };
+  const isNotExpiredExpr = {
+    $or: [
+      { $ne: [{ $type: "$expiresAt" }, "date"] },
+      { $gt: ["$expiresAt", now] },
+    ],
+  };
+
+  const [userCounts, appUserCounts, dailyNewUsersRaw, roleStats] =
+    await Promise.all([
+      User.aggregate([
+        {
+          $facet: {
+            totals: [
+              {
+                $group: {
+                  _id: null,
+                  totalUsers: { $sum: 1 },
+                  activeUsers: {
+                    $sum: { $cond: [{ $eq: ["$isDisabled", false] }, 1, 0] },
+                  },
+                  suspendedUsers: {
+                    $sum: { $cond: [{ $eq: ["$isDisabled", true] }, 1, 0] },
+                  },
+                  verifiedUsers: {
+                    $sum: { $cond: ["$isVerified", 1, 0] },
+                  },
+                  unverifiedUsers: {
+                    $sum: { $cond: ["$isVerified", 0, 1] },
+                  },
+                  newUsers24h: {
+                    $sum: { $cond: [{ $gte: ["$createdAt", yesterday] }, 1, 0] },
+                  },
+                  newUsers7d: {
+                    $sum: {
+                      $cond: [{ $gte: ["$createdAt", sevenDaysStart] }, 1, 0],
+                    },
+                  },
+                  newUsersThisMonth: {
+                    $sum: {
+                      $cond: [{ $gte: ["$createdAt", thisMonthStart] }, 1, 0],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+      AppUser.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalAppUsers: { $sum: 1 },
+            activeAppUsers: {
+              $sum: { $cond: [isActiveAppUserExpr, 1, 0] },
+            },
+            suspendedAppUsers: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$status", "suspended"] },
+                      { $eq: ["$isActive", false] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
               },
             },
-          ],
+            subscriptionCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      isActiveAppUserExpr,
+                      { $eq: ["$plan.type", PLAN_TYPES.SUBSCRIPTION] },
+                      isNotExpiredExpr,
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            creditCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      isActiveAppUserExpr,
+                      { $eq: ["$plan.type", PLAN_TYPES.CREDIT] },
+                      isNotExpiredExpr,
+                      { $gt: ["$credit", 0] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            freeCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      isActiveAppUserExpr,
+                      { $eq: ["$plan.type", PLAN_TYPES.FREE] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            expiredPendingDowngrade: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      isActiveAppUserExpr,
+                      {
+                        $or: [
+                          {
+                            $and: [
+                              { $eq: ["$plan.type", PLAN_TYPES.SUBSCRIPTION] },
+                              hasExpiredDateExpr,
+                            ],
+                          },
+                          {
+                            $and: [
+                              { $eq: ["$plan.type", PLAN_TYPES.CREDIT] },
+                              {
+                                $or: [
+                                  hasExpiredDateExpr,
+                                  { $lte: ["$credit", 0] },
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            totalDevices: {
+              $sum: {
+                $max: [
+                  { $cond: [{ $isArray: "$devices" }, { $size: "$devices" }, 0] },
+                  {
+                    $cond: [
+                      { $isArray: "$allowedDevices" },
+                      { $size: "$allowedDevices" },
+                      0,
+                    ],
+                  },
+                ],
+              },
+            },
+            totalProcesses: { $sum: { $ifNull: ["$totalProcess", 0] } },
+            totalFailedProcesses: {
+              $sum: { $ifNull: ["$totalFailedProcess", 0] },
+            },
+          },
         },
-      },
-    ]),
-    AppUser.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalAppUsers: { $sum: 1 },
-          totalProcesses: { $sum: "$totalProcess" },
+      ]),
+      User.aggregate([
+        { $match: { createdAt: { $gte: sevenDaysStart } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            count: { $sum: 1 },
+          },
         },
-      },
-    ]),
-    User.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          count: { $sum: 1 },
+      ]),
+      User.aggregate([
+        {
+          $group: {
+            _id: "$role",
+            count: { $sum: 1 },
+          },
         },
-      },
-      { $sort: { _id: -1 } },
-      { $project: { _id: 0, date: "$_id", count: 1 } },
-    ]),
-    AppUser.aggregate([
-      {
-        $group: {
-          _id: { $ifNull: ["$plan.type", "free"] },
-          count: { $sum: 1 },
-        },
-      },
-    ]),
-    User.aggregate([
-      {
-        $group: {
-          _id: "$role",
-          count: { $sum: 1 },
-        },
-      },
-    ]),
-  ]);
+      ]),
+    ]);
 
-  const u = userCounts[0]?.totals[0] || {
+  const u = userCounts[0]?.totals?.[0] || {
     totalUsers: 0,
     activeUsers: 0,
     suspendedUsers: 0,
     verifiedUsers: 0,
+    unverifiedUsers: 0,
     newUsers24h: 0,
+    newUsers7d: 0,
+    newUsersThisMonth: 0,
   };
 
-  const a = appUserCounts[0] || { totalAppUsers: 0, totalProcesses: 0 };
-  const totalProcesses = a.totalProcesses || 0;
-  const avgProcessesPerUser = u.totalUsers > 0 ? totalProcesses / u.totalUsers : 0;
+  const a = appUserCounts[0] || {
+    totalAppUsers: 0,
+    activeAppUsers: 0,
+    suspendedAppUsers: 0,
+    subscriptionCount: 0,
+    creditCount: 0,
+    freeCount: 0,
+    expiredPendingDowngrade: 0,
+    totalDevices: 0,
+    totalProcesses: 0,
+    totalFailedProcesses: 0,
+  };
 
-  const usersByPlan = {};
-  planDistribution.forEach((p) => {
-    usersByPlan[p._id] = p.count;
-  });
+  const dailyCountMap = new Map(
+    (dailyNewUsersRaw || []).map((row) => [row._id, row.count || 0])
+  );
+  const dailyNewUsers = last7DateKeys.map((date) => ({
+    date,
+    count: dailyCountMap.get(date) || 0,
+  }));
+
+  const totalProcesses = a.totalProcesses || 0;
+  const totalFailedProcesses = a.totalFailedProcesses || 0;
+  const totalAttempts = totalProcesses + totalFailedProcesses;
+  const processSuccessRate =
+    totalAttempts > 0
+      ? Number(((totalProcesses / totalAttempts) * 100).toFixed(1))
+      : 100;
+
+  const avgProcessesPerUser =
+    u.totalUsers > 0 ? Number((totalProcesses / u.totalUsers).toFixed(1)) : 0;
+
+  const activePremiumUsers =
+    (a.subscriptionCount || 0) + (a.creditCount || 0);
+  const uninitializedUsers = Math.max(0, u.totalUsers - (a.totalAppUsers || 0));
+
+  const usersByPlan = {
+    subscription: a.subscriptionCount || 0,
+    credit: a.creditCount || 0,
+    free: a.freeCount || 0,
+    uninitialized: uninitializedUsers,
+  };
 
   const stats = {
     totalUsers: u.totalUsers,
     activeUsers: u.activeUsers,
     suspendedUsers: u.suspendedUsers,
     verifiedUsers: u.verifiedUsers,
-    dailyNewUsers:
-      dailyNewUsers.length > 0
-        ? dailyNewUsers
-        : [{ date: new Date().toISOString().split("T")[0], count: u.newUsers24h }],
+    unverifiedUsers: u.unverifiedUsers,
+    newUsers24h: u.newUsers24h,
+    newUsers7d: u.newUsers7d,
+    newUsersThisMonth: u.newUsersThisMonth,
+    totalAppUsers: a.totalAppUsers,
+    activeAppUsers: a.activeAppUsers,
+    suspendedAppUsers: a.suspendedAppUsers,
+    activePremiumUsers,
+    expiredPendingDowngrade: a.expiredPendingDowngrade,
+    totalDevices: a.totalDevices,
+    uninitializedUsers,
+    dailyNewUsers,
     totalProcesses,
+    totalFailedProcesses,
     avgProcessesPerUser,
+    processSuccessRate,
     usersByPlan,
     roleDistribution: roleStats,
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+      syncedExpiredPlans,
+    },
   };
 
-  return new ApiResponse(200, true, "User statistics retrieved", stats).send(res);
+  return new ApiResponse(200, true, "User statistics retrieved", stats).send(
+    res
+  );
 });
 
 export const getPaymentsHistory = asyncHandler(async (req, res) => {

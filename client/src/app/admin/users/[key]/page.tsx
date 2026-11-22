@@ -1,32 +1,17 @@
 import { Suspense } from "react";
 import AppUserDetailsPage from "./details";
-import { Loader2 } from "lucide-react";
+import { UserProfileSkeleton } from "@/components/admin/users/users-skeleton";
 
 interface PageProps {
   params: Promise<{ key: string }>;
 }
 
 export default async function UserDetailsPage({ params }: PageProps) {
-  const key = (await params).key;
+  const { key } = await params;
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <div className="flex flex-col">
-        <main className="flex-1 px-4 sm:px-6 lg:px-8">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center min-h-[400px]">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span>Loading user details...</span>
-                </div>
-              </div>
-            }
-          >
-            <AppUserDetailsPage userKey={key} />
-          </Suspense>
-        </main>
-      </div>
-    </div>
+    <Suspense fallback={<UserProfileSkeleton />}>
+      <AppUserDetailsPage userKey={decodeURIComponent(key)} />
+    </Suspense>
   );
 }

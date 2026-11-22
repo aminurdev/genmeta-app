@@ -12,8 +12,9 @@ export const validate = (schema, source = "body") => {
       const result = schema.safeParse(dataToValidate);
 
       if (!result.success) {
-        const errorMessages = result.error.errors.map((err) => ({
-          field: err.path.join("."),
+        const issues = result.error?.issues || result.error?.errors || [];
+        const errorMessages = issues.map((err) => ({
+          field: Array.isArray(err.path) ? err.path.join(".") : "",
           message: err.message,
         }));
 

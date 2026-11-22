@@ -5,6 +5,12 @@ import { api } from "./api-client";
 import {
   AllUsersResponse,
   AdminDashboardStats,
+  AdminDesktopDevice,
+  AdminUserDetailsResponse,
+  CreateAppUserPayload,
+  CreateAppUserResponse,
+  UpdateAppUserPayload,
+  UpdateAppUserResponse,
   UsersStatisticsData,
   PaymentResponse,
   DownloadPaymentHistory,
@@ -34,68 +40,166 @@ export const getAdminOverview = async (options?: {
 
 export const getAllUsers = async (
   queryParams: string,
+  options?: { refresh?: boolean },
 ): Promise<ApiResponse<AllUsersResponse> | ApiErrorResponse> => {
-  const result = await api.get(`/admin/users/all?${queryParams}`);
-  return result.data;
+  try {
+    const separator = queryParams ? "&" : "";
+    const refreshSuffix = options?.refresh ? `${separator}refresh=true` : "";
+    const query = `${queryParams}${refreshSuffix}`;
+    const result = await api.get(`/admin/users/all${query ? `?${query}` : ""}`);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
-export const getUserStats = async (): Promise<
-  ApiResponse<UsersStatisticsData> | ApiErrorResponse
-> => {
-  const result = await api.get("/admin/users/statistics");
-  return result.data;
+export const getUserStats = async (options?: {
+  refresh?: boolean;
+}): Promise<ApiResponse<UsersStatisticsData> | ApiErrorResponse> => {
+  try {
+    const result = await api.get("/admin/users/statistics", {
+      params: options?.refresh ? { refresh: "true" } : undefined,
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const getAppUserDetails = async (
+  keyOrId: string,
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<AdminUserDetailsResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.get(
+      `/app/appuser/user/details/${encodeURIComponent(keyOrId)}`,
+      {
+        params: options?.refresh ? { refresh: "true" } : undefined,
+      },
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const resetDeviceId = async (
   key: string,
-): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appuser/reset-device`, {
-    key,
-  });
-  return result.data;
+  deviceId?: string,
+): Promise<
+  | ApiResponse<{ devices: AdminDesktopDevice[]; allowedDevices: string[] }>
+  | ApiErrorResponse
+> => {
+  try {
+    const result = await api.put(`/app/appuser/reset-device`, {
+      key,
+      ...(deviceId ? { deviceId } : {}),
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const updateUserStats = async (
   key: string,
   mode: "suspend" | "reactivate",
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put(`/app/appuser/update-status`, {
-    key,
-    mode,
-  });
-  return result.data;
+  try {
+    const result = await api.put(`/app/appuser/update-status`, {
+      key,
+      mode,
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const updateUser = async (
-  requestBody: any,
-): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appuser/update", requestBody);
-  return result.data;
+  requestBody: UpdateAppUserPayload,
+): Promise<ApiResponse<UpdateAppUserResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.put("/app/appuser/update", requestBody);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const createUser = async (
-  requestBody: any,
-): Promise<ApiResponse<any> | ApiErrorResponse> => {
-  const result = await api.post("/app/appuser/create", requestBody);
-  return result.data;
+  requestBody: CreateAppUserPayload,
+): Promise<ApiResponse<CreateAppUserResponse> | ApiErrorResponse> => {
+  try {
+    const result = await api.post("/app/appuser/create", requestBody);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const deleteAppUser = async (
   username: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.delete(`/app/appuser/delete/${encodeURIComponent(username)}`);
-  return result.data;
+  try {
+    const result = await api.delete(
+      `/app/appuser/delete/${encodeURIComponent(username)}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const addCredits = async (
   key: string,
   credits: number,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
-  const result = await api.put("/app/appuser/add-credits", {
-    key,
-    credits,
-  });
-  return result.data;
+  try {
+    const result = await api.put("/app/appuser/add-credits", {
+      key,
+      credits,
+    });
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };
 
 export const getPaymentsHistory = async ({

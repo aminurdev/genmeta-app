@@ -84,19 +84,84 @@ export const verifyGoogleCodeSchema = z.object({
 });
 
 // === APP USER SCHEMAS ===
-export const createAppUserSchema = z.object({
-  username: z.string().min(1, "Username (email) is required"),
-  expiryDays: z.coerce.number().optional().default(3),
-  plan: z.union([z.string(), z.object({ type: z.string(), id: z.string().optional() })]).optional().default("free"),
-  initialCredit: z.coerce.number().optional(),
-});
+export const createAppUserSchema = z
+  .object({
+    username: z.string().trim().toLowerCase().email("Valid email address is required"),
+    name: z.string().trim().max(100).optional(),
+    password: z.string().max(72).optional(),
+    createAccountIfMissing: z.boolean().optional().default(false),
+    isVerified: z.boolean().optional().default(true),
+    planId: z.string().trim().nullable().optional(),
+    plan: z
+      .union([
+        z.string(),
+        z.object({
+          type: z.string(),
+          id: z.string().nullable().optional(),
+          name: z.string().nullable().optional(),
+        }),
+      ])
+      .optional()
+      .default("free"),
+    expiryDays: z.coerce.number().min(0).max(3650).optional(),
+    initialCredit: z.coerce.number().min(0).optional(),
+    credit: z.coerce.number().min(0).optional(),
+    maxDevices: z.coerce.number().int().min(1).max(20).optional().default(2),
+    recordPayment: z.boolean().optional().default(false),
+    paymentAmount: z.coerce.number().min(0).optional(),
+    paymentNote: z.string().trim().max(500).optional(),
+    reason: z.string().trim().max(200).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.createAccountIfMissing) {
+      if (!data.name || data.name.trim().length < 2) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["name"],
+          message: "Full name must be at least 2 characters when creating a new account",
+        });
+      }
+      if (!data.password || data.password.length < 8) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["password"],
+          message: "Password must be at least 8 characters when creating a new account",
+        });
+      }
+    }
+  });
 
-export const updateAppUserSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  plan: z.union([z.string(), z.object({ type: z.string(), id: z.string().optional() })]).optional(),
-  expiryDays: z.coerce.number().optional(),
-  credit: z.coerce.number().optional(),
-});
+export const updateAppUserSchema = z
+  .object({
+    username: z.string().trim().optional(),
+    key: z.string().trim().optional(),
+    userId: z.string().trim().optional(),
+    planId: z.string().trim().nullable().optional(),
+    plan: z
+      .union([
+        z.string(),
+        z.object({
+          type: z.string(),
+          id: z.string().nullable().optional(),
+          name: z.string().nullable().optional(),
+        }),
+      ])
+      .optional(),
+    upgradeMode: z.enum(["replace", "extend"]).optional().default("replace"),
+    expiryDays: z.coerce.number().min(0).max(3650).optional(),
+    credit: z.coerce.number().min(0).optional(),
+    maxDevices: z.coerce.number().int().min(1).max(20).optional(),
+    reactivate: z.boolean().optional().default(false),
+    recordPayment: z.boolean().optional().default(false),
+    paymentAmount: z.coerce.number().min(0).optional(),
+    paymentNote: z.string().trim().max(500).optional(),
+    triggerReferralReward: z.boolean().optional().default(false),
+    reason: z.string().trim().max(200).optional(),
+  })
+  .refine((data) => Boolean(data.username || data.key || data.userId), {
+    message: "Username, access key, or userId is required",
+    path: ["username"],
+  });
 
 export const addCreditsSchema = z.object({
   key: z.string().min(1, "App user key is required"),

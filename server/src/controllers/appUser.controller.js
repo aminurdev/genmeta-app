@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import mongoose from "mongoose";
 import passport from "passport";
 import jwt from "jsonwebtoken";
@@ -5,13 +6,17 @@ import config from "../config/index.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
+import { AppPricing } from "../models/appPricing.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
 import { AppUser, extractDeviceMeta } from "../models/appUser.model.js";
 import { ApiUsageLog } from "../models/apiUsageLog.model.js";
+import { Referral } from "../models/referral.model.js";
+import { Session } from "../models/session.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import ApiError from "../utils/api.error.js";
 import { generateAppUserKey, compareVersions } from "../utils/index.js";
-import { PLAN_TYPES } from "../constants/index.js";
+import { PAYMENT_GATEWAYS, PLAN_TYPES, WITHDRAWAL_STATUS } from "../constants/index.js";
+import planService from "../services/plan.service.js";
 
 function extractAppUserKey(req) {
   return (
@@ -638,135 +643,515 @@ export const appUserLogout = asyncHandler(async (req, res) => {
 /*                    Admin App User Management Endpoints                     */
 /* -------------------------------------------------------------------------- */
 
+function toUtcDateKey(date) {
+  return new Date(date).toISOString().split("T")[0];
+}
+
+function toUtcMonthKey(date) {
+  return new Date(date).toISOString().slice(0, 7);
+}
+
+function getMapCount(mapOrObj, key) {
+  if (!mapOrObj) return 0;
+  if (typeof mapOrObj.get === "function") {
+    return Number(mapOrObj.get(key)) || 0;
+  }
+  return Number(mapOrObj[key]) || 0;
+}
+
+async function resolvePlanName(plan) {
+  const planType = plan?.type || PLAN_TYPES.FREE;
+  const planId = plan?.id || null;
+  if (plan?.name) return plan.name;
+
+  if (planId && mongoose.Types.ObjectId.isValid(planId)) {
+    const pricingDoc = await AppPricing.findById(planId).select("name").lean();
+    if (pricingDoc?.name) {
+      return pricingDoc.name;
+    }
+  }
+
+  if (planType === PLAN_TYPES.SUBSCRIPTION) return "Subscription";
+  if (planType === PLAN_TYPES.CREDIT) return "Credit Pack";
+  return "Free Tier";
+}
+
+function computeFutureExpiry(days, baseDate = new Date()) {
+  const parsed = Number(days);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  const expiryDate = new Date(baseDate);
+  expiryDate.setDate(expiryDate.getDate() + Math.round(parsed));
+  expiryDate.setHours(23, 59, 59, 999);
+  return expiryDate;
+}
+
+async function createManualPaymentRecord({
+  userId,
+  plan,
+  amount,
+  adminUser,
+  note,
+}) {
+  const trxSuffix = crypto.randomBytes(3).toString("hex").toUpperCase();
+  const ts = Date.now();
+  return AppPayment.create({
+    userId,
+    paymentID: `MANUAL-PAY-${ts}-${trxSuffix}`,
+    trxID: `MANUAL-${ts}-${trxSuffix}`,
+    gateway: PAYMENT_GATEWAYS.MANUAL,
+    plan: {
+      id: plan.id || plan.type,
+      type: plan.type,
+      name:
+        plan.name ||
+        (plan.type === PLAN_TYPES.SUBSCRIPTION ? "Subscription" : "Credit Pack"),
+    },
+    amount: Math.max(0, Number(amount) || 0),
+    currency: "BDT",
+    status: "Completed",
+    paymentDetails: {
+      source: "admin_manual",
+      recordedBy: adminUser?._id?.toString() || null,
+      recordedByEmail: adminUser?.email || null,
+      note: note || "Manual admin plan assignment",
+    },
+  });
+}
+
+function serializeAppUserSummary(appDoc) {
+  const obj = appDoc.toObject();
+  return {
+    ...obj,
+    credit: obj.credit === Infinity || obj.credit === null ? null : obj.credit ?? 0,
+  };
+}
+
 /**
- * CREATE a new App User for an existing registered user
+ * CREATE a new App User (optionally creating the User account and recording a manual payment)
  */
 export const createAppUser = asyncHandler(async (req, res) => {
-  const { username, expiryDays = 3, plan = PLAN_TYPES.FREE, initialCredit } = req.body;
+  const {
+    username,
+    name,
+    password,
+    createAccountIfMissing = false,
+    isVerified = true,
+    planId = null,
+    plan = PLAN_TYPES.FREE,
+    expiryDays,
+    initialCredit,
+    credit: explicitCredit,
+    maxDevices = 2,
+    recordPayment = false,
+    paymentAmount,
+    paymentNote,
+    reason,
+  } = req.body;
 
   if (!username) {
     throw new ApiError(400, "Username (email) is required.");
   }
 
-  const user = await User.findOne({ email: username.toLowerCase().trim() });
+  const normalizedEmail = username.toLowerCase().trim();
+  let user = await User.findOne({ email: normalizedEmail });
+  let userCreated = false;
+
   if (!user) {
-    throw new ApiError(404, "No user found with the provided email.");
+    if (!createAccountIfMissing) {
+      throw new ApiError(
+        404,
+        "No user found with the provided email. Enable 'Create new platform account' to register and provision them together."
+      );
+    }
+    if (!name || name.trim().length < 2) {
+      throw new ApiError(400, "Full name (at least 2 characters) is required.");
+    }
+    if (!password || password.length < 8) {
+      throw new ApiError(400, "Password (at least 8 characters) is required.");
+    }
+
+    user = await User.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+      isVerified: Boolean(isVerified),
+      loginProvider: ["email"],
+      role: "user",
+    });
+    userCreated = true;
   }
 
-  const userId = user._id;
-
-  const existingAppUser = await AppUser.findOne({ userId });
+  const existingAppUser = await AppUser.findOne({ userId: user._id });
   if (existingAppUser) {
     throw new ApiError(400, "This user already has an App User profile.");
   }
 
-  const planObject = typeof plan === "object" ? plan : { type: plan };
-  const planType = planObject.type || PLAN_TYPES.FREE;
-
-  if (!Object.values(PLAN_TYPES).includes(planType)) {
-    throw new ApiError(400, "Invalid plan type. Must be 'free', 'credit', or 'subscription'.");
+  let selectedPricing = null;
+  if (planId) {
+    if (!mongoose.Types.ObjectId.isValid(planId)) {
+      throw new ApiError(400, "Invalid pricing plan ID.");
+    }
+    selectedPricing = await AppPricing.findById(planId).lean();
+    if (!selectedPricing) {
+      throw new ApiError(404, "Selected pricing plan not found.");
+    }
   }
 
-  let credit = 0;
+  const rawPlanObj = typeof plan === "object" && plan !== null ? plan : { type: plan };
+  const planType = selectedPricing?.type || rawPlanObj.type || PLAN_TYPES.FREE;
+
+  if (!Object.values(PLAN_TYPES).includes(planType)) {
+    throw new ApiError(
+      400,
+      "Invalid plan type. Must be 'free', 'credit', or 'subscription'."
+    );
+  }
+
+  const resolvedPlanName =
+    selectedPricing?.name ||
+    rawPlanObj.name ||
+    (planType === PLAN_TYPES.SUBSCRIPTION
+      ? "Subscription"
+      : planType === PLAN_TYPES.CREDIT
+      ? "Credit Pack"
+      : "Free Tier");
+
+  const planObject = {
+    type: planType,
+    id: selectedPricing ? selectedPricing._id.toString() : rawPlanObj.id || null,
+    name: resolvedPlanName,
+  };
+
+  const now = new Date();
+  const today = toUtcDateKey(now);
+  const currentMonth = toUtcMonthKey(now);
+
+  let resolvedCredit = 5;
   let expiresAt = undefined;
-  const today = new Date().toISOString().split("T")[0];
+  const requestedCredit =
+    explicitCredit !== undefined ? explicitCredit : initialCredit;
 
   if (planType === PLAN_TYPES.FREE) {
-    credit = 5;
+    resolvedCredit =
+      requestedCredit !== undefined ? Math.max(0, parseInt(requestedCredit, 10) || 0) : 5;
   } else if (planType === PLAN_TYPES.CREDIT) {
-    credit = initialCredit ? parseInt(initialCredit, 10) : 100;
-    if (expiryDays && parseInt(expiryDays, 10) > 0) {
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays, 10));
-      expiryDate.setHours(23, 59, 59, 999);
-      expiresAt = expiryDate;
-    }
+    resolvedCredit =
+      requestedCredit !== undefined
+        ? Math.max(0, parseInt(requestedCredit, 10) || 0)
+        : selectedPricing?.credit || 100;
+    const days =
+      expiryDays !== undefined ? expiryDays : selectedPricing?.planDuration;
+    expiresAt = computeFutureExpiry(days, now);
   } else if (planType === PLAN_TYPES.SUBSCRIPTION) {
-    credit = Infinity;
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + (parseInt(expiryDays, 10) || 30));
-    expiryDate.setHours(23, 59, 59, 999);
-    expiresAt = expiryDate;
+    resolvedCredit = Infinity;
+    const days =
+      expiryDays !== undefined
+        ? expiryDays
+        : selectedPricing?.planDuration || 30;
+    expiresAt = computeFutureExpiry(days > 0 ? days : 30, now);
   }
 
   const newAppUser = new AppUser({
-    userId,
-    username: username.toLowerCase().trim(),
+    userId: user._id,
+    username: normalizedEmail,
     key: generateAppUserKey(),
     plan: planObject,
     expiresAt,
-    credit,
+    credit: resolvedCredit,
+    maxDevices: Math.min(20, Math.max(1, parseInt(maxDevices, 10) || 2)),
     isActive: true,
     status: "active",
     lastCreditRefresh: today,
-    monthlyProcess: new Map([[today.substring(0, 7), 0]]),
+    lastPlanChange: now,
+    planHistory: [
+      {
+        planType,
+        changedAt: now,
+        reason: reason || (selectedPricing ? `admin_created:${selectedPricing.name}` : "admin_created"),
+      },
+    ],
+    monthlyProcess: new Map([[currentMonth, 0]]),
     dailyProcess: new Map([[today, 0]]),
   });
 
   await newAppUser.save();
 
+  let paymentRecorded = null;
+  if (recordPayment && planType !== PLAN_TYPES.FREE) {
+    const defaultPrice =
+      selectedPricing?.discountPrice && selectedPricing.discountPrice > 0
+        ? selectedPricing.discountPrice
+        : selectedPricing?.basePrice ?? 0;
+    const finalAmount =
+      paymentAmount !== undefined ? Number(paymentAmount) : defaultPrice;
+
+    paymentRecorded = await createManualPaymentRecord({
+      userId: user._id,
+      plan: planObject,
+      amount: finalAmount,
+      adminUser: req.user,
+      note: paymentNote || "Manual payment recorded during app user creation",
+    });
+  }
+
   return new ApiResponse(201, true, "App user created successfully.", {
     key: newAppUser.key,
-    expiresAt: newAppUser.expiresAt,
-    plan: newAppUser.plan,
     username: newAppUser.username,
+    userId: user._id.toString(),
+    plan: newAppUser.plan,
+    expiresAt: newAppUser.expiresAt || null,
     isActive: newAppUser.isActive,
-    credit: newAppUser.credit,
+    maxDevices: newAppUser.maxDevices,
+    credit: newAppUser.credit === Infinity ? null : newAppUser.credit,
+    userCreated,
+    paymentRecorded: paymentRecorded
+      ? {
+          id: paymentRecorded._id.toString(),
+          trxID: paymentRecorded.trxID,
+          amount: paymentRecorded.amount,
+        }
+      : null,
   }).send(res);
 });
 
 /**
- * UPDATE an existing App User's plan, credits, or expiry
+ * UPDATE / UPGRADE an existing App User's plan, pricing package, credits, devices, or expiry
  */
 export const updateAppUser = asyncHandler(async (req, res) => {
-  const { username, plan, expiryDays, credit } = req.body;
+  const {
+    username,
+    key,
+    userId,
+    planId = null,
+    plan,
+    upgradeMode = "replace",
+    expiryDays,
+    credit,
+    maxDevices,
+    reactivate = false,
+    recordPayment = false,
+    paymentAmount,
+    paymentNote,
+    triggerReferralReward = false,
+    reason,
+  } = req.body;
 
-  if (!username) {
-    throw new ApiError(400, "Username is required");
+  if (!username && !key && !userId) {
+    throw new ApiError(400, "Username, access key, or userId is required.");
   }
 
-  if (!plan && expiryDays === undefined && credit === undefined) {
-    throw new ApiError(400, "At least one of plan, expiryDays, or credit is required");
+  let appDoc = null;
+  if (key) {
+    appDoc = await AppUser.findOne({ key });
   }
-
-  let appDoc = await AppUser.findOne({ username: username.toLowerCase().trim() });
-  if (!appDoc) {
-    const user = await User.findOne({ email: username.toLowerCase().trim() });
-    if (user) {
-      appDoc = await findOrCreateAppUser(user);
+  if (!appDoc && userId && mongoose.Types.ObjectId.isValid(userId)) {
+    appDoc = await AppUser.findOne({ userId });
+    if (!appDoc) {
+      const existingUser = await User.findById(userId);
+      if (existingUser) {
+        appDoc = await findOrCreateAppUser(existingUser);
+      }
+    }
+  }
+  if (!appDoc && username) {
+    const normalizedEmail = username.toLowerCase().trim();
+    appDoc = await AppUser.findOne({ username: normalizedEmail });
+    if (!appDoc) {
+      const user = await User.findOne({ email: normalizedEmail });
+      if (user) {
+        appDoc = await findOrCreateAppUser(user);
+      }
     }
   }
 
   if (!appDoc) {
-    throw new ApiError(404, "App user not found");
+    throw new ApiError(404, "App user not found.");
   }
 
-  if (plan) {
-    const planObj = typeof plan === "object" ? plan : { type: plan };
-    appDoc.plan = planObj;
-    if (planObj.type === PLAN_TYPES.FREE) {
-      appDoc.expiresAt = undefined;
-    } else if (planObj.type === PLAN_TYPES.SUBSCRIPTION) {
-      appDoc.credit = Infinity;
+  let selectedPricing = null;
+  if (planId) {
+    if (!mongoose.Types.ObjectId.isValid(planId)) {
+      throw new ApiError(400, "Invalid pricing plan ID.");
+    }
+    selectedPricing = await AppPricing.findById(planId).lean();
+    if (!selectedPricing) {
+      throw new ApiError(404, "Selected pricing plan not found.");
     }
   }
 
-  if (expiryDays !== undefined && appDoc.plan?.type !== PLAN_TYPES.FREE) {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + parseInt(expiryDays, 10));
-    expiryDate.setHours(23, 59, 59, 999);
-    appDoc.expiresAt = expiryDate;
+  const hasPlanUpdate = Boolean(selectedPricing || plan);
+  if (
+    !hasPlanUpdate &&
+    expiryDays === undefined &&
+    credit === undefined &&
+    maxDevices === undefined &&
+    !reactivate
+  ) {
+    throw new ApiError(
+      400,
+      "Provide a plan, pricing package, expiryDays, credit, maxDevices, or reactivate flag."
+    );
   }
 
-  if (credit !== undefined) {
-    appDoc.credit = parseInt(credit, 10);
+  const now = new Date();
+  const today = toUtcDateKey(now);
+  const currentMonth = toUtcMonthKey(now);
+  const previousPlanType = appDoc.plan?.type || PLAN_TYPES.FREE;
+
+  const rawPlanObj =
+    typeof plan === "object" && plan !== null ? plan : plan ? { type: plan } : null;
+
+  const targetPlanType =
+    selectedPricing?.type || rawPlanObj?.type || previousPlanType;
+
+  if (!Object.values(PLAN_TYPES).includes(targetPlanType)) {
+    throw new ApiError(
+      400,
+      "Invalid plan type. Must be 'free', 'credit', or 'subscription'."
+    );
+  }
+
+  if (hasPlanUpdate) {
+    const targetPlanName =
+      selectedPricing?.name ||
+      rawPlanObj?.name ||
+      (targetPlanType === PLAN_TYPES.SUBSCRIPTION
+        ? "Subscription"
+        : targetPlanType === PLAN_TYPES.CREDIT
+        ? "Credit Pack"
+        : "Free Tier");
+
+    appDoc.plan = {
+      type: targetPlanType,
+      id: selectedPricing
+        ? selectedPricing._id.toString()
+        : rawPlanObj?.id || null,
+      name: targetPlanName,
+    };
+    appDoc.lastPlanChange = now;
+
+    if (!appDoc.planHistory) appDoc.planHistory = [];
+    appDoc.planHistory.push({
+      planType: targetPlanType,
+      changedAt: now,
+      reason:
+        reason ||
+        (selectedPricing
+          ? `admin_upgrade:${selectedPricing.name}`
+          : "admin_manual_update"),
+    });
+  }
+
+  if (targetPlanType === PLAN_TYPES.FREE) {
+    appDoc.expiresAt = undefined;
+    appDoc.credit = credit !== undefined ? Math.max(0, parseInt(credit, 10) || 0) : 5;
+    appDoc.lastCreditRefresh = today;
+    if (!appDoc.dailyProcess) appDoc.dailyProcess = new Map();
+    if (!appDoc.monthlyProcess) appDoc.monthlyProcess = new Map();
+    if (!appDoc.dailyProcess.has(today)) appDoc.dailyProcess.set(today, 0);
+    if (!appDoc.monthlyProcess.has(currentMonth)) {
+      appDoc.monthlyProcess.set(currentMonth, 0);
+    }
+  } else if (targetPlanType === PLAN_TYPES.SUBSCRIPTION) {
+    appDoc.credit = Infinity;
+    const days =
+      expiryDays !== undefined
+        ? Number(expiryDays)
+        : selectedPricing?.planDuration;
+
+    if (days !== undefined && Number(days) > 0) {
+      const canExtend =
+        upgradeMode === "extend" &&
+        previousPlanType === PLAN_TYPES.SUBSCRIPTION &&
+        appDoc.expiresAt &&
+        new Date(appDoc.expiresAt) > now;
+      const baseDate = canExtend ? new Date(appDoc.expiresAt) : now;
+      appDoc.expiresAt = computeFutureExpiry(days, baseDate);
+    } else if (!appDoc.expiresAt || new Date(appDoc.expiresAt) <= now) {
+      appDoc.expiresAt = computeFutureExpiry(30, now);
+    }
+  } else if (targetPlanType === PLAN_TYPES.CREDIT) {
+    const resolvedCreditAmount =
+      credit !== undefined
+        ? Math.max(0, parseInt(credit, 10) || 0)
+        : selectedPricing?.credit;
+
+    if (resolvedCreditAmount !== undefined) {
+      if (upgradeMode === "extend" && previousPlanType === PLAN_TYPES.CREDIT) {
+        const currentFinite = Number.isFinite(appDoc.credit) ? appDoc.credit : 0;
+        appDoc.credit = currentFinite + resolvedCreditAmount;
+      } else {
+        appDoc.credit = resolvedCreditAmount;
+      }
+    } else if (!Number.isFinite(appDoc.credit)) {
+      appDoc.credit = 100;
+    }
+
+    const days =
+      expiryDays !== undefined
+        ? Number(expiryDays)
+        : selectedPricing?.planDuration;
+    if (days !== undefined) {
+      if (Number(days) <= 0) {
+        appDoc.expiresAt = undefined;
+      } else {
+        const canExtend =
+          upgradeMode === "extend" &&
+          previousPlanType === PLAN_TYPES.CREDIT &&
+          appDoc.expiresAt &&
+          new Date(appDoc.expiresAt) > now;
+        const baseDate = canExtend ? new Date(appDoc.expiresAt) : now;
+        appDoc.expiresAt = computeFutureExpiry(days, baseDate);
+      }
+    }
+  }
+
+  if (maxDevices !== undefined) {
+    appDoc.maxDevices = Math.min(20, Math.max(1, parseInt(maxDevices, 10) || 2));
+  }
+
+  if (reactivate) {
+    appDoc.isActive = true;
+    appDoc.status = "active";
+    appDoc.suspendedAt = null;
   }
 
   await appDoc.save();
 
+  let paymentRecorded = null;
+  if (recordPayment && appDoc.plan?.type !== PLAN_TYPES.FREE) {
+    const defaultPrice =
+      selectedPricing?.discountPrice && selectedPricing.discountPrice > 0
+        ? selectedPricing.discountPrice
+        : selectedPricing?.basePrice ?? 0;
+    const finalAmount =
+      paymentAmount !== undefined ? Number(paymentAmount) : defaultPrice;
+
+    paymentRecorded = await createManualPaymentRecord({
+      userId: appDoc.userId,
+      plan: appDoc.plan,
+      amount: finalAmount,
+      adminUser: req.user,
+      note: paymentNote || "Manual plan upgrade by administrator",
+    });
+
+    if (triggerReferralReward && appDoc.userId) {
+      await planService.processReferralReward(appDoc.userId, {
+        paymentId: paymentRecorded._id,
+      });
+    }
+  }
+
   return new ApiResponse(200, true, "App user updated successfully", {
     key: appDoc.key,
-    appUser: appDoc,
+    appUser: serializeAppUserSummary(appDoc),
+    paymentRecorded: paymentRecorded
+      ? {
+          id: paymentRecorded._id.toString(),
+          trxID: paymentRecorded.trxID,
+          amount: paymentRecorded.amount,
+        }
+      : null,
   }).send(res);
 });
 
@@ -806,16 +1191,24 @@ export const resetDevice = asyncHandler(async (req, res) => {
   }
 
   if (deviceId) {
-    appDoc.removeDevice(deviceId);
+    const removed = appDoc.removeDevice(deviceId);
+    if (!removed) {
+      throw new ApiError(404, "Desktop device not found on this account.");
+    }
   } else {
     appDoc.resetAllDevices();
   }
   await appDoc.save();
 
-  return new ApiResponse(200, true, "Device ID reset successfully.", {
-    devices: appDoc.getFormattedDevices(),
-    allowedDevices: appDoc.allowedDevices,
-  }).send(res);
+  return new ApiResponse(
+    200,
+    true,
+    deviceId ? "Desktop device removed successfully." : "All devices reset successfully.",
+    {
+      devices: appDoc.getFormattedDevices(),
+      allowedDevices: appDoc.allowedDevices,
+    }
+  ).send(res);
 });
 
 /**
@@ -844,9 +1237,10 @@ export const updateAppUserStatus = asyncHandler(async (req, res) => {
   }
 
   if (mode === "reactivate") {
-    if (appDoc.status !== "suspended") {
+    if (appDoc.status !== "suspended" && appDoc.isActive) {
       throw new ApiError(400, "App user is not suspended.");
     }
+    appDoc.isActive = true;
     appDoc.status = "active";
     appDoc.suspendedAt = null;
     await appDoc.save();
@@ -871,7 +1265,8 @@ export const addCredits = asyncHandler(async (req, res) => {
     throw new ApiError(404, "App user not found.");
   }
 
-  appDoc.credit = (isFinite(appDoc.credit) ? appDoc.credit : 0) + parseInt(credits, 10);
+  appDoc.credit =
+    (Number.isFinite(appDoc.credit) ? appDoc.credit : 0) + parseInt(credits, 10);
   await appDoc.save();
 
   return new ApiResponse(
@@ -882,32 +1277,64 @@ export const addCredits = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET user and App User details by key (or userId / appUserId)
+ * GET complete user profile, desktop license, usage telemetry, payments, referrals, and sessions
  */
 export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
-  const targetId = req.params.key;
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
+  const targetId = req.params.key;
   if (!targetId) {
     throw new ApiError(400, "App user key is required");
   }
 
+  const now = new Date();
+  const isExplicitRefresh =
+    req.query.refresh === "true" || req.query.refresh === "1";
+
+  const userSelectFields =
+    "name email avatar role isVerified isDisabled loginProvider lastLoginAt passwordChangedAt ipAddress failedLoginAttempts lockUntil referred createdAt updatedAt";
+
   let appDoc = await AppUser.findOne({ key: targetId })
-    .populate("userId", "name email role createdAt")
+    .populate({
+      path: "userId",
+      select: userSelectFields,
+      populate: {
+        path: "referred",
+        select: "referralCode referrer",
+        populate: { path: "referrer", select: "name email" },
+      },
+    })
     .exec();
 
   if (!appDoc && mongoose.Types.ObjectId.isValid(targetId)) {
     appDoc = await AppUser.findOne({
       $or: [{ _id: targetId }, { userId: targetId }],
     })
-      .populate("userId", "name email role createdAt")
+      .populate({
+        path: "userId",
+        select: userSelectFields,
+        populate: {
+          path: "referred",
+          select: "referralCode referrer",
+          populate: { path: "referrer", select: "name email" },
+        },
+      })
       .exec();
 
     if (!appDoc) {
-      const existingUser = await User.findById(targetId).select("name email role isDisabled createdAt");
+      const existingUser = await User.findById(targetId).select(userSelectFields);
       if (existingUser) {
         const created = await findOrCreateAppUser(existingUser);
         appDoc = await AppUser.findById(created._id)
-          .populate("userId", "name email role createdAt")
+          .populate({
+            path: "userId",
+            select: userSelectFields,
+            populate: {
+              path: "referred",
+              select: "referralCode referrer",
+              populate: { path: "referrer", select: "name email" },
+            },
+          })
           .exec();
       }
     }
@@ -917,23 +1344,257 @@ export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "App user not found");
   }
 
+  // Reconcile devices, expired paid plans, and daily free credits
+  appDoc.syncDevicesList();
+  if (appDoc.isActive && appDoc.status === "active") {
+    appDoc.isValid();
+    appDoc.calculateCredit();
+  }
+  if (appDoc.isModified()) {
+    await appDoc.save();
+  }
+
   const user = appDoc.userId;
+  const resolvedUserId = user?._id || appDoc.userId;
 
-  const payments = user?._id
-    ? await AppPayment.find({ userId: user._id })
-        .sort({ createdAt: -1 })
-        .select("trxID plan amount createdAt")
-        .lean()
-    : [];
+  const last7DateKeys = Array.from({ length: 7 }, (_, i) =>
+    toUtcDateKey(
+      new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (6 - i))
+      )
+    )
+  );
+  const last6MonthKeys = Array.from({ length: 6 }, (_, i) =>
+    toUtcMonthKey(
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (5 - i), 1))
+    )
+  );
 
+  const [
+    payments,
+    dailyUsageLogs,
+    monthlyUsageLogs,
+    referralDoc,
+    activeSessions,
+    activeSessionsCount,
+    resolvedPlanName,
+  ] = await Promise.all([
+    resolvedUserId
+      ? AppPayment.find({ userId: resolvedUserId })
+          .sort({ createdAt: -1 })
+          .select("paymentID trxID gateway plan amount currency status paymentDetails createdAt")
+          .lean()
+      : [],
+    resolvedUserId
+      ? ApiUsageLog.find({
+          userId: resolvedUserId,
+          date: { $in: last7DateKeys },
+        })
+          .select("date processCount fileCount failedCount")
+          .lean()
+      : [],
+    resolvedUserId
+      ? ApiUsageLog.aggregate([
+          {
+            $match: {
+              userId: new mongoose.Types.ObjectId(resolvedUserId),
+              date: { $gte: `${last6MonthKeys[0]}-01` },
+            },
+          },
+          {
+            $group: {
+              _id: { $substrBytes: ["$date", 0, 7] },
+              count: {
+                $sum: {
+                  $cond: [{ $gt: ["$fileCount", 0] }, "$fileCount", "$processCount"],
+                },
+              },
+              failed: { $sum: { $ifNull: ["$failedCount", 0] } },
+            },
+          },
+        ])
+      : [],
+    resolvedUserId
+      ? Referral.findOne({ referrer: resolvedUserId }).lean()
+      : null,
+    resolvedUserId
+      ? Session.find({
+          userId: resolvedUserId,
+          revokedAt: null,
+          expiresAt: { $gt: now },
+        })
+          .sort({ lastActiveAt: -1 })
+          .limit(10)
+          .select("deviceName userAgent ipAddress lastActiveAt createdAt expiresAt")
+          .lean()
+      : [],
+    resolvedUserId
+      ? Session.countDocuments({
+          userId: resolvedUserId,
+          revokedAt: null,
+          expiresAt: { $gt: now },
+        })
+      : 0,
+    resolvePlanName(appDoc.plan),
+  ]);
+
+  // Usage series
+  const dailyLogMap = new Map();
+  for (const log of dailyUsageLogs || []) {
+    const count =
+      log.fileCount && log.fileCount > 0 ? log.fileCount : log.processCount || 0;
+    dailyLogMap.set(log.date, {
+      count,
+      failed: log.failedCount || 0,
+    });
+  }
+
+  const monthlyLogMap = new Map();
+  for (const row of monthlyUsageLogs || []) {
+    if (row?._id) {
+      monthlyLogMap.set(row._id, {
+        count: row.count || 0,
+        failed: row.failed || 0,
+      });
+    }
+  }
+
+  const last7DaysProcess = last7DateKeys.map((date) => {
+    const logEntry = dailyLogMap.get(date) || { count: 0, failed: 0 };
+    return {
+      date,
+      count: Math.max(getMapCount(appDoc.dailyProcess, date), logEntry.count),
+      failed: logEntry.failed,
+    };
+  });
+
+  const last6MonthProcess = last6MonthKeys.map((month) => {
+    const logEntry = monthlyLogMap.get(month) || { count: 0, failed: 0 };
+    return {
+      month,
+      count: Math.max(getMapCount(appDoc.monthlyProcess, month), logEntry.count),
+      failed: logEntry.failed,
+    };
+  });
+
+  const monthlyUsage = {};
+  if (appDoc.monthlyProcess && appDoc.monthlyProcess.size > 0) {
+    appDoc.monthlyProcess.forEach((count, month) => {
+      monthlyUsage[month] = count;
+    });
+  }
+  for (const point of last6MonthProcess) {
+    monthlyUsage[point.month] = Math.max(monthlyUsage[point.month] || 0, point.count);
+  }
+
+  const todayProcess = last7DaysProcess[last7DaysProcess.length - 1]?.count || 0;
+  const currentMonthProcess =
+    last6MonthProcess[last6MonthProcess.length - 1]?.count || 0;
+
+  const totalProcess = Math.max(
+    appDoc.totalProcess || 0,
+    currentMonthProcess,
+    todayProcess
+  );
+  const totalFailedProcess = appDoc.totalFailedProcess || 0;
+  const totalAttempted = totalProcess + totalFailedProcess;
+  const successRate =
+    totalAttempted > 0
+      ? Number(((totalProcess / totalAttempted) * 100).toFixed(1))
+      : 100;
+
+  const recentFailures = [];
+  if (appDoc.failedProcess && appDoc.failedProcess.size > 0) {
+    appDoc.failedProcess.forEach((val, date) => {
+      recentFailures.push({
+        date,
+        count: val?.count || 0,
+        errorMessages: Array.isArray(val?.errorMessages) ? val.errorMessages : [],
+      });
+    });
+    recentFailures.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  // Payments & summary
   const formattedPayments = payments.map((payment) => ({
-    id: payment._id,
-    trxID: payment.trxID,
-    plan: payment.plan,
-    amount: payment.amount,
+    id: payment._id.toString(),
+    _id: payment._id.toString(),
+    paymentID: payment.paymentID || "",
+    trxID: payment.trxID || "",
+    gateway: payment.gateway || "paystation",
+    plan: {
+      id: payment.plan?.id || "",
+      type: payment.plan?.type || "subscription",
+      name: payment.plan?.name || payment.plan?.type || "Standard",
+    },
+    amount: payment.amount || 0,
+    currency: payment.currency || "BDT",
+    status: payment.status || "Completed",
+    note: payment.paymentDetails?.note || null,
     createdAt: payment.createdAt,
   }));
 
+  const totalSpent = formattedPayments.reduce(
+    (sum, p) => sum + (Number(p.amount) || 0),
+    0
+  );
+  const paymentSummary = {
+    totalSpent,
+    totalCount: formattedPayments.length,
+    lastPaymentAt: formattedPayments[0]?.createdAt || null,
+  };
+
+  // Referral summary
+  let referralSummary = {
+    exists: false,
+    referralCode: null,
+    withdrawAccount: null,
+    referredCount: 0,
+    availableBalance: 0,
+    totalEarned: 0,
+    totalWithdrawn: 0,
+    pendingWithdrawalsCount: 0,
+    pendingWithdrawalsAmount: 0,
+  };
+
+  if (referralDoc) {
+    const earnedHistory = Array.isArray(referralDoc.earnedHistory)
+      ? referralDoc.earnedHistory
+      : [];
+    const withdrawHistory = Array.isArray(referralDoc.withdrawHistory)
+      ? referralDoc.withdrawHistory
+      : [];
+    const totalEarned = earnedHistory.reduce(
+      (sum, item) => sum + (Number(item.amount) || 0),
+      0
+    );
+    const totalWithdrawn = withdrawHistory
+      .filter((w) => w.status === WITHDRAWAL_STATUS.COMPLETED)
+      .reduce((sum, w) => sum + (Number(w.amount) || 0), 0);
+    const pendingList = withdrawHistory.filter(
+      (w) => w.status === WITHDRAWAL_STATUS.PENDING
+    );
+    const pendingWithdrawalsAmount = pendingList.reduce(
+      (sum, w) => sum + (Number(w.amount) || 0),
+      0
+    );
+
+    referralSummary = {
+      exists: true,
+      referralCode: referralDoc.referralCode || null,
+      withdrawAccount: referralDoc.withdrawAccount || null,
+      referredCount: Array.isArray(referralDoc.referredUsers)
+        ? referralDoc.referredUsers.length
+        : 0,
+      availableBalance: referralDoc.availableBalance || 0,
+      totalEarned,
+      totalWithdrawn,
+      pendingWithdrawalsCount: pendingList.length,
+      pendingWithdrawalsAmount,
+    };
+  }
+
+  // Account & Plan metadata
   const remainingCredit =
     typeof appDoc.calculateCredit === "function"
       ? appDoc.calculateCredit()
@@ -942,34 +1603,135 @@ export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
   const isValid =
     typeof appDoc.isValid === "function" ? appDoc.isValid() : appDoc.isActive;
 
-  const monthlyUsage = {};
-  if (appDoc.monthlyProcess && appDoc.monthlyProcess.size > 0) {
-    appDoc.monthlyProcess.forEach((count, month) => {
-      monthlyUsage[month] = count;
-    });
-  }
+  const remainingDays = appDoc.expiresAt
+    ? Math.max(
+        0,
+        Math.ceil((new Date(appDoc.expiresAt) - now) / (1000 * 60 * 60 * 24))
+      )
+    : null;
+
+  const planType = appDoc.plan?.type || PLAN_TYPES.FREE;
+  const isExpired = Boolean(
+    (planType === PLAN_TYPES.SUBSCRIPTION || planType === PLAN_TYPES.CREDIT) &&
+      appDoc.expiresAt &&
+      new Date(appDoc.expiresAt) <= now
+  );
+
+  const formattedDevices = appDoc.getFormattedDevices();
+  const deviceRemoval = appDoc.getDeviceRemovalStatus(now);
+  const rawAppObj = appDoc.toObject();
+
+  const planHistory = Array.isArray(rawAppObj.planHistory)
+    ? [...rawAppObj.planHistory].sort(
+        (a, b) => new Date(b.changedAt || 0) - new Date(a.changedAt || 0)
+      )
+    : [];
 
   const appData = {
-    ...appDoc.toObject(),
-    credit: remainingCredit === Infinity ? null : remainingCredit,
-    remainingCredit: remainingCredit === Infinity ? null : remainingCredit,
-    isValid,
+    id: appDoc._id.toString(),
+    _id: appDoc._id.toString(),
+    userId: resolvedUserId?.toString() || "",
+    username: appDoc.username,
+    key: appDoc.key,
+    expiresAt: appDoc.expiresAt || null,
+    remainingDays,
+    isExpired,
+    isActive: Boolean(appDoc.isActive),
+    status: appDoc.status || "active",
+    suspendedAt: appDoc.suspendedAt || null,
+    plan: {
+      type: planType,
+      id: appDoc.plan?.id || null,
+      name: resolvedPlanName,
+    },
+    credit:
+      planType === PLAN_TYPES.SUBSCRIPTION || remainingCredit === Infinity
+        ? null
+        : remainingCredit ?? 0,
+    remainingCredit:
+      planType === PLAN_TYPES.SUBSCRIPTION || remainingCredit === Infinity
+        ? null
+        : remainingCredit ?? 0,
+    lastCreditRefresh: appDoc.lastCreditRefresh || null,
+    lastPlanChange: appDoc.lastPlanChange || null,
+    planHistory,
+    totalProcess,
+    totalFailedProcess,
+    todayProcess,
+    currentMonthProcess,
+    successRate,
+    last7DaysProcess,
+    last6MonthProcess,
     monthlyUsage,
+    recentFailures,
+    allowedDevices: appDoc.allowedDevices || [],
+    devices: formattedDevices,
+    maxDevices: appDoc.maxDevices || 2,
+    deviceRemoval,
+    isValid,
+    createdAt: appDoc.createdAt,
+    updatedAt: appDoc.updatedAt,
   };
+
+  const referredBy = user?.referred
+    ? {
+        referralCode: user.referred.referralCode || null,
+        referrerName: user.referred.referrer?.name || null,
+        referrerEmail: user.referred.referrer?.email || null,
+      }
+    : null;
+
+  const isLocked = Boolean(
+    user?.lockUntil && new Date(user.lockUntil).getTime() > now.getTime()
+  );
 
   const data = {
     user: {
-      id: user?._id || appDoc.userId,
+      id: resolvedUserId?.toString() || "",
       name: user?.name || appDoc.username,
       email: user?.email || appDoc.username,
+      avatar: user?.avatar || null,
       role: user?.role || "user",
+      isVerified: Boolean(user?.isVerified),
+      isDisabled: Boolean(user?.isDisabled),
+      loginProvider:
+        Array.isArray(user?.loginProvider) && user.loginProvider.length > 0
+          ? user.loginProvider
+          : ["email"],
+      lastLoginAt: user?.lastLoginAt || null,
+      passwordChangedAt: user?.passwordChangedAt || null,
+      ipAddress: user?.ipAddress || null,
+      failedLoginAttempts: user?.failedLoginAttempts || 0,
+      isLocked,
+      referredBy,
       createdAt: user?.createdAt || appDoc.createdAt,
+      updatedAt: user?.updatedAt || appDoc.updatedAt,
     },
     appUser: appData,
     payments: formattedPayments,
+    paymentSummary,
+    referral: referralSummary,
+    security: {
+      activeSessionsCount,
+      sessions: (activeSessions || []).map((s) => ({
+        id: s._id.toString(),
+        deviceName: s.deviceName || "Web Browser",
+        userAgent: s.userAgent || "",
+        ipAddress: s.ipAddress || "",
+        lastActiveAt: s.lastActiveAt || null,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+      })),
+    },
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed: isExplicitRefresh,
+    },
   };
 
-  return new ApiResponse(200, true, "User details fetched successfully", data).send(res);
+  return new ApiResponse(200, true, "User details fetched successfully", data).send(
+    res
+  );
 });
 
 /* -------------------------------------------------------------------------- */

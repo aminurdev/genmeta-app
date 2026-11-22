@@ -154,31 +154,67 @@ export type AdminDashboardStats = {
   };
 };
 
+export interface AdminDesktopDevice {
+  deviceId: string;
+  fingerprint: string | null;
+  deviceName: string;
+  platform: string;
+  osVersion: string;
+  arch: string;
+  cpuModel: string;
+  appVersion: string;
+  ipAddress: string;
+  firstLoginAt: string | null;
+  lastActiveAt: string | null;
+  isCurrent?: boolean;
+}
+
+export interface AdminDeviceRemovalStatus {
+  canRemoveDevice: boolean;
+  lastDeviceRemovalAt: string | null;
+  nextDeviceRemovalAt: string | null;
+  remainingMs: number;
+}
+
 export interface AppUsers {
   _id: string;
   userId: string;
+  appUserId?: string | null;
+  hasAppUser?: boolean;
   username: string;
   email?: string;
   name?: string;
-  key: string;
+  avatar?: string | null;
+  role?: "user" | "admin" | "superAdmin" | string;
+  isVerified?: boolean;
+  isDisabled?: boolean;
+  loginProvider?: string[];
+  lastLoginAt?: string | null;
+  key: string | null;
   credit: number | null;
   isActive: boolean;
   status: "active" | "suspended";
-  suspendedAt: string | null;
+  suspendedAt?: string | null;
   totalProcess: number;
-  monthlyProcess: Record<string, number>;
-  dailyProcess: Record<string, number>;
-  lastCreditRefresh: string;
+  totalFailedProcess?: number;
+  monthlyProcess?: Record<string, number>;
+  dailyProcess?: Record<string, number>;
+  lastCreditRefresh?: string;
   createdAt: string;
+  appCreatedAt?: string | null;
   allowedDevices?: string[];
-  expiresAt?: string;
-  lastPlanChange: string;
+  devices?: AdminDesktopDevice[];
+  devicesCount?: number;
+  maxDevices?: number;
+  expiresAt?: string | null;
+  isExpired?: boolean;
+  lastPlanChange?: string;
   plan: {
     type: "free" | "credit" | "subscription";
-    id: string;
+    id: string | null;
     name: string;
   } | null;
-  planHistory: {
+  planHistory?: {
     planType: string;
     changedAt: string;
     reason: string;
@@ -189,7 +225,20 @@ export interface AllUsersResponse {
   users: AppUsers[];
   total: number;
   currentPage: number;
+  page?: number;
+  limit?: number;
   totalPages: number;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+    syncedExpiredPlans: number;
+  };
 }
 
 // Daily User Registration
@@ -201,7 +250,9 @@ export interface DailyNewUser {
 // User Plan Distribution
 export interface UsersByPlan {
   subscription: number;
+  credit: number;
   free: number;
+  uninitialized?: number;
 }
 
 // Statistics Data
@@ -209,10 +260,219 @@ export interface UsersStatisticsData {
   totalUsers: number;
   activeUsers: number;
   suspendedUsers: number;
-  usersByPlan: UsersByPlan;
+  verifiedUsers: number;
+  unverifiedUsers: number;
+  newUsers24h: number;
+  newUsers7d: number;
+  newUsersThisMonth: number;
+  totalAppUsers: number;
+  activeAppUsers: number;
+  suspendedAppUsers: number;
+  activePremiumUsers: number;
+  expiredPendingDowngrade: number;
+  totalDevices: number;
+  uninitializedUsers: number;
+  dailyNewUsers: DailyNewUser[];
   totalProcesses: number;
+  totalFailedProcesses: number;
   avgProcessesPerUser: number;
-  dailyNewUsers: DailyNewUser[] | [];
+  processSuccessRate: number;
+  usersByPlan: UsersByPlan;
+  roleDistribution: Array<{ _id: string; count: number }>;
+  meta?: {
+    generatedAt: string;
+    refreshed: boolean;
+    syncedExpiredPlans: number;
+  };
+}
+
+export interface AdminUserProfileUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
+  role: "user" | "admin" | "superAdmin" | string;
+  isVerified: boolean;
+  isDisabled: boolean;
+  loginProvider: string[];
+  lastLoginAt: string | null;
+  passwordChangedAt: string | null;
+  ipAddress: string | null;
+  failedLoginAttempts: number;
+  isLocked: boolean;
+  referredBy: {
+    referralCode: string | null;
+    referrerName: string | null;
+    referrerEmail: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserProfileFailure {
+  date: string;
+  count: number;
+  errorMessages: string[];
+}
+
+export interface AdminUserProfileAppUser {
+  id: string;
+  _id: string;
+  userId: string;
+  username: string;
+  key: string;
+  expiresAt: string | null;
+  remainingDays: number | null;
+  isExpired: boolean;
+  isActive: boolean;
+  status: "active" | "suspended";
+  suspendedAt: string | null;
+  plan: {
+    type: "free" | "credit" | "subscription";
+    id: string | null;
+    name: string;
+  };
+  credit: number | null;
+  remainingCredit: number | null;
+  lastCreditRefresh: string | null;
+  lastPlanChange: string | null;
+  planHistory: Array<{
+    _id?: string;
+    planType: string;
+    changedAt: string;
+    reason: string;
+  }>;
+  totalProcess: number;
+  totalFailedProcess: number;
+  todayProcess: number;
+  currentMonthProcess: number;
+  successRate: number;
+  last7DaysProcess: Array<{ date: string; count: number; failed: number }>;
+  last6MonthProcess: Array<{ month: string; count: number; failed: number }>;
+  monthlyUsage: Record<string, number>;
+  recentFailures: AdminUserProfileFailure[];
+  allowedDevices: string[];
+  devices: AdminDesktopDevice[];
+  maxDevices: number;
+  deviceRemoval: AdminDeviceRemovalStatus;
+  isValid: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserProfilePayment {
+  id: string;
+  _id: string;
+  paymentID: string;
+  trxID: string;
+  gateway: string;
+  plan: {
+    id?: string;
+    type: string;
+    name: string;
+  };
+  amount: number;
+  currency: string;
+  status: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserProfileReferral {
+  exists: boolean;
+  referralCode: string | null;
+  withdrawAccount: string | null;
+  referredCount: number;
+  availableBalance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  pendingWithdrawalsCount: number;
+  pendingWithdrawalsAmount: number;
+}
+
+export interface AdminUserProfileSession {
+  id: string;
+  deviceName: string;
+  userAgent: string;
+  ipAddress: string;
+  lastActiveAt: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface AdminUserDetailsResponse {
+  user: AdminUserProfileUser;
+  appUser: AdminUserProfileAppUser;
+  payments: AdminUserProfilePayment[];
+  paymentSummary: {
+    totalSpent: number;
+    totalCount: number;
+    lastPaymentAt: string | null;
+  };
+  referral: AdminUserProfileReferral;
+  security: {
+    activeSessionsCount: number;
+    sessions: AdminUserProfileSession[];
+  };
+  meta: {
+    generatedAt: string;
+    refreshed: boolean;
+  };
+}
+
+export interface CreateAppUserPayload {
+  username: string;
+  name?: string;
+  password?: string;
+  createAccountIfMissing?: boolean;
+  isVerified?: boolean;
+  planId?: string | null;
+  plan?: "free" | "credit" | "subscription" | { type: string; id?: string | null; name?: string | null };
+  expiryDays?: number;
+  initialCredit?: number;
+  credit?: number;
+  maxDevices?: number;
+  recordPayment?: boolean;
+  paymentAmount?: number;
+  paymentNote?: string;
+  reason?: string;
+}
+
+export interface CreateAppUserResponse {
+  key: string;
+  username: string;
+  userId: string;
+  plan: { type: string; id: string | null; name: string };
+  expiresAt: string | null;
+  isActive: boolean;
+  maxDevices: number;
+  credit: number | null;
+  userCreated: boolean;
+  paymentRecorded: { id: string; trxID: string; amount: number } | null;
+}
+
+export interface UpdateAppUserPayload {
+  username?: string;
+  key?: string;
+  userId?: string;
+  planId?: string | null;
+  plan?: "free" | "credit" | "subscription" | { type: string; id?: string | null; name?: string | null };
+  upgradeMode?: "replace" | "extend";
+  expiryDays?: number;
+  credit?: number;
+  maxDevices?: number;
+  reactivate?: boolean;
+  recordPayment?: boolean;
+  paymentAmount?: number;
+  paymentNote?: string;
+  triggerReferralReward?: boolean;
+  reason?: string;
+}
+
+export interface UpdateAppUserResponse {
+  key: string;
+  appUser: Partial<AppUsers>;
+  paymentRecorded: { id: string; trxID: string; amount: number } | null;
 }
 
 export interface PaymentResponse {

@@ -1,30 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { format } from "date-fns";
+import {
+  CheckCircle2,
+  Download,
+  Edit,
+  Eye,
+  Filter,
+  Infinity as InfinityIcon,
+  KeyRound,
+  Laptop,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Trash2,
+  User2,
+  X,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  useAddCreditsMutation,
+  useAllUsersQuery,
+  useDeleteAppUserMutation,
+  useResetDeviceMutation,
+  useUpdateAppUserStatusMutation,
+} from "@/services/queries/admin-dashboard";
+import type { AppUsers } from "@/types/admin";
+import {
+  UpgradePlanDialog,
+  type UpgradePlanTargetUser,
+} from "@/components/admin/users/upgrade-plan-dialog";
+import PaginationView from "@/components/pagination-view";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +60,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -44,6 +69,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,42 +85,175 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Edit,
-  Copy,
-  MoreHorizontal,
-  Trash2,
-  Plus,
-  KeyRound,
-  RefreshCw,
-  ShieldAlert,
-  ShieldCheck,
-  Smartphone,
-  Search,
-  Download,
-  Filter,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Eye,
-  User2,
-} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import Link from "next/link";
-import { AppUsers } from "@/types/admin";
-import { useAllUsersQuery } from "@/services/queries/admin-dashboard";
-import PaginationView from "@/components/pagination-view";
 import {
-  addCredits,
-  createUser,
-  deleteAppUser,
-  resetDeviceId,
-  updateUser,
-  updateUserStats,
-} from "@/services/admin-dashboard";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-export default function AppUserList() {
+interface AppUserListProps {
+  onOpenCreateDialog?: () => void;
+  onQueryParamsChange?: (queryParams: string) => void;
+}
+
+function getInitials(name?: string): string {
+  if (!name) return "U";
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  return initials || "U";
+}
+
+function formatDate(dateString?: string | null): string {
+  if (!dateString) return "—";
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, "MMM d, yyyy");
+}
+
+function PlanBadge({ type, name }: { type?: string; name?: string }) {
+  const normalized = (type || "free").toLowerCase();
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "capitalize text-[11px] font-medium",
+        normalized === "subscription" &&
+          "text-purple-600 dark:text-purple-400 border-purple-500/25 bg-purple-500/10",
+        normalized === "credit" &&
+          "text-amber-600 dark:text-amber-400 border-amber-500/25 bg-amber-500/10",
+        normalized === "free" &&
+          "text-muted-foreground border-border bg-muted/50"
+      )}
+    >
+      {name || normalized}
+    </Badge>
+  );
+}
+
+function StatusBadge({ status }: { status?: string }) {
+  const isSuspended = status?.toLowerCase() === "suspended";
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "capitalize text-[11px] font-medium",
+        isSuspended
+          ? "text-destructive border-destructive/25 bg-destructive/10"
+          : "text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10"
+      )}
+    >
+      {status || "active"}
+    </Badge>
+  );
+}
+
+function escapeCsvCell(value: unknown): string {
+  const str = value === null || value === undefined ? "" : String(value);
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+function TableLoadingSkeleton({ rowCount }: { rowCount: number }) {
+  return (
+    <>
+      <div className="hidden lg:block rounded-lg border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>User</TableHead>
+              <TableHead>Plan &amp; Quota</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Devices &amp; Usage</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: rowCount }).map((_, idx) => (
+              <TableRow key={idx}>
+                <TableCell>
+                  <div className="flex items-center gap-3 min-w-[210px]">
+                    <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-44" />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-14" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-3.5 w-24" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="lg:hidden divide-y rounded-lg border">
+        {Array.from({ length: rowCount }).map((_, idx) => (
+          <div key={idx} className="p-4 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-44" />
+                </div>
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-5 w-28 rounded-full" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Skeleton className="h-8 flex-1 rounded-md" />
+              <Skeleton className="h-8 flex-1 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export default function AppUserList({
+  onOpenCreateDialog,
+  onQueryParamsChange,
+}: AppUserListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
@@ -96,977 +261,1040 @@ export default function AppUserList() {
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>("all");
   const [selectedStatusFilter, setSelectedStatusFilter] =
     useState<string>("all");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
 
-  const buildQueryParams = () => {
-    const queryParams = new URLSearchParams();
-    queryParams.append("page", currentPage.toString());
-    queryParams.append("limit", limit.toString());
-
-    if (debouncedSearchTerm) {
-      queryParams.append("search", debouncedSearchTerm);
-    }
-
-    if (selectedPlanFilter !== "all") {
-      queryParams.append("plan", selectedPlanFilter);
-    }
-
-    if (selectedStatusFilter !== "all") {
-      queryParams.append("status", selectedStatusFilter);
-    }
-
-    return queryParams.toString();
-  };
-
-  const { data, isLoading, error, refetch } =
-    useAllUsersQuery(buildQueryParams());
-
-  const responseData = data && data.success ? data.data : undefined;
-  const appUsers = responseData?.users ?? [];
-  const totalPages =
-    responseData?.totalPages ??
-    ((data as unknown as Record<string, Record<string, { totalPages?: number }>>)?.data?.pagination?.totalPages || 1);
-  const totalUsers =
-    responseData?.total ??
-    ((data as unknown as Record<string, Record<string, { total?: number }>>)?.data?.pagination?.total || 0);
-
-  // Action states
-  const [deletingUsername, setDeletingUsername] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateUsername, setUpdateUsername] = useState("");
-  const [updatePlan, setUpdatePlan] = useState("");
-  const [updateExpiryDays, setUpdateExpiryDays] = useState("30");
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [processingKey, setProcessingKey] = useState<string | null>(null);
-  const [processingAction, setProcessingAction] = useState<string | null>(null);
-
-  // Create App User states
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createUsername, setCreateUsername] = useState("");
-  const [createPlan, setCreatePlan] = useState("free");
-  const [createExpiryDays, setCreateExpiryDays] = useState("7");
-  const [isCreating, setIsCreating] = useState(false);
-
-  // Add credit states
-  const [addCreditDialogOpen, setAddCreditDialogOpen] = useState(false);
-  const [creditAppUserKey, setCreditAppUserKey] = useState<string>("");
-  const [creditAmount, setCreditAmount] = useState<string>("50");
-  const [isAddingCredit, setIsAddingCredit] = useState(false);
+  // Modal & Action States
+  const [upgradeTarget, setUpgradeTarget] =
+    useState<UpgradePlanTargetUser | null>(null);
+  const [creditTarget, setCreditTarget] = useState<AppUsers | null>(null);
+  const [creditAmount, setCreditAmount] = useState("100");
+  const [deleteTarget, setDeleteTarget] = useState<AppUsers | null>(null);
+  const [busyAction, setBusyAction] = useState<{
+    key: string;
+    action: string;
+  } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const copyToClipboard = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    toast("Access key has been copied to clipboard");
-  };
+  const queryParamsObj = new URLSearchParams();
+  queryParamsObj.append("page", currentPage.toString());
+  queryParamsObj.append("limit", limit.toString());
+  if (debouncedSearchTerm.trim()) {
+    queryParamsObj.append("search", debouncedSearchTerm.trim());
+  }
+  if (selectedPlanFilter !== "all") {
+    queryParamsObj.append("plan", selectedPlanFilter);
+  }
+  if (selectedStatusFilter !== "all") {
+    queryParamsObj.append("status", selectedStatusFilter);
+  }
+  if (selectedRoleFilter !== "all") {
+    queryParamsObj.append("role", selectedRoleFilter);
+  }
+  const queryParamsString = queryParamsObj.toString();
 
-  const deleteUser = async (username: string) => {
-    try {
-      setDeletingUsername(username);
-      const result = await deleteAppUser(username);
-      if (result.success) {
-        toast("App user deleted successfully");
-        await refetch();
-      } else {
-        throw new Error(result.message || "Failed to delete app user");
-      }
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
-      setDeletingUsername(null);
-    }
+  useEffect(() => {
+    onQueryParamsChange?.(queryParamsString);
+  }, [queryParamsString, onQueryParamsChange]);
+
+  const { data, isLoading, isFetching, isRefetching, error, refetch } =
+    useAllUsersQuery(queryParamsString);
+
+  const deleteMutation = useDeleteAppUserMutation();
+  const resetDeviceMutation = useResetDeviceMutation();
+  const updateStatusMutation = useUpdateAppUserStatusMutation();
+  const addCreditsMutation = useAddCreditsMutation();
+
+  const responseData = data && data.success ? data.data : undefined;
+  const appUsers = responseData?.users ?? [];
+  const totalPages = Math.max(
+    1,
+    responseData?.totalPages ?? responseData?.pagination?.totalPages ?? 1
+  );
+  const totalUsers =
+    responseData?.total ?? responseData?.pagination?.total ?? 0;
+
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    selectedPlanFilter !== "all" ||
+    selectedStatusFilter !== "all" ||
+    selectedRoleFilter !== "all";
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setSelectedPlanFilter("all");
+    setSelectedStatusFilter("all");
+    setSelectedRoleFilter("all");
+    setCurrentPage(1);
   };
 
   const handleResetDeviceId = async (key: string) => {
+    setBusyAction({ key, action: "reset-device" });
     try {
-      setProcessingKey(key);
-      setProcessingAction("reset-device");
-      const result = await resetDeviceId(key);
-
-      if (result.success) {
-        toast("Device ID reset successfully");
-        await refetch();
+      const res = await resetDeviceMutation.mutateAsync({ key });
+      if (res.success) {
+        toast.success("Desktop devices reset successfully");
       } else {
-        throw new Error(result.message || "Failed to reset device ID");
+        toast.error(res.message || "Failed to reset devices");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
+      toast.error(err instanceof Error ? err.message : "Failed to reset devices");
     } finally {
-      setProcessingKey(null);
-      setProcessingAction(null);
+      setBusyAction(null);
     }
   };
 
   const handleUpdateUserStatus = async (
     key: string,
-    mode: "suspend" | "reactivate",
+    mode: "suspend" | "reactivate"
   ) => {
+    setBusyAction({ key, action: mode });
     try {
-      setProcessingKey(key);
-      setProcessingAction(mode);
-
-      const result = await updateUserStats(key, mode);
-
-      if (result.success) {
-        toast(
-          result.message ||
-            `App user ${
-              mode === "suspend" ? "suspended" : "reactivated"
-            } successfully`,
+      const res = await updateStatusMutation.mutateAsync({ key, mode });
+      if (res.success) {
+        toast.success(
+          res.message ||
+            `App user ${mode === "suspend" ? "suspended" : "reactivated"}`
         );
-        await refetch();
       } else {
-        throw new Error(result.message || `Failed to ${mode} app user`);
+        toast.error(res.message || `Failed to ${mode} app user`);
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
+      toast.error(
+        err instanceof Error ? err.message : `Failed to ${mode} app user`
+      );
     } finally {
-      setProcessingKey(null);
-      setProcessingAction(null);
+      setBusyAction(null);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
-
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "N/A";
-
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "bg-green-500/20 text-green-700 hover:bg-green-500/20";
-      case "suspended":
-        return "bg-red-500/20 text-red-700 hover:bg-red-500/20";
-      default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-    }
-  };
-
-  const getPlanBadge = (plan: string) => {
-    switch (plan.toLowerCase()) {
-      case "free":
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-      case "credit":
-        return "bg-amber-500/20 text-amber-700 hover:bg-amber-500/20";
-      case "subscription":
-        return "bg-purple-500/20 text-purple-700 hover:bg-purple-500/20";
-      default:
-        return "bg-gray-500/20 text-gray-700 hover:bg-gray-500/20";
-    }
-  };
-
-  const handleUpdateAppUser = async () => {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      setIsUpdating(true);
-
-      const requestBody: {
-        username: string;
-        plan?: string;
-        expiryDays?: number;
-        credit?: number;
-      } = {
-        username: updateUsername,
-      };
-
-      if (updatePlan && updatePlan !== "N/A") {
-        requestBody.plan = updatePlan;
-      }
-
-      if (updateExpiryDays && !isNaN(Number(updateExpiryDays))) {
-        requestBody.expiryDays = Number.parseInt(updateExpiryDays);
-      }
-
-      if (updatePlan === "credit") {
-        const creditInput = document.getElementById(
-          "credit",
-        ) as HTMLInputElement;
-        if (creditInput && creditInput.value) {
-          requestBody.credit = Number.parseInt(creditInput.value);
-        }
-      }
-
-      const result = await updateUser(requestBody);
-
-      if (result.success) {
-        toast("App user updated successfully");
-        await refetch();
-        setUpdateDialogOpen(false);
+      const res = await deleteMutation.mutateAsync(deleteTarget.username);
+      if (res.success) {
+        toast.success("Desktop license profile deleted");
+        setDeleteTarget(null);
       } else {
-        throw new Error(result.message || "Failed to update app user");
+        toast.error(res.message || "Failed to delete app user");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
-      setIsUpdating(false);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete app user"
+      );
     }
   };
 
-  const handleCreateAppUser = async () => {
+  const handleAddCreditsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!creditTarget?.key) return;
+    const credits = Number.parseInt(creditAmount, 10);
+    if (!Number.isFinite(credits) || credits < 1) {
+      toast.error("Enter a valid positive credit amount");
+      return;
+    }
+
     try {
-      setIsCreating(true);
-
-      const requestBody: {
-        username: string;
-        plan?: string | { type: string; id: string };
-        expiryDays: number;
-        initialCredit?: number;
-      } = {
-        username: createUsername,
-        expiryDays: Number.parseInt(createExpiryDays),
-      };
-
-      if (createPlan === "credit") {
-        requestBody.plan = "credit";
-        const initialCreditInput = document.getElementById(
-          "initialCredit",
-        ) as HTMLInputElement;
-        requestBody.initialCredit = initialCreditInput
-          ? Number.parseInt(initialCreditInput.value) || 100
-          : 100;
-      } else if (createPlan === "subscription") {
-        requestBody.plan = {
-          type: "subscription",
-          id: "premium_monthly",
-        };
+      const res = await addCreditsMutation.mutateAsync({
+        key: creditTarget.key,
+        credits,
+      });
+      if (res.success) {
+        toast.success(res.message || `${credits} credits added`);
+        setCreditTarget(null);
+        setCreditAmount("100");
       } else {
-        requestBody.plan = createPlan;
-      }
-
-      const result = await createUser(requestBody);
-
-      if (result.success) {
-        await refetch();
-        toast("App user created successfully");
-
-        const createdKey = result.data?.key;
-        if (createdKey) {
-          toast(
-            <div className="mt-2 flex items-center space-x-2">
-              <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
-                {createdKey}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2"
-                onClick={() => copyToClipboard(createdKey)}
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-            </div>,
-          );
-        }
-
-        setCreateDialogOpen(false);
-        setCreateUsername("");
-        setCreatePlan("free");
-        setCreateExpiryDays("7");
-      } else {
-        throw new Error(result.message || "Failed to create app user");
+        toast.error(res.message || "Failed to add credits");
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
-      setIsCreating(false);
+      toast.error(err instanceof Error ? err.message : "Failed to add credits");
     }
-  };
-
-  const openUpdateDialog = (appUser: AppUsers) => {
-    setUpdateUsername(appUser.username || appUser.email || "");
-    setUpdatePlan(appUser.plan?.type || "N/A");
-    setUpdateExpiryDays("30");
-    setUpdateDialogOpen(true);
-  };
-
-  const openCreateDialog = () => {
-    setCreateUsername("");
-    setCreatePlan("free");
-    setCreateExpiryDays("7");
-    setCreateDialogOpen(true);
-  };
-
-  const isProcessing = (key: string, action: string) => {
-    return processingKey === key && processingAction === action;
   };
 
   const exportToCSV = () => {
     const headers = [
-      "Username",
-      "Access Key",
-      "Plan",
+      "Name",
+      "Email",
+      "Role",
+      "Verified",
+      "Plan Type",
+      "Plan Name",
+      "Credits",
       "Status",
+      "Devices",
+      "Max Devices",
+      "Processes",
       "Expires At",
       "Created At",
-      "Processes",
-      "Device Bound",
     ];
-    const csvRows = [headers];
+    const csvRows = [headers.map(escapeCsvCell).join(",")];
 
     appUsers.forEach((user) => {
+      const devicesCount =
+        user.devicesCount ?? user.allowedDevices?.length ?? 0;
+      const creditsVal =
+        user.plan?.type === "subscription" ? "Unlimited" : user.credit ?? 0;
       const row = [
-        user.username,
-        user.key,
-        user.plan?.type ?? "",
+        user.name || "",
+        user.email || user.username,
+        user.role || "user",
+        user.isVerified ? "Yes" : "No",
+        user.plan?.type || "free",
+        user.plan?.name || "Free Tier",
+        creditsVal,
         user.status,
-        user.expiresAt ?? "",
+        devicesCount,
+        user.maxDevices || 2,
+        user.totalProcess ?? 0,
+        user.expiresAt || "",
         user.createdAt,
-        user.totalProcess?.toString() ?? "0",
-        (user.allowedDevices?.length ?? 0) > 0 ? "Yes" : "No",
       ];
-      csvRows.push(row.map((value) => value?.toString() ?? ""));
+      csvRows.push(row.map(escapeCsvCell).join(","));
     });
 
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvRows.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `app-users-export-${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    link.style.visibility = "hidden";
+    link.href = url;
+    link.download = `app-users-export-${new Date().toISOString().split("T")[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
+  const openUpgradeForUser = (appUser: AppUsers) => {
+    setUpgradeTarget({
+      userId: appUser.userId || appUser._id,
+      username: appUser.username || appUser.email || "",
+      name: appUser.name,
+      email: appUser.email,
+      key: appUser.key,
+      status: appUser.status,
+      isActive: appUser.isActive,
+      maxDevices: appUser.maxDevices,
+      credit: appUser.credit,
+      expiresAt: appUser.expiresAt,
+      plan: appUser.plan,
+    });
   };
 
-  const renderAppUserTable = () => {
-    if (isLoading && appUsers.length === 0) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="flex items-center space-x-4">
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (error && appUsers.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <XCircle className="h-12 w-12 text-destructive mb-4" />
-          <h3 className="text-lg font-medium">Error loading App Users</h3>
-          <p className="text-muted-foreground mt-2 mb-4">
-            {error instanceof Error
-              ? error.message
-              : "An unknown error occurred"}
-          </p>
-          <Button onClick={() => refetch()} variant="outline">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
-          </Button>
-        </div>
-      );
-    }
-
-    if (appUsers.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <User2 className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No App Users found</h3>
-          <p className="text-muted-foreground mt-2 mb-4">
-            {debouncedSearchTerm
-              ? `No results found for "${debouncedSearchTerm}"`
-              : "Create your first App User to get started"}
-          </p>
-          <Button onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create App User
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Username</TableHead>
-            <TableHead>Access Key</TableHead>
-            <TableHead>Plan</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-center">Device Bound</TableHead>
-            <TableHead className="text-center">Expires</TableHead>
-            <TableHead className="text-center">Created</TableHead>
-            <TableHead className="text-center">Processes</TableHead>
-            {appUsers.some((u) => u.credit !== undefined) && (
-              <TableHead className="text-center">Credit</TableHead>
-            )}
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {appUsers.map((appUser) => (
-            <TableRow key={appUser._id}>
-              <TableCell className="font-medium">
-                {appUser.username || appUser.email || appUser.name || "User"}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center space-x-2">
-                  {appUser.key ? (
-                    <>
-                      <span className="font-mono text-xs">
-                        {appUser.key.length > 16
-                          ? `${appUser.key.substring(0, 8)}...${appUser.key.substring(
-                              appUser.key.length - 8,
-                            )}`
-                          : appUser.key}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => copyToClipboard(appUser.key)}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">
-                      Not initialized
-                    </span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={getPlanBadge(appUser.plan?.type || "")}
-                >
-                  {appUser.plan?.type.replace("_", " ")}
-                  {appUser.plan?.id && appUser.plan?.name
-                    ? ` (${appUser.plan.name})`
-                    : ""}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge
-                  variant="outline"
-                  className={getStatusColor(appUser.status)}
-                >
-                  {appUser.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="flex justify-center">
-                {(appUser.allowedDevices?.length ?? 0) > 0 ? (
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mr-1" />
-                    <span className="text-xs text-muted-foreground">Yes</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <XCircle className="h-4 w-4 text-muted-foreground mr-1" />
-                    <span className="text-xs text-muted-foreground">No</span>
-                  </div>
-                )}
-              </TableCell>
-              <TableCell className="text-center">
-                {formatDate(appUser?.expiresAt || "")}
-              </TableCell>
-              <TableCell className="text-center">
-                {formatDate(appUser.createdAt)}
-              </TableCell>
-              <TableCell className="text-center">
-                {appUser.totalProcess}
-              </TableCell>
-              {appUsers.some((u) => u.credit !== undefined) && (
-                <TableCell className="text-center">
-                  {appUser.plan?.type === "subscription"
-                    ? "Unlimited"
-                    : appUser.credit || 0}
-                </TableCell>
-              )}
-              <TableCell className="text-right flex items-center justify-end">
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <Link href={`/admin/users/${appUser.key || appUser._id}`}>
-                    <Eye className="h-4 w-4" />
-                    <span className="sr-only">View user details</span>
-                  </Link>
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {appUser.key && (
-                      <DropdownMenuItem
-                        onClick={() => copyToClipboard(appUser.key)}
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy Access Key
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => openUpdateDialog(appUser)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit App User
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    {appUser.plan?.type === "credit" && appUser.key && (
-                      <DropdownMenuItem
-                        onClick={() => openAddCreditDialog(appUser)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Credits
-                      </DropdownMenuItem>
-                    )}
-
-                    {appUser.key && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() => handleResetDeviceId(appUser.key)}
-                          disabled={isProcessing(appUser.key, "reset-device")}
-                        >
-                          {isProcessing(appUser.key, "reset-device") ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Smartphone className="mr-2 h-4 w-4" />
-                          )}
-                          {isProcessing(appUser.key, "reset-device")
-                            ? "Resetting..."
-                            : "Reset Device ID"}
-                        </DropdownMenuItem>
-
-                        {appUser.status === "active" ? (
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() =>
-                              handleUpdateUserStatus(appUser.key, "suspend")
-                            }
-                            disabled={isProcessing(appUser.key, "suspend")}
-                          >
-                            {isProcessing(appUser.key, "suspend") ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <ShieldAlert className="mr-2 h-4 w-4" />
-                            )}
-                            {isProcessing(appUser.key, "suspend")
-                              ? "Suspending..."
-                              : "Suspend App User"}
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem
-                            className="text-green-600"
-                            onClick={() =>
-                              handleUpdateUserStatus(appUser.key, "reactivate")
-                            }
-                            disabled={isProcessing(appUser.key, "reactivate")}
-                          >
-                            {isProcessing(appUser.key, "reactivate") ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <ShieldCheck className="mr-2 h-4 w-4" />
-                            )}
-                            {isProcessing(appUser.key, "reactivate")
-                              ? "Reactivating..."
-                              : "Reactivate App User"}
-                          </DropdownMenuItem>
-                        )}
-                      </>
-                    )}
-
-                    <DropdownMenuSeparator />
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onSelect={(e) => e.preventDefault()}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete App User
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete the app user access for {appUser.username} and
-                            remove it from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteUser(appUser.username)}
-                            disabled={deletingUsername === appUser.username}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            {deletingUsername === appUser.username ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Deleting...
-                              </>
-                            ) : (
-                              "Delete"
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    );
-  };
-
-  const handleAddCredits = async () => {
-    try {
-      setIsAddingCredit(true);
-
-      const result = await addCredits(creditAppUserKey, parseInt(creditAmount));
-
-      if (result.success) {
-        toast(result.message || `${creditAmount} credits added successfully`);
-        await refetch();
-        setAddCreditDialogOpen(false);
-        setCreditAmount("50");
-      } else {
-        throw new Error(result.message || "Failed to add credits");
-      }
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "An unknown error occurred");
-    } finally {
-      setIsAddingCredit(false);
-    }
-  };
-
-  const openAddCreditDialog = (appUser: AppUsers) => {
-    setCreditAppUserKey(appUser.key);
-    setCreditAmount("50");
-    setAddCreditDialogOpen(true);
-  };
+  const isBusy = (key: string | null, action: string) =>
+    Boolean(key && busyAction?.key === key && busyAction?.action === action);
 
   return (
-    <Card className="mt-6">
-      <CardHeader className="flex flex-row items-center justify-between max-md:flex-col max-md:items-start gap-4">
+    <Card className="min-w-0">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
         <div>
-          <CardTitle>App Users</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base font-semibold">
+              User Directory
+            </CardTitle>
+            <Badge variant="secondary" className="text-[11px] font-mono">
+              {totalUsers.toLocaleString()} users
+            </Badge>
+          </div>
           <CardDescription>
-            Manage app users and their access permissions
+            Inspect user profiles, manage desktop licenses, and manually assign
+            or upgrade plans.
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => refetch()}
-            className="flex items-center gap-1"
+            disabled={isRefetching}
+            className="gap-1.5"
           >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")}
+            />
+            <span>Refresh</span>
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={exportToCSV}
-            className="flex items-center gap-1"
+            disabled={appUsers.length === 0}
+            className="gap-1.5"
           >
-            <Download className="h-4 w-4" />
-            Export
+            <Download className="h-3.5 w-3.5" />
+            <span>Export CSV</span>
           </Button>
-          <Button
-            onClick={openCreateDialog}
-            className="flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            Create App User
-          </Button>
+          {onOpenCreateDialog && (
+            <Button
+              size="sm"
+              onClick={onOpenCreateDialog}
+              className="gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Create User</span>
+            </Button>
+          )}
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+
+      <CardContent className="space-y-4">
+        {/* Filter Toolbar */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by username or access key..."
+              placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
+              className="pl-9"
             />
           </div>
-          <div className="flex gap-2">
-            <div className="w-40">
-              <Select
-                value={selectedPlanFilter}
-                onValueChange={setSelectedPlanFilter}
+
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+            <Select
+              value={selectedPlanFilter}
+              onValueChange={(value) => {
+                setSelectedPlanFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <div className="flex items-center gap-1.5 truncate">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Plan" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Plans</SelectItem>
+                <SelectItem value="free">Free Tier</SelectItem>
+                <SelectItem value="credit">Credit Pack</SelectItem>
+                <SelectItem value="subscription">Subscription</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={selectedStatusFilter}
+              onValueChange={(value) => {
+                setSelectedStatusFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[135px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={selectedRoleFilter}
+              onValueChange={(value) => {
+                setSelectedRoleFilter(value);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[130px]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="superAdmin">Super Admin</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="col-span-2 sm:col-span-1 gap-1 text-xs text-muted-foreground"
               >
-                <SelectTrigger>
-                  <div className="flex items-center">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Filter by plan" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Plans</SelectItem>
-                  <SelectItem value="free">Free Plan</SelectItem>
-                  <SelectItem value="credit">Credit Plan</SelectItem>
-                  <SelectItem value="subscription">
-                    Subscription Plan
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-40">
-              <Select
-                value={selectedStatusFilter}
-                onValueChange={setSelectedStatusFilter}
-              >
-                <SelectTrigger>
-                  <div className="flex items-center">
-                    <Filter className="mr-2 h-4 w-4" />
-                    <SelectValue placeholder="Filter by status" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-32">
-              <Select
-                value={limit.toString()}
-                onValueChange={(value) => setLimit(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Rows per page" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 rows</SelectItem>
-                  <SelectItem value="10">10 rows</SelectItem>
-                  <SelectItem value="20">20 rows</SelectItem>
-                  <SelectItem value="50">50 rows</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
           </div>
         </div>
 
-        {renderAppUserTable()}
-
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {appUsers.length > 0 ? (currentPage - 1) * limit + 1 : 0} to{" "}
-            {Math.min(currentPage * limit, totalUsers ?? 0)} of {totalUsers ?? 0}{" "}
-            App Users
+        {/* Directory Body */}
+        {isLoading ? (
+          <TableLoadingSkeleton rowCount={limit} />
+        ) : error && appUsers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-lg border border-dashed border-destructive/40">
+            <XCircle className="h-10 w-10 text-destructive mb-3" />
+            <h3 className="text-base font-semibold">Failed to load users</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
+              {error instanceof Error
+                ? error.message
+                : "An unexpected error occurred."}
+            </p>
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
           </div>
+        ) : appUsers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-lg border border-dashed">
+            <User2 className="h-10 w-10 text-muted-foreground/60 mb-3" />
+            <h3 className="text-base font-semibold">No matching users found</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
+              {hasActiveFilters
+                ? "Try clearing your active search or filter criteria."
+                : "Provision your first App User to initialize their desktop profile."}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                  Clear Filters
+                </Button>
+              )}
+              {onOpenCreateDialog && (
+                <Button
+                  size="sm"
+                  onClick={onOpenCreateDialog}
+                  className="gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create App User
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "transition-opacity duration-150",
+              isFetching && "opacity-60 pointer-events-none"
+            )}
+          >
+            {/* Desktop Table */}
+            <div className="hidden lg:block rounded-lg border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead>User</TableHead>
+                    <TableHead>Plan &amp; Quota</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Devices &amp; Usage</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {appUsers.map((appUser) => {
+                    const profileSlug = encodeURIComponent(
+                      appUser.userId || appUser._id || appUser.key || ""
+                    );
+                    const devicesCount =
+                      appUser.devicesCount ?? appUser.allowedDevices?.length ?? 0;
+                    const maxDevices = appUser.maxDevices ?? 2;
+
+                    return (
+                      <TableRow key={appUser._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3 min-w-[220px]">
+                            <Avatar className="h-9 w-9 border shrink-0">
+                              <AvatarImage
+                                src={appUser.avatar || undefined}
+                                alt={appUser.name || appUser.username}
+                              />
+                              <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
+                                {getInitials(appUser.name || appUser.username)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  href={`/admin/users/${profileSlug}`}
+                                  className="font-medium text-sm hover:underline truncate max-w-[180px]"
+                                >
+                                  {appUser.name || appUser.username}
+                                </Link>
+                                {appUser.isVerified && (
+                                  <CheckCircle2
+                                    className="h-3.5 w-3.5 text-emerald-500 shrink-0"
+                                    aria-label="Verified"
+                                  />
+                                )}
+                                {appUser.role && appUser.role !== "user" && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] px-1.5 py-0 capitalize"
+                                  >
+                                    {appUser.role}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate max-w-[220px]">
+                                {appUser.email || appUser.username}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <PlanBadge
+                                type={appUser.plan?.type}
+                                name={appUser.plan?.name}
+                              />
+                              {appUser.isExpired && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  Expired
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {appUser.plan?.type === "subscription" ? (
+                                <span className="inline-flex items-center gap-1 text-foreground font-medium">
+                                  <InfinityIcon className="h-3.5 w-3.5 text-primary" />
+                                  Unlimited
+                                </span>
+                              ) : (
+                                <span className="font-mono">
+                                  {appUser.credit ?? 0} credits
+                                </span>
+                              )}
+                              {appUser.expiresAt && (
+                                <span>· exp {formatDate(appUser.expiresAt)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <StatusBadge status={appUser.status} />
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="space-y-0.5 text-xs">
+                            <div className="flex items-center gap-1.5 font-medium">
+                              <Laptop className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-mono">
+                                {devicesCount} / {maxDevices}
+                              </span>
+                            </div>
+                            <p className="text-muted-foreground">
+                              {(appUser.totalProcess ?? 0).toLocaleString()}{" "}
+                              processed
+                            </p>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          <div>{formatDate(appUser.createdAt)}</div>
+                          {appUser.lastLoginAt && (
+                            <div className="text-[11px]">
+                              Login {formatDate(appUser.lastLoginAt)}
+                            </div>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              asChild
+                              title="View full user profile"
+                            >
+                              <Link href={`/admin/users/${profileSlug}`}>
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">View profile</span>
+                              </Link>
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary"
+                              onClick={() => openUpgradeForUser(appUser)}
+                              title="Upgrade or change plan"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                              <span className="sr-only">Upgrade plan</span>
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52">
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/admin/users/${profileSlug}`}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Full Profile
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openUpgradeForUser(appUser)}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Upgrade / Change Plan
+                                </DropdownMenuItem>
+
+                                {appUser.key &&
+                                  appUser.plan?.type !== "subscription" && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setCreditTarget(appUser);
+                                        setCreditAmount("100");
+                                      }}
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Add Credits
+                                    </DropdownMenuItem>
+                                  )}
+
+                                {appUser.key && (
+                                  <>
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handleResetDeviceId(appUser.key!)
+                                      }
+                                      disabled={isBusy(
+                                        appUser.key,
+                                        "reset-device"
+                                      )}
+                                    >
+                                      {isBusy(appUser.key, "reset-device") ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Smartphone className="mr-2 h-4 w-4" />
+                                      )}
+                                      Reset All Devices
+                                    </DropdownMenuItem>
+
+                                    {appUser.status === "active" ? (
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() =>
+                                          handleUpdateUserStatus(
+                                            appUser.key!,
+                                            "suspend"
+                                          )
+                                        }
+                                        disabled={isBusy(appUser.key, "suspend")}
+                                      >
+                                        {isBusy(appUser.key, "suspend") ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <ShieldAlert className="mr-2 h-4 w-4" />
+                                        )}
+                                        Suspend License
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem
+                                        className="text-emerald-600"
+                                        onClick={() =>
+                                          handleUpdateUserStatus(
+                                            appUser.key!,
+                                            "reactivate"
+                                          )
+                                        }
+                                        disabled={isBusy(
+                                          appUser.key,
+                                          "reactivate"
+                                        )}
+                                      >
+                                        {isBusy(appUser.key, "reactivate") ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <ShieldCheck className="mr-2 h-4 w-4" />
+                                        )}
+                                        Reactivate License
+                                      </DropdownMenuItem>
+                                    )}
+                                  </>
+                                )}
+
+                                {appUser.hasAppUser !== false && appUser.key && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => setDeleteTarget(appUser)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete Desktop Profile
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile & Tablet Card List */}
+            <div className="lg:hidden divide-y rounded-lg border">
+              {appUsers.map((appUser) => {
+                const profileSlug = encodeURIComponent(
+                  appUser.userId || appUser._id || appUser.key || ""
+                );
+                const devicesCount =
+                  appUser.devicesCount ?? appUser.allowedDevices?.length ?? 0;
+                const maxDevices = appUser.maxDevices ?? 2;
+
+                return (
+                  <div key={appUser._id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9 border shrink-0">
+                          <AvatarImage
+                            src={appUser.avatar || undefined}
+                            alt={appUser.name || appUser.username}
+                          />
+                          <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
+                            {getInitials(appUser.name || appUser.username)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/admin/users/${profileSlug}`}
+                              className="font-medium text-sm hover:underline truncate"
+                            >
+                              {appUser.name || appUser.username}
+                            </Link>
+                            {appUser.isVerified && (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {appUser.email || appUser.username}
+                          </p>
+                        </div>
+                      </div>
+                      <StatusBadge status={appUser.status} />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <PlanBadge
+                          type={appUser.plan?.type}
+                          name={appUser.plan?.name}
+                        />
+                        {appUser.isExpired && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            Expired
+                          </Badge>
+                        )}
+                        <span className="text-muted-foreground font-mono">
+                          {appUser.plan?.type === "subscription"
+                            ? "∞ Unlimited"
+                            : `${appUser.credit ?? 0} cr`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <span className="font-mono">
+                          {devicesCount}/{maxDevices} devices
+                        </span>
+                        <span>
+                          {(appUser.totalProcess ?? 0).toLocaleString()} proc
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs gap-1.5"
+                      >
+                        <Link href={`/admin/users/${profileSlug}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                          Profile
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => openUpgradeForUser(appUser)}
+                        className="flex-1 h-8 text-xs gap-1.5"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Upgrade
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {appUser.key &&
+                            appUser.plan?.type !== "subscription" && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setCreditTarget(appUser);
+                                  setCreditAmount("100");
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Credits
+                              </DropdownMenuItem>
+                            )}
+                          {appUser.key && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => handleResetDeviceId(appUser.key!)}
+                              >
+                                <Smartphone className="mr-2 h-4 w-4" />
+                                Reset Devices
+                              </DropdownMenuItem>
+                              {appUser.status === "active" ? (
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() =>
+                                    handleUpdateUserStatus(
+                                      appUser.key!,
+                                      "suspend"
+                                    )
+                                  }
+                                >
+                                  <ShieldAlert className="mr-2 h-4 w-4" />
+                                  Suspend
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="text-emerald-600"
+                                  onClick={() =>
+                                    handleUpdateUserStatus(
+                                      appUser.key!,
+                                      "reactivate"
+                                    )
+                                  }
+                                >
+                                  <ShieldCheck className="mr-2 h-4 w-4" />
+                                  Reactivate
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => setDeleteTarget(appUser)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Desktop Profile
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Pagination Footer */}
+        <div className="pt-2 border-t flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-3">
+            <span className="text-xs sm:text-sm text-muted-foreground tabular-nums">
+              Showing {appUsers.length > 0 ? (currentPage - 1) * limit + 1 : 0}–
+              {Math.min(currentPage * limit, totalUsers)} of{" "}
+              {totalUsers.toLocaleString()} users
+            </span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Rows</span>
+              <Select
+                value={limit.toString()}
+                onValueChange={(value) => {
+                  setLimit(Number(value));
+                  setCurrentPage(1);
+                }}
+                disabled={isFetching}
+              >
+                <SelectTrigger className="h-8 w-[76px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <PaginationView
             currentPage={currentPage}
             totalPages={totalPages}
-            paginationItemsToDisplay={5}
-            handlePageChange={handlePageChange}
+            isLoading={isFetching}
+            handlePageChange={(page) => {
+              if (page >= 1 && page <= totalPages) {
+                setCurrentPage(page);
+              }
+            }}
           />
         </div>
       </CardContent>
 
-      {/* Update App User Dialog */}
-      <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update App User</DialogTitle>
-            <DialogDescription>
-              Update the plan and expiry settings for this app user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={updateUsername}
-                disabled
-                className="bg-muted"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="plan">Plan</Label>
-              <Select value={updatePlan} onValueChange={setUpdatePlan}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free Plan</SelectItem>
-                  <SelectItem value="credit">Credit Plan</SelectItem>
-                  <SelectItem value="subscription">
-                    Subscription Plan
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              {updatePlan !== "free" && (
-                <>
-                  <Label htmlFor="expiryDays">Expiry Days</Label>
-                  <Input
-                    id="expiryDays"
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={updateExpiryDays}
-                    onChange={(e) => setUpdateExpiryDays(e.target.value)}
-                  />
-                </>
-              )}
-            </div>
-            {updatePlan === "credit" && (
-              <div className="grid gap-2">
-                <Label htmlFor="credit">Credit</Label>
-                <Input
-                  id="credit"
-                  type="number"
-                  min="0"
-                  placeholder="Credit amount"
-                  defaultValue="1000"
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setUpdateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateAppUser} disabled={isUpdating}>
-              {isUpdating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update User"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Reusable Plan Upgrade Modal */}
+      <UpgradePlanDialog
+        open={Boolean(upgradeTarget)}
+        onOpenChange={(open) => {
+          if (!open) setUpgradeTarget(null);
+        }}
+        user={upgradeTarget}
+      />
 
-      {/* Create App User Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+      {/* Add Credits Modal */}
+      <Dialog
+        open={Boolean(creditTarget)}
+        onOpenChange={(open) => {
+          if (!open && !addCreditsMutation.isPending) setCreditTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create New App User</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Add Credits
+            </DialogTitle>
             <DialogDescription>
-              Create a new app user access profile. The username must match an
-              existing user&apos;s email in the database.
+              Grant additional processing credits to{" "}
+              <span className="font-medium text-foreground">
+                {creditTarget?.name || creditTarget?.username}
+              </span>
+              .
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="createUsername">Username (Email)</Label>
+          <form onSubmit={handleAddCreditsSubmit} className="space-y-4 py-1">
+            <div className="space-y-2">
+              <Label htmlFor="dir-credit-amount">Credit Amount</Label>
               <Input
-                id="createUsername"
-                type="email"
-                placeholder="user@example.com"
-                value={createUsername}
-                onChange={(e) => setCreateUsername(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateAppUser}
-              disabled={isCreating || !createUsername.trim()}
-              className="flex items-center gap-1"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <KeyRound className="h-4 w-4 mr-2" />
-                  Create User
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Credits Dialog */}
-      <Dialog open={addCreditDialogOpen} onOpenChange={setAddCreditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Credits</DialogTitle>
-            <DialogDescription>
-              Add additional credits to this app user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="creditAmount">Credit Amount</Label>
-              <Input
-                id="creditAmount"
+                id="dir-credit-amount"
                 type="number"
                 min="1"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(e.target.value)}
+                required
               />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[50, 100, 500, 1000].map((preset) => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-xs"
+                    onClick={() => setCreditAmount(String(preset))}
+                  >
+                    +{preset}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAddCreditDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddCredits} disabled={isAddingCredit}>
-              {isAddingCredit ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Credits"
-              )}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreditTarget(null)}
+                disabled={addCreditsMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addCreditsMutation.isPending}>
+                {addCreditsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add Credits"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Desktop Profile?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the desktop App User profile, plan, and
+              device bindings for{" "}
+              <span className="font-semibold text-foreground">
+                {deleteTarget?.username}
+              </span>
+              . Their web account remains intact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Profile"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
