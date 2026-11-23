@@ -1,15 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
+import Link from "next/link";
+import { format, formatDistanceToNow } from "date-fns";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  Database,
+  Loader2,
+  Play,
+  RefreshCw,
+  Square,
+  Users,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,317 +34,257 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Play,
-  Square,
-  RefreshCw,
-  Clock,
-  Activity,
-  Calendar,
-  Users,
-  CreditCard,
-  Zap,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
-} from "lucide-react";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { SchedulerSkeleton } from "./scheduler-skeleton";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
-  useSchedulerStatusQuery,
   useMaintenanceStatsQuery,
+  useRefreshSchedulerMutation,
+  useSchedulerStatusQuery,
+  useStartSchedulerMutation,
+  useStopSchedulerMutation,
+  useTriggerMaintenanceMutation,
 } from "@/services/queries/admin-dashboard";
-import {
-  startScheduler,
-  stopScheduler,
-  triggerMaintenance,
-} from "@/services/admin-dashboard";
-import type {
-  SchedulerStatus,
-  MaintenanceStats,
-} from "@/services/admin-dashboard";
+import { SchedulerSkeleton } from "./scheduler-skeleton";
+
+function safeFormatDate(value?: string | null, pattern = "MMM d, h:mm a") {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, pattern);
+}
+
+function safeFormatRelative(value?: string | null) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return formatDistanceToNow(d, { addSuffix: true });
+}
+
+function SchedulerRunningBadge({ isRunning }: { isRunning: boolean }) {
+  return isRunning ? (
+    <Badge
+      variant="outline"
+      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium gap-1"
+    >
+      <CheckCircle2 className="h-3 w-3" />
+      Running
+    </Badge>
+  ) : (
+    <Badge
+      variant="outline"
+      className="border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400 font-medium gap-1"
+    >
+      <XCircle className="h-3 w-3" />
+      Stopped
+    </Badge>
+  );
+}
 
 export function SchedulerDashboard() {
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  // Fetch scheduler status and maintenance stats using React Query
   const {
     data: schedulerResponse,
     isLoading: schedulerLoading,
-    refetch: refetchScheduler,
   } = useSchedulerStatusQuery();
 
   const {
     data: statsResponse,
     isLoading: statsLoading,
-    refetch: refetchStats,
   } = useMaintenanceStatsQuery();
 
-  // Extract data from responses
-  const schedulerStatus: SchedulerStatus | null =
-    schedulerResponse?.success && schedulerResponse.data
-      ? schedulerResponse.data
-      : null;
+  const refreshMutation = useRefreshSchedulerMutation();
+  const startMutation = useStartSchedulerMutation();
+  const stopMutation = useStopSchedulerMutation();
+  const triggerMutation = useTriggerMaintenanceMutation();
 
-  const maintenanceStats: MaintenanceStats | null =
-    statsResponse?.success && statsResponse.data ? statsResponse.data : null;
+  const schedulerStatus = schedulerResponse?.success
+    ? schedulerResponse.data
+    : null;
+  const maintenanceStats = statsResponse?.success ? statsResponse.data : null;
 
-  const loading = schedulerLoading || statsLoading;
+  if ((schedulerLoading && !schedulerStatus) || (statsLoading && !maintenanceStats)) {
+    return <SchedulerSkeleton />;
+  }
 
-  const refetchData = async () => {
-    await Promise.all([refetchScheduler(), refetchStats()]);
+  const isRunning = Boolean(schedulerStatus?.isRunning);
+  const maintenance = schedulerStatus?.maintenance;
+  const lastResult = maintenance?.stats?.lastResult ?? null;
+  const needed = maintenanceStats?.maintenanceNeeded;
+  const freeRefreshCount = needed?.freeUsersNeedingRefresh ?? 0;
+  const teardownCount =
+    (needed?.expiredSubscriptions ?? 0) +
+    (needed?.zeroCreditPlans ?? 0) +
+    (needed?.expiredCreditPlans ?? 0);
+  const pendingTotal = needed?.total ?? 0;
+
+  const lastSyncedRelative = safeFormatRelative(
+    schedulerStatus?.meta?.generatedAt ||
+      maintenanceStats?.meta?.generatedAt ||
+      maintenanceStats?.lastChecked
+  );
+
+  const isBusy =
+    refreshMutation.isPending ||
+    startMutation.isPending ||
+    stopMutation.isPending ||
+    triggerMutation.isPending;
+
+  const handleRefresh = async () => {
+    try {
+      const res = await refreshMutation.mutateAsync();
+      if (res.statusRes.success && res.statsRes.success) {
+        toast.success("Scheduler telemetry refreshed");
+      } else {
+        toast.error("Failed to refresh some scheduler telemetry");
+      }
+    } catch {
+      toast.error("Failed to refresh scheduler");
+    }
   };
 
-  const handleSchedulerAction = async (action: "start" | "stop") => {
+  const handleToggleScheduler = async () => {
     try {
-      setActionLoading(action);
-      const actionFn = action === "start" ? startScheduler : stopScheduler;
-      const result = await actionFn();
+      const result = isRunning
+        ? await stopMutation.mutateAsync()
+        : await startMutation.mutateAsync();
 
       if (result.success) {
-        toast.success(`Scheduler ${action}ed successfully`);
-        await refetchScheduler();
+        toast.success(
+          isRunning ? "Scheduler stopped" : "Scheduler started"
+        );
       } else {
-        throw new Error(result.message || `Failed to ${action} scheduler`);
+        toast.error(result.message || "Failed to update scheduler state");
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : `Failed to ${action} scheduler`,
-      );
-    } finally {
-      setActionLoading(null);
+    } catch {
+      toast.error("Failed to update scheduler state");
     }
   };
 
   const handleTriggerMaintenance = async () => {
+    const toastId = toast.loading("Running daily maintenance...");
     try {
-      setActionLoading("trigger");
-      const result = await triggerMaintenance();
-
+      const result = await triggerMutation.mutateAsync();
       if (result.success) {
-        toast.success("Maintenance triggered successfully");
-        await refetchData();
+        const refreshed = result.data?.freeUsersRefreshed ?? 0;
+        const downgraded =
+          (result.data?.expiredSubscriptionsDowngraded ?? 0) +
+          (result.data?.zeroCreditPlansDowngraded ?? 0) +
+          (result.data?.expiredCreditPlansDowngraded ?? 0);
+        toast.success(
+          `Maintenance completed (${refreshed} refreshed, ${downgraded} downgraded)`,
+          { id: toastId }
+        );
       } else {
-        throw new Error(result.message || "Failed to trigger maintenance");
+        toast.error(result.message || "Maintenance failed", { id: toastId });
       }
-    } catch (error) {
+    } catch (err: unknown) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to trigger maintenance",
+        err instanceof Error ? err.message : "Failed to trigger maintenance",
+        { id: toastId }
       );
-    } finally {
-      setActionLoading(null);
     }
   };
 
-  const getStatusBadge = (isRunning: boolean) => {
-    return isRunning ? (
-      <Badge className="bg-green-100 text-green-800 border-green-200">
-        <CheckCircle2 className="w-3 h-3 mr-1" />
-        Running
-      </Badge>
-    ) : (
-      <Badge className="bg-red-100 text-red-800 border-red-200">
-        <XCircle className="w-3 h-3 mr-1" />
-        Stopped
-      </Badge>
-    );
+  const planStyles: Record<string, string> = {
+    free: "border-border bg-muted/60 text-foreground",
+    credit: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    subscription:
+      "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-400",
   };
-
-  const getPlanBadge = (planType: string) => {
-    const colors = {
-      free: "bg-gray-100 text-gray-800 border-gray-200",
-      credit: "bg-blue-100 text-blue-800 border-blue-200",
-      subscription: "bg-purple-100 text-purple-800 border-purple-200",
-    };
-    return (
-      colors[planType as keyof typeof colors] ||
-      "bg-gray-100 text-gray-800 border-gray-200"
-    );
-  };
-
-  if (loading) { return <SchedulerSkeleton />; }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Scheduler Management
-          </h1>
-          <p className="text-muted-foreground">
-            Monitor and control the automated maintenance scheduler
-          </p>
-        </div>
-        <Button onClick={refetchData} variant="outline" className="w-fit">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Status Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Scheduler Status
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              {schedulerStatus && getStatusBadge(schedulerStatus.isRunning)}
+      {/* Header Banner */}
+      <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                Scheduler
+              </h1>
+              {schedulerStatus && <SchedulerRunningBadge isRunning={isRunning} />}
+              {lastSyncedRelative && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Synced {lastSyncedRelative}
+                </span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {schedulerStatus?.maintenance?.nextRun
-                ? `Next run: ${format(
-                    new Date(schedulerStatus.maintenance.nextRun),
-                    "PPp",
-                  )}`
-                : "No scheduled runs"}
+            <p className="text-sm text-muted-foreground">
+              Control automated daily maintenance, weekly backups, and payment
+              reconciliation jobs.
             </p>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Runs</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {schedulerStatus?.maintenance?.stats.totalRuns || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {schedulerStatus?.maintenance?.stats.successfulRuns || 0}{" "}
-              successful, {schedulerStatus?.maintenance?.stats.failedRuns || 0}{" "}
-              failed
-            </p>
-          </CardContent>
-        </Card>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshMutation.isPending}
+              className="gap-1.5"
+            >
+              <RefreshCw
+                className={cn(
+                  "h-3.5 w-3.5",
+                  refreshMutation.isPending && "animate-spin"
+                )}
+              />
+              Refresh
+            </Button>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Last Run</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-medium">
-              {schedulerStatus?.maintenance?.lastRun
-                ? format(new Date(schedulerStatus.maintenance.lastRun), "PPp")
-                : "Never"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {schedulerStatus?.maintenance?.stats.lastResult?.success
-                ? "Successful"
-                : "Failed"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Users Need Refresh
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {maintenanceStats?.maintenanceNeeded.total || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Require daily maintenance
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Control Panel */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Maintenance Scheduler</CardTitle>
-          <CardDescription>
-            Automatically runs at midnight (00:00 UTC) to refresh free credits,
-            downgrade expired subscriptions, and handle zero credit plans
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-1">
-                <div className="font-medium">Schedule</div>
-                <div className="text-sm text-muted-foreground">
-                  Runs daily at 00:00 UTC (
-                  {schedulerStatus?.maintenance?.cronExpression || "0 0 * * *"})
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleSchedulerAction("start")}
-                  disabled={
-                    schedulerStatus?.isRunning || actionLoading === "start"
-                  }
-                  className="bg-green-600 hover:bg-green-700"
-                  size="sm"
-                >
-                  {actionLoading === "start" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-4 w-4" />
-                  )}
-                  Start
-                </Button>
-
-                <Button
-                  onClick={() => handleSchedulerAction("stop")}
-                  disabled={
-                    !schedulerStatus?.isRunning || actionLoading === "stop"
-                  }
-                  variant="destructive"
-                  size="sm"
-                >
-                  {actionLoading === "stop" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Square className="mr-2 h-4 w-4" />
-                  )}
-                  Stop
-                </Button>
-              </div>
-            </div>
+            <Button
+              type="button"
+              variant={isRunning ? "outline" : "secondary"}
+              size="sm"
+              onClick={handleToggleScheduler}
+              disabled={isBusy}
+              className={cn(
+                "gap-1.5",
+                isRunning
+                  ? "text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                  : "text-emerald-700 dark:text-emerald-400"
+              )}
+            >
+              {startMutation.isPending || stopMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : isRunning ? (
+                <Square className="h-3.5 w-3.5" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              {isRunning ? "Stop Scheduler" : "Start Scheduler"}
+            </Button>
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  disabled={actionLoading === "trigger"}
-                  className="w-full"
-                >
-                  {actionLoading === "trigger" ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Button size="sm" disabled={isBusy} className="gap-1.5">
+                  {triggerMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Zap className="mr-2 h-4 w-4" />
+                    <Zap className="h-3.5 w-3.5" />
                   )}
-                  Run Maintenance Now
+                  Run Maintenance
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Run Maintenance Immediately?
-                  </AlertDialogTitle>
+                  <AlertDialogTitle>Run Daily Maintenance Now?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will immediately refresh free plan credits, downgrade
-                    expired subscriptions, and handle zero credit plans. This
-                    action affects{" "}
-                    {maintenanceStats?.maintenanceNeeded.total || 0} users.
+                    This immediately refreshes free daily credits and downgrades
+                    expired or zero-credit plans. Currently{" "}
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {pendingTotal.toLocaleString()}
+                    </span>{" "}
+                    active accounts match maintenance criteria.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -343,132 +296,421 @@ export function SchedulerDashboard() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Statistics */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Plan Distribution */}
+      {/* API Error Alert */}
+      {((schedulerResponse && !schedulerResponse.success) ||
+        (statsResponse && !statsResponse.success)) && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Unable to load scheduler telemetry</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>
+              {(schedulerResponse && !schedulerResponse.success
+                ? schedulerResponse.message
+                : statsResponse && !statsResponse.success
+                  ? statsResponse.message
+                  : "Request failed") || "Request failed"}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* 4 Compact KPI Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Plan Distribution</CardTitle>
-            <CardDescription>
-              Current distribution of active API keys by plan type
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Scheduler Status
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {maintenanceStats?.planDistribution.map((plan) => (
-                <div
-                  key={plan._id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Badge className={getPlanBadge(plan._id)}>
-                      {plan._id.charAt(0).toUpperCase() + plan._id.slice(1)}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {plan.count} users
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">
-                      {plan.totalCredits || 0} total credits
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {(plan.avgCredits || 0).toFixed(1)} avg per user
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <SchedulerRunningBadge isRunning={isRunning} />
+            <p className="text-xs text-muted-foreground mt-2 truncate">
+              {maintenance?.nextRun
+                ? `Next: ${safeFormatDate(maintenance.nextRun)}`
+                : "Scheduler paused"}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Maintenance Needed */}
         <Card>
-          <CardHeader>
-            <CardTitle>Maintenance Required</CardTitle>
-            <CardDescription>
-              Users that need maintenance actions
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Maintenance Runs
+            </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm">Free users needing refresh</span>
-                </div>
-                <Badge variant="outline">
-                  {maintenanceStats?.maintenanceNeeded
-                    .freeUsersNeedingRefresh || 0}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <CreditCard className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm">Expired subscriptions</span>
-                </div>
-                <Badge variant="outline">
-                  {maintenanceStats?.maintenanceNeeded.expiredSubscriptions ||
-                    0}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm">Zero credit plans</span>
-                </div>
-                <Badge variant="outline">
-                  {maintenanceStats?.maintenanceNeeded.zeroCreditPlans || 0}
-                </Badge>
-              </div>
+            <div className="text-2xl font-bold tabular-nums">
+              {maintenance?.stats?.totalRuns ?? 0}
             </div>
+            <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+              {maintenance?.stats?.successfulRuns ?? 0} passed &middot;{" "}
+              {maintenance?.stats?.failedRuns ?? 0} failed
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={cn(
+            teardownCount > 0 && "border-amber-500/40 bg-amber-500/5"
+          )}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Pending Maintenance
+            </CardTitle>
+            <AlertTriangle
+              className={cn(
+                "h-4 w-4",
+                teardownCount > 0
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground"
+              )}
+            />
+          </CardHeader>
+          <CardContent>
+            <div
+              className={cn(
+                "text-2xl font-bold tabular-nums",
+                teardownCount > 0 && "text-amber-600 dark:text-amber-400"
+              )}
+            >
+              {pendingTotal.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+              {teardownCount.toLocaleString()} teardowns &middot;{" "}
+              {freeRefreshCount.toLocaleString()} free (&lt;5)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Last Run
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-lg font-bold tracking-tight">
+                {maintenance?.lastRun
+                  ? safeFormatRelative(maintenance.lastRun) || "Recorded"
+                  : "Never"}
+              </div>
+              {lastResult && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[11px]",
+                    lastResult.success
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                  )}
+                >
+                  {lastResult.success ? "Success" : "Failed"}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
+              {maintenance?.lastRun
+                ? safeFormatDate(maintenance.lastRun)
+                : "Waiting for first cycle"}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      {schedulerStatus?.maintenance?.stats.lastResult && (
+      {/* Scheduled Cron Jobs Overview */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">
+            Scheduled Jobs
+          </CardTitle>
+          <CardDescription>
+            Automated cron tasks managed by the scheduler service (
+            {schedulerStatus?.timezone || "UTC"})
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y rounded-lg border">
+            {/* Job 1: Daily Maintenance */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Daily Maintenance</span>
+                  <Badge variant="secondary" className="font-mono text-[11px]">
+                    {maintenance?.cronExpression || "0 0 * * *"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Refreshes free daily credits and downgrades expired or depleted
+                  plans
+                </p>
+              </div>
+              <div className="text-xs text-muted-foreground sm:text-right space-y-0.5 tabular-nums">
+                <p className="font-medium text-foreground">
+                  {maintenance?.nextRun
+                    ? `Next: ${safeFormatDate(maintenance.nextRun)}`
+                    : "Paused"}
+                </p>
+                <p>
+                  {maintenance?.lastRun
+                    ? `Last: ${safeFormatRelative(maintenance.lastRun)}`
+                    : "Not run yet"}
+                </p>
+              </div>
+            </div>
+
+            {/* Job 2: Weekly Backup */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Weekly Backup</span>
+                  <Badge variant="secondary" className="font-mono text-[11px]">
+                    {schedulerStatus?.backup?.cronExpression || "0 12 * * 5"}
+                  </Badge>
+                  <Link
+                    href="/admin/backup"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Open backups
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Replicates all primary collections to the backup MongoDB
+                  cluster
+                </p>
+              </div>
+              <div className="text-xs text-muted-foreground sm:text-right space-y-0.5 tabular-nums">
+                <p className="font-medium text-foreground">
+                  {schedulerStatus?.backup?.nextBackup
+                    ? `Next: ${safeFormatDate(schedulerStatus.backup.nextBackup)}`
+                    : "Paused"}
+                </p>
+                <p>
+                  {schedulerStatus?.backup?.lastBackup
+                    ? `Last: ${safeFormatRelative(schedulerStatus.backup.lastBackup)}`
+                    : "Not run in session"}
+                </p>
+              </div>
+            </div>
+
+            {/* Job 3: Payment Reconciliation */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Payment Reconciliation
+                  </span>
+                  <Badge variant="secondary" className="font-mono text-[11px]">
+                    {schedulerStatus?.paymentReconciliation?.cronExpression ||
+                      "*/10 * * * *"}
+                  </Badge>
+                  <Link
+                    href="/admin/payments"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Open payments
+                  </Link>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Reconciles pending PayStation gateway transactions
+                </p>
+              </div>
+              <div className="text-xs text-muted-foreground sm:text-right space-y-0.5 tabular-nums">
+                <p className="font-medium text-foreground">
+                  {schedulerStatus?.paymentReconciliation?.nextRun
+                    ? `Next: ${safeFormatDate(
+                        schedulerStatus.paymentReconciliation.nextRun
+                      )}`
+                    : "Paused"}
+                </p>
+                <p>
+                  {schedulerStatus?.paymentReconciliation?.lastRun
+                    ? `Last: ${safeFormatRelative(
+                        schedulerStatus.paymentReconciliation.lastRun
+                      )}`
+                    : "Pending first sweep"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Two-Column Bottom Section: Maintenance Queue + Plan Distribution */}
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        {/* Maintenance Queue */}
         <Card>
-          <CardHeader>
-            <CardTitle>Last Maintenance Result</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">
+              Maintenance Queue
+            </CardTitle>
             <CardDescription>
-              Details from the most recent maintenance run
+              Active user accounts due for update on the next maintenance cycle
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <span>Free users needing refresh (&lt; 5 credits)</span>
+                </div>
+                <Badge variant="outline" className="tabular-nums">
+                  {freeRefreshCount}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CreditCard className="h-4 w-4 text-purple-500" />
+                  <span>Expired subscriptions</span>
+                </div>
+                <Badge variant="outline" className="tabular-nums">
+                  {maintenanceStats?.maintenanceNeeded?.expiredSubscriptions ?? 0}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <span>Zero-credit plans</span>
+                </div>
+                <Badge variant="outline" className="tabular-nums">
+                  {maintenanceStats?.maintenanceNeeded?.zeroCreditPlans ?? 0}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4 text-rose-500" />
+                  <span>Expired credit plans</span>
+                </div>
+                <Badge variant="outline" className="tabular-nums">
+                  {maintenanceStats?.maintenanceNeeded?.expiredCreditPlans ?? 0}
+                </Badge>
+              </div>
+            </div>
+
+            {lastResult && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-foreground">
+                    Last Run Outcome
+                  </span>
+                  <span className="text-muted-foreground">
+                    {safeFormatDate(lastResult.timestamp)}
+                  </span>
+                </div>
+
+                {lastResult.success ? (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground tabular-nums">
+                    <div>
+                      Refreshed:{" "}
+                      <span className="font-medium text-foreground">
+                        {lastResult.freeUsersRefreshed ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      Expired subs:{" "}
+                      <span className="font-medium text-foreground">
+                        {lastResult.expiredSubscriptionsDowngraded ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      Zero credit:{" "}
+                      <span className="font-medium text-foreground">
+                        {lastResult.zeroCreditPlansDowngraded ?? 0}
+                      </span>
+                    </div>
+                    <div>
+                      Expired credit:{" "}
+                      <span className="font-medium text-foreground">
+                        {lastResult.expiredCreditPlansDowngraded ?? 0}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-rose-600 dark:text-rose-400">
+                    {lastResult.error || "Maintenance run failed"}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Active Plan Distribution */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">
+              Active Plan Distribution
+            </CardTitle>
+            <CardDescription>
+              Breakdown of active app user accounts by plan type
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium">Status:</span>
-                {schedulerStatus.maintenance.stats.lastResult.success ? (
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Success
-                  </Badge>
-                ) : (
-                  <Badge className="bg-red-100 text-red-800 border-red-200">
-                    <XCircle className="w-3 h-3 mr-1" />
-                    Failed
-                  </Badge>
-                )}
+            {maintenanceStats?.planDistribution?.length ? (
+              <div className="space-y-3">
+                {maintenanceStats.planDistribution.map((plan) => {
+                  const key = (plan._id || "free").toLowerCase();
+                  const label = key.charAt(0).toUpperCase() + key.slice(1);
+                  return (
+                    <div
+                      key={plan._id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Badge
+                          variant="outline"
+                          className={
+                            planStyles[key] || "border-border bg-muted/60"
+                          }
+                        >
+                          {label}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {plan.count.toLocaleString()} users
+                        </span>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        <p className="text-sm font-medium">
+                          {(plan.totalCredits || 0).toLocaleString()} credits
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {(plan.avgCredits || 0).toFixed(1)} avg / user
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {schedulerStatus.maintenance.stats.lastResult.details && (
-                <div className="text-sm text-muted-foreground">
-                  <pre className="whitespace-pre-wrap">
-                    {JSON.stringify(
-                      schedulerStatus.maintenance.stats.lastResult.details,
-                      null,
-                      2,
-                    )}
-                  </pre>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                No active user accounts found.
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 }

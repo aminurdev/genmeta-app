@@ -760,12 +760,12 @@ appUserSchema.statics.performDailyMaintenance = async function () {
   const now = new Date();
 
   try {
-    // 1. Refresh credits for free users
+    // 1. Refresh credits for free users (< 5 credits)
     const freeUsers = await this.find({
       "plan.type": PLAN_TYPES.FREE,
       isActive: true,
       status: "active",
-      credit: { $lte: 5 },
+      credit: { $lt: 5 },
       lastCreditRefresh: { $ne: today },
     });
 

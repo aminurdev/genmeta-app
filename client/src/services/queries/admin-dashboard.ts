@@ -478,14 +478,44 @@ export function useRefreshPricingManagementMutation() {
 export function useSchedulerStatusQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.schedulerStatus,
-    queryFn: getSchedulerStatus,
+    queryFn: () => getSchedulerStatus(),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
 export function useMaintenanceStatsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.maintenanceStats,
-    queryFn: getMaintenanceStats,
+    queryFn: () => getMaintenanceStats(),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshSchedulerMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const [statusRes, statsRes] = await Promise.all([
+        getSchedulerStatus({ refresh: true }),
+        getMaintenanceStats({ refresh: true }),
+      ]);
+      return { statusRes, statsRes };
+    },
+    onSuccess: ({ statusRes, statsRes }) => {
+      if (statusRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.schedulerStatus, statusRes);
+      }
+      if (statsRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.maintenanceStats, statsRes);
+      }
+    },
   });
 }
 
@@ -585,9 +615,9 @@ export function useStartSchedulerMutation() {
   return useMutation({
     mutationFn: startScheduler,
     onSuccess: () => {
-      // Invalidate scheduler status and maintenance stats
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.schedulerStatus });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.maintenanceStats });
+      queryClient.invalidateQueries({ queryKey: ["admin", "backup", "status"] });
     },
   });
 }
@@ -598,9 +628,9 @@ export function useStopSchedulerMutation() {
   return useMutation({
     mutationFn: stopScheduler,
     onSuccess: () => {
-      // Invalidate scheduler status and maintenance stats
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.schedulerStatus });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.maintenanceStats });
+      queryClient.invalidateQueries({ queryKey: ["admin", "backup", "status"] });
     },
   });
 }
@@ -611,7 +641,6 @@ export function useTriggerMaintenanceMutation() {
   return useMutation({
     mutationFn: triggerMaintenance,
     onSuccess: () => {
-      // Invalidate all relevant queries after maintenance
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.schedulerStatus });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.maintenanceStats });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import { api } from "./api-client";
 import {
@@ -699,6 +697,32 @@ export const deletePromoCode = async (
 };
 
 // Scheduler Management
+export interface SchedulerMeta {
+  generatedAt: string;
+  refreshed?: boolean;
+}
+
+export interface MaintenanceRunResult {
+  success: boolean;
+  freeUsersRefreshed?: number;
+  expiredSubscriptionsDowngraded?: number;
+  zeroCreditPlansDowngraded?: number;
+  expiredCreditPlansDowngraded?: number;
+  error?: string;
+  timestamp: string;
+}
+
+export interface PaymentReconciliationResult {
+  checked?: number;
+  completed?: number;
+  failed?: number;
+  expired?: number;
+  errors?: number;
+  success?: boolean;
+  error?: string;
+  timestamp?: string;
+}
+
 export interface SchedulerStatus {
   isRunning: boolean;
   maintenance: {
@@ -709,7 +733,7 @@ export interface SchedulerStatus {
       totalRuns: number;
       successfulRuns: number;
       failedRuns: number;
-      lastResult: any;
+      lastResult: MaintenanceRunResult | null;
     };
   };
   backup: {
@@ -720,10 +744,29 @@ export interface SchedulerStatus {
       totalBackups: number;
       successfulBackups: number;
       failedBackups: number;
-      lastBackupResult: any;
+      lastBackupResult: {
+        success?: boolean;
+        timestamp?: string;
+        duration?: string;
+        totalDocuments?: number;
+        error?: string;
+      } | null;
+    };
+  };
+  paymentReconciliation?: {
+    lastRun: string | null;
+    nextRun: string | null;
+    cronExpression: string;
+    stats: {
+      totalRuns: number;
+      successfulRuns: number;
+      failedRuns: number;
+      lastRun: string | null;
+      lastResult: PaymentReconciliationResult | null;
     };
   };
   timezone: string;
+  meta?: SchedulerMeta;
 }
 
 export interface MaintenanceStats {
@@ -737,45 +780,85 @@ export interface MaintenanceStats {
     freeUsersNeedingRefresh: number;
     expiredSubscriptions: number;
     zeroCreditPlans: number;
+    expiredCreditPlans: number;
     total: number;
   };
   scheduler: SchedulerStatus;
   lastChecked: string;
+  meta?: SchedulerMeta;
 }
 
-export const getSchedulerStatus = async (): Promise<
-  ApiResponse<SchedulerStatus> | ApiErrorResponse
-> => {
-  const result = await api.get("/scheduler/status");
-  return result.data;
+function handleSchedulerApiError(error: unknown): ApiErrorResponse {
+  const err = error as AxiosApiError;
+  if (err?.response?.data && typeof err.response.data === "object") {
+    return err.response.data;
+  }
+  return {
+    success: false,
+    statusCode: err?.response?.status ?? 500,
+    message:
+      error instanceof Error ? error.message : "Scheduler request failed",
+    data: null,
+  };
+}
+
+export const getSchedulerStatus = async (options?: {
+  refresh?: boolean;
+}): Promise<ApiResponse<SchedulerStatus> | ApiErrorResponse> => {
+  try {
+    const result = await api.get("/scheduler/status", {
+      params: options?.refresh ? { refresh: "true" } : undefined,
+    });
+    return result.data;
+  } catch (error) {
+    return handleSchedulerApiError(error);
+  }
 };
 
-export const getMaintenanceStats = async (): Promise<
-  ApiResponse<MaintenanceStats> | ApiErrorResponse
-> => {
-  const result = await api.get("/scheduler/stats");
-  return result.data;
+export const getMaintenanceStats = async (options?: {
+  refresh?: boolean;
+}): Promise<ApiResponse<MaintenanceStats> | ApiErrorResponse> => {
+  try {
+    const result = await api.get("/scheduler/stats", {
+      params: options?.refresh ? { refresh: "true" } : undefined,
+    });
+    return result.data;
+  } catch (error) {
+    return handleSchedulerApiError(error);
+  }
 };
 
 export const startScheduler = async (): Promise<
-  ApiResponse<null> | ApiErrorResponse
+  ApiResponse<{ isRunning: boolean; status?: SchedulerStatus }> | ApiErrorResponse
 > => {
-  const result = await api.post("/scheduler/start");
-  return result.data;
+  try {
+    const result = await api.post("/scheduler/start", {});
+    return result.data;
+  } catch (error) {
+    return handleSchedulerApiError(error);
+  }
 };
 
 export const stopScheduler = async (): Promise<
-  ApiResponse<null> | ApiErrorResponse
+  ApiResponse<{ isRunning: boolean; status?: SchedulerStatus }> | ApiErrorResponse
 > => {
-  const result = await api.post("/scheduler/stop");
-  return result.data;
+  try {
+    const result = await api.post("/scheduler/stop", {});
+    return result.data;
+  } catch (error) {
+    return handleSchedulerApiError(error);
+  }
 };
 
 export const triggerMaintenance = async (): Promise<
-  ApiResponse<any> | ApiErrorResponse
+  ApiResponse<MaintenanceRunResult> | ApiErrorResponse
 > => {
-  const result = await api.post("/scheduler/trigger");
-  return result.data;
+  try {
+    const result = await api.post("/scheduler/trigger", {});
+    return result.data;
+  } catch (error) {
+    return handleSchedulerApiError(error);
+  }
 };
 
 export const getWithdrawalNotifications = async (): Promise<
