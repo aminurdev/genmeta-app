@@ -14,7 +14,6 @@ import {
   Settings,
   Trash2,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +36,6 @@ import {
   CATEGORY_META,
   PRIORITY_META,
   formatRelativeTime,
-  getInitials,
 } from "./notification-utils";
 
 interface NotificationBellProps {
@@ -255,28 +253,16 @@ export function NotificationBell({ scope, className }: NotificationBellProps) {
                     )}
 
                     <div className="shrink-0 mt-0.5 pl-1">
-                      {item.actor?.avatar || item.actor?.name ? (
-                        <Avatar className="h-9 w-9 border border-border">
-                          <AvatarImage
-                            src={item.actor.avatar || undefined}
-                            alt={item.actor.name || "User"}
-                          />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                            {getInitials(item.actor.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
-                            catMeta.iconBgClass
-                          )}
-                        >
-                          <CatIcon
-                            className={cn("h-4 w-4", catMeta.iconTextClass)}
-                          />
-                        </div>
-                      )}
+                      <div
+                        className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
+                          catMeta.iconBgClass
+                        )}
+                      >
+                        <CatIcon
+                          className={cn("h-4 w-4", catMeta.iconTextClass)}
+                        />
+                      </div>
                     </div>
 
                     <button

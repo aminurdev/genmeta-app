@@ -20,7 +20,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,7 +67,6 @@ import {
   PRIORITY_META,
   formatRelativeTime,
   getCategoryDisplayMeta,
-  getInitials,
   getRoleCategories,
   groupNotificationsByDate,
 } from "./notification-utils";
@@ -414,31 +412,19 @@ export function NotificationCenter({
                           )}
                           <CardContent className="p-4 flex items-start gap-3.5">
                             <div className="shrink-0 mt-0.5">
-                              {item.actor?.avatar || item.actor?.name ? (
-                                <Avatar className="h-9 w-9 border border-border">
-                                  <AvatarImage
-                                    src={item.actor.avatar || undefined}
-                                    alt={item.actor.name || "User"}
-                                  />
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                                    {getInitials(item.actor.name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                              ) : (
-                                <div
+                              <div
+                                className={cn(
+                                  "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
+                                  catMeta.iconBgClass
+                                )}
+                              >
+                                <CatIcon
                                   className={cn(
-                                    "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
-                                    catMeta.iconBgClass
+                                    "h-4 w-4",
+                                    catMeta.iconTextClass
                                   )}
-                                >
-                                  <CatIcon
-                                    className={cn(
-                                      "h-4 w-4",
-                                      catMeta.iconTextClass
-                                    )}
-                                  />
-                                </div>
-                              )}
+                                />
+                              </div>
                             </div>
 
                             <div className="min-w-0 flex-1">
