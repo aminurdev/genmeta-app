@@ -135,7 +135,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="flex min-h-full flex-col bg-background font-sans">
+      <body
+        className="flex min-h-full flex-col bg-background font-sans"
+        suppressHydrationWarning
+      >
         <AnalyticsNoScript />
         <ThemeProvider
           attribute="class"

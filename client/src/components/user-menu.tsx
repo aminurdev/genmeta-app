@@ -97,7 +97,7 @@ export function UserMenu({
               {userInitials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:inline-block max-w-[100px] truncate text-foreground font-medium">
+          <span className="hidden sm:inline-block max-w-25 truncate text-foreground font-medium">
             {firstName}
           </span>
           <ChevronDown className="h-3 w-3 text-muted-foreground/70 transition-transform duration-200 group-data-[state=open]:rotate-180" />
