@@ -97,12 +97,12 @@ export const getUserStats = async (options?: {
 };
 
 export const getAppUserDetails = async (
-  keyOrId: string,
+  userId: string,
   options?: { refresh?: boolean },
 ): Promise<ApiResponse<AdminUserDetailsResponse> | ApiErrorResponse> => {
   try {
     const result = await api.get(
-      `/app/appuser/user/details/${encodeURIComponent(keyOrId)}`,
+      `/app/appuser/user/details/${encodeURIComponent(userId)}`,
       {
         params: options?.refresh ? { refresh: "true" } : undefined,
       },
@@ -118,7 +118,7 @@ export const getAppUserDetails = async (
 };
 
 export const resetDeviceId = async (
-  key: string,
+  userId: string,
   deviceId?: string,
 ): Promise<
   | ApiResponse<{ devices: AdminDesktopDevice[]; allowedDevices: string[] }>
@@ -126,7 +126,7 @@ export const resetDeviceId = async (
 > => {
   try {
     const result = await api.put(`/app/appuser/reset-device`, {
-      key,
+      userId,
       ...(deviceId ? { deviceId } : {}),
     });
     return result.data;
@@ -140,12 +140,12 @@ export const resetDeviceId = async (
 };
 
 export const updateUserStats = async (
-  key: string,
+  userId: string,
   mode: "suspend" | "reactivate",
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
     const result = await api.put(`/app/appuser/update-status`, {
-      key,
+      userId,
       mode,
     });
     return result.data;
@@ -189,11 +189,11 @@ export const createUser = async (
 };
 
 export const deleteAppUser = async (
-  username: string,
+  userIdOrUsername: string,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
     const result = await api.delete(
-      `/app/appuser/delete/${encodeURIComponent(username)}`,
+      `/app/appuser/delete/${encodeURIComponent(userIdOrUsername)}`,
     );
     return result.data;
   } catch (error) {
@@ -206,12 +206,12 @@ export const deleteAppUser = async (
 };
 
 export const addCredits = async (
-  key: string,
+  userId: string,
   credits: number,
 ): Promise<ApiResponse<null> | ApiErrorResponse> => {
   try {
     const result = await api.put("/app/appuser/add-credits", {
-      key,
+      userId,
       credits,
     });
     return result.data;

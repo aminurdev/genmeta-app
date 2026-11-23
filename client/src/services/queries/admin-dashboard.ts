@@ -98,11 +98,11 @@ export function useAllUsersQuery(queryParams: string) {
   });
 }
 
-export function useAppUserDetailsQuery(key: string) {
+export function useAppUserDetailsQuery(userId: string) {
   return useQuery({
-    queryKey: QUERY_KEYS.appUserDetails(key),
-    queryFn: () => getAppUserDetails(key),
-    enabled: Boolean(key),
+    queryKey: QUERY_KEYS.appUserDetails(userId),
+    queryFn: () => getAppUserDetails(userId),
+    enabled: Boolean(userId),
     staleTime: 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -134,14 +134,14 @@ export function useRefreshUsersManagementMutation() {
   });
 }
 
-export function useRefreshAppUserDetailsMutation(key: string) {
+export function useRefreshAppUserDetailsMutation(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => getAppUserDetails(key, { refresh: true }),
+    mutationFn: () => getAppUserDetails(userId, { refresh: true }),
     onSuccess: (res) => {
       if (res.success) {
-        queryClient.setQueryData(QUERY_KEYS.appUserDetails(key), res);
+        queryClient.setQueryData(QUERY_KEYS.appUserDetails(userId), res);
       }
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
@@ -182,7 +182,7 @@ export function useDeleteAppUserMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (username: string) => deleteAppUser(username),
+    mutationFn: (userIdOrUsername: string) => deleteAppUser(userIdOrUsername),
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -197,8 +197,8 @@ export function useResetDeviceMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ key, deviceId }: { key: string; deviceId?: string }) =>
-      resetDeviceId(key, deviceId),
+    mutationFn: ({ userId, deviceId }: { userId: string; deviceId?: string }) =>
+      resetDeviceId(userId, deviceId),
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -213,8 +213,8 @@ export function useUpdateAppUserStatusMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ key, mode }: { key: string; mode: "suspend" | "reactivate" }) =>
-      updateUserStats(key, mode),
+    mutationFn: ({ userId, mode }: { userId: string; mode: "suspend" | "reactivate" }) =>
+      updateUserStats(userId, mode),
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -229,8 +229,8 @@ export function useAddCreditsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ key, credits }: { key: string; credits: number }) =>
-      addCredits(key, credits),
+    mutationFn: ({ userId, credits }: { userId: string; credits: number }) =>
+      addCredits(userId, credits),
     onSuccess: (res) => {
       if (res.success) {
         queryClient.invalidateQueries({ queryKey: ["users"] });

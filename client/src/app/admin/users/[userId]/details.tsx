@@ -211,10 +211,14 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
 
   const handleResetDevices = async (deviceId?: string) => {
     if (!detailsRes?.success || !detailsRes.data) return;
-    const key = detailsRes.data.appUser.key;
+    const targetUserId =
+      detailsRes.data.user.id || detailsRes.data.appUser.userId;
     if (deviceId) setRemovingDeviceId(deviceId);
     try {
-      const res = await resetDeviceMutation.mutateAsync({ key, deviceId });
+      const res = await resetDeviceMutation.mutateAsync({
+        userId: targetUserId,
+        deviceId,
+      });
       if (res.success) {
         toast.success(
           res.message ||
@@ -236,9 +240,13 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
 
   const handleToggleStatus = async (mode: "suspend" | "reactivate") => {
     if (!detailsRes?.success || !detailsRes.data) return;
-    const key = detailsRes.data.appUser.key;
+    const targetUserId =
+      detailsRes.data.user.id || detailsRes.data.appUser.userId;
     try {
-      const res = await statusMutation.mutateAsync({ key, mode });
+      const res = await statusMutation.mutateAsync({
+        userId: targetUserId,
+        mode,
+      });
       if (res.success) {
         toast.success(
           res.message ||
@@ -256,10 +264,12 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
 
   const handleDelete = async () => {
     if (!detailsRes?.success || !detailsRes.data) return;
+    const targetUserId =
+      detailsRes.data.user.id ||
+      detailsRes.data.appUser.userId ||
+      detailsRes.data.appUser.username;
     try {
-      const res = await deleteMutation.mutateAsync(
-        detailsRes.data.appUser.username
-      );
+      const res = await deleteMutation.mutateAsync(targetUserId);
       if (res.success) {
         toast.success("App user desktop profile deleted");
         router.push("/admin/users");
@@ -282,9 +292,11 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
       return;
     }
 
+    const targetUserId =
+      detailsRes.data.user.id || detailsRes.data.appUser.userId;
     try {
       const res = await addCreditsMutation.mutateAsync({
-        key: detailsRes.data.appUser.key,
+        userId: targetUserId,
         credits,
       });
       if (res.success) {
@@ -359,7 +371,6 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
     username: appUser.username,
     name: user.name,
     email: user.email,
-    key: appUser.key,
     status: appUser.status,
     isActive: appUser.isActive,
     maxDevices: appUser.maxDevices,

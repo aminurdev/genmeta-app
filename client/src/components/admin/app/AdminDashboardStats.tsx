@@ -1129,10 +1129,11 @@ export default function DashboardStats() {
                     </div>
                   );
 
-                  return item.key ? (
+                  const profileId = item.userId || item.user?._id;
+                  return profileId ? (
                     <Link
                       key={item._id || index}
-                      href={`/admin/users/${encodeURIComponent(item.key)}`}
+                      href={`/admin/users/${encodeURIComponent(profileId)}`}
                       className="block"
                     >
                       {rowBody}

@@ -20,6 +20,7 @@ import {
   updateAppUserSchema,
   addCreditsSchema,
   updateAppUserStatusSchema,
+  resetDeviceSchema,
 } from "../validations/index.js";
 
 const router = express.Router();
@@ -29,11 +30,11 @@ const router = express.Router();
 /* -------------------------------------------------------------------------- */
 router.post("/appuser/create", authenticateAndVerifyAdmin, validate(createAppUserSchema), createAppUser);
 router.put("/appuser/update", authenticateAndVerifyAdmin, validate(updateAppUserSchema), updateAppUser);
-router.delete("/appuser/delete/:username", authenticateAndVerifyAdmin, deleteAppUser);
-router.put("/appuser/reset-device", authenticateAndVerifyAdmin, resetDevice);
+router.delete("/appuser/delete/:identifier", authenticateAndVerifyAdmin, deleteAppUser);
+router.put("/appuser/reset-device", authenticateAndVerifyAdmin, validate(resetDeviceSchema), resetDevice);
 router.put("/appuser/update-status", authenticateAndVerifyAdmin, validate(updateAppUserStatusSchema), updateAppUserStatus);
 router.put("/appuser/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
-router.get("/appuser/user/details/:key", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
+router.get("/appuser/user/details/:userId", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
 
 router.post("/appuser/validate", validateAppUser);
 router.get("/appuser/stats", getAppUserStats);
@@ -47,11 +48,11 @@ router.post("/appuser/usage", processAppUsage);
 /* -------------------------------------------------------------------------- */
 router.post("/create", authenticateAndVerifyAdmin, validate(createAppUserSchema), createAppUser);
 router.put("/update", authenticateAndVerifyAdmin, validate(updateAppUserSchema), updateAppUser);
-router.delete("/delete/:username", authenticateAndVerifyAdmin, deleteAppUser);
-router.put("/reset-device", authenticateAndVerifyAdmin, resetDevice);
+router.delete("/delete/:identifier", authenticateAndVerifyAdmin, deleteAppUser);
+router.put("/reset-device", authenticateAndVerifyAdmin, validate(resetDeviceSchema), resetDevice);
 router.put("/update-status", authenticateAndVerifyAdmin, validate(updateAppUserStatusSchema), updateAppUserStatus);
 router.put("/add-credits", authenticateAndVerifyAdmin, validate(addCreditsSchema), addCredits);
-router.get("/user/details/:key", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
+router.get("/user/details/:userId", authenticateAndVerifyAdmin, getUserDetailsByAppUser);
 
 router.post("/validate", validateAppUser);
 router.get("/stats", getAppUserStats);

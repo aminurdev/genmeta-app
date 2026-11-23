@@ -16,7 +16,7 @@ export const fetchAppUserData = async (username) => {
       throw new ApiError(400, "Username is required");
     }
     const appUser = await AppUser.findOne({ username: username.toLowerCase().trim() }).select(
-      "username key expiresAt isActive createdAt status"
+      "userId username plan expiresAt isActive createdAt status"
     );
     return appUser;
   } catch (error) {

@@ -21,7 +21,6 @@ import {
 import { verifyUser } from "../middlewares/auth.middleware.js";
 import {
   appUserLogin,
-  appKeyDirectLogin,
   replaceDeviceAndLogin,
   appUserLogout,
   googleCallback,
@@ -136,7 +135,6 @@ router.post(
 
 // Desktop Electron App endpoints (kept compatible with ../app)
 router.post("/app/login", authStrictLimiter, validate(loginUserSchema), appUserLogin);
-router.post("/app/login-key", authStrictLimiter, appKeyDirectLogin);
 router.post("/app/replace-device", authStrictLimiter, replaceDeviceAndLogin);
 router.post("/app/logout", appUserLogout);
 router.get("/app/google", googleLoginAPP);

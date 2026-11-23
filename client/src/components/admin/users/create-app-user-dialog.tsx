@@ -248,9 +248,7 @@ function CreateAppUserForm({
   };
 
   if (createdResult) {
-    const profileSlug = encodeURIComponent(
-      createdResult.userId || createdResult.key
-    );
+    const profileSlug = encodeURIComponent(createdResult.userId);
     const isUnlimited =
       createdResult.plan?.type === "subscription" ||
       createdResult.credit === null;

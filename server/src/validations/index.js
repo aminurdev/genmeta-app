@@ -133,9 +133,10 @@ export const createAppUserSchema = z
 
 export const updateAppUserSchema = z
   .object({
+    appUserId: z.string().trim().optional(),
+    userId: z.string().trim().optional(),
     username: z.string().trim().optional(),
     key: z.string().trim().optional(),
-    userId: z.string().trim().optional(),
     planId: z.string().trim().nullable().optional(),
     plan: z
       .union([
@@ -158,20 +159,61 @@ export const updateAppUserSchema = z
     triggerReferralReward: z.boolean().optional().default(false),
     reason: z.string().trim().max(200).optional(),
   })
-  .refine((data) => Boolean(data.username || data.key || data.userId), {
-    message: "Username, access key, or userId is required",
-    path: ["username"],
-  });
+  .refine(
+    (data) => Boolean(data.userId || data.appUserId || data.username || data.key),
+    {
+      message: "userId, appUserId, or username is required",
+      path: ["userId"],
+    }
+  );
 
-export const addCreditsSchema = z.object({
-  key: z.string().min(1, "App user key is required"),
-  credits: z.coerce.number().min(1, "Credits must be a positive number"),
-});
+export const addCreditsSchema = z
+  .object({
+    appUserId: z.string().trim().optional(),
+    userId: z.string().trim().optional(),
+    username: z.string().trim().optional(),
+    key: z.string().trim().optional(),
+    credits: z.coerce.number().min(1, "Credits must be a positive number"),
+  })
+  .refine(
+    (data) => Boolean(data.userId || data.appUserId || data.username || data.key),
+    {
+      message: "userId, appUserId, or username is required",
+      path: ["userId"],
+    }
+  );
 
-export const updateAppUserStatusSchema = z.object({
-  key: z.string().min(1, "App user key is required"),
-  mode: z.enum(["suspend", "reactivate"]),
-});
+export const updateAppUserStatusSchema = z
+  .object({
+    appUserId: z.string().trim().optional(),
+    userId: z.string().trim().optional(),
+    username: z.string().trim().optional(),
+    key: z.string().trim().optional(),
+    mode: z.enum(["suspend", "reactivate"]),
+  })
+  .refine(
+    (data) => Boolean(data.userId || data.appUserId || data.username || data.key),
+    {
+      message: "userId, appUserId, or username is required",
+      path: ["userId"],
+    }
+  );
+
+export const resetDeviceSchema = z
+  .object({
+    appUserId: z.string().trim().optional(),
+    userId: z.string().trim().optional(),
+    username: z.string().trim().optional(),
+    key: z.string().trim().optional(),
+    deviceId: z.string().trim().optional(),
+  })
+  .refine(
+    (data) => Boolean(data.userId || data.appUserId || data.username || data.key),
+    {
+      message: "userId, appUserId, or username is required",
+      path: ["userId"],
+    }
+  );
 
 // === PRICING SCHEMAS ===
 export const createPricingPlanSchema = z.object({

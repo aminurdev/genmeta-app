@@ -23,12 +23,53 @@ function extractAppUserKey(req) {
     req.header("x-app-user-key") ||
     req.header("x-api-key") ||
     req.header("x-app-id") ||
+    req.body?.appUserKey ||
     req.body?.apiKey ||
     req.body?.key ||
     ""
   )
     .toString()
     .trim();
+}
+
+async function resolveAdminAppUser(
+  { appUserId, userId, username, key } = {},
+  { createIfMissing = false } = {}
+) {
+  let appDoc = null;
+
+  if (appUserId && mongoose.Types.ObjectId.isValid(appUserId)) {
+    appDoc = await AppUser.findById(appUserId);
+  }
+
+  if (!appDoc && userId && mongoose.Types.ObjectId.isValid(userId)) {
+    appDoc = await AppUser.findOne({ userId });
+    if (!appDoc && createIfMissing) {
+      const existingUser = await User.findById(userId);
+      if (existingUser) {
+        appDoc = await findOrCreateAppUser(existingUser);
+      }
+    }
+  }
+
+  if (!appDoc && username) {
+    const normalizedEmail = String(username).toLowerCase().trim();
+    if (normalizedEmail) {
+      appDoc = await AppUser.findOne({ username: normalizedEmail });
+      if (!appDoc && createIfMissing) {
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+          appDoc = await findOrCreateAppUser(existingUser);
+        }
+      }
+    }
+  }
+
+  if (!appDoc && key) {
+    appDoc = await AppUser.findOne({ key: String(key).trim() });
+  }
+
+  return appDoc;
 }
 
 export const findOrCreateAppUser = async (user) => {
@@ -58,6 +99,7 @@ function createDeviceChallengeToken(user, appUserDoc, deviceMeta) {
     {
       purpose: "device_replace",
       userId: user._id.toString(),
+      appUserId: appUserDoc._id.toString(),
       appUserKey: appUserDoc.key,
       pendingDeviceId: deviceMeta?.deviceId || null,
     },
@@ -88,6 +130,9 @@ async function buildAppAccountPayload(appDoc, user, deviceMeta = {}) {
   const maxDevices = appDoc.maxDevices || 2;
 
   return {
+    appUserId: appDoc._id.toString(),
+    userId: (user?._id || appDoc.userId)?.toString() || null,
+    appUserKey: appDoc.key,
     key: appDoc.key,
     plan: appDoc.plan,
     planType,
@@ -349,7 +394,7 @@ export const appUserLogin = asyncHandler(async (req, res) => {
         code: "ACCOUNT_SUSPENDED",
       });
     }
-    throw new ApiError(403, "Your app license is currently inactive.", [], "", {
+    throw new ApiError(403, "Your app user account is currently inactive.", [], "", {
       code: "ACCOUNT_INACTIVE",
     });
   }
@@ -390,90 +435,7 @@ export const appUserLogin = asyncHandler(async (req, res) => {
       avatar: user.avatar || null,
       role: user.role,
     },
-    apiKey: appUserDoc.key,
-    account,
-    devices: deviceResult.devices,
-    maxDevices: deviceResult.maxDevices,
-  }).send(res);
-});
-
-export const appKeyDirectLogin = asyncHandler(async (req, res) => {
-  const { apiKey, key, replaceDeviceId } = req.body;
-  const rawKey = (apiKey || key || extractAppUserKey(req)).toString().trim();
-
-  if (!rawKey) {
-    throw new ApiError(400, "License Key is required");
-  }
-
-  const appUserDoc = await AppUser.findOne({ key: rawKey }).populate(
-    "userId",
-    "name email avatar role isDisabled isVerified"
-  );
-
-  if (!appUserDoc) {
-    throw new ApiError(404, "Invalid License Key. Please check your key and try again.", [], "", {
-      code: "INVALID_APP_KEY",
-    });
-  }
-
-  const user = appUserDoc.userId;
-  if (user?.isDisabled) {
-    throw new ApiError(403, "Your account has been disabled. Please contact support.", [], "", {
-      code: "ACCOUNT_DISABLED",
-    });
-  }
-
-  if (!appUserDoc.isValid()) {
-    if (appUserDoc.status === "suspended") {
-      throw new ApiError(403, "Your account has been suspended. Please contact support.", [], "", {
-        code: "ACCOUNT_SUSPENDED",
-      });
-    }
-    throw new ApiError(403, "Your app license is not active.", [], "", {
-      code: "ACCOUNT_INACTIVE",
-    });
-  }
-
-  const deviceMeta = extractDeviceMeta(req);
-  const deviceResult = appUserDoc.registerOrUpdateDevice(deviceMeta, {
-    replaceDeviceId: replaceDeviceId || null,
-  });
-
-  if (!deviceResult.allowed) {
-    const deviceChallengeToken = createDeviceChallengeToken(
-      user || { _id: appUserDoc.userId },
-      appUserDoc,
-      deviceMeta
-    );
-    throw new ApiError(
-      403,
-      `Device limit reached (${deviceResult.maxDevices}/${deviceResult.maxDevices} devices active). Please deactivate an existing device to continue.`,
-      [],
-      "",
-      {
-        code: "DEVICE_LIMIT_REACHED",
-        data: {
-          code: "DEVICE_LIMIT_REACHED",
-          maxDevices: deviceResult.maxDevices,
-          devices: deviceResult.devices,
-          currentDevice: deviceMeta,
-          deviceChallengeToken,
-        },
-      }
-    );
-  }
-
-  await appUserDoc.save();
-  const account = await buildAppAccountPayload(appUserDoc, user, deviceMeta);
-
-  return new ApiResponse(200, true, "Login successful", {
-    user: {
-      _id: user?._id || appUserDoc.userId,
-      name: user?.name || appUserDoc.username || "User",
-      email: user?.email || appUserDoc.username,
-      avatar: user?.avatar || null,
-      role: user?.role || "user",
-    },
+    appUserKey: appUserDoc.key,
     apiKey: appUserDoc.key,
     account,
     devices: deviceResult.devices,
@@ -492,7 +454,7 @@ export const verifyGoogle = asyncHandler(async (req, res) => {
         code: "ACCOUNT_SUSPENDED",
       });
     }
-    throw new ApiError(403, "Your app license is currently inactive.", [], "", {
+    throw new ApiError(403, "Your app user account is currently inactive.", [], "", {
       code: "ACCOUNT_INACTIVE",
     });
   }
@@ -533,6 +495,7 @@ export const verifyGoogle = asyncHandler(async (req, res) => {
       avatar: user.avatar || null,
       role: user.role,
     },
+    appUserKey: appUserDoc.key,
     apiKey: appUserDoc.key,
     account,
     devices: deviceResult.devices,
@@ -560,18 +523,20 @@ export const replaceDeviceAndLogin = asyncHandler(async (req, res) => {
     );
   }
 
+  const targetAppUserId = decoded.appUserId;
   const targetKey = decoded.appUserKey;
-  if (decoded.purpose !== "device_replace" || !targetKey) {
+  if (decoded.purpose !== "device_replace" || (!targetAppUserId && !targetKey)) {
     throw new ApiError(401, "Invalid device challenge token");
   }
 
-  const appUserDoc = await AppUser.findOne({ key: targetKey }).populate(
-    "userId",
-    "name email avatar role isDisabled"
-  );
+  const appUserDoc = await (
+    targetAppUserId
+      ? AppUser.findById(targetAppUserId)
+      : AppUser.findOne({ key: targetKey })
+  ).populate("userId", "name email avatar role isDisabled");
 
   if (!appUserDoc) {
-    throw new ApiError(404, "Account license not found");
+    throw new ApiError(404, "App user profile not found");
   }
 
   const user = appUserDoc.userId;
@@ -616,6 +581,7 @@ export const replaceDeviceAndLogin = asyncHandler(async (req, res) => {
       avatar: user?.avatar || null,
       role: user?.role || "user",
     },
+    appUserKey: appUserDoc.key,
     apiKey: appUserDoc.key,
     account,
     devices: deviceResult.devices,
@@ -719,7 +685,7 @@ async function createManualPaymentRecord({
 }
 
 function serializeAppUserSummary(appDoc) {
-  const obj = appDoc.toObject();
+  const { key: _omitKey, ...obj } = appDoc.toObject();
   return {
     ...obj,
     credit: obj.credit === Infinity || obj.credit === null ? null : obj.credit ?? 0,
@@ -895,7 +861,7 @@ export const createAppUser = asyncHandler(async (req, res) => {
   }
 
   return new ApiResponse(201, true, "App user created successfully.", {
-    key: newAppUser.key,
+    appUserId: newAppUser._id.toString(),
     username: newAppUser.username,
     userId: user._id.toString(),
     plan: newAppUser.plan,
@@ -919,9 +885,10 @@ export const createAppUser = asyncHandler(async (req, res) => {
  */
 export const updateAppUser = asyncHandler(async (req, res) => {
   const {
+    appUserId,
+    userId,
     username,
     key,
-    userId,
     planId = null,
     plan,
     upgradeMode = "replace",
@@ -936,33 +903,14 @@ export const updateAppUser = asyncHandler(async (req, res) => {
     reason,
   } = req.body;
 
-  if (!username && !key && !userId) {
-    throw new ApiError(400, "Username, access key, or userId is required.");
+  if (!appUserId && !userId && !username && !key) {
+    throw new ApiError(400, "userId, appUserId, or username is required.");
   }
 
-  let appDoc = null;
-  if (key) {
-    appDoc = await AppUser.findOne({ key });
-  }
-  if (!appDoc && userId && mongoose.Types.ObjectId.isValid(userId)) {
-    appDoc = await AppUser.findOne({ userId });
-    if (!appDoc) {
-      const existingUser = await User.findById(userId);
-      if (existingUser) {
-        appDoc = await findOrCreateAppUser(existingUser);
-      }
-    }
-  }
-  if (!appDoc && username) {
-    const normalizedEmail = username.toLowerCase().trim();
-    appDoc = await AppUser.findOne({ username: normalizedEmail });
-    if (!appDoc) {
-      const user = await User.findOne({ email: normalizedEmail });
-      if (user) {
-        appDoc = await findOrCreateAppUser(user);
-      }
-    }
-  }
+  const appDoc = await resolveAdminAppUser(
+    { appUserId, userId, username, key },
+    { createIfMissing: true }
+  );
 
   if (!appDoc) {
     throw new ApiError(404, "App user not found.");
@@ -1143,7 +1091,6 @@ export const updateAppUser = asyncHandler(async (req, res) => {
   }
 
   return new ApiResponse(200, true, "App user updated successfully", {
-    key: appDoc.key,
     appUser: serializeAppUserSummary(appDoc),
     paymentRecorded: paymentRecorded
       ? {
@@ -1156,18 +1103,30 @@ export const updateAppUser = asyncHandler(async (req, res) => {
 });
 
 /**
- * DELETE an App User by username
+ * DELETE an App User by userId, appUserId, or username
  */
 export const deleteAppUser = asyncHandler(async (req, res) => {
-  const { username } = req.params;
+  const rawId = req.params.identifier || req.params.username;
 
-  if (!username) {
-    throw new ApiError(400, "Username is required");
+  if (!rawId) {
+    throw new ApiError(400, "User ID or username is required");
   }
 
-  const appDoc = await AppUser.findOneAndDelete({
-    username: decodeURIComponent(username).toLowerCase().trim(),
-  });
+  let decoded = rawId;
+  try {
+    decoded = decodeURIComponent(rawId).trim();
+  } catch {
+    decoded = String(rawId).trim();
+  }
+
+  const appDoc = mongoose.Types.ObjectId.isValid(decoded)
+    ? await AppUser.findOneAndDelete({
+        $or: [{ userId: decoded }, { _id: decoded }],
+      })
+    : await AppUser.findOneAndDelete({
+        username: decoded.toLowerCase().trim(),
+      });
+
   if (!appDoc) {
     throw new ApiError(404, "App user not found");
   }
@@ -1179,13 +1138,13 @@ export const deleteAppUser = asyncHandler(async (req, res) => {
  * RESET allowed device bindings for an App User (all devices or a single deviceId)
  */
 export const resetDevice = asyncHandler(async (req, res) => {
-  const { key, deviceId } = req.body;
+  const { appUserId, userId, username, key, deviceId } = req.body;
 
-  if (!key) {
-    throw new ApiError(400, "App user key is required.");
+  if (!appUserId && !userId && !username && !key) {
+    throw new ApiError(400, "userId, appUserId, or username is required.");
   }
 
-  const appDoc = await AppUser.findOne({ key });
+  const appDoc = await resolveAdminAppUser({ appUserId, userId, username, key });
   if (!appDoc) {
     throw new ApiError(404, "App user not found.");
   }
@@ -1215,13 +1174,16 @@ export const resetDevice = asyncHandler(async (req, res) => {
  * SUSPEND or REACTIVATE an App User
  */
 export const updateAppUserStatus = asyncHandler(async (req, res) => {
-  const { key, mode } = req.body;
+  const { appUserId, userId, username, key, mode } = req.body;
 
-  if (!key || !mode) {
-    throw new ApiError(400, "App user key and mode are required.");
+  if ((!appUserId && !userId && !username && !key) || !mode) {
+    throw new ApiError(400, "App user identifier and mode are required.");
   }
 
-  const appDoc = await AppUser.findOne({ key });
+  const appDoc = await resolveAdminAppUser(
+    { appUserId, userId, username, key },
+    { createIfMissing: true }
+  );
   if (!appDoc) {
     throw new ApiError(404, "App user not found.");
   }
@@ -1254,13 +1216,16 @@ export const updateAppUserStatus = asyncHandler(async (req, res) => {
  * ADD CREDITS to an App User
  */
 export const addCredits = asyncHandler(async (req, res) => {
-  const { key, credits } = req.body;
+  const { appUserId, userId, username, key, credits } = req.body;
 
-  if (!key || credits === undefined) {
-    throw new ApiError(400, "App user key and credits are required.");
+  if ((!appUserId && !userId && !username && !key) || credits === undefined) {
+    throw new ApiError(400, "App user identifier and credits are required.");
   }
 
-  const appDoc = await AppUser.findOne({ key });
+  const appDoc = await resolveAdminAppUser(
+    { appUserId, userId, username, key },
+    { createIfMissing: true }
+  );
   if (!appDoc) {
     throw new ApiError(404, "App user not found.");
   }
@@ -1282,9 +1247,9 @@ export const addCredits = asyncHandler(async (req, res) => {
 export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
 
-  const targetId = req.params.key;
+  const targetId = req.params.userId || req.params.key;
   if (!targetId) {
-    throw new ApiError(400, "App user key is required");
+    throw new ApiError(400, "User ID is required");
   }
 
   const now = new Date();
@@ -1294,31 +1259,23 @@ export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
   const userSelectFields =
     "name email avatar role isVerified isDisabled loginProvider lastLoginAt passwordChangedAt ipAddress failedLoginAttempts lockUntil referred createdAt updatedAt";
 
-  let appDoc = await AppUser.findOne({ key: targetId })
-    .populate({
-      path: "userId",
-      select: userSelectFields,
-      populate: {
-        path: "referred",
-        select: "referralCode referrer",
-        populate: { path: "referrer", select: "name email" },
-      },
-    })
-    .exec();
+  const userPopulateConfig = {
+    path: "userId",
+    select: userSelectFields,
+    populate: {
+      path: "referred",
+      select: "referralCode referrer",
+      populate: { path: "referrer", select: "name email" },
+    },
+  };
 
-  if (!appDoc && mongoose.Types.ObjectId.isValid(targetId)) {
+  let appDoc = null;
+
+  if (mongoose.Types.ObjectId.isValid(targetId)) {
     appDoc = await AppUser.findOne({
-      $or: [{ _id: targetId }, { userId: targetId }],
+      $or: [{ userId: targetId }, { _id: targetId }],
     })
-      .populate({
-        path: "userId",
-        select: userSelectFields,
-        populate: {
-          path: "referred",
-          select: "referralCode referrer",
-          populate: { path: "referrer", select: "name email" },
-        },
-      })
+      .populate(userPopulateConfig)
       .exec();
 
     if (!appDoc) {
@@ -1326,15 +1283,28 @@ export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
       if (existingUser) {
         const created = await findOrCreateAppUser(existingUser);
         appDoc = await AppUser.findById(created._id)
-          .populate({
-            path: "userId",
-            select: userSelectFields,
-            populate: {
-              path: "referred",
-              select: "referralCode referrer",
-              populate: { path: "referrer", select: "name email" },
-            },
-          })
+          .populate(userPopulateConfig)
+          .exec();
+      }
+    }
+  }
+
+  if (!appDoc) {
+    const normalized = String(targetId).toLowerCase().trim();
+    appDoc = await AppUser.findOne({
+      $or: [{ username: normalized }, { key: targetId }],
+    })
+      .populate(userPopulateConfig)
+      .exec();
+
+    if (!appDoc && normalized.includes("@")) {
+      const existingUser = await User.findOne({ email: normalized }).select(
+        userSelectFields
+      );
+      if (existingUser) {
+        const created = await findOrCreateAppUser(existingUser);
+        appDoc = await AppUser.findById(created._id)
+          .populate(userPopulateConfig)
           .exec();
       }
     }
@@ -1632,7 +1602,6 @@ export const getUserDetailsByAppUser = asyncHandler(async (req, res) => {
     _id: appDoc._id.toString(),
     userId: resolvedUserId?.toString() || "",
     username: appDoc.username,
-    key: appDoc.key,
     expiresAt: appDoc.expiresAt || null,
     remainingDays,
     isExpired,
@@ -1762,7 +1731,7 @@ export const validateAppUser = asyncHandler(async (req, res) => {
   const { processCount = 1 } = req.body;
 
   if (!key) {
-    throw new ApiError(400, "License key is required in headers.");
+    throw new ApiError(400, "App user key is required in headers.");
   }
 
   if (!deviceId) {
@@ -1785,7 +1754,7 @@ export const validateAppUser = asyncHandler(async (req, res) => {
         code: "ACCOUNT_SUSPENDED",
       });
     }
-    throw new ApiError(403, "Account license is not valid or active.", [], "", {
+    throw new ApiError(403, "App user account is not valid or active.", [], "", {
       code: "ACCOUNT_INACTIVE",
     });
   }
@@ -1827,6 +1796,7 @@ export const validateAppUser = asyncHandler(async (req, res) => {
   const aiApiKey = isCreditPlan && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
 
   return new ApiResponse(200, true, "Account is valid and process allowed.", {
+    appUserKey: appDoc.key,
     key: appDoc.key,
     username: appDoc.username,
     plan: appDoc.plan,
@@ -1852,13 +1822,13 @@ export const getAppUserStats = asyncHandler(async (req, res) => {
   const key = extractAppUserKey(req);
 
   if (!key) {
-    throw new ApiError(400, "License key is required.");
+    throw new ApiError(400, "App user key is required.");
   }
 
   const appDoc = await AppUser.findOne({ key }).populate("userId", "name email avatar");
   if (!appDoc) {
     throw new ApiError(404, "App user not found.", [], "", {
-      code: "KEY_NOT_FOUND",
+      code: "APP_USER_NOT_FOUND",
     });
   }
 
@@ -1905,6 +1875,7 @@ export const getAppUserStats = asyncHandler(async (req, res) => {
   );
 
   return new ApiResponse(200, true, "User stats retrieved successfully", {
+    appUserKey: appDoc.key,
     key: appDoc.key,
     plan: appDoc.plan,
     planType: appDoc.plan?.type || PLAN_TYPES.FREE,
@@ -1937,7 +1908,7 @@ export const getAppUserStats = asyncHandler(async (req, res) => {
 export const getAppDevices = asyncHandler(async (req, res) => {
   const key = extractAppUserKey(req);
   if (!key) {
-    throw new ApiError(400, "License key is required.");
+    throw new ApiError(400, "App user key is required.");
   }
 
   const appDoc = await AppUser.findOne({ key });
@@ -1966,7 +1937,7 @@ export const removeAppDevice = asyncHandler(async (req, res) => {
   const targetDeviceId = req.params.deviceId || req.body?.deviceId;
 
   if (!key) {
-    throw new ApiError(400, "License key is required.");
+    throw new ApiError(400, "App user key is required.");
   }
   if (!targetDeviceId) {
     throw new ApiError(400, "Target device ID is required.");
@@ -2014,7 +1985,7 @@ export const processAppUsage = asyncHandler(async (req, res) => {
   const key = extractAppUserKey(req);
   const { processCount, processFileCount, failedCount, failedErrors } = req.body;
 
-  if (!key) throw new ApiError(400, "License key is required in headers.");
+  if (!key) throw new ApiError(400, "App user key is required in headers.");
 
   const appDoc = await AppUser.findOne({ key });
   if (!appDoc) throw new ApiError(404, "App user not found.");
@@ -2028,7 +1999,7 @@ export const processAppUsage = asyncHandler(async (req, res) => {
     if (failed > 0) {
       await logFailedProcess(appDoc, failed, errorMsg);
     }
-    throw new ApiError(403, "Account license is not valid or active.");
+    throw new ApiError(403, "App user account is not valid or active.");
   }
 
   if (creditUsed > 0) {
@@ -2066,6 +2037,7 @@ export const processAppUsage = asyncHandler(async (req, res) => {
   const remainingCredit = appDoc.calculateCredit();
 
   return new ApiResponse(200, true, "Usage updated successfully", {
+    appUserKey: appDoc.key,
     key: appDoc.key,
     plan: appDoc.plan,
     remainingCredit: remainingCredit === Infinity ? null : remainingCredit,

@@ -614,7 +614,7 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
 
     // 6. Top Usage (AppUser)
     AppUser.find({ totalProcess: { $gt: 0 } })
-      .select("userId username key plan totalProcess totalFailedProcess status")
+      .select("userId username plan totalProcess totalFailedProcess status")
       .populate("userId", "name email avatar")
       .sort({ totalProcess: -1 })
       .limit(5)
@@ -886,7 +886,11 @@ export const getAdminDashboardStats = asyncHandler(async (req, res) => {
   // Normalize leaderboards
   const topUsage = topUsageDocs.map((item) => ({
     _id: item._id,
-    key: item.key || null,
+    userId:
+      item.userId?._id?.toString() ||
+      (typeof item.userId === "string"
+        ? item.userId
+        : item.userId?.toString?.() || ""),
     planType: item.plan?.type || PLAN_TYPES.FREE,
     count: item.totalProcess || 0,
     failedCount: item.totalFailedProcess || 0,
@@ -1062,10 +1066,7 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   const trimmedSearch = String(search || "").trim();
   if (trimmedSearch) {
     const matchingAppUsers = await AppUser.find({
-      $or: [
-        { username: { $regex: trimmedSearch, $options: "i" } },
-        { key: { $regex: trimmedSearch, $options: "i" } },
-      ],
+      username: { $regex: trimmedSearch, $options: "i" },
     })
       .select("userId")
       .lean();
@@ -1202,7 +1203,6 @@ export const getAllUsers = asyncHandler(async (req, res) => {
       appUserId: appUserDoc?._id?.toString() || null,
       hasAppUser: Boolean(appUserDoc),
       username: appUserDoc?.username || u.email,
-      key: appUserDoc?.key || null,
       plan: {
         type: planType,
         id: planId,

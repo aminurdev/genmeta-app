@@ -22,7 +22,7 @@ const appUserSchema = new mongoose.Schema(
     },
     key: {
       type: String,
-      required: [true, "App access key is required"],
+      required: [true, "App user access key is required"],
       unique: true,
       index: true,
     },
@@ -176,7 +176,11 @@ appUserSchema.methods.downgradeToPlan = function (newPlan = PLAN_TYPES.FREE, rea
     reason,
   });
 
-  this.plan = { type: newPlan, id: null };
+  this.plan = {
+    type: newPlan,
+    id: null,
+    name: newPlan === PLAN_TYPES.FREE ? "Free Tier" : null,
+  };
   this.lastPlanChange = new Date();
 
   if (newPlan === PLAN_TYPES.FREE) {
@@ -403,7 +407,11 @@ appUserSchema.methods.upgradePlan = function (newPlan, expiresAt = null, credits
     reason: "upgrade",
   });
 
-  this.plan = { type: newPlan, id: this.plan?.id || null };
+  this.plan = {
+    type: newPlan,
+    id: this.plan?.id || null,
+    name: this.plan?.name || null,
+  };
   this.lastPlanChange = new Date();
 
   if (newPlan === PLAN_TYPES.SUBSCRIPTION) {

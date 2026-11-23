@@ -78,7 +78,7 @@ npm run dev
 | Collection | Description | Primary Indexes |
 | :--- | :--- | :--- |
 | `users` | User accounts & credentials | `email` (unique), `googleId` (sparse), `(role, isVerified, createdAt)` |
-| `appkeys` | Client API keys & quotas | `key` (unique), `userId`, `("plan.type", expiresAt)`, `("plan.type", credit)` |
+| `appusers` | Desktop AppUser profiles & quotas | `userId` (unique), `key` (unique), `username` (unique), `("plan.type", expiresAt)`, `("plan.type", credit)` |
 | `apppricings` | Subscription & Credit tiers | `(isActive, type, basePrice)` |
 | `apppayments` | Verified payment audit logs | `paymentID` (unique), `trxID` (unique), `(userId, createdAt)` |
 | `orders` | Purchases & order history | `(userId, createdAt)`, `(status, createdAt)`, `planId` |
@@ -87,7 +87,7 @@ npm run dev
 | `referrals` | Referral programs & balances | `referralCode` (unique), `referrer` (unique), `availableBalance` |
 | `referralearnings` | **NEW** Commission reward ledger | `(referralId, referredUserId)` (unique), `(referrerId, createdAt)` |
 | `referralwithdrawals`| **NEW** Withdrawal request ledger| `(status, requestedAt)`, `(userId, requestedAt)` |
-| `dailyapiusages` | **NEW** Daily rollups & stats | `(appKeyId, date)` (unique), `(userId, date)`, `date` |
+| `dailyapiusages` | **NEW** Daily rollups & stats | `(appUserId, date)` (unique), `(userId, date)`, `date` |
 | `aiapis` | Encrypted Gemini AI keys | `isActive`, `createdAt` |
 | `_migrations` | Migration version tracking | `name` (unique), `batch` |
 
@@ -106,9 +106,10 @@ npm run dev
   - `GET /me` - Authenticated profile
 
 - **Desktop & Mobile App Client**: `/api/v1/app`
-  - `POST /appkey/validate` - Authorize device & verify version
-  - `POST /appkey/usage` - Report usage & process counts
-  - `GET /appkey/stats` - Quotas & status
+  - `POST /appuser/validate` - Authorize device & verify version
+  - `POST /appuser/usage` - Report usage & process counts
+  - `GET /appuser/stats` - Quotas & status
+  - `GET /appuser/devices` - List registered desktop devices
 
 - **Payment Gateways**: `/api/v1/payment`
   - `POST /create-paystation-payment` - Initiate PayStation checkout

@@ -47,7 +47,6 @@ export interface UpgradePlanTargetUser {
   username: string;
   name?: string;
   email?: string;
-  key?: string | null;
   status?: string;
   isActive?: boolean;
   maxDevices?: number;
@@ -170,7 +169,6 @@ function UpgradePlanForm({
 
     const payload: UpdateAppUserPayload = {
       username: user.username,
-      ...(user.key ? { key: user.key } : {}),
       ...(user.userId ? { userId: user.userId } : {}),
       upgradeMode,
       maxDevices: Math.min(20, Math.max(1, Number.parseInt(maxDevices, 10) || 2)),
@@ -602,7 +600,7 @@ export function UpgradePlanDialog({
         </DialogHeader>
         {open && user && (
           <UpgradePlanForm
-            key={user.key || user.username}
+            key={user.userId || user.username}
             user={user}
             onClose={() => onOpenChange(false)}
             onSuccess={onSuccess}

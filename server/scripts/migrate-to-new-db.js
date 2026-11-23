@@ -128,55 +128,86 @@ async function runDatabaseMigration() {
     }
     console.log(`   ✓ Migrated ${pricingCount} pricing plans.`);
 
-    // 3. MIGRATE APP KEYS & EXTRACT DAILY USAGE
-    console.log("\n▶ [3/9] Transforming AppKeys & Extracting Historical Usage...");
-    const appKeysCursor = sourceDb.collection("appkeys").find({});
-    let appKeyBatch = [];
-    let appKeyCount = 0;
+    // 3. MIGRATE APP USERS & EXTRACT DAILY USAGE
+    console.log("\n▶ [3/9] Transforming AppUsers & Extracting Historical Usage...");
+    const sourceAppUsersCol =
+      (await sourceDb.listCollections({ name: "appusers" }).toArray()).length > 0
+        ? "appusers"
+        : "appkeys";
+    const appUsersCursor = sourceDb.collection(sourceAppUsersCol).find({});
+    let appUserBatch = [];
+    let appUserCount = 0;
     let dailyUsageBatch = [];
     let totalUsageRecords = 0;
 
-    for await (const keyDoc of appKeysCursor) {
-      const planType = keyDoc.plan?.type || "free";
-      const planId = keyDoc.plan?.id || null;
+    for await (const userDoc of appUsersCursor) {
+      const planType = userDoc.plan?.type || "free";
+      const planId = userDoc.plan?.id || null;
+      const allowedDevices = Array.isArray(userDoc.allowedDevices)
+        ? userDoc.allowedDevices
+        : [];
+      const createdAt = toDate(userDoc.createdAt) || new Date();
+      const updatedAt = toDate(userDoc.updatedAt) || createdAt;
+      const devices =
+        Array.isArray(userDoc.devices) && userDoc.devices.length > 0
+          ? userDoc.devices
+          : allowedDevices.map((deviceId) => ({
+              deviceId,
+              fingerprint: null,
+              deviceName: "Registered Device",
+              platform: "unknown",
+              osVersion: "",
+              arch: "",
+              cpuModel: "",
+              appVersion: "",
+              ipAddress: "",
+              firstLoginAt: createdAt,
+              lastActiveAt: updatedAt,
+            }));
 
-      const transformedKey = {
-        _id: toObjectId(keyDoc._id),
-        userId: toObjectId(keyDoc.userId),
-        username: (keyDoc.username || "").trim(),
-        key: keyDoc.key,
-        credit: Number(keyDoc.credit) || 0,
-        isActive: Boolean(keyDoc.isActive !== false),
-        status: keyDoc.status === "suspended" ? "suspended" : "active",
-        suspendedAt: toDate(keyDoc.suspendedAt),
-        expiresAt: toDate(keyDoc.expiresAt),
-        allowedDevices: Array.isArray(keyDoc.allowedDevices) ? keyDoc.allowedDevices : [],
+      const transformedAppUser = {
+        _id: toObjectId(userDoc._id),
+        userId: toObjectId(userDoc.userId),
+        username: (userDoc.username || "").toLowerCase().trim(),
+        key: userDoc.key,
+        credit:
+          planType === "subscription" ? Infinity : Number(userDoc.credit) || 0,
+        isActive: Boolean(userDoc.isActive !== false),
+        status: userDoc.status === "suspended" ? "suspended" : "active",
+        suspendedAt: toDate(userDoc.suspendedAt),
+        expiresAt: toDate(userDoc.expiresAt),
+        maxDevices: Number(userDoc.maxDevices) || 2,
+        allowedDevices,
+        devices,
+        lastDeviceRemovalAt: toDate(userDoc.lastDeviceRemovalAt),
         plan: {
-          type: ["free", "credit", "subscription"].includes(planType) ? planType : "free",
+          type: ["free", "credit", "subscription"].includes(planType)
+            ? planType
+            : "free",
           id: planId,
+          name: userDoc.plan?.name || null,
         },
-        totalProcess: Number(keyDoc.totalProcess) || 0,
-        monthlyProcess: keyDoc.monthlyProcess || {},
-        dailyProcess: keyDoc.dailyProcess || {},
-        lastCreditRefresh: keyDoc.lastCreditRefresh || null,
-        lastPlanChange: toDate(keyDoc.lastPlanChange) || toDate(keyDoc.createdAt) || new Date(),
-        planHistory: Array.isArray(keyDoc.planHistory) ? keyDoc.planHistory : [],
-        failedProcess: keyDoc.failedProcess || {},
-        totalFailedProcess: Number(keyDoc.totalFailedProcess) || 0,
-        createdAt: toDate(keyDoc.createdAt) || new Date(),
-        updatedAt: toDate(keyDoc.updatedAt) || toDate(keyDoc.createdAt) || new Date(),
+        totalProcess: Number(userDoc.totalProcess) || 0,
+        monthlyProcess: userDoc.monthlyProcess || {},
+        dailyProcess: userDoc.dailyProcess || {},
+        lastCreditRefresh: userDoc.lastCreditRefresh || null,
+        lastPlanChange: toDate(userDoc.lastPlanChange) || createdAt,
+        planHistory: Array.isArray(userDoc.planHistory) ? userDoc.planHistory : [],
+        failedProcess: userDoc.failedProcess || {},
+        totalFailedProcess: Number(userDoc.totalFailedProcess) || 0,
+        createdAt,
+        updatedAt,
       };
 
-      appKeyBatch.push(transformedKey);
+      appUserBatch.push(transformedAppUser);
 
       // Extract daily usage into dailyapiusages collection
-      if (keyDoc.dailyProcess && typeof keyDoc.dailyProcess === "object") {
-        for (const [dateStr, count] of Object.entries(keyDoc.dailyProcess)) {
+      if (userDoc.dailyProcess && typeof userDoc.dailyProcess === "object") {
+        for (const [dateStr, count] of Object.entries(userDoc.dailyProcess)) {
           if (dateStr && count > 0) {
             dailyUsageBatch.push({
-              appUserId: transformedKey._id,
-              appKeyId: transformedKey._id,
-              userId: transformedKey.userId,
+              appUserId: transformedAppUser._id,
+              userId: transformedAppUser.userId,
               date: dateStr,
               processCount: Number(count) || 0,
               fileCount: 0,
@@ -187,7 +218,9 @@ async function runDatabaseMigration() {
             });
 
             if (dailyUsageBatch.length === BATCH_SIZE) {
-              await targetDb.collection("dailyapiusages").insertMany(dailyUsageBatch, { ordered: false });
+              await targetDb
+                .collection("dailyapiusages")
+                .insertMany(dailyUsageBatch, { ordered: false });
               totalUsageRecords += dailyUsageBatch.length;
               dailyUsageBatch = [];
             }
@@ -195,26 +228,34 @@ async function runDatabaseMigration() {
         }
       }
 
-      if (appKeyBatch.length === BATCH_SIZE) {
-        await targetDb.collection("appkeys").insertMany(appKeyBatch, { ordered: false });
-        appKeyCount += appKeyBatch.length;
-        process.stdout.write(`   → Processed ${appKeyCount} app keys...\r`);
-        appKeyBatch = [];
+      if (appUserBatch.length === BATCH_SIZE) {
+        await targetDb
+          .collection("appusers")
+          .insertMany(appUserBatch, { ordered: false });
+        appUserCount += appUserBatch.length;
+        process.stdout.write(`   → Processed ${appUserCount} app users...\r`);
+        appUserBatch = [];
       }
     }
 
-    if (appKeyBatch.length > 0) {
-      await targetDb.collection("appkeys").insertMany(appKeyBatch, { ordered: false });
-      appKeyCount += appKeyBatch.length;
+    if (appUserBatch.length > 0) {
+      await targetDb
+        .collection("appusers")
+        .insertMany(appUserBatch, { ordered: false });
+      appUserCount += appUserBatch.length;
     }
 
     if (dailyUsageBatch.length > 0) {
-      await targetDb.collection("dailyapiusages").insertMany(dailyUsageBatch, { ordered: false });
+      await targetDb
+        .collection("dailyapiusages")
+        .insertMany(dailyUsageBatch, { ordered: false });
       totalUsageRecords += dailyUsageBatch.length;
     }
 
-    console.log(`   ✓ Migrated ${appKeyCount} app keys.`);
-    console.log(`   ✓ Normalized ${totalUsageRecords} daily usage entries into [dailyapiusages].`);
+    console.log(`   ✓ Migrated ${appUserCount} app users.`);
+    console.log(
+      `   ✓ Normalized ${totalUsageRecords} daily usage entries into [dailyapiusages].`
+    );
 
     // 4. MIGRATE PAYMENTS
     console.log("\n▶ [4/9] Transforming & Migrating Payments...");
@@ -465,17 +506,6 @@ async function runDatabaseMigration() {
       { key: { role: 1, isVerified: 1, createdAt: -1 }, name: "idx_role_verified_created" },
     ]);
 
-    // AppKeys
-    await targetDb.collection("appkeys").createIndexes([
-      { key: { key: 1 }, unique: true, name: "uniq_app_key" },
-      { key: { userId: 1 }, name: "idx_appkey_userId" },
-      { key: { username: 1 }, name: "idx_appkey_username" },
-      { key: { "plan.type": 1, expiresAt: 1 }, name: "idx_plan_expires" },
-      { key: { "plan.type": 1, credit: 1 }, name: "idx_plan_credit" },
-      { key: { "plan.type": 1, lastCreditRefresh: 1 }, name: "idx_plan_refresh" },
-      { key: { isActive: 1, status: 1 }, name: "idx_active_status" },
-    ]);
-
     // AppPricings
     await targetDb.collection("apppricings").createIndexes([
       { key: { isActive: 1, type: 1, basePrice: 1 }, name: "idx_pricing_active_type" },
@@ -524,45 +554,14 @@ async function runDatabaseMigration() {
     // Daily Api Usages
     await targetDb.collection("dailyapiusages").createIndexes([
       { key: { appUserId: 1, date: 1 }, unique: true, name: "uniq_appuser_date" },
-      { key: { appKeyId: 1, date: 1 }, name: "idx_appkey_date" },
       { key: { userId: 1, date: 1 }, name: "idx_user_date" },
       { key: { date: 1 }, name: "idx_usage_date" },
     ]);
 
-    // 10. MIGRATE APPKEYS TO APPUSERS (NEW UNIFIED SYSTEM)
-    console.log("\n▶ [10/10] Transitioning AppKeys to Unified AppUsers Collection...");
-    const appKeysCol = targetDb.collection("appkeys");
+    // 10. BACKFILL MISSING APPUSERS & ENSURE APPUSERS INDEXES
+    console.log("\n▶ [10/10] Ensuring Unified AppUsers Parity & Indexes...");
     const appUsersCol = targetDb.collection("appusers");
     const usersCol = targetDb.collection("users");
-
-    const legacyKeys = await appKeysCol.find().toArray();
-    // Prioritize keys with usage/active status if duplicates exist
-    legacyKeys.sort((a, b) => (b.totalProcess || 0) - (a.totalProcess || 0));
-
-    const seenUserIds = new Set();
-    const validAppUsers = [];
-
-    for (const doc of legacyKeys) {
-      const uidStr = doc.userId?.toString();
-      if (!uidStr) continue;
-
-      if (seenUserIds.has(uidStr)) {
-        console.log(`   [Deduplicate] Skipping duplicate app key for userId: ${uidStr}`);
-        continue;
-      }
-      seenUserIds.add(uidStr);
-
-      validAppUsers.push({
-        ...doc,
-        userId: doc.userId instanceof ObjectId ? doc.userId : new ObjectId(doc.userId),
-        username: (doc.username || "").toLowerCase().trim(),
-        updatedAt: doc.updatedAt || new Date(),
-      });
-    }
-
-    if (validAppUsers.length > 0) {
-      await appUsersCol.insertMany(validAppUsers, { ordered: false });
-    }
 
     // Populate missing AppUser profiles for registered users
     const allUsers = await usersCol
@@ -583,8 +582,10 @@ async function runDatabaseMigration() {
         isActive: true,
         status: u.isDisabled ? "suspended" : "active",
         suspendedAt: null,
-        expiresAt: null,
+        maxDevices: 2,
         allowedDevices: [],
+        devices: [],
+        lastDeviceRemovalAt: null,
         plan: {
           type: "free",
           id: null,
@@ -617,7 +618,7 @@ async function runDatabaseMigration() {
       { key: { userId: 1, isActive: 1 }, name: "idx_appuser_user_active" },
       { key: { createdAt: -1 }, name: "idx_appuser_created" },
     ]);
-    console.log(`   ✓ Created ${validAppUsers.length + missingUsers.length} documents in [appusers] with full indexes.`);
+    console.log(`   ✓ Verified ${appUserCount + missingUsers.length} documents in [appusers] with full indexes.`);
 
     // Record migrations as applied in target database
     await targetDb.collection("_migrations").insertMany([

@@ -15,7 +15,7 @@ export const QUERY_KEYS = {
   adminOverview: ["admin", "overview"],
   usersStats: ["users", "stats"],
   allUsers: (queryParams: string) => ["users", "all", queryParams],
-  appUserDetails: (key: string) => ["admin", "users", "details", key],
+  appUserDetails: (userId: string) => ["admin", "users", "details", userId],
   paymentsHistory: (params: GetPaymentsHistoryParams) => [
     "admin",
     "paymentHistory",

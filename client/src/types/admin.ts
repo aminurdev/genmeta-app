@@ -48,7 +48,7 @@ export interface AdminDashboardRecentPayment {
 
 export interface AdminDashboardTopUsageItem {
   _id: string;
-  key: string | null;
+  userId: string;
   planType: string;
   count: number;
   failedCount: number;
@@ -190,7 +190,6 @@ export interface AppUsers {
   isDisabled?: boolean;
   loginProvider?: string[];
   lastLoginAt?: string | null;
-  key: string | null;
   credit: number | null;
   isActive: boolean;
   status: "active" | "suspended";
@@ -320,7 +319,6 @@ export interface AdminUserProfileAppUser {
   _id: string;
   userId: string;
   username: string;
-  key: string;
   expiresAt: string | null;
   remainingDays: number | null;
   isExpired: boolean;
@@ -439,7 +437,7 @@ export interface CreateAppUserPayload {
 }
 
 export interface CreateAppUserResponse {
-  key: string;
+  appUserId?: string;
   username: string;
   userId: string;
   plan: { type: string; id: string | null; name: string };
@@ -452,9 +450,9 @@ export interface CreateAppUserResponse {
 }
 
 export interface UpdateAppUserPayload {
-  username?: string;
-  key?: string;
+  appUserId?: string;
   userId?: string;
+  username?: string;
   planId?: string | null;
   plan?: "free" | "credit" | "subscription" | { type: string; id?: string | null; name?: string | null };
   upgradeMode?: "replace" | "extend";
@@ -470,7 +468,6 @@ export interface UpdateAppUserPayload {
 }
 
 export interface UpdateAppUserResponse {
-  key: string;
   appUser: Partial<AppUsers>;
   paymentRecorded: { id: string; trxID: string; amount: number } | null;
 }

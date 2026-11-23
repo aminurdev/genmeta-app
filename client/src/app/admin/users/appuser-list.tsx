@@ -270,7 +270,7 @@ export default function AppUserList({
   const [creditAmount, setCreditAmount] = useState("100");
   const [deleteTarget, setDeleteTarget] = useState<AppUsers | null>(null);
   const [busyAction, setBusyAction] = useState<{
-    key: string;
+    userId: string;
     action: string;
   } | null>(null);
 
@@ -335,10 +335,10 @@ export default function AppUserList({
     setCurrentPage(1);
   };
 
-  const handleResetDeviceId = async (key: string) => {
-    setBusyAction({ key, action: "reset-device" });
+  const handleResetDeviceId = async (userId: string) => {
+    setBusyAction({ userId, action: "reset-device" });
     try {
-      const res = await resetDeviceMutation.mutateAsync({ key });
+      const res = await resetDeviceMutation.mutateAsync({ userId });
       if (res.success) {
         toast.success("Desktop devices reset successfully");
       } else {
@@ -352,12 +352,12 @@ export default function AppUserList({
   };
 
   const handleUpdateUserStatus = async (
-    key: string,
+    userId: string,
     mode: "suspend" | "reactivate"
   ) => {
-    setBusyAction({ key, action: mode });
+    setBusyAction({ userId, action: mode });
     try {
-      const res = await updateStatusMutation.mutateAsync({ key, mode });
+      const res = await updateStatusMutation.mutateAsync({ userId, mode });
       if (res.success) {
         toast.success(
           res.message ||
@@ -378,7 +378,9 @@ export default function AppUserList({
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const res = await deleteMutation.mutateAsync(deleteTarget.username);
+      const res = await deleteMutation.mutateAsync(
+        deleteTarget.userId || deleteTarget.username
+      );
       if (res.success) {
         toast.success("Desktop license profile deleted");
         setDeleteTarget(null);
@@ -394,7 +396,8 @@ export default function AppUserList({
 
   const handleAddCreditsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!creditTarget?.key) return;
+    const targetUserId = creditTarget?.userId || creditTarget?._id;
+    if (!targetUserId) return;
     const credits = Number.parseInt(creditAmount, 10);
     if (!Number.isFinite(credits) || credits < 1) {
       toast.error("Enter a valid positive credit amount");
@@ -403,7 +406,7 @@ export default function AppUserList({
 
     try {
       const res = await addCreditsMutation.mutateAsync({
-        key: creditTarget.key,
+        userId: targetUserId,
         credits,
       });
       if (res.success) {
@@ -478,7 +481,6 @@ export default function AppUserList({
       username: appUser.username || appUser.email || "",
       name: appUser.name,
       email: appUser.email,
-      key: appUser.key,
       status: appUser.status,
       isActive: appUser.isActive,
       maxDevices: appUser.maxDevices,
@@ -488,8 +490,8 @@ export default function AppUserList({
     });
   };
 
-  const isBusy = (key: string | null, action: string) =>
-    Boolean(key && busyAction?.key === key && busyAction?.action === action);
+  const isBusy = (userId: string | null | undefined, action: string) =>
+    Boolean(userId && busyAction?.userId === userId && busyAction?.action === action);
 
   return (
     <Card className="min-w-0">
@@ -695,9 +697,9 @@ export default function AppUserList({
                 </TableHeader>
                 <TableBody>
                   {appUsers.map((appUser) => {
-                    const profileSlug = encodeURIComponent(
-                      appUser.userId || appUser._id || appUser.key || ""
-                    );
+                    const targetUserId = appUser.userId || appUser._id;
+                    const profileSlug = encodeURIComponent(targetUserId);
+                    const hasAppProfile = appUser.hasAppUser !== false;
                     const devicesCount =
                       appUser.devicesCount ?? appUser.allowedDevices?.length ?? 0;
                     const maxDevices = appUser.maxDevices ?? 2;
@@ -858,7 +860,7 @@ export default function AppUserList({
                                   Upgrade / Change Plan
                                 </DropdownMenuItem>
 
-                                {appUser.key &&
+                                {hasAppProfile &&
                                   appUser.plan?.type !== "subscription" && (
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -871,20 +873,20 @@ export default function AppUserList({
                                     </DropdownMenuItem>
                                   )}
 
-                                {appUser.key && (
+                                {hasAppProfile && (
                                   <>
                                     <DropdownMenuSeparator />
 
                                     <DropdownMenuItem
                                       onClick={() =>
-                                        handleResetDeviceId(appUser.key!)
+                                        handleResetDeviceId(targetUserId)
                                       }
                                       disabled={isBusy(
-                                        appUser.key,
+                                        targetUserId,
                                         "reset-device"
                                       )}
                                     >
-                                      {isBusy(appUser.key, "reset-device") ? (
+                                      {isBusy(targetUserId, "reset-device") ? (
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                       ) : (
                                         <Smartphone className="mr-2 h-4 w-4" />
@@ -897,13 +899,13 @@ export default function AppUserList({
                                         className="text-destructive"
                                         onClick={() =>
                                           handleUpdateUserStatus(
-                                            appUser.key!,
+                                            targetUserId,
                                             "suspend"
                                           )
                                         }
-                                        disabled={isBusy(appUser.key, "suspend")}
+                                        disabled={isBusy(targetUserId, "suspend")}
                                       >
-                                        {isBusy(appUser.key, "suspend") ? (
+                                        {isBusy(targetUserId, "suspend") ? (
                                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         ) : (
                                           <ShieldAlert className="mr-2 h-4 w-4" />
@@ -915,16 +917,16 @@ export default function AppUserList({
                                         className="text-emerald-600"
                                         onClick={() =>
                                           handleUpdateUserStatus(
-                                            appUser.key!,
+                                            targetUserId,
                                             "reactivate"
                                           )
                                         }
                                         disabled={isBusy(
-                                          appUser.key,
+                                          targetUserId,
                                           "reactivate"
                                         )}
                                       >
-                                        {isBusy(appUser.key, "reactivate") ? (
+                                        {isBusy(targetUserId, "reactivate") ? (
                                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         ) : (
                                           <ShieldCheck className="mr-2 h-4 w-4" />
@@ -935,7 +937,7 @@ export default function AppUserList({
                                   </>
                                 )}
 
-                                {appUser.hasAppUser !== false && appUser.key && (
+                                {hasAppProfile && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -961,9 +963,9 @@ export default function AppUserList({
             {/* Mobile & Tablet Card List */}
             <div className="lg:hidden divide-y rounded-lg border">
               {appUsers.map((appUser) => {
-                const profileSlug = encodeURIComponent(
-                  appUser.userId || appUser._id || appUser.key || ""
-                );
+                const targetUserId = appUser.userId || appUser._id;
+                const profileSlug = encodeURIComponent(targetUserId);
+                const hasAppProfile = appUser.hasAppUser !== false;
                 const devicesCount =
                   appUser.devicesCount ?? appUser.allowedDevices?.length ?? 0;
                 const maxDevices = appUser.maxDevices ?? 2;
@@ -1062,7 +1064,7 @@ export default function AppUserList({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          {appUser.key &&
+                          {hasAppProfile &&
                             appUser.plan?.type !== "subscription" && (
                               <DropdownMenuItem
                                 onClick={() => {
@@ -1074,10 +1076,10 @@ export default function AppUserList({
                                 Add Credits
                               </DropdownMenuItem>
                             )}
-                          {appUser.key && (
+                          {hasAppProfile && (
                             <>
                               <DropdownMenuItem
-                                onClick={() => handleResetDeviceId(appUser.key!)}
+                                onClick={() => handleResetDeviceId(targetUserId)}
                               >
                                 <Smartphone className="mr-2 h-4 w-4" />
                                 Reset Devices
@@ -1087,7 +1089,7 @@ export default function AppUserList({
                                   className="text-destructive"
                                   onClick={() =>
                                     handleUpdateUserStatus(
-                                      appUser.key!,
+                                      targetUserId,
                                       "suspend"
                                     )
                                   }
@@ -1100,7 +1102,7 @@ export default function AppUserList({
                                   className="text-emerald-600"
                                   onClick={() =>
                                     handleUpdateUserStatus(
-                                      appUser.key!,
+                                      targetUserId,
                                       "reactivate"
                                     )
                                   }
