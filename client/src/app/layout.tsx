@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/app/globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import QueryProvider from "@/components/providers/queryProvider";
 import {
@@ -142,9 +143,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>{children}</QueryProvider>
-          <PageViewTracker />
-          <Toaster richColors />
+          <TooltipProvider>
+            <QueryProvider>{children}</QueryProvider>
+            <PageViewTracker />
+            <Toaster richColors />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
