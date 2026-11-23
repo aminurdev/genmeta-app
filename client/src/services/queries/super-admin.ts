@@ -1,35 +1,59 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { QUERY_KEYS } from "@/services/constants";
 import {
-  getSuperAdminOverview,
   getAdminList,
-  updateUserRole,
+  getSuperAdminOverview,
   toggleUserStatus,
-  UpdateRolePayload,
-  ToggleStatusPayload,
+  updateUserRole,
+  type ToggleStatusPayload,
+  type UpdateRolePayload,
 } from "@/services/super-admin";
-import { toast } from "sonner";
 
 export function useSuperAdminOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.superAdminOverview,
-    queryFn: getSuperAdminOverview,
+    queryFn: () => getSuperAdminOverview(),
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
-    refetchInterval: 30 * 1000, // Real-time server telemetry every 30s
+    refetchInterval: 30 * 1000,
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 }
 
 export function useAdminListQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.superAdminStaff,
-    queryFn: getAdminList,
+    queryFn: () => getAdminList(),
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshSuperAdminMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const [overviewRes, staffRes] = await Promise.all([
+        getSuperAdminOverview({ refresh: true }),
+        getAdminList({ refresh: true }),
+      ]);
+      return { overviewRes, staffRes };
+    },
+    onSuccess: ({ overviewRes, staffRes }) => {
+      if (overviewRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.superAdminOverview, overviewRes);
+      }
+      if (staffRes.success) {
+        queryClient.setQueryData(QUERY_KEYS.superAdminStaff, staffRes);
+      }
+    },
   });
 }
 
@@ -42,7 +66,9 @@ export function useUpdateUserRoleMutation() {
       if (data.success) {
         toast.success(data.message || "User role updated successfully");
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.superAdminStaff });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.superAdminOverview });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.superAdminOverview,
+        });
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.usersStats });
       } else {
         toast.error(data.message || "Failed to update user role");
@@ -63,7 +89,9 @@ export function useToggleUserStatusMutation() {
       if (data.success) {
         toast.success(data.message || "Account status updated");
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.superAdminStaff });
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.superAdminOverview });
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.superAdminOverview,
+        });
       } else {
         toast.error(data.message || "Failed to update account status");
       }

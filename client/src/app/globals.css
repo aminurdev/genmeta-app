@@ -517,8 +517,13 @@ details > summary::-webkit-details-marker {
 }
 
 @media print {
+  @page {
+    margin: 12mm;
+  }
   body {
     background: #ffffff !important;
     color: #171717 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

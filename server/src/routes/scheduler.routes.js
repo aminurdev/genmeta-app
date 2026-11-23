@@ -7,20 +7,17 @@ import {
   scheduleOneTimeMaintenance,
   getMaintenanceStats,
 } from "../controllers/scheduler.controller.js";
-import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
+import { authenticateAndVerifySuperAdmin } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateAndVerifyAdmin);
-
-// Note: These routes should be restricted to admin users only
-// You may want to add an additional admin middleware here
+// Restrict scheduler operations strictly to SuperAdmin users
+router.use(authenticateAndVerifySuperAdmin);
 
 /**
  * @route GET /api/scheduler/status
  * @desc Get scheduler status and statistics
- * @access Private (Admin)
+ * @access Private (SuperAdmin)
  */
 router.get("/status", getSchedulerStatus);
 

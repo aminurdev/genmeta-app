@@ -5,17 +5,17 @@ import {
     testBackupConnection,
     getBackupHistory,
 } from "../controllers/backup.controller.js";
-import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
+import { authenticateAndVerifySuperAdmin } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateAndVerifyAdmin);
+// Restrict database backup operations strictly to SuperAdmin users
+router.use(authenticateAndVerifySuperAdmin);
 
 /**
  * @route GET /api/v1/backup/status
  * @desc Get backup service status and statistics
- * @access Private (Admin)
+ * @access Private (SuperAdmin)
  */
 router.get("/status", getBackupStatus);
 

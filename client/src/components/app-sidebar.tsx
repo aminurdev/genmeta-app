@@ -107,6 +107,18 @@ const adminSidebarData = [
         icon: ShieldAlert,
         isForSuperAdmin: true,
       },
+      {
+        title: "Scheduler",
+        url: "/admin/scheduler",
+        icon: Clock,
+        isForSuperAdmin: true,
+      },
+      {
+        title: "Database Backup",
+        url: "/admin/backup",
+        icon: Database,
+        isForSuperAdmin: true,
+      },
     ],
   },
   {
@@ -132,16 +144,6 @@ const adminSidebarData = [
         title: "Manage Pricing",
         url: "/admin/manage-pricing",
         icon: Package,
-      },
-      {
-        title: "Scheduler",
-        url: "/admin/scheduler",
-        icon: Clock,
-      },
-      {
-        title: "Backup",
-        url: "/admin/backup",
-        icon: Database,
       },
     ],
   },

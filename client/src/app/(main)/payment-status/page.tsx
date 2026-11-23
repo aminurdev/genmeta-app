@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getCurrentUser } from "@/services/auth-services";
 import { PaymentStatusClient } from "./payment-status-client";
 
 export const metadata: Metadata = {
@@ -26,17 +27,20 @@ export default async function PaymentStatus({
     trxID?: string;
   }>;
 }) {
-  const {
-    invoice,
-    message,
-    amount,
-    plan,
-    status,
-    planType,
-    duration,
-    credit,
-    trxID,
-  } = await searchParams;
+  const [
+    {
+      invoice,
+      message,
+      amount,
+      plan,
+      status,
+      planType,
+      duration,
+      credit,
+      trxID,
+    },
+    user,
+  ] = await Promise.all([searchParams, getCurrentUser()]);
 
   return (
     <PaymentStatusClient
@@ -49,6 +53,8 @@ export default async function PaymentStatus({
       legacyDuration={duration}
       legacyCredit={credit}
       legacyTrxID={trxID}
+      customerName={user?.name ?? null}
+      customerEmail={user?.email ?? null}
     />
   );
 }

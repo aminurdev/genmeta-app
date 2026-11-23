@@ -7,6 +7,9 @@ import { User } from "../models/user.model.js";
 import { Session } from "../models/session.model.js";
 import { Referral } from "../models/referral.model.js";
 import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
+import { BackupLog } from "../models/backupLog.model.js";
+import backupService from "../services/backup.service.js";
+import schedulerService from "../services/scheduler.service.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -2644,15 +2647,44 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
+function setSuperAdminNoStoreHeaders(res) {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+}
+
+function formatUptimeHuman(uptimeSeconds) {
+  const days = Math.floor(uptimeSeconds / 86400);
+  const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+  const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
 /**
  * @desc Get high-level system infrastructure & governance overview (SuperAdmin only)
  */
 export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
-  const [roleCounts, disabledCount, totalAppUsers, appUserAgg] = await Promise.all([
+  setSuperAdminNoStoreHeaders(res);
+  const refreshed = req.query.refresh === "true";
+  const now = new Date();
+
+  const [
+    roleCounts,
+    disabledCount,
+    totalAppUsers,
+    activeAppUsers,
+    appUserAgg,
+    activeSessions,
+    latestBackupDoc,
+  ] = await Promise.all([
     User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
     User.countDocuments({ isDisabled: true }),
     AppUser.countDocuments(),
+    AppUser.countDocuments({ isActive: true, status: "active" }),
     AppUser.aggregate([{ $group: { _id: null, totalProcesses: { $sum: "$totalProcess" } } }]),
+    Session.countDocuments({ revokedAt: null, expiresAt: { $gt: now } }),
+    BackupLog.findOne().sort({ timestamp: -1 }).lean().catch(() => null),
   ]);
 
   const roleMap = { user: 0, admin: 0, superAdmin: 0 };
@@ -2664,17 +2696,41 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
 
   const memory = process.memoryUsage();
   const uptimeSeconds = Math.floor(process.uptime());
+  const schedulerStatus = schedulerService.getStatus();
+  const backupStatus = backupService.getStatus();
+
+  const lastBackupSnapshot = latestBackupDoc
+    ? {
+        timestamp:
+          latestBackupDoc.timestamp instanceof Date
+            ? latestBackupDoc.timestamp.toISOString()
+            : latestBackupDoc.timestamp,
+        success: Boolean(latestBackupDoc.success),
+        duration: latestBackupDoc.duration || "0ms",
+        totalDocuments: latestBackupDoc.totalDocuments || 0,
+        triggeredBy: latestBackupDoc.triggeredBy || "manual",
+      }
+    : backupStatus.stats?.lastBackupResult
+      ? {
+          timestamp: backupStatus.stats.lastBackupResult.timestamp,
+          success: Boolean(backupStatus.stats.lastBackupResult.success),
+          duration: backupStatus.stats.lastBackupResult.duration || "0ms",
+          totalDocuments: backupStatus.stats.lastBackupResult.totalDocuments || 0,
+          triggeredBy: backupStatus.stats.lastBackupResult.triggeredBy || "manual",
+        }
+      : null;
 
   const systemHealth = {
     environment: process.env.NODE_ENV || "development",
     nodeVersion: process.version,
     platform: process.platform,
     uptimeSeconds,
-    uptimeHuman: `${Math.floor(uptimeSeconds / 3600)}h ${Math.floor((uptimeSeconds % 3600) / 60)}m`,
+    uptimeHuman: formatUptimeHuman(uptimeSeconds),
     memory: {
       rssMB: Math.round(memory.rss / (1024 * 1024)),
       heapUsedMB: Math.round(memory.heapUsed / (1024 * 1024)),
       heapTotalMB: Math.round(memory.heapTotal / (1024 * 1024)),
+      externalMB: Math.round(memory.external / (1024 * 1024)),
     },
     database: {
       status: mongoose.connection.readyState === 1 ? "healthy" : "disconnected",
@@ -2687,7 +2743,27 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
       superAdmins: roleMap.superAdmin,
       disabledUsers: disabledCount,
       totalAppUsers,
+      activeAppUsers,
+      activeSessions,
       totalProcesses: appUserAgg[0]?.totalProcesses || 0,
+    },
+    services: {
+      scheduler: {
+        isRunning: Boolean(schedulerStatus.isRunning),
+        nextMaintenanceRun: schedulerStatus.maintenance?.nextRun || null,
+        nextBackupRun: schedulerStatus.backup?.nextBackup || null,
+        timezone: schedulerStatus.timezone || "UTC",
+      },
+      backup: {
+        isConfigured: Boolean(backupStatus.isConfigured),
+        isRunning: Boolean(backupStatus.isRunning),
+        targetDatabase: backupStatus.targetDatabase || "backup",
+        lastBackup: lastBackupSnapshot,
+      },
+    },
+    meta: {
+      generatedAt: now.toISOString(),
+      refreshed,
     },
   };
 
@@ -2698,26 +2774,46 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
  * @desc List all staff accounts (Admins & SuperAdmins)
  */
 export const getAdminList = asyncHandler(async (req, res) => {
+  setSuperAdminNoStoreHeaders(res);
+  const refreshed = req.query.refresh === "true";
+
   const staff = await User.find({
     role: { $in: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] },
   })
     .select("-password -refreshToken -verificationToken")
-    .sort({ role: 1, createdAt: -1 });
+    .sort({ role: -1, createdAt: -1 })
+    .lean();
+
+  const summary = {
+    total: staff.length,
+    superAdmins: staff.filter((m) => m.role === USER_ROLES.SUPER_ADMIN).length,
+    admins: staff.filter((m) => m.role === USER_ROLES.ADMIN).length,
+    active: staff.filter((m) => !m.isDisabled).length,
+    disabled: staff.filter((m) => m.isDisabled).length,
+  };
 
   return new ApiResponse(200, true, "Staff accounts retrieved successfully", {
     staff,
     total: staff.length,
+    summary,
+    meta: {
+      generatedAt: new Date().toISOString(),
+      refreshed,
+    },
   }).send(res);
 });
 
 /**
- * @desc Promote / Demote user role (SuperAdmin only)
+ * @desc Promote / Demote user role by userId or email (SuperAdmin only)
  */
 export const updateUserRole = asyncHandler(async (req, res) => {
-  const { userId, role } = req.body;
+  setSuperAdminNoStoreHeaders(res);
+  const { userId, email, identifier, role } = req.body;
 
-  if (!userId || !role) {
-    throw new ApiError(400, "User ID and target role are required");
+  const rawIdentifier = String(identifier || userId || email || "").trim();
+
+  if (!rawIdentifier || !role) {
+    throw new ApiError(400, "User ID or email and target role are required");
   }
 
   const validRoles = [USER_ROLES.USER, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN];
@@ -2725,21 +2821,32 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Invalid role. Allowed roles: ${validRoles.join(", ")}`);
   }
 
-  // Prevent superAdmin from demoting themselves
-  if (req.user._id.toString() === userId.toString() && role !== USER_ROLES.SUPER_ADMIN) {
-    throw new ApiError(400, "You cannot demote your own SuperAdmin account");
+  let targetUser = null;
+  if (rawIdentifier.includes("@")) {
+    targetUser = await User.findOne({ email: rawIdentifier.toLowerCase() });
+  } else if (mongoose.Types.ObjectId.isValid(rawIdentifier)) {
+    targetUser = await User.findById(rawIdentifier);
+  } else {
+    throw new ApiError(400, "Please provide a valid User ID or email address");
   }
 
-  const targetUser = await User.findById(userId);
   if (!targetUser) {
     throw new ApiError(404, "Target user not found");
   }
 
-  // If demoting another superAdmin, check that there is at least one other superAdmin remaining
+  // Prevent superAdmin from demoting themselves
+  if (req.user._id.toString() === targetUser._id.toString() && role !== USER_ROLES.SUPER_ADMIN) {
+    throw new ApiError(400, "You cannot demote your own SuperAdmin account");
+  }
+
+  // Protect the last remaining active SuperAdmin
   if (targetUser.role === USER_ROLES.SUPER_ADMIN && role !== USER_ROLES.SUPER_ADMIN) {
-    const superAdminCount = await User.countDocuments({ role: USER_ROLES.SUPER_ADMIN });
-    if (superAdminCount <= 1) {
-      throw new ApiError(400, "Cannot demote the last remaining SuperAdmin");
+    const activeSuperAdminCount = await User.countDocuments({
+      role: USER_ROLES.SUPER_ADMIN,
+      isDisabled: { $ne: true },
+    });
+    if (activeSuperAdminCount <= 1) {
+      throw new ApiError(400, "Cannot demote the last active SuperAdmin");
     }
   }
 
@@ -2747,10 +2854,13 @@ export const updateUserRole = asyncHandler(async (req, res) => {
   await targetUser.save();
 
   return new ApiResponse(200, true, `User role successfully updated to ${role}`, {
+    _id: targetUser._id,
     userId: targetUser._id,
     name: targetUser.name,
     email: targetUser.email,
     role: targetUser.role,
+    isDisabled: targetUser.isDisabled,
+    isVerified: targetUser.isVerified,
   }).send(res);
 });
 
@@ -2758,10 +2868,15 @@ export const updateUserRole = asyncHandler(async (req, res) => {
  * @desc Toggle user disabled / banned status (SuperAdmin only)
  */
 export const toggleUserStatus = asyncHandler(async (req, res) => {
+  setSuperAdminNoStoreHeaders(res);
   const { userId, isDisabled } = req.body;
 
   if (!userId || typeof isDisabled !== "boolean") {
     throw new ApiError(400, "User ID and boolean isDisabled status are required");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid User ID format");
   }
 
   // Prevent self-disable
@@ -2772,6 +2887,16 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
   const targetUser = await User.findById(userId);
   if (!targetUser) {
     throw new ApiError(404, "Target user not found");
+  }
+
+  if (isDisabled && targetUser.role === USER_ROLES.SUPER_ADMIN) {
+    const activeSuperAdminCount = await User.countDocuments({
+      role: USER_ROLES.SUPER_ADMIN,
+      isDisabled: { $ne: true },
+    });
+    if (activeSuperAdminCount <= 1) {
+      throw new ApiError(400, "Cannot disable the last active SuperAdmin");
+    }
   }
 
   targetUser.isDisabled = isDisabled;
@@ -2789,9 +2914,11 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
     true,
     `User account successfully ${isDisabled ? "disabled" : "enabled"}`,
     {
+      _id: targetUser._id,
       userId: targetUser._id,
       name: targetUser.name,
       email: targetUser.email,
+      role: targetUser.role,
       isDisabled: targetUser.isDisabled,
     }
   ).send(res);

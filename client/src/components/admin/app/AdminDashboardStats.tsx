@@ -29,6 +29,7 @@ import {
   useRefreshAdminOverviewMutation,
 } from "@/services/queries/admin-dashboard";
 import type { AdminDashboardStats } from "@/types/admin";
+import { useAuth } from "@/hooks/use-auth";
 import { AdminDashboardSkeleton } from "@/components/admin/admin-dashboard-skeleton";
 import { AreaChart } from "@/components/ui/area-chart";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -190,6 +191,8 @@ function PaymentStatusBadge({ status }: { status?: string }) {
 }
 
 export default function DashboardStats() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "superAdmin";
   const [revenueRange, setRevenueRange] = useState<"7days" | "6months">("6months");
   const [processRange, setProcessRange] = useState<"7days" | "6months">("7days");
 
@@ -1053,20 +1056,22 @@ export default function DashboardStats() {
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="w-full justify-between text-xs text-muted-foreground"
-            >
-              <Link href="/admin/scheduler">
-                <span className="inline-flex items-center gap-2">
-                  <Activity className="h-3.5 w-3.5" />
-                  Scheduler &amp; Maintenance
-                </span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
+            {isSuperAdmin && (
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="w-full justify-between text-xs text-muted-foreground"
+              >
+                <Link href="/admin/scheduler">
+                  <span className="inline-flex items-center gap-2">
+                    <Activity className="h-3.5 w-3.5" />
+                    Scheduler &amp; Maintenance
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            )}
           </div>
         </Card>
       </div>

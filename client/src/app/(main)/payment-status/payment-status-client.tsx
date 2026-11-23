@@ -46,6 +46,7 @@ import { getPaymentStatus } from "@/services/pricing";
 import { useInvalidateDashboard } from "@/services/queries/dashboard";
 import type { PaymentStatusData } from "@/types/pricing";
 import { PaymentReceiptCard } from "./receipt-card";
+import { printReceiptWithTitle } from "./receipt-pdf";
 
 export interface PaymentStatusClientProps {
   invoice?: string;
@@ -57,6 +58,8 @@ export interface PaymentStatusClientProps {
   legacyDuration?: string;
   legacyCredit?: string;
   legacyTrxID?: string;
+  customerName?: string | null;
+  customerEmail?: string | null;
 }
 
 const MAX_AUTO_POLLS = 4;
@@ -112,6 +115,8 @@ export function PaymentStatusClient({
   legacyDuration,
   legacyCredit,
   legacyTrxID,
+  customerName,
+  customerEmail,
 }: PaymentStatusClientProps) {
   const [transaction, setTransaction] = useState<PaymentStatusData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(invoice));
@@ -375,6 +380,20 @@ export function PaymentStatusClient({
       : 0;
 
     const featuresList = isCredit ? creditFeatures : premiumFeatures;
+    const planMetaLine = (
+      isCredit
+        ? [
+            "Credit Pack",
+            creditCount !== null && Number.isFinite(creditCount)
+              ? `${creditCount.toLocaleString()} credits`
+              : null,
+            durationText || null,
+          ]
+        : ["Subscription", "Unlimited", durationText || null]
+    )
+      .filter(Boolean)
+      .join(" · ");
+
     const capacitySummary = isCredit
       ? creditCount !== null && Number.isFinite(creditCount)
         ? `${(creditCount * 5).toLocaleString()} images or ${creditCount.toLocaleString()} videos${durationText ? ` · ${durationText} validity` : ""}`
@@ -403,8 +422,8 @@ export function PaymentStatusClient({
     ];
 
     return (
-      <div className="min-h-screen bg-background print:min-h-0">
-        <MaxWidthWrapper className="py-8 sm:py-12 space-y-6 sm:space-y-8 print:py-4">
+      <div className="min-h-screen bg-background print:min-h-0 print:bg-white">
+        <MaxWidthWrapper className="py-8 sm:py-12 space-y-6 sm:space-y-8 print:py-0 print:px-0 print:space-y-0">
           {/* Top Checkout Stepper & Trust Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-5 print:hidden">
             <nav aria-label="Checkout progress" className="flex flex-wrap items-center gap-2 text-xs">
@@ -439,7 +458,7 @@ export function PaymentStatusClient({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => window.print()}
+                onClick={() => printReceiptWithTitle(invoiceValue)}
                 className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -449,7 +468,7 @@ export function PaymentStatusClient({
           </div>
 
           {/* Hero Confirmation Banner */}
-          <section className="relative overflow-hidden rounded-2xl border bg-background px-6 py-8 sm:px-10 sm:py-12 print:border-0 print:px-0 print:py-4">
+          <section className="relative overflow-hidden rounded-2xl border bg-background px-6 py-8 sm:px-10 sm:py-12 print:hidden">
             <div
               aria-hidden
               className="lp-grid-bg pointer-events-none absolute inset-0 opacity-60 print:hidden"
@@ -527,9 +546,9 @@ export function PaymentStatusClient({
           </section>
 
           {/* Main 12-Column Split Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start print:block">
             {/* Left Column: Activated Plan & Onboarding */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-6 print:hidden">
               {/* Activated Plan Card */}
               <Card>
                 <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -739,17 +758,20 @@ export function PaymentStatusClient({
               </Card>
             </div>
 
-            {/* Right Column: Sticky Digital Receipt */}
-            <div className="lg:col-span-5">
+            {/* Right Column: Sticky Real Paper Receipt */}
+            <div className="lg:col-span-5 print:w-full">
               <PaymentReceiptCard
                 transaction={transaction}
                 planName={planName}
+                planMetaLine={planMetaLine}
                 amountDisplay={amountDisplay}
                 currency={currency}
                 invoiceValue={invoiceValue}
                 trxIdValue={trxIdValue}
                 methodValue={methodValue}
                 paidTimestamp={paidTimestamp}
+                customerName={customerName}
+                customerEmail={customerEmail}
                 copiedField={copiedField}
                 onCopy={handleCopy}
                 formatCurrency={formatCurrency}

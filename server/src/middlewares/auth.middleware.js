@@ -196,6 +196,14 @@ export const verifySuperAdmin = asyncHandler(async (req, _, next) => {
     throw new ApiError(403, "Access denied. SuperAdmin privileges required");
   }
 
+  if (req.user.isDisabled) {
+    throw new ApiError(403, "SuperAdmin account is disabled");
+  }
+
+  if (!req.user.isVerified) {
+    throw new ApiError(403, "SuperAdmin email must be verified");
+  }
+
   next();
 });
 

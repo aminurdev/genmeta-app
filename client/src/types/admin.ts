@@ -953,6 +953,7 @@ export interface SuperAdminOverview {
     rssMB: number;
     heapUsedMB: number;
     heapTotalMB: number;
+    externalMB?: number;
   };
   database: {
     status: "healthy" | "disconnected";
@@ -965,7 +966,33 @@ export interface SuperAdminOverview {
     superAdmins: number;
     disabledUsers: number;
     totalAppUsers: number;
+    activeAppUsers?: number;
+    activeSessions?: number;
     totalProcesses: number;
+  };
+  services?: {
+    scheduler: {
+      isRunning: boolean;
+      nextMaintenanceRun: string | null;
+      nextBackupRun: string | null;
+      timezone: string;
+    };
+    backup: {
+      isConfigured: boolean;
+      isRunning: boolean;
+      targetDatabase: string;
+      lastBackup: {
+        timestamp: string;
+        success: boolean;
+        duration: string;
+        totalDocuments: number;
+        triggeredBy: string;
+      } | null;
+    };
+  };
+  meta?: {
+    generatedAt: string;
+    refreshed?: boolean;
   };
 }
 
@@ -981,9 +1008,41 @@ export interface StaffAccount {
   updatedAt: string;
 }
 
+export interface StaffListSummary {
+  total: number;
+  superAdmins: number;
+  admins: number;
+  active: number;
+  disabled: number;
+}
+
 export interface StaffListResponse {
   staff: StaffAccount[];
   total: number;
+  summary?: StaffListSummary;
+  meta?: {
+    generatedAt: string;
+    refreshed?: boolean;
+  };
+}
+
+export interface UpdateRoleResponse {
+  _id?: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: "user" | "admin" | "superAdmin";
+  isDisabled?: boolean;
+  isVerified?: boolean;
+}
+
+export interface ToggleStatusResponse {
+  _id?: string;
+  userId: string;
+  name: string;
+  email: string;
+  role?: "user" | "admin" | "superAdmin";
+  isDisabled: boolean;
 }
 
 export interface WithdrawalNotification {

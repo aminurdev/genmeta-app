@@ -198,7 +198,12 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    if (pathname.startsWith("/admin/super-admin") && userRole !== "superAdmin") {
+    const isSuperAdminOnlyRoute =
+      pathname.startsWith("/admin/super-admin") ||
+      pathname.startsWith("/admin/scheduler") ||
+      pathname.startsWith("/admin/backup");
+
+    if (isSuperAdminOnlyRoute && userRole !== "superAdmin") {
       return applySetCookies(
         NextResponse.redirect(new URL("/admin", request.url)),
         rotatedSetCookies
