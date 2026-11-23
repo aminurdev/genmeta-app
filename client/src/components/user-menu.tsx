@@ -10,8 +10,6 @@ import {
   Gift,
   Shield,
   ShieldAlert,
-  BookOpen,
-  Palette,
   LifeBuoy,
   LogOut,
   Loader2,
