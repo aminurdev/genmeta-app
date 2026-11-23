@@ -1,5 +1,6 @@
 import type {
   GetAdminPaymentTransactionsParams,
+  GetAdminProcessErrorsParams,
   GetAllReferralsParams,
   GetPaymentsHistoryParams,
   GetPricingPlansParams,
@@ -60,6 +61,12 @@ export const QUERY_KEYS = {
   superAdminOverview: ["admin", "superAdmin", "overview"],
   superAdminStaff: ["admin", "superAdmin", "staff"],
   adminWithdrawalNotifications: ["admin", "notifications", "withdrawals"],
+  adminProcessErrors: (params?: GetAdminProcessErrorsParams) => [
+    "admin",
+    "errors",
+    "list",
+    params ?? {},
+  ],
 
   notificationsAll: ["notifications"],
   notifications: (params?: Record<string, unknown>) => [

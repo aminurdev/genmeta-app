@@ -16,9 +16,19 @@ import {
   toggleUserStatus,
 } from "../controllers/admin.controller.js";
 import {
+  bulkUpdateAdminProcessErrorStatus,
+  getAdminProcessErrors,
+  updateAdminProcessErrorStatus,
+} from "../controllers/adminError.controller.js";
+import {
   authenticateAndVerifyAdmin,
   authenticateAndVerifySuperAdmin,
 } from "../middlewares/auth.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+  bulkUpdateProcessErrorStatusSchema,
+  updateProcessErrorStatusSchema,
+} from "../validations/index.js";
 
 const router = express.Router();
 
@@ -58,6 +68,21 @@ router.get(
   "/notifications/referral-withdrawals",
   authenticateAndVerifyAdmin,
   getPendingWithdrawalNotifications
+);
+
+// App processing error logs (Admin & SuperAdmin)
+router.get("/errors", authenticateAndVerifyAdmin, getAdminProcessErrors);
+router.patch(
+  "/errors/bulk-status",
+  authenticateAndVerifyAdmin,
+  validate(bulkUpdateProcessErrorStatusSchema),
+  bulkUpdateAdminProcessErrorStatus
+);
+router.patch(
+  "/errors/:errorLogId/status",
+  authenticateAndVerifyAdmin,
+  validate(updateProcessErrorStatusSchema),
+  updateAdminProcessErrorStatus
 );
 
 // SuperAdmin exclusive endpoints

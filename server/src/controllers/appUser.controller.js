@@ -20,8 +20,10 @@ import {
   NOTIFICATION_PRIORITIES,
   PAYMENT_GATEWAYS,
   PLAN_TYPES,
+  PROCESS_ERROR_STATUS,
   WITHDRAWAL_STATUS,
 } from "../constants/index.js";
+import { parseErrorMessages } from "../utils/processError.utils.js";
 import planService from "../services/plan.service.js";
 import notificationService from "../services/notification/notification.service.js";
 
@@ -2073,6 +2075,47 @@ export const removeAppDevice = asyncHandler(async (req, res) => {
   }).send(res);
 });
 
+async function upsertApiUsageLog(
+  appDoc,
+  { creditUsed = 0, fileCount = 0, failed = 0, errorMsg = "" } = {}
+) {
+  const today = new Date().toISOString().split("T")[0];
+  const parsedErrors = parseErrorMessages(errorMsg);
+
+  try {
+    const updateDoc = {
+      $setOnInsert: { appUserId: appDoc._id, userId: appDoc.userId, date: today },
+      $inc: { processCount: creditUsed, fileCount, failedCount: failed },
+    };
+
+    if (parsedErrors.length > 0) {
+      updateDoc.$push = {
+        errors: {
+          $each: parsedErrors,
+          $slice: -200,
+        },
+      };
+    }
+
+    if (failed > 0 || parsedErrors.length > 0) {
+      updateDoc.$set = {
+        errorStatus: PROCESS_ERROR_STATUS.UNRESOLVED,
+        lastErrorAt: new Date(),
+        resolvedAt: null,
+        resolvedBy: null,
+      };
+    }
+
+    await ApiUsageLog.updateOne(
+      { appUserId: appDoc._id, date: today },
+      updateDoc,
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error("Failed to update ApiUsageLog:", err.message);
+  }
+}
+
 /**
  * PROCESS usage accounting for an App User (from Desktop App)
  */
@@ -2093,6 +2136,7 @@ export const processAppUsage = asyncHandler(async (req, res) => {
   if (!appDoc.isValid()) {
     if (failed > 0) {
       await logFailedProcess(appDoc, failed, errorMsg);
+      await upsertApiUsageLog(appDoc, { failed, errorMsg });
     }
     throw new ApiError(403, "App user account is not valid or active.");
   }
@@ -2101,7 +2145,12 @@ export const processAppUsage = asyncHandler(async (req, res) => {
     try {
       await appDoc.useCredit(creditUsed, fileCount);
     } catch (error) {
-      await logFailedProcess(appDoc, failed > 0 ? failed : 1, error.message);
+      const effectiveFailed = failed > 0 ? failed : 1;
+      await logFailedProcess(appDoc, effectiveFailed, error.message);
+      await upsertApiUsageLog(appDoc, {
+        failed: effectiveFailed,
+        errorMsg: error.message,
+      });
       throw new ApiError(429, error.message);
     }
   }
@@ -2111,23 +2160,7 @@ export const processAppUsage = asyncHandler(async (req, res) => {
   }
 
   // Update normalized usage ledger
-  const today = new Date().toISOString().split("T")[0];
-  try {
-    const updateDoc = {
-      $setOnInsert: { appUserId: appDoc._id, userId: appDoc.userId, date: today },
-      $inc: { processCount: creditUsed, fileCount, failedCount: failed },
-    };
-    if (errorMsg) {
-      updateDoc.$push = { errors: errorMsg };
-    }
-    await ApiUsageLog.updateOne(
-      { appUserId: appDoc._id, date: today },
-      updateDoc,
-      { upsert: true }
-    );
-  } catch (err) {
-    console.error("Failed to update ApiUsageLog:", err.message);
-  }
+  await upsertApiUsageLog(appDoc, { creditUsed, fileCount, failed, errorMsg });
 
   const remainingCredit = appDoc.calculateCredit();
 

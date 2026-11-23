@@ -4,6 +4,7 @@ import {
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_PRIORITIES,
   PLAN_TYPES,
+  PROCESS_ERROR_STATUS,
   PROMO_APPLIES_TO,
 } from "../constants/index.js";
 
@@ -466,6 +467,51 @@ export const broadcastNotificationSchema = z
         code: "custom",
         path: ["targetIdentifiers"],
         message: "Provide at least one email or user ID when targeting specific users",
+      });
+    }
+  });
+
+// === ADMIN PROCESS ERROR TRIAGE SCHEMAS ===
+export const updateProcessErrorStatusSchema = z.object({
+  status: z.enum([
+    PROCESS_ERROR_STATUS.UNRESOLVED,
+    PROCESS_ERROR_STATUS.RESOLVED,
+    PROCESS_ERROR_STATUS.IGNORED,
+  ]),
+  resolutionNote: z.string().trim().max(500).nullable().optional(),
+});
+
+export const bulkUpdateProcessErrorStatusSchema = z
+  .object({
+    ids: z.array(z.string().trim().min(1)).max(200).optional(),
+    resolveAllUnresolved: z.boolean().optional().default(false),
+    status: z.enum([
+      PROCESS_ERROR_STATUS.UNRESOLVED,
+      PROCESS_ERROR_STATUS.RESOLVED,
+      PROCESS_ERROR_STATUS.IGNORED,
+    ]),
+    resolutionNote: z.string().trim().max(500).nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasIds = Array.isArray(data.ids) && data.ids.length > 0;
+    if (data.resolveAllUnresolved) {
+      if (
+        data.status !== PROCESS_ERROR_STATUS.RESOLVED &&
+        data.status !== PROCESS_ERROR_STATUS.IGNORED
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["status"],
+          message: "Bulk resolving all unresolved errors requires status 'resolved' or 'ignored'",
+        });
+      }
+      return;
+    }
+    if (!hasIds) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ids"],
+        message: "Provide at least one error log ID or enable resolveAllUnresolved",
       });
     }
   });

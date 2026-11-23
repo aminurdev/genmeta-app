@@ -22,6 +22,11 @@ import {
   UpdateWithdrawalRes,
   GetPaymentsHistoryParams,
   WithdrawalNotificationsResponse,
+  AdminProcessErrorLog,
+  AdminProcessErrorsResponse,
+  BulkUpdateProcessErrorStatusPayload,
+  GetAdminProcessErrorsParams,
+  UpdateProcessErrorStatusPayload,
   PricingPlan,
   PaginationData,
   PricingPlansResponse,
@@ -866,4 +871,75 @@ export const getWithdrawalNotifications = async (): Promise<
 > => {
   const result = await api.get("/admin/notifications/referral-withdrawals");
   return result.data;
+};
+
+export const getAdminProcessErrors = async (
+  params: GetAdminProcessErrorsParams = {},
+  options?: { refresh?: boolean },
+): Promise<ApiResponse<AdminProcessErrorsResponse> | ApiErrorResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append("page", params.page.toString());
+    if (params.limit) queryParams.append("limit", params.limit.toString());
+    if (params.status && params.status !== "all") {
+      queryParams.append("status", params.status);
+    }
+    if (params.planType && params.planType !== "all") {
+      queryParams.append("planType", params.planType);
+    }
+    if (params.search?.trim()) queryParams.append("search", params.search.trim());
+    if (params.startDate) queryParams.append("startDate", params.startDate);
+    if (params.endDate) queryParams.append("endDate", params.endDate);
+    if (params.sortBy) queryParams.append("sortBy", params.sortBy);
+    if (params.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+    if (options?.refresh) queryParams.append("refresh", "true");
+
+    const queryString = queryParams.toString();
+    const result = await api.get(
+      `/admin/errors${queryString ? `?${queryString}` : ""}`,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const updateAdminProcessErrorStatus = async (
+  errorLogId: string,
+  payload: UpdateProcessErrorStatusPayload,
+): Promise<ApiResponse<AdminProcessErrorLog> | ApiErrorResponse> => {
+  try {
+    const result = await api.patch(
+      `/admin/errors/${encodeURIComponent(errorLogId)}/status`,
+      payload,
+    );
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
+};
+
+export const bulkUpdateAdminProcessErrorStatus = async (
+  payload: BulkUpdateProcessErrorStatusPayload,
+): Promise<
+  ApiResponse<{ matchedCount: number; modifiedCount: number }> | ApiErrorResponse
+> => {
+  try {
+    const result = await api.patch("/admin/errors/bulk-status", payload);
+    return result.data;
+  } catch (error) {
+    const err = error as AxiosApiError;
+    if (err.response?.data) {
+      return err.response.data;
+    }
+    throw error;
+  }
 };

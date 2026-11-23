@@ -69,3 +69,9 @@ export const NOTIFICATION_BROADCAST_TARGETS = {
   ADMINS: "admins",
   SPECIFIC_USERS: "specific_users",
 };
+
+export const PROCESS_ERROR_STATUS = {
+  UNRESOLVED: "unresolved",
+  RESOLVED: "resolved",
+  IGNORED: "ignored",
+};

@@ -12,6 +12,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "./Logo";
 import {
+  AlertTriangle,
   Bell,
   CreditCard,
   LayoutDashboard,
@@ -155,6 +156,11 @@ const adminSidebarData = [
         title: "Notifications",
         url: "/admin/notifications",
         icon: Bell,
+      },
+      {
+        title: "App Error Reports",
+        url: "/admin/errors",
+        icon: AlertTriangle,
       },
     ],
   },

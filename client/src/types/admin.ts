@@ -1064,3 +1064,106 @@ export interface WithdrawalNotificationsResponse {
   count: number;
   notifications: WithdrawalNotification[];
 }
+
+export type ProcessErrorStatus = "unresolved" | "resolved" | "ignored";
+
+export interface AdminProcessErrorLog {
+  _id: string;
+  date: string;
+  failedCount: number;
+  processCount: number;
+  fileCount: number;
+  failureRate: number;
+  errors: string[];
+  errorCount: number;
+  errorStatus: ProcessErrorStatus;
+  lastErrorAt: string | null;
+  resolvedAt: string | null;
+  resolvedBy: {
+    id: string | null;
+    name: string | null;
+    email: string | null;
+  } | null;
+  resolutionNote: string | null;
+  user: AdminDashboardUserSummary;
+  appUser: {
+    _id: string;
+    username: string;
+    status: string;
+    plan: {
+      type: "free" | "credit" | "subscription" | string;
+      id: string | null;
+      name: string | null;
+    };
+    totalFailedProcess: number;
+    devicesCount: number;
+  };
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AdminProcessErrorsTrendPoint {
+  date: string;
+  failedCount: number;
+  logCount: number;
+}
+
+export interface AdminTopErrorMessage {
+  message: string;
+  occurrences: number;
+  affectedUsers: number;
+}
+
+export interface AdminProcessErrorsSummary {
+  totalErrorLogs: number;
+  unresolvedLogs: number;
+  resolvedLogs: number;
+  ignoredLogs: number;
+  totalFailures: number;
+  unresolvedFailures: number;
+  todayFailures: number;
+  last7DaysFailures: number;
+  affectedUsersCount: number;
+  totalAffectedUsersCount: number;
+  last7DaysTrend: AdminProcessErrorsTrendPoint[];
+  topErrorMessages: AdminTopErrorMessage[];
+}
+
+export interface AdminProcessErrorsResponse {
+  logs: AdminProcessErrorLog[];
+  summary: AdminProcessErrorsSummary;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  meta?: {
+    generatedAt: string;
+    refreshed?: boolean;
+  };
+}
+
+export interface GetAdminProcessErrorsParams {
+  page?: number;
+  limit?: number;
+  status?: "all" | ProcessErrorStatus;
+  planType?: "all" | "free" | "credit" | "subscription";
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: "recent" | "failedCount" | "date";
+  sortOrder?: "asc" | "desc";
+}
+
+export interface UpdateProcessErrorStatusPayload {
+  status: ProcessErrorStatus;
+  resolutionNote?: string | null;
+}
+
+export interface BulkUpdateProcessErrorStatusPayload {
+  ids?: string[];
+  resolveAllUnresolved?: boolean;
+  status: ProcessErrorStatus;
+  resolutionNote?: string | null;
+}

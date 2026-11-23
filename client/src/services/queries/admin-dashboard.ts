@@ -1,7 +1,12 @@
 "use client";
 
 import { QUERY_KEYS } from "@/services/constants";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   getAdminOverview,
   getAllUsers,
@@ -36,15 +41,21 @@ import {
   triggerMaintenance,
   updateWithdrawal,
   getWithdrawalNotifications,
+  getAdminProcessErrors,
+  updateAdminProcessErrorStatus,
+  bulkUpdateAdminProcessErrorStatus,
 } from "../admin-dashboard";
 import type {
+  BulkUpdateProcessErrorStatusPayload,
   CreateAppUserPayload,
   GetAdminPaymentTransactionsParams,
+  GetAdminProcessErrorsParams,
   GetAllReferralsParams,
   GetPaymentsHistoryParams,
   GetPricingPlansParams,
   GetPromoCodesParams,
   UpdateAppUserPayload,
+  UpdateProcessErrorStatusPayload,
   UpdateWithdrawalPayload,
 } from "@/types/admin";
 
@@ -677,5 +688,67 @@ export function useWithdrawalNotificationsQuery() {
     queryFn: getWithdrawalNotifications,
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useAdminProcessErrorsQuery(
+  params: GetAdminProcessErrorsParams = {}
+) {
+  return useQuery({
+    queryKey: QUERY_KEYS.adminProcessErrors(params),
+    queryFn: () => getAdminProcessErrors(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
+
+export function useRefreshAdminProcessErrorsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: GetAdminProcessErrorsParams = {}) =>
+      getAdminProcessErrors(params, { refresh: true }),
+    onSuccess: (res, params) => {
+      if (res.success) {
+        queryClient.setQueryData(QUERY_KEYS.adminProcessErrors(params), res);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "errors"] });
+    },
+  });
+}
+
+export function useUpdateProcessErrorStatusMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      errorLogId,
+      payload,
+    }: {
+      errorLogId: string;
+      payload: UpdateProcessErrorStatusPayload;
+    }) => updateAdminProcessErrorStatus(errorLogId, payload),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "errors"] });
+      }
+    },
+  });
+}
+
+export function useBulkUpdateProcessErrorStatusMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: BulkUpdateProcessErrorStatusPayload) =>
+      bulkUpdateAdminProcessErrorStatus(payload),
+    onSuccess: (res) => {
+      if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ["admin", "errors"] });
+      }
+    },
   });
 }
