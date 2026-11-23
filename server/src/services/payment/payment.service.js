@@ -2,7 +2,12 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import config from "../../config/index.js";
 import ApiError from "../../utils/api.error.js";
-import { PAYMENT_GATEWAYS, PAYMENT_STATUS } from "../../constants/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PAYMENT_GATEWAYS,
+  PAYMENT_STATUS,
+} from "../../constants/index.js";
 import { AppPricing } from "../../models/appPricing.model.js";
 import { AppPayment } from "../../models/appPayment.model.js";
 import { PaymentTransaction } from "../../models/paymentTransaction.model.js";
@@ -11,6 +16,7 @@ import { PromoCodeRedemption } from "../../models/promoCodeRedemption.model.js";
 import { User } from "../../models/user.model.js";
 import planService from "../plan.service.js";
 import { sendPaymentConfirmationEmail } from "../email/email.service.js";
+import defaultNotificationService from "../notification/notification.service.js";
 import * as defaultPaystationService from "../paystation/paystation.service.js";
 
 const PROCESSING_LOCK_STALE_MS = 60 * 1000;
@@ -238,9 +244,22 @@ export function createPaymentService(overrides = {}) {
     planService: overrides.planService || planService,
     sendPaymentEmail:
       overrides.sendPaymentEmail || sendPaymentConfirmationEmail,
+    notificationService:
+      overrides.notificationService || defaultNotificationService,
     psConfig: overrides.psConfig || config.paystation,
     nowFn: overrides.nowFn || (() => new Date()),
   };
+
+  function emitNotificationAsync(fn) {
+    Promise.resolve()
+      .then(fn)
+      .catch((err) => {
+        console.error(
+          "[PaymentService] Notification background error:",
+          err?.message || err
+        );
+      });
+  }
 
   async function pushEvent(invoiceNumber, eventObj, setFields = {}, unsetFields = {}) {
     const update = {
@@ -630,6 +649,24 @@ export function createPaymentService(overrides = {}) {
           },
           { new: true }
         );
+        if (targetStatus === PAYMENT_STATUS.FAILED) {
+          emitNotificationAsync(() =>
+            deps.notificationService.notifyUser({
+              recipientId: tx.userId,
+              recipientEmail: tx.customer?.email || null,
+              recipientName: tx.customer?.name || null,
+              type: "payment.failed",
+              category: NOTIFICATION_CATEGORIES.BILLING,
+              priority: NOTIFICATION_PRIORITIES.NORMAL,
+              title: "Payment Could Not Be Completed",
+              message: `Your payment attempt for ${tx.plan?.name || "GenMeta Plan"} (Invoice ${cleanedInvoice}) could not be completed. No funds were captured.`,
+              actionUrl: "/pricing",
+              actionLabel: "Try Again",
+              dedupeKey: `payment_failed:${cleanedInvoice}`,
+              metadata: { invoiceNumber: cleanedInvoice, status: targetStatus },
+            })
+          );
+        }
         return {
           outcome: targetStatus,
           transaction: transitioned || (await deps.PaymentTransactionModel.findById(tx._id)),
@@ -709,6 +746,25 @@ export function createPaymentService(overrides = {}) {
         },
         { new: true }
       );
+      emitNotificationAsync(() =>
+        deps.notificationService.notifyAdmins({
+          type: "security.payment_invoice_mismatch",
+          category: NOTIFICATION_CATEGORIES.SECURITY,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          forceDeliver: true,
+          sendEmail: true,
+          title: "Payment Security Alert: Invoice Mismatch",
+          message: `Gateway invoice mismatch detected for ${cleanedInvoice}: ${reason}`,
+          actionUrl: "/admin/payments",
+          actionLabel: "Inspect Payments",
+          dedupeKey: `payment_security:invoice_mismatch:${cleanedInvoice}`,
+          metadata: {
+            invoiceNumber: cleanedInvoice,
+            gatewayInvoice: verified.invoiceNumber,
+          },
+        })
+      );
+
       return {
         outcome: "amount_mismatch",
         transaction: mismatched || tx,
@@ -747,6 +803,24 @@ export function createPaymentService(overrides = {}) {
           },
           { new: true }
         );
+        if (nextStatus === PAYMENT_STATUS.FAILED) {
+          emitNotificationAsync(() =>
+            deps.notificationService.notifyUser({
+              recipientId: tx.userId,
+              recipientEmail: tx.customer?.email || null,
+              recipientName: tx.customer?.name || null,
+              type: "payment.failed",
+              category: NOTIFICATION_CATEGORIES.BILLING,
+              priority: NOTIFICATION_PRIORITIES.NORMAL,
+              title: "Payment Could Not Be Completed",
+              message: `Your payment for ${tx.plan?.name || "GenMeta Plan"} (Invoice ${cleanedInvoice}) failed at the gateway.`,
+              actionUrl: "/pricing",
+              actionLabel: "Try Again",
+              dedupeKey: `payment_failed:${cleanedInvoice}`,
+              metadata: { invoiceNumber: cleanedInvoice, status: nextStatus },
+            })
+          );
+        }
         return {
           outcome: nextStatus,
           transaction: updated || (await deps.PaymentTransactionModel.findById(tx._id)),
@@ -826,6 +900,26 @@ export function createPaymentService(overrides = {}) {
           },
         },
         { new: true }
+      );
+
+      emitNotificationAsync(() =>
+        deps.notificationService.notifyAdmins({
+          type: "security.payment_amount_mismatch",
+          category: NOTIFICATION_CATEGORIES.SECURITY,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          forceDeliver: true,
+          sendEmail: true,
+          title: "Payment Security Alert: Amount Mismatch",
+          message: `Amount integrity check failed for invoice ${cleanedInvoice}: ${amountCheck.reason}`,
+          actionUrl: "/admin/payments",
+          actionLabel: "Review Transaction",
+          dedupeKey: `payment_security:amount_mismatch:${cleanedInvoice}`,
+          metadata: {
+            invoiceNumber: cleanedInvoice,
+            expectedAmount: tx.pricing?.expectedAmount,
+            reportedPaidAmount,
+          },
+        })
       );
 
       return {
@@ -953,6 +1047,26 @@ export function createPaymentService(overrides = {}) {
             },
           },
           { new: true }
+        );
+
+        emitNotificationAsync(() =>
+          deps.notificationService.notifyAdmins({
+            type: "security.payment_trx_replay",
+            category: NOTIFICATION_CATEGORIES.SECURITY,
+            priority: NOTIFICATION_PRIORITIES.URGENT,
+            forceDeliver: true,
+            sendEmail: true,
+            title: "Payment Security Alert: TrxID Replay Blocked",
+            message: `Blocked duplicate gateway trxId ${cleanTrxId} on invoice ${cleanedInvoice} (already attached to ${duplicateTrx.paymentID}).`,
+            actionUrl: "/admin/payments",
+            actionLabel: "Inspect Security Logs",
+            dedupeKey: `payment_security:trx_replay:${cleanedInvoice}`,
+            metadata: {
+              invoiceNumber: cleanedInvoice,
+              existingInvoice: duplicateTrx.paymentID,
+              trxId: cleanTrxId,
+            },
+          })
         );
 
         return {
@@ -1138,6 +1252,53 @@ export function createPaymentService(overrides = {}) {
           });
       }
 
+      // 8g. In-app & admin notifications for fulfilled payment
+      emitNotificationAsync(async () => {
+        const amountLabel = `৳${Number(lockedTx.pricing?.expectedAmount || 0).toLocaleString("en-US")}`;
+        await Promise.all([
+          deps.notificationService.notifyUser({
+            recipientId: lockedTx.userId,
+            recipientEmail: lockedTx.customer?.email || null,
+            recipientName: lockedTx.customer?.name || null,
+            type: "payment.completed",
+            category: NOTIFICATION_CATEGORIES.BILLING,
+            priority: NOTIFICATION_PRIORITIES.HIGH,
+            title: "Payment Confirmed & Plan Activated",
+            message: `Your payment of ${amountLabel} (${cleanedInvoice}) succeeded and ${lockedTx.plan?.name || "your plan"} is now active.`,
+            actionUrl: "/dashboard",
+            actionLabel: "Open Dashboard",
+            dedupeKey: `payment_completed:${cleanedInvoice}`,
+            metadata: {
+              invoiceNumber: cleanedInvoice,
+              trxId: cleanTrxId,
+              amount: lockedTx.pricing?.expectedAmount,
+              planName: lockedTx.plan?.name,
+            },
+          }),
+          deps.notificationService.notifyAdmins({
+            type: "admin.payment_received",
+            category: NOTIFICATION_CATEGORIES.BILLING,
+            priority: NOTIFICATION_PRIORITIES.NORMAL,
+            title: "New Payment Received",
+            message: `${lockedTx.customer?.name || lockedTx.customer?.email || "A customer"} paid ${amountLabel} for ${lockedTx.plan?.name || "a plan"} (${cleanedInvoice}).`,
+            actionUrl: "/admin/payments",
+            actionLabel: "View Payments",
+            dedupeKey: `admin_payment_completed:${cleanedInvoice}`,
+            actor: {
+              userId: lockedTx.userId,
+              name: lockedTx.customer?.name || null,
+              email: lockedTx.customer?.email || null,
+            },
+            metadata: {
+              invoiceNumber: cleanedInvoice,
+              trxId: cleanTrxId,
+              amount: lockedTx.pricing?.expectedAmount,
+              planName: lockedTx.plan?.name,
+            },
+          }),
+        ]);
+      });
+
       return {
         outcome: "completed",
         alreadyProcessed: false,
@@ -1148,6 +1309,24 @@ export function createPaymentService(overrides = {}) {
         invoiceNumber: cleanedInvoice,
         error: fulfillmentError.message,
       });
+
+      emitNotificationAsync(() =>
+        deps.notificationService.notifyAdmins({
+          type: "admin.payment_fulfillment_error",
+          category: NOTIFICATION_CATEGORIES.BILLING,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          forceDeliver: true,
+          title: "Payment Fulfillment Error",
+          message: `Verified payment ${cleanedInvoice} encountered a fulfillment error: ${fulfillmentError.message}`,
+          actionUrl: "/admin/payments",
+          actionLabel: "Resolve Payment",
+          dedupeKey: `payment_fulfill_err:${cleanedInvoice}`,
+          metadata: {
+            invoiceNumber: cleanedInvoice,
+            error: fulfillmentError.message,
+          },
+        })
+      );
 
       await deps.PaymentTransactionModel.updateOne(
         { _id: lockedTx._id },

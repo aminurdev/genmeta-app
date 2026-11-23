@@ -15,8 +15,15 @@ import { Session } from "../models/session.model.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import ApiError from "../utils/api.error.js";
 import { generateAppUserKey, compareVersions } from "../utils/index.js";
-import { PAYMENT_GATEWAYS, PLAN_TYPES, WITHDRAWAL_STATUS } from "../constants/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PAYMENT_GATEWAYS,
+  PLAN_TYPES,
+  WITHDRAWAL_STATUS,
+} from "../constants/index.js";
 import planService from "../services/plan.service.js";
+import notificationService from "../services/notification/notification.service.js";
 
 function extractAppUserKey(req) {
   return (
@@ -1090,6 +1097,25 @@ export const updateAppUser = asyncHandler(async (req, res) => {
     }
   }
 
+  if (appDoc.userId) {
+    notificationService
+      .notifyUser({
+        recipientId: appDoc.userId,
+        type: "plan.admin_updated",
+        category: NOTIFICATION_CATEGORIES.PLAN,
+        priority: NOTIFICATION_PRIORITIES.HIGH,
+        title: "Plan Updated by Admin",
+        message: `An administrator updated your GenMeta plan to "${appDoc.plan?.name || appDoc.plan?.type || "Updated Plan"}".`,
+        actionUrl: "/dashboard",
+        actionLabel: "View Dashboard",
+        metadata: {
+          planType: appDoc.plan?.type,
+          planName: appDoc.plan?.name,
+        },
+      })
+      .catch(() => {});
+  }
+
   return new ApiResponse(200, true, "App user updated successfully", {
     appUser: serializeAppUserSummary(appDoc),
     paymentRecorded: paymentRecorded
@@ -1159,6 +1185,24 @@ export const resetDevice = asyncHandler(async (req, res) => {
   }
   await appDoc.save();
 
+  if (appDoc.userId) {
+    notificationService
+      .notifyUser({
+        recipientId: appDoc.userId,
+        type: "security.devices_reset",
+        category: NOTIFICATION_CATEGORIES.SECURITY,
+        priority: NOTIFICATION_PRIORITIES.NORMAL,
+        title: "Desktop Device Binding Reset",
+        message: deviceId
+          ? "One of your linked desktop devices was removed by an administrator."
+          : "All linked desktop devices on your account were reset by an administrator.",
+        actionUrl: "/dashboard",
+        actionLabel: "Manage Devices",
+        metadata: { deviceId: deviceId || null },
+      })
+      .catch(() => {});
+  }
+
   return new ApiResponse(
     200,
     true,
@@ -1195,6 +1239,22 @@ export const updateAppUserStatus = asyncHandler(async (req, res) => {
     appDoc.status = "suspended";
     appDoc.suspendedAt = new Date();
     await appDoc.save();
+    if (appDoc.userId) {
+      notificationService
+        .notifyUser({
+          recipientId: appDoc.userId,
+          type: "plan.app_suspended",
+          category: NOTIFICATION_CATEGORIES.PLAN,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          sendEmail: true,
+          title: "Desktop App Access Suspended",
+          message:
+            "Your GenMeta desktop app license has been suspended by an administrator. Please contact support for details.",
+          actionUrl: "/contact",
+          actionLabel: "Contact Support",
+        })
+        .catch(() => {});
+    }
     return new ApiResponse(200, true, "App user suspended successfully.").send(res);
   }
 
@@ -1206,6 +1266,22 @@ export const updateAppUserStatus = asyncHandler(async (req, res) => {
     appDoc.status = "active";
     appDoc.suspendedAt = null;
     await appDoc.save();
+    if (appDoc.userId) {
+      notificationService
+        .notifyUser({
+          recipientId: appDoc.userId,
+          type: "plan.app_reactivated",
+          category: NOTIFICATION_CATEGORIES.PLAN,
+          priority: NOTIFICATION_PRIORITIES.HIGH,
+          sendEmail: true,
+          title: "Desktop App Access Reactivated",
+          message:
+            "Your GenMeta desktop app license has been reactivated. You can sign in and resume processing.",
+          actionUrl: "/dashboard",
+          actionLabel: "Open Dashboard",
+        })
+        .catch(() => {});
+    }
     return new ApiResponse(200, true, "App user reactivated successfully.").send(res);
   }
 
@@ -1233,6 +1309,25 @@ export const addCredits = asyncHandler(async (req, res) => {
   appDoc.credit =
     (Number.isFinite(appDoc.credit) ? appDoc.credit : 0) + parseInt(credits, 10);
   await appDoc.save();
+
+  if (appDoc.userId) {
+    notificationService
+      .notifyUser({
+        recipientId: appDoc.userId,
+        type: "plan.credits_added",
+        category: NOTIFICATION_CATEGORIES.PLAN,
+        priority: NOTIFICATION_PRIORITIES.NORMAL,
+        title: "Credits Added to Your Account",
+        message: `${parseInt(credits, 10)} credits were added to your account by an administrator. New balance: ${Number.isFinite(appDoc.credit) ? appDoc.credit : "Unlimited"}.`,
+        actionUrl: "/dashboard",
+        actionLabel: "View Balance",
+        metadata: {
+          creditsAdded: parseInt(credits, 10),
+          newBalance: Number.isFinite(appDoc.credit) ? appDoc.credit : null,
+        },
+      })
+      .catch(() => {});
+  }
 
   return new ApiResponse(
     200,

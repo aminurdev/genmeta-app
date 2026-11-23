@@ -2,6 +2,7 @@ import { app } from "./app.js";
 import config from "./config/index.js";
 import { connectDB, disconnectDB } from "./db/index.js";
 import schedulerService from "./services/scheduler.service.js";
+import notificationStreamHub from "./services/notification/notificationStream.service.js";
 
 let server;
 
@@ -47,8 +48,9 @@ const shutdown = async (signal) => {
   }, 10000);
 
   try {
-    // 1. Stop background schedulers
+    // 1. Stop background schedulers & close real-time SSE streams
     schedulerService.stop();
+    notificationStreamHub.closeAll();
 
     // 2. Stop receiving HTTP requests
     if (server) {

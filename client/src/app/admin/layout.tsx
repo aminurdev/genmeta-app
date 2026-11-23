@@ -7,7 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { getCurrentUser } from "@/services/auth-services";
-import { AdminNotificationPanel } from "@/components/admin-notification-panel";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default async function RootLayout({
   children,
@@ -27,7 +27,7 @@ export default async function RootLayout({
               <DynamicBreadcrumb />
             </div>
             <div className="flex items-center gap-2">
-              <AdminNotificationPanel />
+              <NotificationBell scope="admin" />
             </div>
           </header>
           <div className="min-w-0 flex-1 p-4 sm:p-5 lg:p-6">{children}</div>

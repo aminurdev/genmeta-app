@@ -1,9 +1,15 @@
 import cron from "node-cron";
 import { CronExpressionParser } from "cron-parser";
 import config from "../config/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PLAN_TYPES,
+} from "../constants/index.js";
 import { AppUser } from "../models/appUser.model.js";
 import backupService from "./backup.service.js";
 import paymentService from "./payment/payment.service.js";
+import notificationService from "./notification/notification.service.js";
 
 /**
  * Scheduler Service for Automatic Daily Maintenance and Backups
@@ -114,6 +120,60 @@ class SchedulerService {
   }
 
   /**
+   * Send 3-day and 1-day plan expiry reminders without duplicating notifications.
+   */
+  async sendPlanExpiryReminders() {
+    try {
+      const now = new Date();
+      const inThreeAndHalfDays = new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000);
+
+      const expiringAppUsers = await AppUser.find({
+        "plan.type": { $in: [PLAN_TYPES.SUBSCRIPTION, PLAN_TYPES.CREDIT] },
+        isActive: true,
+        status: "active",
+        expiresAt: { $gt: now, $lte: inThreeAndHalfDays },
+      })
+        .select("userId plan expiresAt")
+        .lean();
+
+      for (const appUser of expiringAppUsers) {
+        if (!appUser.userId || !appUser.expiresAt) continue;
+        const expiryDate = new Date(appUser.expiresAt);
+        const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+        const threshold = daysLeft <= 1 ? 1 : daysLeft <= 3 ? 3 : null;
+        if (!threshold) continue;
+
+        const expiryIsoDate = expiryDate.toISOString().split("T")[0];
+        const planName = appUser.plan?.name || appUser.plan?.type || "GenMeta Plan";
+
+        await notificationService.notifyUser({
+          recipientId: appUser.userId,
+          type: "plan.expiring_soon",
+          category: NOTIFICATION_CATEGORIES.PLAN,
+          priority: NOTIFICATION_PRIORITIES.HIGH,
+          sendEmail: true,
+          title:
+            threshold === 1
+              ? `Your ${planName} expires tomorrow`
+              : `Your ${planName} expires in ${threshold} days`,
+          message: `Your ${planName} is scheduled to expire on ${expiryIsoDate}. Renew early to avoid interruption in desktop app processing.`,
+          actionUrl: "/pricing",
+          actionLabel: "Renew Plan",
+          dedupeKey: `plan_expiring:${appUser.userId}:${expiryIsoDate}:${threshold}d`,
+          metadata: {
+            planType: appUser.plan?.type,
+            planName,
+            expiresAt: expiryDate.toISOString(),
+            daysLeft: threshold,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[SchedulerService] Expiry reminder error:", err?.message || err);
+    }
+  }
+
+  /**
    * Run daily maintenance manually
    */
   async runDailyMaintenance() {
@@ -128,9 +188,50 @@ class SchedulerService {
       if (result.success) {
         this.stats.successfulRuns++;
         console.log(`✓ Daily maintenance completed`);
+
+        const today = startTime.toISOString().split("T")[0];
+        if (Array.isArray(result.downgradedUsers) && result.downgradedUsers.length > 0) {
+          Promise.allSettled(
+            result.downgradedUsers.map((entry) => {
+              const reasonLabel =
+                entry.reason === "zero_credit_auto"
+                  ? "all credits were used"
+                  : "the plan period ended";
+              return notificationService.notifyUser({
+                recipientId: entry.userId,
+                type: "plan.downgraded",
+                category: NOTIFICATION_CATEGORIES.PLAN,
+                priority: NOTIFICATION_PRIORITIES.HIGH,
+                sendEmail: true,
+                title: "Plan Downgraded to Free Tier",
+                message: `Your ${entry.planName || entry.planType} has moved to the Free Tier because ${reasonLabel}. You continue to receive 5 daily free credits.`,
+                actionUrl: "/pricing",
+                actionLabel: "Upgrade Plan",
+                dedupeKey: `plan_downgraded:${entry.userId}:${today}:${entry.reason}`,
+                metadata: entry,
+              });
+            })
+          ).catch(() => {});
+        }
+
+        await this.sendPlanExpiryReminders();
       } else {
         this.stats.failedRuns++;
         console.error("✗ Daily maintenance failed:", result);
+        notificationService
+          .notifyAdmins({
+            superAdminOnly: true,
+            type: "system.maintenance_failed",
+            category: NOTIFICATION_CATEGORIES.SYSTEM,
+            priority: NOTIFICATION_PRIORITIES.URGENT,
+            forceDeliver: true,
+            sendEmail: true,
+            title: "Daily Maintenance Job Failed",
+            message: `Scheduled daily maintenance returned an error: ${result.error || "Unknown failure"}`,
+            actionUrl: "/admin/scheduler",
+            actionLabel: "Open Scheduler",
+          })
+          .catch(() => {});
       }
 
       this.lastRun = startTime;
@@ -147,6 +248,21 @@ class SchedulerService {
 
       this.stats.lastResult = errorResult;
       console.error("✗ Daily maintenance error:", error.message);
+
+      notificationService
+        .notifyAdmins({
+          superAdminOnly: true,
+          type: "system.maintenance_error",
+          category: NOTIFICATION_CATEGORIES.SYSTEM,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          forceDeliver: true,
+          sendEmail: true,
+          title: "Daily Maintenance Exception",
+          message: `Daily maintenance crashed with error: ${error.message}`,
+          actionUrl: "/admin/scheduler",
+          actionLabel: "Open Scheduler",
+        })
+        .catch(() => {});
 
       return errorResult;
     }
@@ -167,9 +283,35 @@ class SchedulerService {
       if (result.success) {
         this.backupStats.successfulBackups++;
         console.log(`✓ Weekly backup completed`);
+        notificationService
+          .notifyAdmins({
+            superAdminOnly: true,
+            type: "system.backup_completed",
+            category: NOTIFICATION_CATEGORIES.SYSTEM,
+            priority: NOTIFICATION_PRIORITIES.LOW,
+            title: "Weekly Database Backup Completed",
+            message: `Synced ${result.totalDocuments || 0} documents across ${result.collections?.successful || 0} collections in ${result.duration || "0ms"}.`,
+            actionUrl: "/admin/backup",
+            actionLabel: "View Backup Logs",
+          })
+          .catch(() => {});
       } else {
         this.backupStats.failedBackups++;
         console.error("✗ Weekly backup failed:", result);
+        notificationService
+          .notifyAdmins({
+            superAdminOnly: true,
+            type: "system.backup_failed",
+            category: NOTIFICATION_CATEGORIES.SYSTEM,
+            priority: NOTIFICATION_PRIORITIES.URGENT,
+            forceDeliver: true,
+            sendEmail: true,
+            title: "Weekly Database Backup Failed",
+            message: `Database backup encountered errors: ${result.error || result.message || "Unknown backup error"}`,
+            actionUrl: "/admin/backup",
+            actionLabel: "Inspect Backups",
+          })
+          .catch(() => {});
       }
 
       this.backupStats.lastBackup = startTime;
@@ -186,6 +328,21 @@ class SchedulerService {
 
       this.backupStats.lastBackupResult = errorResult;
       console.error("✗ Weekly backup error:", error.message);
+
+      notificationService
+        .notifyAdmins({
+          superAdminOnly: true,
+          type: "system.backup_error",
+          category: NOTIFICATION_CATEGORIES.SYSTEM,
+          priority: NOTIFICATION_PRIORITIES.URGENT,
+          forceDeliver: true,
+          sendEmail: true,
+          title: "Weekly Database Backup Exception",
+          message: `Weekly backup threw an unhandled error: ${error.message}`,
+          actionUrl: "/admin/backup",
+          actionLabel: "Inspect Backups",
+        })
+        .catch(() => {});
 
       return errorResult;
     }

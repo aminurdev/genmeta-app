@@ -76,3 +76,15 @@ export const paymentStatusLimiter = createRateLimiter({
   max: 60,
   message: "Too many payment status checks. Please slow down.",
 });
+
+export const notificationActionLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  message: "Too many notification actions. Please slow down.",
+});
+
+export const adminBroadcastLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many broadcast requests. Please wait a few minutes before sending another.",
+});

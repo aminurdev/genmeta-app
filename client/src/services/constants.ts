@@ -60,6 +60,29 @@ export const QUERY_KEYS = {
   superAdminOverview: ["admin", "superAdmin", "overview"],
   superAdminStaff: ["admin", "superAdmin", "staff"],
   adminWithdrawalNotifications: ["admin", "notifications", "withdrawals"],
+
+  notificationsAll: ["notifications"],
+  notifications: (params?: Record<string, unknown>) => [
+    "notifications",
+    "list",
+    params ?? {},
+  ],
+  notificationsUnreadCount: (scope: string) => [
+    "notifications",
+    "unread-count",
+    scope,
+  ],
+  notificationPreferences: (scope: string = "user") => [
+    "notifications",
+    "preferences",
+    scope,
+  ],
+  adminBroadcasts: (page?: number) => [
+    "notifications",
+    "admin",
+    "broadcasts",
+    page ?? 1,
+  ],
 } as const;
 
 export const MUTATION_KEYS = {

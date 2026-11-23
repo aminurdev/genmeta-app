@@ -12,6 +12,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "./Logo";
 import {
+  Bell,
   CreditCard,
   LayoutDashboard,
   Package,
@@ -47,6 +48,11 @@ const userSidebarData = [
         title: "Referral",
         url: "/dashboard/referral",
         icon: Users,
+      },
+      {
+        title: "Notifications",
+        url: "/dashboard/notifications",
+        icon: Bell,
       },
       {
         title: "Appearance",
@@ -144,6 +150,11 @@ const adminSidebarData = [
         title: "Manage Pricing",
         url: "/admin/manage-pricing",
         icon: Package,
+      },
+      {
+        title: "Notifications",
+        url: "/admin/notifications",
+        icon: Bell,
       },
     ],
   },

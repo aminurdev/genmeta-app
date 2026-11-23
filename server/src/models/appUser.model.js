@@ -760,6 +760,8 @@ appUserSchema.statics.performDailyMaintenance = async function () {
   const now = new Date();
 
   try {
+    const downgradedUsers = [];
+
     // 1. Refresh credits for free users (< 5 credits)
     const freeUsers = await this.find({
       "plan.type": PLAN_TYPES.FREE,
@@ -783,8 +785,18 @@ appUserSchema.statics.performDailyMaintenance = async function () {
     });
 
     for (const appUser of expiredSubscriptions) {
+      const prevPlanType = appUser.plan?.type || PLAN_TYPES.SUBSCRIPTION;
+      const prevPlanName = appUser.plan?.name || "Subscription";
       appUser.downgradeToPlan(PLAN_TYPES.FREE, "subscription_expired_auto");
       await appUser.save();
+      if (appUser.userId) {
+        downgradedUsers.push({
+          userId: appUser.userId,
+          reason: "subscription_expired_auto",
+          planType: prevPlanType,
+          planName: prevPlanName,
+        });
+      }
     }
 
     // 3. Downgrade zero credit plans
@@ -796,8 +808,18 @@ appUserSchema.statics.performDailyMaintenance = async function () {
     });
 
     for (const appUser of zeroCreditPlans) {
+      const prevPlanType = appUser.plan?.type || PLAN_TYPES.CREDIT;
+      const prevPlanName = appUser.plan?.name || "Credit Plan";
       appUser.downgradeToPlan(PLAN_TYPES.FREE, "zero_credit_auto");
       await appUser.save();
+      if (appUser.userId) {
+        downgradedUsers.push({
+          userId: appUser.userId,
+          reason: "zero_credit_auto",
+          planType: prevPlanType,
+          planName: prevPlanName,
+        });
+      }
     }
 
     // 4. Downgrade expired credit plans
@@ -809,8 +831,18 @@ appUserSchema.statics.performDailyMaintenance = async function () {
     });
 
     for (const appUser of expiredCreditPlans) {
+      const prevPlanType = appUser.plan?.type || PLAN_TYPES.CREDIT;
+      const prevPlanName = appUser.plan?.name || "Credit Plan";
       appUser.downgradeToPlan(PLAN_TYPES.FREE, "credit_plan_expired_auto");
       await appUser.save();
+      if (appUser.userId) {
+        downgradedUsers.push({
+          userId: appUser.userId,
+          reason: "credit_plan_expired_auto",
+          planType: prevPlanType,
+          planName: prevPlanName,
+        });
+      }
     }
 
     return {
@@ -819,6 +851,7 @@ appUserSchema.statics.performDailyMaintenance = async function () {
       expiredSubscriptionsDowngraded: expiredSubscriptions.length,
       zeroCreditPlansDowngraded: zeroCreditPlans.length,
       expiredCreditPlansDowngraded: expiredCreditPlans.length,
+      downgradedUsers,
       timestamp: now.toISOString(),
     };
   } catch (error) {

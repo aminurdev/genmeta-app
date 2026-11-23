@@ -7,7 +7,12 @@ import { ReferralEarning } from "../models/referralEarning.model.js";
 import { PromoCode } from "../models/promocode.model.js";
 import { PromoCodeRedemption } from "../models/promoCodeRedemption.model.js";
 import { generateAppUserKey } from "../utils/index.js";
-import { PLAN_TYPES } from "../constants/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PLAN_TYPES,
+} from "../constants/index.js";
+import notificationService from "./notification/notification.service.js";
 
 /**
  * Unified Plan & Subscription Service
@@ -232,6 +237,31 @@ class PlanService {
       );
 
       console.log(`[PlanService] Credited referral reward: 50 BDT to referrer ${referralDoc.referrer}`);
+
+      notificationService
+        .notifyUser({
+          recipientId: referralDoc.referrer,
+          type: "referral.commission_earned",
+          category: NOTIFICATION_CATEGORIES.REFERRAL,
+          priority: NOTIFICATION_PRIORITIES.HIGH,
+          sendEmail: true,
+          title: "Referral Commission Earned!",
+          message: `You earned ৳${rewardAmount} because ${payingUser.name || payingUser.email || "a referred user"} purchased a GenMeta plan.`,
+          actionUrl: "/dashboard/referral",
+          actionLabel: "View Earnings",
+          dedupeKey: `referral_commission:${referralDoc._id}:${payingUser._id}`,
+          actor: {
+            userId: payingUser._id,
+            name: payingUser.name || null,
+            email: payingUser.email || null,
+            avatar: payingUser.avatar || null,
+          },
+          metadata: {
+            amount: rewardAmount,
+            referredUserId: payingUser._id.toString(),
+          },
+        })
+        .catch(() => {});
     } catch (error) {
       console.error("[PlanService] Failed to process referral reward:", error.message);
     }

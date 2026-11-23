@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { PLAN_TYPES, PROMO_APPLIES_TO } from "../constants/index.js";
+import {
+  NOTIFICATION_BROADCAST_TARGETS,
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PLAN_TYPES,
+  PROMO_APPLIES_TO,
+} from "../constants/index.js";
 
 // === AUTH SCHEMAS ===
 const passwordSchema = z
@@ -310,3 +316,156 @@ export const paymentInvoiceParamSchema = z.object({
     .max(80, "Invoice number is too long")
     .regex(/^[A-Za-z0-9_-]+$/, "Invalid invoice number format"),
 });
+
+// === NOTIFICATION SCHEMAS ===
+export const listNotificationsQuerySchema = z.object({
+  scope: z.enum(["user", "admin", "all"]).optional().default("user"),
+  status: z.enum(["all", "unread", "read", "archived"]).optional().default("all"),
+  category: z
+    .enum([
+      NOTIFICATION_CATEGORIES.BILLING,
+      NOTIFICATION_CATEGORIES.PLAN,
+      NOTIFICATION_CATEGORIES.REFERRAL,
+      NOTIFICATION_CATEGORIES.SECURITY,
+      NOTIFICATION_CATEGORIES.SYSTEM,
+      NOTIFICATION_CATEGORIES.ANNOUNCEMENT,
+    ])
+    .optional(),
+  priority: z
+    .enum([
+      NOTIFICATION_PRIORITIES.LOW,
+      NOTIFICATION_PRIORITIES.NORMAL,
+      NOTIFICATION_PRIORITIES.HIGH,
+      NOTIFICATION_PRIORITIES.URGENT,
+    ])
+    .optional(),
+  search: z.string().trim().max(120).optional().default(""),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+});
+
+const categoryPreferenceItemSchema = z
+  .object({
+    inApp: z.boolean().optional(),
+    email: z.boolean().optional(),
+  })
+  .strict();
+
+export const updateNotificationPreferencesSchema = z
+  .object({
+    channels: z
+      .object({
+        inApp: z.boolean().optional(),
+        email: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    categories: z
+      .object({
+        billing: categoryPreferenceItemSchema.optional(),
+        plan: categoryPreferenceItemSchema.optional(),
+        referral: categoryPreferenceItemSchema.optional(),
+        security: categoryPreferenceItemSchema.optional(),
+        system: categoryPreferenceItemSchema.optional(),
+        announcement: categoryPreferenceItemSchema.optional(),
+      })
+      .strict()
+      .optional(),
+    toastEnabled: z.boolean().optional(),
+    soundEnabled: z.boolean().optional(),
+  })
+  .strict();
+
+function isValidSafeActionUrl(value) {
+  if (!value) return true;
+  const trimmed = String(value).trim();
+  if (!trimmed) return true;
+  if (/[\r\n\0]/.test(trimmed)) return false;
+  if (trimmed.startsWith("/")) {
+    return !trimmed.startsWith("//");
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+export const broadcastNotificationSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(2, "Title must be at least 2 characters")
+      .max(160, "Title cannot exceed 160 characters"),
+    message: z
+      .string()
+      .trim()
+      .min(2, "Message must be at least 2 characters")
+      .max(1000, "Message cannot exceed 1000 characters"),
+    category: z
+      .enum([
+        NOTIFICATION_CATEGORIES.ANNOUNCEMENT,
+        NOTIFICATION_CATEGORIES.SYSTEM,
+        NOTIFICATION_CATEGORIES.BILLING,
+        NOTIFICATION_CATEGORIES.PLAN,
+      ])
+      .optional()
+      .default(NOTIFICATION_CATEGORIES.ANNOUNCEMENT),
+    priority: z
+      .enum([
+        NOTIFICATION_PRIORITIES.LOW,
+        NOTIFICATION_PRIORITIES.NORMAL,
+        NOTIFICATION_PRIORITIES.HIGH,
+        NOTIFICATION_PRIORITIES.URGENT,
+      ])
+      .optional()
+      .default(NOTIFICATION_PRIORITIES.NORMAL),
+    target: z.enum([
+      NOTIFICATION_BROADCAST_TARGETS.ALL_USERS,
+      NOTIFICATION_BROADCAST_TARGETS.SUBSCRIPTION_USERS,
+      NOTIFICATION_BROADCAST_TARGETS.CREDIT_USERS,
+      NOTIFICATION_BROADCAST_TARGETS.FREE_USERS,
+      NOTIFICATION_BROADCAST_TARGETS.ADMINS,
+      NOTIFICATION_BROADCAST_TARGETS.SPECIFIC_USERS,
+    ]),
+    targetIdentifiers: z
+      .union([z.array(z.string().trim().min(1)), z.string()])
+      .optional()
+      .transform((val) => {
+        if (!val) return [];
+        if (Array.isArray(val)) return val.map((v) => v.trim()).filter(Boolean);
+        return val
+          .split(/[\s,;]+/)
+          .map((v) => v.trim())
+          .filter(Boolean);
+      }),
+    actionUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .nullable()
+      .optional()
+      .refine((val) => isValidSafeActionUrl(val), {
+        message: "Action URL must be a relative path (e.g. /pricing) or valid http/https URL",
+      }),
+    actionLabel: z.string().trim().max(60).nullable().optional(),
+    sendEmail: z.boolean().optional().default(false),
+    expiresInDays: z
+      .union([z.coerce.number().int().min(1).max(365), z.null(), z.literal("")])
+      .optional()
+      .transform((v) => (v === "" || v === undefined ? null : v)),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.target === NOTIFICATION_BROADCAST_TARGETS.SPECIFIC_USERS &&
+      (!data.targetIdentifiers || data.targetIdentifiers.length === 0)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["targetIdentifiers"],
+        message: "Provide at least one email or user ID when targeting specific users",
+      });
+    }
+  });

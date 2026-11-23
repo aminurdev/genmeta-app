@@ -4,7 +4,12 @@ import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateCode } from "../utils/index.js";
-import { WITHDRAWAL_STATUS } from "../constants/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  WITHDRAWAL_STATUS,
+} from "../constants/index.js";
+import notificationService from "../services/notification/notification.service.js";
 
 const COMMISSION_PER_REFERRAL = 50;
 const MINIMUM_WITHDRAW_AMOUNT = 100;
@@ -218,6 +223,49 @@ export const requestWithdrawal = asyncHandler(async (req, res) => {
     withdrawAccount: cleanAccount,
     requestedAt: now,
   });
+
+  Promise.all([
+    notificationService.notifyUser({
+      recipientId: userId,
+      recipientEmail: req.user?.email || null,
+      recipientName: req.user?.name || null,
+      type: "referral.withdrawal_submitted",
+      category: NOTIFICATION_CATEGORIES.REFERRAL,
+      priority: NOTIFICATION_PRIORITIES.NORMAL,
+      title: "Withdrawal Request Submitted",
+      message: `Your referral withdrawal request for ৳${withdrawAmount.toLocaleString("en-US")} to ${cleanAccount} has been submitted and is pending review.`,
+      actionUrl: "/dashboard/referral",
+      actionLabel: "Track Request",
+      dedupeKey: `withdrawal_req_user:${withdrawalRecord._id}`,
+      metadata: {
+        withdrawalId: String(withdrawalRecord._id),
+        amount: withdrawAmount,
+        withdrawAccount: cleanAccount,
+      },
+    }),
+    notificationService.notifyAdmins({
+      type: "admin.withdrawal_requested",
+      category: NOTIFICATION_CATEGORIES.REFERRAL,
+      priority: NOTIFICATION_PRIORITIES.HIGH,
+      sendEmail: true,
+      title: "New Withdrawal Request",
+      message: `${req.user?.name || req.user?.email || "A user"} requested a ৳${withdrawAmount.toLocaleString("en-US")} referral payout to ${cleanAccount}.`,
+      actionUrl: `/admin/referral/${userId}`,
+      actionLabel: "Review Withdrawal",
+      dedupeKey: `withdrawal_req_admin:${withdrawalRecord._id}`,
+      actor: {
+        userId,
+        name: req.user?.name || null,
+        email: req.user?.email || null,
+        avatar: req.user?.avatar || null,
+      },
+      metadata: {
+        withdrawalId: String(withdrawalRecord._id),
+        amount: withdrawAmount,
+        withdrawAccount: cleanAccount,
+      },
+    }),
+  ]).catch(() => {});
 
   return new ApiResponse(
     200,

@@ -253,3 +253,121 @@ export const sendPaymentConfirmationEmail = async ({
     console.error("Payment confirmation email send failed:", error.message);
   }
 };
+
+const CATEGORY_LABELS = {
+  billing: "Billing",
+  plan: "Plan & Credits",
+  referral: "Referrals",
+  security: "Security Alert",
+  system: "System",
+  announcement: "Announcement",
+};
+
+const PRIORITY_STYLES = {
+  urgent: { bg: "#fef2f2", border: "#fecaca", text: "#dc2626", btn: "#dc2626", label: "Urgent" },
+  high: { bg: "#fffbeb", border: "#fde68a", text: "#d97706", btn: "#2563eb", label: "Important" },
+  normal: { bg: "#eff6ff", border: "#bfdbfe", text: "#2563eb", btn: "#2563eb", label: "Update" },
+  low: { bg: "#f3f4f6", border: "#e5e7eb", text: "#4b5563", btn: "#2563eb", label: "Notice" },
+};
+
+function resolveNotificationEmailUrl(actionUrl, baseUrl) {
+  if (!actionUrl || typeof actionUrl !== "string") return null;
+  const trimmed = actionUrl.trim();
+  if (!trimmed || /[\r\n\0]/.test(trimmed)) return null;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return `${baseUrl}${trimmed}`;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export const sendNotificationEmail = async ({
+  email,
+  name,
+  title,
+  message,
+  category = "system",
+  priority = "normal",
+  actionUrl = null,
+  actionLabel = null,
+}) => {
+  if (!email) {
+    return { sent: false, skipped: true };
+  }
+
+  if (!resend) {
+    console.log(
+      `[EmailService] Resend not configured. Notification email for ${email}: [${category}/${priority}] ${title}`
+    );
+    return { sent: false, skipped: true };
+  }
+
+  const baseUrl = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const safeName = escapeHtml(name || "there");
+  const safeTitle = escapeHtml(title || "New Notification");
+  const safeMessageHtml = escapeHtml(message || "").replace(/\r?\n/g, "<br />");
+  const safeCategoryLabel = escapeHtml(CATEGORY_LABELS[category] || "Notification");
+  const style = PRIORITY_STYLES[priority] || PRIORITY_STYLES.normal;
+  const resolvedUrl = resolveNotificationEmailUrl(actionUrl, baseUrl);
+  const safeActionUrl = resolvedUrl ? escapeHtml(resolvedUrl) : null;
+  const safeActionLabel = escapeHtml(actionLabel || "View Details");
+  const preferencesUrl = escapeHtml(`${baseUrl}/dashboard/notifications?tab=preferences`);
+
+  const ctaBlock = safeActionUrl
+    ? `
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${safeActionUrl}" style="display: inline-block; background-color: ${style.btn}; color: #ffffff; text-decoration: none; font-weight: bold; padding: 12px 26px; border-radius: 6px; font-size: 14px;">
+            ${safeActionLabel}
+          </a>
+        </div>
+      `
+    : "";
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>${safeTitle}</title></head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 10px;">
+      ${emailHeader}
+      <div style="padding: 22px; background-color: #ffffff; border: 1px solid #eaeaea; border-radius: 8px;">
+        <div style="margin-bottom: 14px;">
+          <span style="display: inline-block; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;">
+            ${safeCategoryLabel}${priority === "urgent" || priority === "high" ? ` • ${escapeHtml(style.label)}` : ""}
+          </span>
+        </div>
+        <h2 style="color: #111827; margin-top: 0; margin-bottom: 12px; font-size: 20px;">${safeTitle}</h2>
+        <p style="margin-top: 0;">Assalamu a'laikum, ${safeName},</p>
+        <div style="background-color: #f9fafb; border-left: 3px solid ${style.btn}; border-radius: 4px; padding: 14px 16px; margin: 16px 0; color: #1f2937; font-size: 14px;">
+          ${safeMessageHtml}
+        </div>
+        ${ctaBlock}
+        <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">
+          You can adjust your email and in-app alert settings anytime in your
+          <a href="${preferencesUrl}" style="color: #2563eb; text-decoration: none;">Notification Preferences</a>.
+        </p>
+      </div>
+      ${emailFooter}
+    </body>
+    </html>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: "GenMeta Notifications <notifications@genmeta.app>",
+      to: email,
+      subject: priority === "urgent" ? `[Urgent] ${title}` : `${title} - GenMeta`,
+      html: emailHtml,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Notification email send failed:", error.message);
+    return { sent: false, error: error.message };
+  }
+};

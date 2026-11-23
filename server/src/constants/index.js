@@ -39,3 +39,33 @@ export const PROMO_APPLIES_TO = {
   CREDIT: "credit",
   BOTH: "both",
 };
+
+export const NOTIFICATION_CATEGORIES = {
+  BILLING: "billing",
+  PLAN: "plan",
+  REFERRAL: "referral",
+  SECURITY: "security",
+  SYSTEM: "system",
+  ANNOUNCEMENT: "announcement",
+};
+
+export const NOTIFICATION_PRIORITIES = {
+  LOW: "low",
+  NORMAL: "normal",
+  HIGH: "high",
+  URGENT: "urgent",
+};
+
+export const NOTIFICATION_AUDIENCES = {
+  USER: "user",
+  ADMIN: "admin",
+};
+
+export const NOTIFICATION_BROADCAST_TARGETS = {
+  ALL_USERS: "all_users",
+  SUBSCRIPTION_USERS: "subscription_users",
+  CREDIT_USERS: "credit_users",
+  FREE_USERS: "free_users",
+  ADMINS: "admins",
+  SPECIFIC_USERS: "specific_users",
+};

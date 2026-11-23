@@ -24,6 +24,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import schedulerRoutes from "./routes/scheduler.routes.js";
 import referralRoutes from "./routes/refer.route.js";
 import backupRoutes from "./routes/backup.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 
 const app = express();
 
@@ -38,8 +39,20 @@ app.use(
   })
 );
 
-// Response compression
-app.use(compression());
+// Response compression (skip SSE streams so real-time chunks flush immediately)
+app.use(
+  compression({
+    filter: (req, res) => {
+      if (
+        req.headers.accept?.includes("text/event-stream") ||
+        req.originalUrl?.includes("/notifications/stream")
+      ) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  })
+);
 
 // Request Correlation ID Middleware
 app.use((req, res, next) => {
@@ -182,6 +195,7 @@ app.use("/api/v1/backup", backupRoutes);
 app.use("/api/v1/pricing", pricingRoutes);
 app.use("/api/v1/promo-codes", promoCodeRoutes);
 app.use("/api/v1/referral", referralRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/users", userRoutes);
 
 // Root route

@@ -10,10 +10,17 @@ import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
 import { BackupLog } from "../models/backupLog.model.js";
 import backupService from "../services/backup.service.js";
 import schedulerService from "../services/scheduler.service.js";
+import notificationService from "../services/notification/notification.service.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { PLAN_TYPES, USER_ROLES, WITHDRAWAL_STATUS } from "../constants/index.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+  PLAN_TYPES,
+  USER_ROLES,
+  WITHDRAWAL_STATUS,
+} from "../constants/index.js";
 
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toUtcDateKey = (date) => new Date(date).toISOString().split("T")[0];
@@ -2641,6 +2648,37 @@ export const updateWithdrawal = asyncHandler(async (req, res) => {
     // Non-blocking
   }
 
+  notificationService
+    .notifyUser({
+      recipientId: userId,
+      type:
+        status === WITHDRAWAL_STATUS.COMPLETED
+          ? "referral.withdrawal_completed"
+          : "referral.withdrawal_rejected",
+      category: NOTIFICATION_CATEGORIES.REFERRAL,
+      priority: NOTIFICATION_PRIORITIES.HIGH,
+      sendEmail: true,
+      title:
+        status === WITHDRAWAL_STATUS.COMPLETED
+          ? "Referral Withdrawal Approved"
+          : "Referral Withdrawal Rejected",
+      message:
+        status === WITHDRAWAL_STATUS.COMPLETED
+          ? `Your referral withdrawal of ৳${Number(withdrawal.amount || 0).toLocaleString("en-US")} has been paid. Transaction ID: ${withdrawal.trx}.`
+          : `Your referral withdrawal request of ৳${Number(withdrawal.amount || 0).toLocaleString("en-US")} was rejected (${withdrawal.notes}). The funds have been returned to your available balance.`,
+      actionUrl: "/dashboard/referral",
+      actionLabel: "View Referral History",
+      dedupeKey: `withdrawal_status:${withdrawal._id}:${status}`,
+      metadata: {
+        withdrawalId: withdrawal._id?.toString(),
+        status,
+        amount: withdrawal.amount,
+        trx: withdrawal.trx || null,
+        notes: withdrawal.notes || null,
+      },
+    })
+    .catch(() => {});
+
   return new ApiResponse(200, true, "Withdrawal updated successfully", {
     withdrawal,
     availableBalance: referral.availableBalance,
@@ -2853,6 +2891,40 @@ export const updateUserRole = asyncHandler(async (req, res) => {
   targetUser.role = role;
   await targetUser.save();
 
+  Promise.all([
+    notificationService.notifyUser({
+      recipientId: targetUser._id,
+      recipientEmail: targetUser.email,
+      recipientName: targetUser.name,
+      type: "security.role_updated",
+      category: NOTIFICATION_CATEGORIES.SECURITY,
+      priority: NOTIFICATION_PRIORITIES.HIGH,
+      forceDeliver: true,
+      title: "Account Role Updated",
+      message: `Your account role has been updated to "${role}" by an administrator.`,
+      actionUrl: role === USER_ROLES.USER ? "/dashboard" : "/admin",
+      actionLabel: role === USER_ROLES.USER ? "Open Dashboard" : "Open Admin Console",
+      metadata: { role },
+    }),
+    notificationService.notifyAdmins({
+      superAdminOnly: true,
+      excludeUserId: req.user._id,
+      type: "admin.staff_role_updated",
+      category: NOTIFICATION_CATEGORIES.SECURITY,
+      priority: NOTIFICATION_PRIORITIES.NORMAL,
+      title: "Staff Role Updated",
+      message: `${req.user?.name || req.user?.email || "A SuperAdmin"} updated ${targetUser.email}'s role to "${role}".`,
+      actionUrl: "/admin/super-admin",
+      actionLabel: "View Governance",
+      actor: {
+        userId: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+      },
+      metadata: { targetUserId: targetUser._id.toString(), role },
+    }),
+  ]).catch(() => {});
+
   return new ApiResponse(200, true, `User role successfully updated to ${role}`, {
     _id: targetUser._id,
     userId: targetUser._id,
@@ -2908,6 +2980,25 @@ export const toggleUserStatus = asyncHandler(async (req, res) => {
       { $set: { revokedAt: new Date(), revokeReason: "user_disabled" } }
     );
   }
+
+  notificationService
+    .notifyUser({
+      recipientId: targetUser._id,
+      recipientEmail: targetUser.email,
+      recipientName: targetUser.name,
+      type: isDisabled ? "security.account_disabled" : "security.account_enabled",
+      category: NOTIFICATION_CATEGORIES.SECURITY,
+      priority: NOTIFICATION_PRIORITIES.URGENT,
+      forceDeliver: true,
+      sendEmail: true,
+      title: isDisabled ? "Account Disabled" : "Account Re-enabled",
+      message: isDisabled
+        ? "Your GenMeta account has been disabled by an administrator. Please contact support@genmeta.app if you believe this is an error."
+        : "Your GenMeta account has been re-enabled and is active again.",
+      actionUrl: isDisabled ? "/contact" : "/dashboard",
+      actionLabel: isDisabled ? "Contact Support" : "Open Dashboard",
+    })
+    .catch(() => {});
 
   return new ApiResponse(
     200,

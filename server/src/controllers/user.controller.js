@@ -13,6 +13,11 @@ import {
   sendPasswordResetOTP,
   sendVerificationEmail,
 } from "../services/email/email.service.js";
+import notificationService from "../services/notification/notification.service.js";
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_PRIORITIES,
+} from "../constants/index.js";
 import ApiError from "../utils/api.error.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -107,6 +112,26 @@ async function applyReferralIfEligible(user, referralCode) {
   if (!referralDoc.referredUsers.some((id) => id.toString() === user._id.toString())) {
     referralDoc.referredUsers.push(user._id);
     await referralDoc.save();
+    notificationService
+      .notifyUser({
+        recipientId: referralDoc.referrer,
+        type: "referral.joined",
+        category: NOTIFICATION_CATEGORIES.REFERRAL,
+        priority: NOTIFICATION_PRIORITIES.NORMAL,
+        title: "New Referral Sign-Up",
+        message: `${user.name || user.email} joined GenMeta using your referral link! You will earn a commission when they purchase their first plan.`,
+        actionUrl: "/dashboard/referral",
+        actionLabel: "View Referrals",
+        dedupeKey: `referral_joined:${referralDoc._id}:${user._id}`,
+        actor: {
+          userId: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar || null,
+        },
+        metadata: { referredUserId: user._id.toString() },
+      })
+      .catch(() => {});
   }
 }
 
@@ -563,6 +588,51 @@ export const verifyEmail = asyncHandler(async (req, res) => {
 
   await findOrCreateAppUser(user);
   const { session } = await createSessionAndSetCookies(req, res, user);
+
+  Promise.resolve()
+    .then(async () => {
+      await notificationService.notifyUser({
+        recipientId: user._id,
+        recipientEmail: user.email,
+        recipientName: user.name,
+        type: "account.welcome",
+        category: NOTIFICATION_CATEGORIES.ANNOUNCEMENT,
+        priority: NOTIFICATION_PRIORITIES.NORMAL,
+        title: "Welcome to GenMeta!",
+        message:
+          "Your email is verified and your account is ready. Download the desktop app or explore plans in your dashboard.",
+        actionUrl: "/dashboard",
+        actionLabel: "Open Dashboard",
+        dedupeKey: `welcome:${user._id}`,
+      });
+
+      if (user.referred) {
+        const referralDoc = await Referral.findById(user.referred)
+          .select("referrer")
+          .lean();
+        if (referralDoc?.referrer) {
+          await notificationService.notifyUser({
+            recipientId: referralDoc.referrer,
+            type: "referral.joined",
+            category: NOTIFICATION_CATEGORIES.REFERRAL,
+            priority: NOTIFICATION_PRIORITIES.NORMAL,
+            title: "New Referral Sign-Up",
+            message: `${user.name || user.email} verified their GenMeta account via your referral link!`,
+            actionUrl: "/dashboard/referral",
+            actionLabel: "View Referrals",
+            dedupeKey: `referral_joined:${user.referred}:${user._id}`,
+            actor: {
+              userId: user._id,
+              name: user.name,
+              email: user.email,
+              avatar: user.avatar || null,
+            },
+            metadata: { referredUserId: user._id.toString() },
+          });
+        }
+      }
+    })
+    .catch(() => {});
 
   return new ApiResponse(200, true, "Email verified successfully", {
     user: serializeUser(user),
@@ -1134,6 +1204,24 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   clearAuthCookies(res);
 
+  notificationService
+    .notifyUser({
+      recipientId: user._id,
+      recipientEmail: user.email,
+      recipientName: user.name,
+      type: "security.password_reset",
+      category: NOTIFICATION_CATEGORIES.SECURITY,
+      priority: NOTIFICATION_PRIORITIES.HIGH,
+      forceDeliver: true,
+      sendEmail: true,
+      title: "Password Reset Completed",
+      message:
+        "Your GenMeta password was reset and all active sessions were signed out. If you did not authorize this reset, contact support immediately.",
+      actionUrl: "/dashboard/profile",
+      actionLabel: "Review Security",
+    })
+    .catch(() => {});
+
   return new ApiResponse(
     200,
     true,
@@ -1198,6 +1286,24 @@ export const changeCurrentPassword = asyncHandler(async (req, res) => {
     );
   }
   await createSessionAndSetCookies(req, res, user);
+
+  notificationService
+    .notifyUser({
+      recipientId: user._id,
+      recipientEmail: user.email,
+      recipientName: user.name,
+      type: "security.password_changed",
+      category: NOTIFICATION_CATEGORIES.SECURITY,
+      priority: NOTIFICATION_PRIORITIES.HIGH,
+      forceDeliver: true,
+      sendEmail: true,
+      title: "Account Password Changed",
+      message:
+        "Your GenMeta password was updated and your other active sessions were signed out. Contact support if this wasn't you.",
+      actionUrl: "/dashboard/profile",
+      actionLabel: "Check Sessions",
+    })
+    .catch(() => {});
 
   return new ApiResponse(
     200,
