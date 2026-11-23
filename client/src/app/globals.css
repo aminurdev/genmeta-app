@@ -453,3 +453,72 @@ details > summary::-webkit-details-marker {
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker { animation: none; }
 }
+
+/* ---------- Payment status confirmation animations & print ---------- */
+
+@keyframes payment-circle-draw {
+  from {
+    stroke-dashoffset: 166;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes payment-check-draw {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes payment-halo-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.animate-payment-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: payment-circle-draw 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-payment-check {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: payment-check-draw 0.35s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+}
+
+.animate-payment-halo {
+  animation: payment-halo-pulse 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-payment-circle,
+  .animate-payment-check {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .animate-payment-halo {
+    display: none;
+    animation: none;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #171717 !important;
+  }
+}

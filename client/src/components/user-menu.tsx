@@ -83,7 +83,7 @@ export function UserMenu({
           type="button"
           className={cn(
             "group flex h-8 items-center gap-2 rounded-full border border-border/70 bg-background/80 pl-1 pr-2.5 text-left text-xs font-medium transition-all hover:bg-accent/60 hover:border-border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
-            className
+            className,
           )}
           aria-label="Open user menu"
         >
@@ -143,17 +143,15 @@ export function UserMenu({
               <span className="font-medium text-sm">Dashboard</span>
             </Link>
           </DropdownMenuItem>
-
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link
               href="/dashboard/profile"
               className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
             >
               <UserIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Profile & App ID</span>
+              <span className="font-medium text-sm">Profile</span>
             </Link>
           </DropdownMenuItem>
-
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link
               href="/pricing"
@@ -168,7 +166,6 @@ export function UserMenu({
               </span>
             </Link>
           </DropdownMenuItem>
-
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link
               href="/dashboard/referral"
@@ -179,8 +176,17 @@ export function UserMenu({
                 <span className="font-medium text-sm">Refer & Earn</span>
               </div>
               <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-semibold text-purple-600 dark:text-purple-400">
-                20%
+                50
               </span>
+            </Link>
+          </DropdownMenuItem>{" "}
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link
+              href="/contact"
+              className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
+            >
+              <LifeBuoy className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium text-sm">Help & Support</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -216,40 +222,6 @@ export function UserMenu({
             </DropdownMenuGroup>
           </>
         )}
-
-        {/* Preferences & Help */}
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link
-              href="/docs"
-              className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
-            >
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Documentation</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link
-              href="/dashboard/appearance"
-              className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
-            >
-              <Palette className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Appearance</span>
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link
-              href="/contact"
-              className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
-            >
-              <LifeBuoy className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Help & Support</span>
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
 
         {/* Sign out */}
         <DropdownMenuSeparator />
