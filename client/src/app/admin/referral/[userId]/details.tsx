@@ -6,17 +6,14 @@ import { formatDistanceToNow } from "date-fns";
 import {
   AlertCircle,
   ArrowLeft,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
   Copy,
   DollarSign,
   ExternalLink,
-  Phone,
   RefreshCw,
   Search,
-  ShieldCheck,
   TrendingUp,
   User2,
   Users,
@@ -53,7 +50,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -360,11 +356,6 @@ export default function AdminUserReferralDashboard({
     safeEarningsPage * EARNINGS_PER_PAGE,
   );
 
-  const payoutRatio =
-    data.totalEarned > 0
-      ? Math.min(100, Math.round((data.totalWithdrawn / data.totalEarned) * 100))
-      : 0;
-
   return (
     <div className="space-y-6">
       {/* Top Action Bar */}
@@ -426,137 +417,99 @@ export default function AdminUserReferralDashboard({
         </div>
       </div>
 
-      {/* Hero Referrer Card + Inline Conversion & Payout Strip */}
-      <Card>
-        <CardContent className="p-5 sm:p-6 space-y-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            <div className="flex items-start sm:items-center gap-4 min-w-0">
-              <Avatar className="h-14 w-14 shrink-0 border">
-                <AvatarImage
-                  src={data.referrer.avatar || undefined}
-                  alt={data.referrer.name}
-                />
-                <AvatarFallback className="text-base font-semibold">
-                  {getInitials(data.referrer.name)}
-                </AvatarFallback>
-              </Avatar>
+      {/* Minimal Referrer Identity Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar className="h-10 w-10 shrink-0 border">
+            <AvatarImage
+              src={data.referrer.avatar || undefined}
+              alt={data.referrer.name}
+            />
+            <AvatarFallback className="text-sm font-semibold">
+              {getInitials(data.referrer.name)}
+            </AvatarFallback>
+          </Avatar>
 
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-bold truncate">
-                    {data.referrer.name}
-                  </h2>
-                  {data.referrer.isVerified && (
-                    <Badge
-                      variant="outline"
-                      className="gap-1 text-[11px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
-                    >
-                      <ShieldCheck className="h-3 w-3" />
-                      Verified
-                    </Badge>
-                  )}
-                  {data.referrer.isDisabled && (
-                    <Badge variant="destructive" className="text-[11px]">
-                      Disabled
-                    </Badge>
-                  )}
-                </div>
-
-                <p className="text-sm text-muted-foreground truncate">
-                  {data.referrer.email}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(data.referralCode, "Referral code", "code")
-                    }
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-muted/50 hover:bg-muted text-xs font-mono transition-colors"
-                  >
-                    <span className="text-muted-foreground">Code:</span>
-                    <span className="font-semibold text-foreground">
-                      {data.referralCode}
-                    </span>
-                    {copiedKey === "code" ? (
-                      <Check className="h-3 w-3 text-emerald-600" />
-                    ) : (
-                      <Copy className="h-3 w-3 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  {data.withdrawAccount ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopy(
-                          data.withdrawAccount!,
-                          "Payout account",
-                          "account",
-                        )
-                      }
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-muted/50 hover:bg-muted text-xs font-mono transition-colors"
-                    >
-                      <Phone className="h-3 w-3 text-muted-foreground" />
-                      <span>{data.withdrawAccount}</span>
-                      {copiedKey === "account" ? (
-                        <Check className="h-3 w-3 text-emerald-600" />
-                      ) : (
-                        <Copy className="h-3 w-3 text-muted-foreground" />
-                      )}
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-xs text-muted-foreground">
-                      <Phone className="h-3 w-3" />
-                      No payout account set
-                    </span>
-                  )}
-                </div>
-              </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-semibold tracking-tight truncate">
+                {data.referrer.name}
+              </h2>
+              {data.referrer.isDisabled ? (
+                <Badge variant="destructive" className="text-[11px] h-5">
+                  Disabled
+                </Badge>
+              ) : data.referrer.isVerified ? (
+                <Badge
+                  variant="outline"
+                  className="text-[11px] h-5 bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                >
+                  Verified
+                </Badge>
+              ) : null}
             </div>
-
-            <div className="flex flex-wrap lg:flex-col lg:items-end gap-2 text-xs text-muted-foreground shrink-0">
-              <div className="inline-flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>
-                  Joined{" "}
-                  {formatShortDate(data.referrer.createdAt || data.createdAt)}
-                </span>
-              </div>
-              <div className="font-mono text-[11px] bg-muted/60 px-2 py-0.5 rounded border">
-                ID: {userId}
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              {data.referrer.email}
+            </p>
           </div>
+        </div>
 
-          {/* Embedded Overview Metrics Strip (replaces separate Overview tab) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">
-                  Referral Conversion Rate
-                </span>
-                <span className="font-medium tabular-nums">
-                  {data.convertedCount} / {data.referralCount} converted (
-                  {data.conversionRate}%)
-                </span>
-              </div>
-              <Progress value={data.conversionRate} className="h-1.5" />
-            </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground shrink-0">
+          <button
+            type="button"
+            onClick={() =>
+              handleCopy(data.referralCode, "Referral code", "code")
+            }
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border bg-muted/40 hover:bg-muted font-mono text-foreground transition-colors"
+          >
+            <span className="text-muted-foreground">Code:</span>
+            <span className="font-semibold">{data.referralCode}</span>
+            {copiedKey === "code" ? (
+              <Check className="h-3 w-3 text-emerald-600" />
+            ) : (
+              <Copy className="h-3 w-3 text-muted-foreground" />
+            )}
+          </button>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Payout Ratio</span>
-                <span className="font-medium tabular-nums">
-                  {formatCurrency(data.totalWithdrawn)} /{" "}
-                  {formatCurrency(data.totalEarned)} paid ({payoutRatio}%)
-                </span>
-              </div>
-              <Progress value={payoutRatio} className="h-1.5" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          {data.withdrawAccount ? (
+            <button
+              type="button"
+              onClick={() =>
+                handleCopy(
+                  data.withdrawAccount!,
+                  "Payout account",
+                  "account",
+                )
+              }
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border bg-muted/40 hover:bg-muted font-mono text-foreground transition-colors"
+            >
+              <span>bKash: {data.withdrawAccount}</span>
+              {copiedKey === "account" ? (
+                <Check className="h-3 w-3 text-emerald-600" />
+              ) : (
+                <Copy className="h-3 w-3 text-muted-foreground" />
+              )}
+            </button>
+          ) : (
+            <span>No payout account</span>
+          )}
+
+          <span>&middot;</span>
+          <span>
+            Joined{" "}
+            <strong className="font-medium text-foreground">
+              {formatShortDate(data.referrer.createdAt || data.createdAt)}
+            </strong>
+          </span>
+          <span>&middot;</span>
+          <span className="tabular-nums">
+            <strong className="font-medium text-foreground">
+              {data.convertedCount}/{data.referralCount}
+            </strong>{" "}
+            converted ({data.conversionRate}%)
+          </span>
+        </div>
+      </div>
 
       {/* 4 Interactive KPI Cards (click to filter / jump directly to sections) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

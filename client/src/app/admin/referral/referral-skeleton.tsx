@@ -226,29 +226,21 @@ export function ReferralDetailSkeleton() {
         </div>
       </div>
 
-      {/* Hero Card */}
-      <Card>
-        <CardContent className="p-5 sm:p-6 space-y-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-14 w-14 rounded-full shrink-0" />
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-44" />
-                <Skeleton className="h-4 w-56" />
-                <div className="flex gap-2">
-                  <Skeleton className="h-6 w-28 rounded-md" />
-                  <Skeleton className="h-6 w-32 rounded-md" />
-                </div>
-              </div>
-            </div>
-            <Skeleton className="h-9 w-36 rounded-md" />
+      {/* Minimal Identity Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3.5 w-48" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-6 w-24 rounded-md" />
+          <Skeleton className="h-6 w-28 rounded-md" />
+          <Skeleton className="h-3.5 w-32" />
+        </div>
+      </div>
 
       {/* 4 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

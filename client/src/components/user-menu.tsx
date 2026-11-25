@@ -75,12 +75,12 @@ export function UserMenu({
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           className={cn(
-            "group flex h-8 items-center gap-2 rounded-full border border-border/70 bg-background/80 pl-1 pr-2.5 text-left text-xs font-medium transition-all hover:bg-accent/60 hover:border-border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
+            "group flex h-8 items-center gap-2 rounded-full border border-border/70 bg-background/80 pl-1 pr-2.5 text-left text-xs font-medium transition-colors hover:bg-accent/60 hover:border-border focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
             className,
           )}
           aria-label="Open user menu"
@@ -102,7 +102,7 @@ export function UserMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-64 sm:w-72 rounded-xl p-1.5 shadow-xl border-border/80 backdrop-blur-xs"
+        className="w-64 sm:w-72 rounded-xl p-1.5 shadow-xl border-border/80 duration-150 ease-out"
         align="end"
         sideOffset={8}
       >
