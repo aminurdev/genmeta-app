@@ -51,11 +51,6 @@ const userSidebarData = [
         icon: Users,
       },
       {
-        title: "Notifications",
-        url: "/dashboard/notifications",
-        icon: Bell,
-      },
-      {
         title: "Appearance",
         url: "/dashboard/appearance",
         icon: Palette,

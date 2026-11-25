@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Bell,
   ChevronDown,
   LayoutDashboard,
   User as UserIcon,
@@ -149,15 +148,6 @@ export function UserMenu({
             >
               <UserIcon className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium text-sm">Profile</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link
-              href="/dashboard/notifications"
-              className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
-            >
-              <Bell className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Notifications</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">

@@ -7,14 +7,11 @@ import {
   Bell,
   Check,
   CheckCheck,
-  CheckCircle2,
   ChevronRight,
-  Clock,
   Loader2,
   Settings,
   Trash2,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -32,11 +29,7 @@ import {
   useUnreadNotificationCountQuery,
 } from "@/services/queries/notifications";
 import type { NotificationItem } from "@/types/notification";
-import {
-  CATEGORY_META,
-  PRIORITY_META,
-  formatRelativeTime,
-} from "./notification-utils";
+import { formatRelativeTime } from "./notification-utils";
 
 interface NotificationBellProps {
   scope: "user" | "admin";
@@ -132,22 +125,40 @@ export function NotificationBell({ scope, className }: NotificationBellProps) {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[340px] sm:w-[390px] p-0 shadow-xl rounded-xl border-border/80 overflow-hidden"
+        className="w-[330px] sm:w-[370px] p-0 shadow-lg rounded-xl border-border/80 overflow-hidden"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/70 px-4 py-3 bg-muted/20">
+        {/* Compact Top Bar */}
+        <div className="flex items-center justify-between gap-2 border-b px-3.5 py-2.5">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm text-foreground">
               Notifications
             </span>
-            {unreadCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="h-5 px-1.5 text-[11px] font-medium"
+            <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setFilterTab("all")}
+                className={cn(
+                  "rounded-sm px-2 py-0.5 font-medium transition-colors",
+                  filterTab === "all"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                {unreadCount} unread
-              </Badge>
-            )}
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTab("unread")}
+                className={cn(
+                  "rounded-sm px-2 py-0.5 font-medium transition-colors",
+                  filterTab === "unread"
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Unread{unreadCount > 0 ? ` (${unreadCount})` : ""}
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-0.5">
@@ -180,179 +191,117 @@ export function NotificationBell({ scope, className }: NotificationBellProps) {
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center border-b border-border/60 px-3 py-2 bg-background">
-          <div className="inline-flex items-center rounded-lg bg-muted p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setFilterTab("all")}
-              className={cn(
-                "rounded-md px-2.5 py-1 font-medium transition-colors",
-                filterTab === "all"
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterTab("unread")}
-              className={cn(
-                "rounded-md px-2.5 py-1 font-medium transition-colors",
-                filterTab === "unread"
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Unread
-            </button>
-          </div>
-        </div>
-
         {/* Body */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-            <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-2.5">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            </div>
-            <p className="font-medium text-sm text-foreground">All caught up!</p>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-[220px]">
+          <div className="py-10 px-4 text-center">
+            <p className="text-sm font-medium text-foreground">
               {filterTab === "unread"
-                ? "You have no unread notifications right now."
-                : "New notifications will appear here automatically."}
+                ? "No unread notifications"
+                : "No notifications yet"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {filterTab === "unread"
+                ? "You're all caught up."
+                : "Updates will appear here automatically."}
             </p>
           </div>
         ) : (
-          <ScrollArea className="max-h-[360px] overflow-y-auto">
-            <div className="divide-y divide-border/60">
-              {notifications.map((item) => {
-                const catMeta =
-                  CATEGORY_META[item.category] || CATEGORY_META.announcement;
-                const CatIcon = catMeta.icon;
-                const showPriority =
-                  item.priority === "urgent" || item.priority === "high";
-
-                return (
-                  <div
-                    key={item.id}
+          <ScrollArea className="max-h-[340px] overflow-y-auto">
+            <div className="divide-y">
+              {notifications.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "group flex items-start gap-2.5 px-3.5 py-3 transition-colors hover:bg-muted/40",
+                    !item.isRead && "bg-primary/[0.03]"
+                  )}
+                >
+                  <span
                     className={cn(
-                      "group relative flex items-start gap-3 p-3.5 transition-colors hover:bg-accent/50",
-                      !item.isRead && "bg-primary/[0.03]"
+                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                      !item.isRead ? "bg-primary" : "bg-muted-foreground/25"
                     )}
-                  >
-                    {!item.isRead && (
-                      <span
-                        className="absolute left-1.5 top-5 h-2 w-2 rounded-full bg-primary"
-                        aria-hidden="true"
-                      />
-                    )}
+                    aria-hidden="true"
+                  />
 
-                    <div className="shrink-0 mt-0.5 pl-1">
-                      <div
+                  <button
+                    type="button"
+                    onClick={() => handleItemClick(item)}
+                    className="min-w-0 flex-1 text-left focus:outline-hidden"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p
                         className={cn(
-                          "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
-                          catMeta.iconBgClass
+                          "text-xs leading-snug text-foreground truncate",
+                          !item.isRead ? "font-semibold" : "font-medium"
                         )}
                       >
-                        <CatIcon
-                          className={cn("h-4 w-4", catMeta.iconTextClass)}
-                        />
-                      </div>
+                        {item.title}
+                      </p>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {formatRelativeTime(item.createdAt)}
+                      </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleItemClick(item)}
-                      className="min-w-0 flex-1 text-left focus:outline-hidden"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p
-                          className={cn(
-                            "text-xs leading-snug text-foreground line-clamp-1",
-                            !item.isRead ? "font-semibold" : "font-medium"
-                          )}
-                        >
-                          {item.title}
-                        </p>
-                        {showPriority && (
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                              PRIORITY_META[item.priority].className
-                            )}
-                          >
-                            {PRIORITY_META[item.priority].label}
-                          </span>
-                        )}
-                      </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                      {item.message}
+                    </p>
 
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
-                        {item.message}
-                      </p>
+                    {item.actionUrl && (
+                      <span className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-primary">
+                        {item.actionLabel || "View"}
+                        <ChevronRight className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
 
-                      <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/80">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5" />
-                          {formatRelativeTime(item.createdAt)}
-                        </span>
-                        {item.actionUrl && (
-                          <span className="inline-flex items-center gap-0.5 text-primary font-medium">
-                            {item.actionLabel || "View"}
-                            <ChevronRight className="h-3 w-3" />
-                          </span>
-                        )}
-                      </div>
-                    </button>
-
-                    <div className="flex shrink-0 flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      {!item.isRead && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                          title="Mark as read"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markReadMutation.mutate(item.id);
-                          }}
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                      )}
+                  <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    {!item.isRead && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                        title="Delete notification"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        title="Mark as read"
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteMutation.mutate(item.id);
+                          markReadMutation.mutate(item.id);
                         }}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Check className="h-3 w-3" />
                       </Button>
-                    </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      title="Delete notification"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMutation.mutate(item.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </ScrollArea>
         )}
 
         {/* Footer */}
-        <div className="border-t border-border/70 p-2 bg-muted/20">
+        <div className="border-t p-1.5">
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-xs font-medium text-muted-foreground hover:text-foreground justify-center"
+            className="w-full h-7 text-xs font-medium text-muted-foreground hover:text-foreground justify-center"
           >
             <Link href={centerPath} onClick={() => setOpen(false)}>
               View all notifications

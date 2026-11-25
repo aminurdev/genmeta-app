@@ -583,7 +583,7 @@ export default function Cart({ planId }: { planId?: string }) {
             </Card>
 
             {/* Payment Method Card */}
-            <Card>
+            <Card className="hidden">
               <CardHeader>
                 <CardTitle className="text-base font-semibold">
                   Payment Method
@@ -604,7 +604,7 @@ export default function Cart({ planId }: { planId?: string }) {
                         key={method.id}
                         htmlFor={method.id}
                         className={cn(
-                          "flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border-2 transition-colors cursor-pointer",
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-colors cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/5"
                             : "border-border hover:border-muted-foreground/40",

@@ -7,46 +7,37 @@ import {
   AlertTriangle,
   ArrowRight,
   Ban,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
   Coins,
   Copy,
-  Infinity as InfinityIcon,
+  Download,
   LayoutDashboard,
   Loader2,
-  Lock,
   MessageCircle,
-  Printer,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
   Sparkles,
   XCircle,
-  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { WindowsIcon } from "@/components/Home";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
-import { creditFeatures, premiumFeatures } from "@/app/(public)/pricing/features";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getPaymentStatus } from "@/services/pricing";
 import { useInvalidateDashboard } from "@/services/queries/dashboard";
 import type { PaymentStatusData } from "@/types/pricing";
-import { PaymentReceiptCard } from "./receipt-card";
-import { printReceiptWithTitle } from "./receipt-pdf";
+import { downloadReceiptPdf, type ReceiptPdfData } from "./receipt-pdf";
 
 export interface PaymentStatusClientProps {
   invoice?: string;
@@ -103,7 +94,11 @@ function parseValidDate(value?: string | null): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-const CHECKOUT_STEPS = ["Select Plan", "Payment", "Confirmed"] as const;
+function formatGatewayLabel(gateway?: string | null): string {
+  if (!gateway) return "PayStation";
+  if (gateway.toLowerCase() === "paystation") return "PayStation";
+  return gateway;
+}
 
 export function PaymentStatusClient({
   invoice,
@@ -125,6 +120,7 @@ export function PaymentStatusClient({
   const [pollAttempt, setPollAttempt] = useState<number>(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
 
   const invalidateDashboard = useInvalidateDashboard();
   const hasInvalidatedRef = useRef(false);
@@ -365,21 +361,62 @@ export function PaymentStatusClient({
       null;
 
     const baseDate = parseValidDate(paidTimestamp);
+    const formattedPaidAt = baseDate
+      ? format(baseDate, "MMM d, yyyy · h:mm a")
+      : null;
     const durationDaysNum = Number(rawDuration);
     const validUntilDate =
       baseDate && Number.isFinite(durationDaysNum) && durationDaysNum > 0
         ? addDays(baseDate, durationDaysNum)
         : null;
 
-    const totalSavings = transaction?.pricing
-      ? Math.round(
-          ((transaction.pricing.planDiscountAmount || 0) +
-            (transaction.pricing.promoDiscountAmount || 0)) *
-            100
-        ) / 100
-      : 0;
+    const pricing = transaction?.pricing;
+    const basePrice = pricing?.basePrice ?? null;
+    const planDiscountAmount = pricing?.planDiscountAmount ?? 0;
+    const promoDiscountAmount = pricing?.promoDiscountAmount ?? 0;
+    const expectedAmount = pricing?.expectedAmount ?? null;
+    const paidAmountRaw =
+      pricing?.paidAmount ?? transaction?.paidAmount ?? expectedAmount;
+    const gatewayFee =
+      pricing?.payWithCharge === 1 &&
+      paidAmountRaw !== null &&
+      expectedAmount !== null &&
+      paidAmountRaw - expectedAmount > 0.01
+        ? Math.round((paidAmountRaw - expectedAmount) * 100) / 100
+        : 0;
+    const totalSavings =
+      Math.round((planDiscountAmount + promoDiscountAmount) * 100) / 100;
 
-    const featuresList = isCredit ? creditFeatures : premiumFeatures;
+    const payerMobileNo = transaction?.payerMobileNo || null;
+    const gatewayLabel = formatGatewayLabel(transaction?.gateway);
+    const methodDisplay = methodValue
+      ? payerMobileNo
+        ? `${methodValue} (${payerMobileNo})`
+        : methodValue
+      : payerMobileNo || gatewayLabel;
+
+    const basePriceDisplay =
+      pricing && basePrice !== null ? formatCurrency(basePrice, currency) : null;
+    const planDiscountDisplay =
+      planDiscountAmount > 0
+        ? formatCurrency(planDiscountAmount, currency)
+        : null;
+    const promoLabel = transaction?.promoCode?.code
+      ? `Promo (${transaction.promoCode.code} · ${transaction.promoCode.discountPercent}%)`
+      : "Promo discount";
+    const promoDiscountDisplay =
+      promoDiscountAmount > 0
+        ? formatCurrency(promoDiscountAmount, currency)
+        : null;
+    const gatewayFeeDisplay =
+      gatewayFee > 0 ? formatCurrency(gatewayFee, currency) : null;
+    const totalPaidDisplay =
+      pricing && paidAmountRaw !== null
+        ? formatCurrency(paidAmountRaw, currency)
+        : amountDisplay;
+    const totalSavingsDisplay =
+      totalSavings > 0 ? formatCurrency(totalSavings, currency) : null;
+
     const planMetaLine = (
       isCredit
         ? [
@@ -394,390 +431,242 @@ export function PaymentStatusClient({
       .filter(Boolean)
       .join(" · ");
 
-    const capacitySummary = isCredit
-      ? creditCount !== null && Number.isFinite(creditCount)
-        ? `${(creditCount * 5).toLocaleString()} images or ${creditCount.toLocaleString()} videos${durationText ? ` · ${durationText} validity` : ""}`
-        : "Built-in API access with priority processing"
-      : `Unlimited metadata generation using your own Gemini API key${durationText ? ` · ${durationText}` : ""}`;
+    const whatsappText = invoiceValue
+      ? `Hi GenMeta Support, I have a question about my payment (Invoice: ${invoiceValue}).`
+      : "Hi GenMeta Support, I have a question about my recent payment.";
+    const whatsappUrl = `https://wa.me/8801817710493?text=${encodeURIComponent(
+      whatsappText
+    )}`;
 
-    const onboardingSteps = [
-      {
-        title: "Install or open GenMeta Desktop",
-        description:
-          "Launch GenMeta for Windows 10/11 on your computer, or download the latest installer if you haven't set it up yet.",
-        actionHref: "/download",
-        actionLabel: "Download installer",
-      },
-      {
-        title: "Sign in with your GenMeta account",
-        description: isCredit
-          ? "Your new credits and built-in API access activate automatically — no external Gemini API key required."
-          : "Your subscription unlocks immediately. Add your Gemini API key in desktop settings to start generating.",
-      },
-      {
-        title: "Drop a folder and generate metadata",
-        description:
-          "Import photos, vectors, or stock videos to create relevance-ranked titles, descriptions, and keywords ready for CSV export or embedding.",
-      },
-    ];
+    const handleDownloadPdf = async () => {
+      if (isDownloadingPdf) return;
+      setIsDownloadingPdf(true);
+      try {
+        const pdfData: ReceiptPdfData = {
+          planName,
+          planMetaLine,
+          amountDisplay: totalPaidDisplay,
+          currency,
+          basePriceDisplay,
+          planDiscountDisplay,
+          promoLabel: promoDiscountDisplay ? promoLabel : null,
+          promoDiscountDisplay,
+          gatewayFeeDisplay,
+          totalSavingsDisplay,
+          invoiceNumber: invoiceValue,
+          trxId: trxIdValue,
+          paymentMethod: methodValue,
+          payerMobileNo,
+          gatewayLabel,
+          paidAtDisplay: formattedPaidAt,
+          customerName,
+          customerEmail,
+        };
+        await downloadReceiptPdf(pdfData);
+        toast.success("Receipt PDF downloaded");
+      } catch {
+        toast.error("Failed to generate receipt PDF");
+      } finally {
+        setIsDownloadingPdf(false);
+      }
+    };
 
     return (
-      <div className="min-h-screen bg-background print:min-h-0 print:bg-white">
-        <MaxWidthWrapper className="py-8 sm:py-12 space-y-6 sm:space-y-8 print:py-0 print:px-0 print:space-y-0">
-          {/* Top Checkout Stepper & Trust Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-5 print:hidden">
-            <nav aria-label="Checkout progress" className="flex flex-wrap items-center gap-2 text-xs">
-              {CHECKOUT_STEPS.map((label, idx) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium",
-                      idx === CHECKOUT_STEPS.length - 1
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                        : "border-border bg-muted/40 text-muted-foreground"
-                    )}
-                  >
-                    <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                    <span>
-                      {idx + 1}. {label}
-                    </span>
-                  </span>
-                  {idx < CHECKOUT_STEPS.length - 1 && (
-                    <span className="text-muted-foreground/50">/</span>
-                  )}
-                </div>
-              ))}
-            </nav>
-
-            <div className="flex items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-                <Lock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Verified by PayStation</span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => printReceiptWithTitle(invoiceValue)}
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Print Receipt</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Hero Confirmation Banner */}
-          <section className="relative overflow-hidden rounded-2xl border bg-background px-6 py-8 sm:px-10 sm:py-12 print:hidden">
-            <div
-              aria-hidden
-              className="lp-grid-bg pointer-events-none absolute inset-0 opacity-60 print:hidden"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(16,185,129,0.10),transparent_70%)] print:hidden"
-            />
-
-            <div className="relative flex flex-col items-center text-center space-y-4">
-              {/* Animated SVG Checkmark Emblem */}
-              <div className="relative flex h-16 w-16 items-center justify-center print:hidden">
-                <span
-                  aria-hidden
-                  className="animate-payment-halo absolute inset-0 rounded-full bg-emerald-500/20"
-                />
-                <svg
-                  viewBox="0 0 56 56"
-                  className="relative h-16 w-16"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="25"
-                    className="fill-emerald-500/10 stroke-emerald-600 dark:stroke-emerald-400 animate-payment-circle"
-                    strokeWidth="2.5"
-                  />
-                  <path
-                    d="M17.5 28.5 L24.5 35.5 L38.5 21.5"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="stroke-emerald-600 dark:stroke-emerald-400 animate-payment-check"
-                    strokeWidth="3"
-                  />
-                </svg>
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-background py-12 sm:py-16">
+        <MaxWidthWrapper className="w-full">
+          <Card className="mx-auto max-w-xl border shadow-sm">
+            <CardHeader className="flex flex-col items-center text-center space-y-3.5 pt-8 pb-4 px-6 sm:px-8">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 <span>Payment Confirmed</span>
               </div>
 
-              <div className="space-y-2 max-w-2xl">
-                <h1 className="text-3xl font-semibold tracking-[-0.03em] text-foreground sm:text-4xl">
-                  Payment successful!
+              <div className="space-y-1.5">
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                  Payment successful
                 </h1>
-                <p className="text-sm sm:text-base text-muted-foreground text-pretty">
+                <p className="text-sm text-muted-foreground max-w-md text-pretty">
                   {initialMessage ||
-                    `Thank you for your purchase. Your ${planName} plan is active immediately and ready to use.`}
+                    `Thank you for your purchase. Your ${planName} plan is now active and ready to use.`}
+                </p>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-5 px-6 sm:px-8 pb-6">
+              {/* Activated Plan Summary Box */}
+              <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-base font-semibold capitalize text-foreground">
+                    {planName}
+                  </h2>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "gap-1 font-medium text-xs",
+                      isCredit
+                        ? "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400"
+                        : "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400"
+                    )}
+                  >
+                    {isCredit ? (
+                      <Coins className="h-3 w-3" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {isCredit ? "Credit Pack" : "Subscription"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {planMetaLine}
+                  {validUntilDate
+                    ? ` · Valid until ${format(validUntilDate, "MMM d, yyyy")}`
+                    : ""}
                 </p>
               </div>
 
-              {/* Compact Hero Meta Strip */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/90 px-3 py-1 font-medium tabular-nums text-foreground">
-                  <span className="text-muted-foreground font-normal">Paid</span>
-                  {amountDisplay} {currency}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/90 px-3 py-1 font-medium text-foreground">
-                  {isCredit ? (
-                    <Coins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                  )}
-                  <span className="capitalize">{planName}</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/90 px-3 py-1 font-medium text-emerald-700 dark:text-emerald-400">
-                  <Zap className="h-3.5 w-3.5" />
-                  <span>Active immediately</span>
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Main 12-Column Split Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start print:block">
-            {/* Left Column: Activated Plan & Onboarding */}
-            <div className="lg:col-span-7 space-y-6 print:hidden">
-              {/* Activated Plan Card */}
-              <Card>
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <CardTitle className="text-base font-semibold">
-                      Activated Plan
-                    </CardTitle>
-                    <CardDescription>
-                      Entitlements unlocked on your GenMeta account
-                    </CardDescription>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>Active Now</span>
-                  </Badge>
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  {/* Highlighted Plan Box */}
-                  <div className="rounded-xl border bg-muted/30 p-5 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "gap-1 font-medium",
-                            isCredit
-                              ? "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400"
-                              : "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400"
-                          )}
-                        >
-                          {isCredit ? (
-                            <Coins className="h-3 w-3" />
-                          ) : (
-                            <Sparkles className="h-3 w-3" />
-                          )}
-                          {isCredit ? "Credit Pack" : "Subscription"}
-                        </Badge>
-
-                        {durationText && (
-                          <Badge
-                            variant="secondary"
-                            className="gap-1 font-normal"
-                          >
-                            <Calendar className="h-3 w-3" />
-                            {durationText}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {totalSavings > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 tabular-nums"
-                        >
-                          Saved {formatCurrency(totalSavings, currency)}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-                      <div className="space-y-1">
-                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight capitalize text-foreground">
-                          {planName}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                          {capacitySummary}
-                        </p>
-                      </div>
-
-                      <div className="sm:text-right shrink-0 tabular-nums">
-                        {isCredit &&
-                        creditCount !== null &&
-                        Number.isFinite(creditCount) ? (
-                          <div>
-                            <div className="text-2xl font-bold text-foreground">
-                              {creditCount.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Credits added
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="inline-flex sm:flex-col sm:items-end items-center gap-1.5 sm:gap-0.5">
-                            <InfinityIcon className="h-6 w-6 text-foreground" />
-                            <span className="text-xs text-muted-foreground">
-                              Unlimited quota
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Validity Strip */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
-                      <span>
-                        {baseDate
-                          ? `Activated on ${format(baseDate, "MMM d, yyyy")}`
-                          : "Instant activation enabled"}
-                      </span>
-                      {validUntilDate && (
-                        <span className="font-medium text-foreground">
-                          Valid until {format(validUntilDate, "MMM d, yyyy")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Included Features */}
-                  <div className="space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      What&apos;s included now
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {featuresList.map((feature, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2.5 text-sm text-foreground/90"
-                        >
-                          <div className="mt-0.5 h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                            <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <span>{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Primary & Secondary CTAs */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2 print:hidden">
-                    <Button
-                      asChild
-                      size="lg"
-                      className="h-11 gap-2 flex-1 sm:flex-initial font-medium"
-                    >
-                      <Link href="/dashboard">
-                        <LayoutDashboard className="h-4 w-4" />
-                        <span>Go to Dashboard</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="lg"
-                      variant="outline"
-                      className="h-11 gap-2 flex-1 sm:flex-initial font-medium"
-                    >
-                      <Link href="/download">
-                        <WindowsIcon className="h-4 w-4" />
-                        <span>Download for Windows</span>
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* What Happens Next Onboarding Card */}
-              <Card className="print:hidden">
-                <CardHeader>
-                  <CardTitle className="text-base font-semibold">
-                    What happens next
-                  </CardTitle>
-                  <CardDescription>
-                    Start generating microstock metadata in three quick steps
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ol className="space-y-0">
-                    {onboardingSteps.map((step, index) => (
-                      <li
-                        key={step.title}
-                        className="relative flex gap-4 pb-6 last:pb-0"
+              {/* Transaction Summary List */}
+              <div className="rounded-xl border divide-y text-sm">
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <span className="text-muted-foreground">Amount Paid</span>
+                  <div className="flex items-center gap-2">
+                    {totalSavingsDisplay && (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 text-[11px] tabular-nums"
                       >
-                        {index < onboardingSteps.length - 1 && (
-                          <span
-                            aria-hidden
-                            className="absolute left-[13px] top-8 h-[calc(100%-2rem)] w-px bg-border"
-                          />
-                        )}
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border bg-background font-mono text-[11px] font-medium text-muted-foreground">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <div className="pt-0.5 space-y-1">
-                          <h3 className="text-sm font-medium text-foreground">
-                            {step.title}
-                          </h3>
-                          <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                            {step.description}
-                          </p>
-                          {step.actionHref && step.actionLabel && (
-                            <Link
-                              href={step.actionHref}
-                              className="inline-flex items-center gap-1 pt-0.5 text-xs font-medium text-foreground underline underline-offset-4 hover:opacity-80"
-                            >
-                              <span>{step.actionLabel}</span>
-                              <ArrowRight className="h-3 w-3" />
-                            </Link>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </CardContent>
-              </Card>
-            </div>
+                        Saved {totalSavingsDisplay}
+                      </Badge>
+                    )}
+                    <span className="font-semibold tabular-nums text-foreground">
+                      {totalPaidDisplay} {currency}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Right Column: Sticky Real Paper Receipt */}
-            <div className="lg:col-span-5 print:w-full">
-              <PaymentReceiptCard
-                transaction={transaction}
-                planName={planName}
-                planMetaLine={planMetaLine}
-                amountDisplay={amountDisplay}
-                currency={currency}
-                invoiceValue={invoiceValue}
-                trxIdValue={trxIdValue}
-                methodValue={methodValue}
-                paidTimestamp={paidTimestamp}
-                customerName={customerName}
-                customerEmail={customerEmail}
-                copiedField={copiedField}
-                onCopy={handleCopy}
-                formatCurrency={formatCurrency}
-              />
+                <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <span className="text-muted-foreground">Payment Method</span>
+                  <span className="font-medium text-right text-foreground">
+                    {methodDisplay}
+                  </span>
+                </div>
+
+                {formattedPaidAt && (
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-medium text-right text-foreground">
+                      {formattedPaidAt}
+                    </span>
+                  </div>
+                )}
+
+                {invoiceValue && (
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <span className="text-muted-foreground">Invoice Number</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(invoiceValue, "invoice", "Invoice number")
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 font-mono text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
+                    >
+                      <span>{invoiceValue}</span>
+                      {copiedField === "invoice" ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {trxIdValue && (
+                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                    <span className="text-muted-foreground">Transaction ID</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopy(trxIdValue, "trxId", "Transaction ID")
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 font-mono text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
+                    >
+                      <span>{trxIdValue}</span>
+                      {copiedField === "trxId" ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Primary Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <Button asChild size="lg" className="h-11 flex-1 gap-2 font-medium">
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Go to Dashboard</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="h-11 flex-1 gap-2 font-medium"
+                >
+                  {isDownloadingPdf ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Generating PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      <span>Download Receipt (PDF)</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Desktop App Shortcut */}
+              <div className="text-center pt-1">
+                <Link
+                  href="/download"
+                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>Need the desktop app? Download GenMeta for Windows</span>
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </CardContent>
+
+            <div className="border-t px-6 py-3.5 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+              <span>Need help?</span>
+              <Link
+                href="/contact"
+                className="text-foreground underline underline-offset-4 hover:opacity-80"
+              >
+                Contact Support
+              </Link>
+              <span>·</span>
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-foreground underline underline-offset-4 hover:opacity-80"
+              >
+                WhatsApp
+              </a>
             </div>
-          </div>
+          </Card>
         </MaxWidthWrapper>
       </div>
     );

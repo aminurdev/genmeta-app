@@ -20,14 +20,10 @@ import { Separator } from "@/components/ui/separator";
 import {
   AlertCircle,
   ArrowUpRight,
-  Calendar,
   CheckCircle2,
-  Clock,
-  Gift,
   Infinity as InfinityIcon,
   Laptop,
   Layers,
-  Mail,
   RefreshCw,
   ShieldAlert,
   Sparkles,
@@ -178,110 +174,82 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* 2. Full-Width Identity Hero Card */}
-      <Card>
-        <CardContent className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 min-w-0">
-            <Avatar className="h-16 w-16 border border-border shrink-0">
-              <AvatarImage
-                src={
-                  user.avatar ||
-                  `https://avatar.vercel.sh/${encodeURIComponent(user.email || "user")}`
-                }
-                alt={user.name || "User"}
-              />
-              <AvatarFallback className="text-lg font-semibold">
-                {getInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
+      {/* 2. Minimal Identity Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3.5">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar className="h-10 w-10 border border-border shrink-0">
+            <AvatarImage
+              src={
+                user.avatar ||
+                `https://avatar.vercel.sh/${encodeURIComponent(user.email || "user")}`
+              }
+              alt={user.name || "User"}
+            />
+            <AvatarFallback className="text-sm font-semibold">
+              {getInitials(user.name)}
+            </AvatarFallback>
+          </Avatar>
 
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-semibold tracking-tight truncate">
-                  {user.name || "GenMeta User"}
-                </h2>
-                {user.isVerified ? (
-                  <Badge
-                    variant="outline"
-                    className="gap-1 text-emerald-600 border-emerald-500/25 bg-emerald-500/10 text-xs"
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    Verified
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="gap-1 text-amber-600 border-amber-500/25 bg-amber-500/10 text-xs"
-                  >
-                    <AlertCircle className="h-3 w-3" />
-                    Unverified
-                  </Badge>
-                )}
-                {user.isDisabled ? (
-                  <Badge variant="destructive" className="text-xs">
-                    Disabled
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-xs">
-                    Active
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground break-all">
-                <Mail className="h-3.5 w-3.5 shrink-0" />
-                <span>{user.email}</span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {user.loginProvider.map((provider) => (
-                  <Badge
-                    key={provider}
-                    variant="outline"
-                    className="text-[11px] capitalize"
-                  >
-                    {provider === "google" ? "Google Sign-In" : "Email Login"}
-                  </Badge>
-                ))}
-              </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-semibold tracking-tight truncate">
+                {user.name || "GenMeta User"}
+              </h2>
+              {user.isDisabled ? (
+                <Badge variant="destructive" className="text-[11px] h-5">
+                  Disabled
+                </Badge>
+              ) : user.isVerified ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-emerald-600 border-emerald-500/25 bg-emerald-500/10 text-[11px] h-5"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  Verified
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="gap-1 text-amber-600 border-amber-500/25 bg-amber-500/10 text-[11px] h-5"
+                >
+                  <AlertCircle className="h-3 w-3" />
+                  Unverified
+                </Badge>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground truncate">
+              {user.email}
+            </p>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 shrink-0">
-            <div className="rounded-lg border bg-muted/30 px-3.5 py-2.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Calendar className="h-3 w-3" />
-                Member Since
-              </div>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {formatDate(user.createdAt)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border bg-muted/30 px-3.5 py-2.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Last Sign-In
-              </div>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {formatRelativeDate(security.lastLoginAt || user.lastLoginAt)}
-              </p>
-            </div>
-
-            {user.referredBy && (
-              <div className="rounded-lg border bg-muted/30 px-3.5 py-2.5">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <Gift className="h-3 w-3" />
-                  Referred By
-                </div>
-                <p className="mt-1 text-sm font-mono font-medium text-foreground">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground shrink-0">
+          <span>
+            Joined{" "}
+            <strong className="font-medium text-foreground">
+              {formatDate(user.createdAt)}
+            </strong>
+          </span>
+          <span>&middot;</span>
+          <span>
+            Last sign-in{" "}
+            <strong className="font-medium text-foreground">
+              {formatRelativeDate(security.lastLoginAt || user.lastLoginAt)}
+            </strong>
+          </span>
+          {user.referredBy && (
+            <>
+              <span>&middot;</span>
+              <span>
+                Ref:{" "}
+                <strong className="font-mono font-medium text-foreground">
                   {user.referredBy}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </strong>
+              </span>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* 3. Four-Card Responsive Summary Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

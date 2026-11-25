@@ -9,14 +9,10 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  Inbox,
   Loader2,
-  Mail,
   MailOpen,
   Megaphone,
   Send,
-  Settings,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -64,11 +60,9 @@ import type {
 } from "@/types/notification";
 import {
   BROADCAST_TARGET_LABELS,
-  PRIORITY_META,
   formatRelativeTime,
   getCategoryDisplayMeta,
   getRoleCategories,
-  groupNotificationsByDate,
 } from "./notification-utils";
 
 interface NotificationCenterProps {
@@ -147,8 +141,6 @@ export function NotificationCenter({
     listResponse?.success && listResponse.data
       ? listResponse.data.unreadCount
       : 0;
-
-  const groupedNotifications = groupNotificationsByDate(notifications);
 
   const markReadMutation = useMarkNotificationReadMutation();
   const markUnreadMutation = useMarkNotificationUnreadMutation();
@@ -254,46 +246,29 @@ export function NotificationCenter({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Notifications
-          </h1>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="font-semibold">
-              {unreadCount} unread
-            </Badge>
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isSuperAdmin && scope === "admin"
-            ? "Monitor payments, withdrawals, security alerts, and system maintenance."
-            : isAdminConsole
-              ? "Monitor customer payments, withdrawal requests, and security alerts."
-              : "Stay updated on billing receipts, plan credits, referrals, and account security."}
-        </p>
-      </div>
-
-      {/* Main Tabs */}
+    <div className="space-y-5 max-w-4xl mx-auto">
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="inbox" className="gap-2">
-            <Inbox className="h-4 w-4" />
-            <span>Inbox</span>
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="gap-2">
-            <Settings className="h-4 w-4" />
-            <span>Preferences</span>
-          </TabsTrigger>
-          {isAdminConsole && (
-            <TabsTrigger value="broadcasts" className="gap-2">
-              <Megaphone className="h-4 w-4" />
-              <span>Broadcasts</span>
-            </TabsTrigger>
-          )}
-        </TabsList>
+        {/* Compact Header + Tabs Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Notifications
+            </h1>
+            {unreadCount > 0 && (
+              <Badge variant="secondary" className="font-medium tabular-nums">
+                {unreadCount} unread
+              </Badge>
+            )}
+          </div>
+
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="inbox">Inbox</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+            {isAdminConsole && (
+              <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         {/* INBOX TAB */}
         <TabsContent value="inbox" className="mt-4 space-y-4">
@@ -306,7 +281,7 @@ export function NotificationCenter({
                   setPage(1);
                 }}
                 className={cn(
-                  "rounded-md px-3 py-1.5 font-medium transition-colors",
+                  "rounded-md px-3 py-1 font-medium transition-colors",
                   statusFilter === "all"
                     ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -321,7 +296,7 @@ export function NotificationCenter({
                   setPage(1);
                 }}
                 className={cn(
-                  "rounded-md px-3 py-1.5 font-medium transition-colors",
+                  "rounded-md px-3 py-1 font-medium transition-colors",
                   statusFilter === "unread"
                     ? "bg-background text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
@@ -347,187 +322,132 @@ export function NotificationCenter({
           </div>
 
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="rounded-xl border bg-card divide-y">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <Card key={idx}>
-                  <CardContent className="p-4 flex items-start gap-3.5">
-                    <Skeleton className="h-9 w-9 rounded-full shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-44" />
-                      <Skeleton className="h-3.5 w-full max-w-md" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : notifications.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-14 px-4 text-center">
-                <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Bell className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <h3 className="font-semibold text-base text-foreground">
-                  {statusFilter === "unread"
-                    ? "No unread notifications"
-                    : "You're all caught up"}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                  {statusFilter === "unread"
-                    ? "Switch to All to review your recent notification history."
-                    : "Important alerts and updates will appear here automatically."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-5">
-              {groupedNotifications.map((group) => (
-                <div key={group.label} className="space-y-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
-                    {group.label}
-                  </h2>
-                  <div className="space-y-2">
-                    {group.items.map((item: NotificationItem) => {
-                      const catMeta = getCategoryDisplayMeta(
-                        item.category,
-                        scope
-                      );
-                      const CatIcon = catMeta.icon;
-                      const showPriority =
-                        item.priority === "urgent" || item.priority === "high";
-
-                      return (
-                        <Card
-                          key={item.id}
-                          className={cn(
-                            "transition-colors relative overflow-hidden",
-                            !item.isRead &&
-                              "border-primary/40 bg-primary/[0.02]"
-                          )}
-                        >
-                          {!item.isRead && (
-                            <div
-                              className="absolute left-0 top-0 bottom-0 w-1 bg-primary"
-                              aria-hidden="true"
-                            />
-                          )}
-                          <CardContent className="p-4 flex items-start gap-3.5">
-                            <div className="shrink-0 mt-0.5">
-                              <div
-                                className={cn(
-                                  "flex h-9 w-9 items-center justify-center rounded-full border border-border/60",
-                                  catMeta.iconBgClass
-                                )}
-                              >
-                                <CatIcon
-                                  className={cn(
-                                    "h-4 w-4",
-                                    catMeta.iconTextClass
-                                  )}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h3
-                                  className={cn(
-                                    "text-sm text-foreground",
-                                    !item.isRead
-                                      ? "font-semibold"
-                                      : "font-medium"
-                                  )}
-                                >
-                                  {item.title}
-                                </h3>
-                                {showPriority && (
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(
-                                      "text-[10px] font-semibold uppercase",
-                                      PRIORITY_META[item.priority].className
-                                    )}
-                                  >
-                                    {PRIORITY_META[item.priority].label}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <p className="mt-1 text-sm text-muted-foreground whitespace-pre-line">
-                                {item.message}
-                              </p>
-
-                              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs text-muted-foreground">
-                                  {formatRelativeTime(item.createdAt)}
-                                </span>
-
-                                {item.actionUrl && (
-                                  <Button
-                                    asChild
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 gap-1.5 text-xs"
-                                    onClick={() => {
-                                      if (!item.isRead) {
-                                        markReadMutation.mutate(item.id);
-                                      }
-                                    }}
-                                  >
-                                    <Link href={item.actionUrl}>
-                                      <span>
-                                        {item.actionLabel || "View Details"}
-                                      </span>
-                                      <ExternalLink className="h-3 w-3" />
-                                    </Link>
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex shrink-0 items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                title={
-                                  item.isRead
-                                    ? "Mark as unread"
-                                    : "Mark as read"
-                                }
-                                onClick={() =>
-                                  item.isRead
-                                    ? markUnreadMutation.mutate(item.id)
-                                    : markReadMutation.mutate(item.id)
-                                }
-                              >
-                                {item.isRead ? (
-                                  <MailOpen className="h-4 w-4" />
-                                ) : (
-                                  <Check className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                title="Delete notification"
-                                onClick={() => deleteMutation.mutate(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                <div key={idx} className="p-4 flex items-start gap-3">
+                  <Skeleton className="mt-1.5 h-2 w-2 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-44" />
+                    <Skeleton className="h-3.5 w-full max-w-md" />
                   </div>
                 </div>
               ))}
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="rounded-xl border bg-card flex flex-col items-center justify-center py-12 px-4 text-center">
+              <Bell className="h-6 w-6 text-muted-foreground/70 mb-2.5" />
+              <p className="font-medium text-sm text-foreground">
+                {statusFilter === "unread"
+                  ? "No unread notifications"
+                  : "You're all caught up"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                {statusFilter === "unread"
+                  ? "Switch to All to review your recent notification history."
+                  : "Important alerts and updates will appear here automatically."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-card divide-y overflow-hidden">
+                {notifications.map((item: NotificationItem) => {
+                  const catMeta = getCategoryDisplayMeta(item.category, scope);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-muted/30",
+                        !item.isRead && "bg-primary/[0.03]"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mt-2 h-2 w-2 shrink-0 rounded-full",
+                          !item.isRead
+                            ? "bg-primary"
+                            : "bg-muted-foreground/25"
+                        )}
+                        aria-hidden="true"
+                      />
+
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <h3
+                            className={cn(
+                              "text-sm text-foreground",
+                              !item.isRead ? "font-semibold" : "font-medium"
+                            )}
+                          >
+                            {item.title}
+                          </h3>
+                          <span className="text-[11px] text-muted-foreground">
+                            {catMeta.label} &middot;{" "}
+                            {formatRelativeTime(item.createdAt)}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {item.message}
+                        </p>
+
+                        {item.actionUrl && (
+                          <div className="pt-0.5">
+                            <Link
+                              href={item.actionUrl}
+                              onClick={() => {
+                                if (!item.isRead) {
+                                  markReadMutation.mutate(item.id);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            >
+                              <span>{item.actionLabel || "View details"}</span>
+                              <ChevronRight className="h-3 w-3" />
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          title={
+                            item.isRead ? "Mark as unread" : "Mark as read"
+                          }
+                          onClick={() =>
+                            item.isRead
+                              ? markUnreadMutation.mutate(item.id)
+                              : markReadMutation.mutate(item.id)
+                          }
+                        >
+                          {item.isRead ? (
+                            <MailOpen className="h-3.5 w-3.5" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          title="Delete notification"
+                          onClick={() => deleteMutation.mutate(item.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
               {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-border pt-4">
+                <div className="flex items-center justify-between pt-1">
                   <p className="text-xs text-muted-foreground">
                     Page {pagination.page} of {pagination.totalPages}
                   </p>
@@ -564,60 +484,43 @@ export function NotificationCenter({
         {/* PREFERENCES TAB */}
         <TabsContent value="preferences" className="mt-4">
           {prefsLoading || !prefs ? (
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </CardContent>
-            </Card>
+            <div className="rounded-xl border bg-card p-5 space-y-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Mail className="h-4 w-4 text-primary" />
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="border-b px-4 py-3.5">
+                <h2 className="text-sm font-semibold text-foreground">
                   Email Notifications
-                </CardTitle>
-                <CardDescription>
-                  In-app notifications are always enabled. Choose which email
-                  alerts you want to receive.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="divide-y divide-border/70">
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  In-app alerts are always enabled. Choose which email updates
+                  you want to receive.
+                </p>
+              </div>
+
+              <div className="divide-y">
                 {roleCategories.map((cat) => {
                   const meta = getCategoryDisplayMeta(cat, scope);
-                  const Icon = meta.icon;
                   const emailEnabled = prefs.categories?.[cat]?.email ?? true;
                   return (
                     <div
                       key={cat}
-                      className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+                      className="flex items-center justify-between gap-4 px-4 py-3.5"
                     >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div
-                          className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                            meta.iconBgClass
-                          )}
-                        >
-                          <Icon
-                            className={cn("h-4 w-4", meta.iconTextClass)}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">
-                            {meta.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {meta.description}
-                          </p>
-                          {cat === "security" && (
-                            <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                              Always on for critical alerts
-                            </p>
-                          )}
-                        </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {meta.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {meta.description}
+                          {cat === "security"
+                            ? " (always on for critical alerts)"
+                            : ""}
+                        </p>
                       </div>
                       <Switch
                         aria-label={`${meta.label} email notifications`}
@@ -630,8 +533,8 @@ export function NotificationCenter({
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </TabsContent>
 

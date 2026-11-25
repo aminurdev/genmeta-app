@@ -317,59 +317,21 @@ export function ReferralDashboard() {
       </div>
 
       {/* 2. Referral Bonus Rule Callout */}
-      <Card className="border-emerald-500/25 bg-emerald-500/5">
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-3.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <Gift className="h-5 w-5" />
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-base sm:text-lg font-semibold text-foreground">
-                Earn ৳{commissionPerReferral} BDT When Your Referred User
-                Subscribes
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                If you refer a user, the{" "}
-                <span className="font-semibold text-foreground">
-                  ৳{commissionPerReferral} BDT referral bonus is added when the
-                  referred user subscribes to any package
-                </span>{" "}
-                (any subscription or credit plan). Creating an account alone
-                marks them as pending until their first package purchase is
-                completed.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Step 1 · Share Link
-              </p>
-              <p className="text-sm font-medium mt-0.5">
-                Friend registers with your link or code
-              </p>
-            </div>
-            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Step 2 · Package Purchase
-              </p>
-              <p className="text-sm font-medium mt-0.5">
-                Referred user subscribes to any package
-              </p>
-            </div>
-            <div className="rounded-lg border bg-background/70 px-3.5 py-2.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Step 3 · Bonus Credited
-              </p>
-              <p className="text-sm font-medium mt-0.5">
-                ৳{commissionPerReferral} BDT added (min. ৳
-                {minimumWithdrawAmount} to withdraw)
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-4 py-2.5 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Gift className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span>
+            <strong className="font-medium text-foreground">How it works:</strong>{" "}
+            Share your link &rarr; Friend purchases any plan &rarr; Earn{" "}
+            <strong className="font-medium text-foreground">
+              ৳{commissionPerReferral} BDT
+            </strong>
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          Min. withdrawal: ৳{minimumWithdrawAmount} BDT
+        </span>
+      </div>
 
       {/* 3. Four-Card KPI Summary Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

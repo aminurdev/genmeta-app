@@ -57,31 +57,13 @@ export function ReferralDashboardSkeleton() {
       </div>
 
       {/* 2. Referral Bonus Rule Callout */}
-      <Card className="border-emerald-500/25 bg-emerald-500/5">
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <Gift className="h-5 w-5" />
-            </div>
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-5 w-72 max-w-full" />
-              <Skeleton className="h-4 w-full max-w-2xl" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-            {[1, 2, 3].map((step) => (
-              <div
-                key={step}
-                className="rounded-lg border bg-background/70 px-3.5 py-2.5 space-y-1.5"
-              >
-                <Skeleton className="h-3 w-28" />
-                <Skeleton className="h-4 w-44 max-w-full" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <Gift className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+        <Skeleton className="h-3.5 w-36" />
+      </div>
 
       {/* 3. Four-Card KPI Summary Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
