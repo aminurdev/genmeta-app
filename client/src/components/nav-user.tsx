@@ -120,15 +120,6 @@ export function NavUser({ user }: Props) {
                       Profile
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/dashboard/appearance"
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -238,15 +229,6 @@ export function NavUser({ user }: Props) {
             >
               <UserIcon className="h-4 w-4" />
               Profile
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link
-              href="/dashboard/appearance"
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
