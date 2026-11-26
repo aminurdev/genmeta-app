@@ -43,7 +43,7 @@ export function UsersManagementSkeleton({
         <div>
           <div className="flex flex-wrap items-center gap-2.5 mb-1">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Users &amp; Licenses
+              Users 
             </h1>
             <Skeleton className="h-5 w-28 rounded-full" />
           </div>
@@ -69,7 +69,7 @@ export function UsersManagementSkeleton({
         {[
           { label: "Total Users", icon: Users },
           { label: "Active Premium", icon: Sparkles },
-          { label: "Desktop Licenses", icon: KeyRound },
+          { label: "Desktop Users", icon: KeyRound },
           { label: "Platform Processes", icon: Layers },
         ].map((item, idx) => {
           const Icon = item.icon;
@@ -156,7 +156,7 @@ export function UsersManagementSkeleton({
               User Directory
             </CardTitle>
             <CardDescription>
-              Inspect user profiles, manage desktop licenses, and manually assign
+              Inspect user profiles, manage desktop users, and manually assign
               or upgrade plans.
             </CardDescription>
           </div>

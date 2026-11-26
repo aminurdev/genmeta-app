@@ -156,7 +156,7 @@ export default function StatisticsContent({
                 {stats.expiredPendingDowngrade} expired paid account
                 {stats.expiredPendingDowngrade === 1 ? "" : "s"}
               </span>{" "}
-              still marked as paid — sync to downgrade expired licenses.
+              still marked as paid — sync to downgrade expired.
             </span>
           </div>
           {onSyncPlans && (
@@ -227,7 +227,7 @@ export default function StatisticsContent({
               {creditCount.toLocaleString()} credit packs
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Active non-expired licenses
+              Active non-expired Users
             </p>
           </CardContent>
         </Card>
@@ -235,7 +235,7 @@ export default function StatisticsContent({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Desktop Licenses
+              Desktop Users
             </CardTitle>
             <KeyRound className="h-4 w-4 text-blue-500" />
           </CardHeader>

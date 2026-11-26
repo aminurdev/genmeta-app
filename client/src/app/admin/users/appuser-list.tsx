@@ -506,7 +506,7 @@ export default function AppUserList({
             </Badge>
           </div>
           <CardDescription>
-            Inspect user profiles, manage desktop licenses, and manually assign
+            Inspect user profiles, manage desktop App, and manually assign
             or upgrade plans.
           </CardDescription>
         </div>

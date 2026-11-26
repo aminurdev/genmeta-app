@@ -74,7 +74,7 @@ export default function AdminUsersPage() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5 mb-1">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Users &amp; Licenses
+              Users
             </h1>
             <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2.5 py-0.5 rounded-full border bg-muted/50">
               <span className="relative flex h-2 w-2">
