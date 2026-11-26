@@ -60,6 +60,7 @@ export const QUERY_KEYS = {
   allPricing: ["pricing", "all"],
   superAdminOverview: ["admin", "superAdmin", "overview"],
   superAdminStaff: ["admin", "superAdmin", "staff"],
+  superAdminAiKeys: ["admin", "superAdmin", "aiKeys"],
   adminWithdrawalNotifications: ["admin", "notifications", "withdrawals"],
   adminProcessErrors: (params?: GetAdminProcessErrorsParams) => [
     "admin",

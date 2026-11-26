@@ -8,6 +8,7 @@ import { Session } from "../models/session.model.js";
 import { Referral } from "../models/referral.model.js";
 import { ReferralWithdrawal } from "../models/referralWithdrawal.model.js";
 import { BackupLog } from "../models/backupLog.model.js";
+import { AiAPI } from "../models/aiApiKey.model.js";
 import backupService from "../services/backup.service.js";
 import schedulerService from "../services/scheduler.service.js";
 import notificationService from "../services/notification/notification.service.js";
@@ -2715,6 +2716,7 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
     appUserAgg,
     activeSessions,
     latestBackupDoc,
+    aiApiDocs,
   ] = await Promise.all([
     User.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
     User.countDocuments({ isDisabled: true }),
@@ -2723,6 +2725,7 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
     AppUser.aggregate([{ $group: { _id: null, totalProcesses: { $sum: "$totalProcess" } } }]),
     Session.countDocuments({ revokedAt: null, expiresAt: { $gt: now } }),
     BackupLog.findOne().sort({ timestamp: -1 }).lean().catch(() => null),
+    AiAPI.find().sort({ isActive: -1, updatedAt: -1 }).lean().catch(() => []),
   ]);
 
   const roleMap = { user: 0, admin: 0, superAdmin: 0 };
@@ -2797,6 +2800,13 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
         isRunning: Boolean(backupStatus.isRunning),
         targetDatabase: backupStatus.targetDatabase || "backup",
         lastBackup: lastBackupSnapshot,
+      },
+      aiApi: {
+        totalKeys: aiApiDocs.length,
+        activeKeys: aiApiDocs.filter((k) => k.isActive).length,
+        inactiveKeys: aiApiDocs.filter((k) => !k.isActive).length,
+        primaryKeyName: aiApiDocs.find((k) => k.isActive)?.name || null,
+        lastUpdatedAt: aiApiDocs[0]?.updatedAt || null,
       },
     },
     meta: {

@@ -201,7 +201,8 @@ export async function proxy(request: NextRequest) {
     const isSuperAdminOnlyRoute =
       pathname.startsWith("/admin/super-admin") ||
       pathname.startsWith("/admin/scheduler") ||
-      pathname.startsWith("/admin/backup");
+      pathname.startsWith("/admin/backup") ||
+      pathname.startsWith("/admin/ai-api");
 
     if (isSuperAdminOnlyRoute && userRole !== "superAdmin") {
       return applySetCookies(

@@ -5,13 +5,14 @@ import {
   getAllGeminiKeys,
   updateGeminiKey,
 } from "../controllers/aiApiKey.controller.js";
-import { authenticateAndVerifyAdmin } from "../middlewares/auth.middleware.js";
+import { authenticateAndVerifySuperAdmin } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", authenticateAndVerifyAdmin, getAllGeminiKeys);
-router.post("/", authenticateAndVerifyAdmin, createGeminiKey);
-router.put("/:id", authenticateAndVerifyAdmin, updateGeminiKey);
-router.delete("/:id", authenticateAndVerifyAdmin, deleteGeminiKey);
+router.get("/", authenticateAndVerifySuperAdmin, getAllGeminiKeys);
+router.post("/", authenticateAndVerifySuperAdmin, createGeminiKey);
+router.put("/:id", authenticateAndVerifySuperAdmin, updateGeminiKey);
+router.patch("/:id", authenticateAndVerifySuperAdmin, updateGeminiKey);
+router.delete("/:id", authenticateAndVerifySuperAdmin, deleteGeminiKey);
 
 export default router;

@@ -8,6 +8,7 @@ import { User } from "../models/user.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AppPricing } from "../models/appPricing.model.js";
 import { AiAPI } from "../models/aiApiKey.model.js";
+import { resolveAiApiKeyForClient } from "../utils/encrypt.js";
 import { AppUser, extractDeviceMeta } from "../models/appUser.model.js";
 import { ApiUsageLog } from "../models/apiUsageLog.model.js";
 import { Referral } from "../models/referral.model.js";
@@ -129,7 +130,10 @@ async function buildAppAccountPayload(appDoc, user, deviceMeta = {}) {
   const encryptedKeyDoc =
     planType === PLAN_TYPES.CREDIT ? await AiAPI.findOne({ isActive: true }) : null;
   const aiApiKey =
-    planType === PLAN_TYPES.CREDIT && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
+    planType === PLAN_TYPES.CREDIT && encryptedKeyDoc
+      ? resolveAiApiKeyForClient(encryptedKeyDoc.ai_api_key)
+      : null;
+  const aiApiSecret = planType === PLAN_TYPES.CREDIT ? config.encoderKey : null;
 
   const remainingCredit = appDoc.calculateCredit();
   const devices = appDoc.getFormattedDevices(
@@ -158,6 +162,7 @@ async function buildAppAccountPayload(appDoc, user, deviceMeta = {}) {
     expiresIn,
     credit: remainingCredit === Infinity ? null : remainingCredit,
     totalProcess: appDoc.totalProcess || 0,
+    aiApiSecret,
     aiApiKey,
     hasAiApiKey: planType === PLAN_TYPES.CREDIT && Boolean(aiApiKey),
     devices,
@@ -1890,7 +1895,10 @@ export const validateAppUser = asyncHandler(async (req, res) => {
   const isCreditPlan = appDoc.plan.type === PLAN_TYPES.CREDIT;
   const aiApiSecret = isCreditPlan ? config.encoderKey : null;
   const encryptedKeyDoc = isCreditPlan ? await AiAPI.findOne({ isActive: true }) : null;
-  const aiApiKey = isCreditPlan && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
+  const aiApiKey =
+    isCreditPlan && encryptedKeyDoc
+      ? resolveAiApiKeyForClient(encryptedKeyDoc.ai_api_key)
+      : null;
 
   return new ApiResponse(200, true, "Account is valid and process allowed.", {
     appUserKey: appDoc.key,
@@ -1960,10 +1968,13 @@ export const getAppUserStats = asyncHandler(async (req, res) => {
       ? Math.max(0, Math.floor((appDoc.expiresAt - now) / (1000 * 60 * 60 * 24)))
       : null;
 
-  const encryptedKeyDoc =
-    appDoc.plan.type === PLAN_TYPES.CREDIT ? await AiAPI.findOne({ isActive: true }) : null;
+  const isCreditPlan = appDoc.plan.type === PLAN_TYPES.CREDIT;
+  const aiApiSecret = isCreditPlan ? config.encoderKey : null;
+  const encryptedKeyDoc = isCreditPlan ? await AiAPI.findOne({ isActive: true }) : null;
   const aiApiKey =
-    appDoc.plan.type === PLAN_TYPES.CREDIT && encryptedKeyDoc ? encryptedKeyDoc.ai_api_key : null;
+    isCreditPlan && encryptedKeyDoc
+      ? resolveAiApiKeyForClient(encryptedKeyDoc.ai_api_key)
+      : null;
 
   const remainingCredit = appDoc.calculateCredit();
   const devices = appDoc.getFormattedDevices(
@@ -1987,6 +1998,7 @@ export const getAppUserStats = asyncHandler(async (req, res) => {
     expiresIn,
     credit: remainingCredit === Infinity ? null : remainingCredit,
     totalProcess: appDoc.totalProcess,
+    aiApiSecret,
     aiApiKey,
     devices,
     maxDevices: appDoc.maxDevices || 2,

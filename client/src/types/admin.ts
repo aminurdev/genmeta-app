@@ -989,6 +989,13 @@ export interface SuperAdminOverview {
         triggeredBy: string;
       } | null;
     };
+    aiApi?: {
+      totalKeys: number;
+      activeKeys: number;
+      inactiveKeys: number;
+      primaryKeyName: string | null;
+      lastUpdatedAt: string | null;
+    };
   };
   meta?: {
     generatedAt: string;
@@ -1043,6 +1050,29 @@ export interface ToggleStatusResponse {
   email: string;
   role?: "user" | "admin" | "superAdmin";
   isDisabled: boolean;
+}
+
+export interface AiApiKeyRecord {
+  _id: string;
+  name: string;
+  ai_api_key: string;
+  isActive: boolean;
+  isHealthy?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateAiApiKeyPayload {
+  name?: string;
+  ai_api_key: string;
+  isActive?: boolean;
+}
+
+export interface UpdateAiApiKeyPayload {
+  id: string;
+  name?: string;
+  ai_api_key?: string;
+  isActive?: boolean;
 }
 
 export interface WithdrawalNotification {

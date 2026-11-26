@@ -1,9 +1,12 @@
 import { api } from "./api-client";
 import type { ApiErrorResponse, ApiResponse, AxiosApiError } from "@/types";
 import type {
+  AiApiKeyRecord,
+  CreateAiApiKeyPayload,
   StaffListResponse,
   SuperAdminOverview,
   ToggleStatusResponse,
+  UpdateAiApiKeyPayload,
   UpdateRoleResponse,
 } from "@/types/admin";
 
@@ -89,5 +92,50 @@ export const toggleUserStatus = async (
     return result.data;
   } catch (error) {
     return toSuperAdminApiError(error, "Failed to update account status");
+  }
+};
+
+export const getAiApiKeys = async (): Promise<
+  ApiResponse<AiApiKeyRecord[]> | ApiErrorResponse
+> => {
+  try {
+    const result = await api.get("/aiApi");
+    return result.data;
+  } catch (error) {
+    return toSuperAdminApiError(error, "Failed to load AI API keys");
+  }
+};
+
+export const createAiApiKey = async (
+  payload: CreateAiApiKeyPayload
+): Promise<ApiResponse<AiApiKeyRecord> | ApiErrorResponse> => {
+  try {
+    const result = await api.post("/aiApi", payload);
+    return result.data;
+  } catch (error) {
+    return toSuperAdminApiError(error, "Failed to create AI API key");
+  }
+};
+
+export const updateAiApiKey = async (
+  payload: UpdateAiApiKeyPayload
+): Promise<ApiResponse<AiApiKeyRecord> | ApiErrorResponse> => {
+  try {
+    const { id, ...body } = payload;
+    const result = await api.put(`/aiApi/${id}`, body);
+    return result.data;
+  } catch (error) {
+    return toSuperAdminApiError(error, "Failed to update AI API key");
+  }
+};
+
+export const deleteAiApiKey = async (
+  id: string
+): Promise<ApiResponse<{ _id?: string }> | ApiErrorResponse> => {
+  try {
+    const result = await api.delete(`/aiApi/${id}`);
+    return result.data;
+  } catch (error) {
+    return toSuperAdminApiError(error, "Failed to delete AI API key");
   }
 };

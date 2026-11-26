@@ -56,3 +56,43 @@ export function decrypt(encryptedText) {
     return encryptedText;
   }
 }
+
+/**
+ * Validate/normalize an AI API key before sending it to the desktop client.
+ * - Plaintext keys are encrypted with the active encoderKey.
+ * - Encrypted `iv:ciphertext` values are verified against the active encoderKey;
+ *   returns null and logs a warning if decryption fails.
+ * @param {string | null | undefined} rawKey
+ * @returns {string | null}
+ */
+export function resolveAiApiKeyForClient(rawKey) {
+  if (!rawKey || typeof rawKey !== "string") return null;
+  const trimmed = rawKey.trim();
+  if (!trimmed) return null;
+
+  if (!trimmed.includes(":")) {
+    return encrypt(trimmed);
+  }
+
+  try {
+    const parts = trimmed.split(":");
+    if (parts.length !== 2 || !parts[0] || !parts[1]) {
+      return null;
+    }
+    const [ivHex, encryptedHex] = parts;
+    const iv = Buffer.from(ivHex, "hex");
+    const encrypted = Buffer.from(encryptedHex, "hex");
+    const key = getKey();
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+      .toString("utf8")
+      .trim();
+    return decrypted ? trimmed : null;
+  } catch (error) {
+    console.warn(
+      "Stored AiAPI key cannot be decrypted with current GEMINI_ENCODER_KEY; please re-save it in the admin panel:",
+      error.message
+    );
+    return null;
+  }
+}

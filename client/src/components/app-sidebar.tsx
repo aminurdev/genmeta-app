@@ -24,6 +24,7 @@ import {
   Phone,
   Mail,
   Database,
+  KeyRound,
   ShieldAlert,
 } from "lucide-react";
 import { User } from "@/services/auth-services";
@@ -119,6 +120,12 @@ const adminSidebarData = [
         title: "Database Backup",
         url: "/admin/backup",
         icon: Database,
+        isForSuperAdmin: true,
+      },
+      {
+        title: "AI API Keys",
+        url: "/admin/ai-api",
+        icon: KeyRound,
         isForSuperAdmin: true,
       },
     ],

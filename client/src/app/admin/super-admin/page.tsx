@@ -11,6 +11,7 @@ import {
   Cpu,
   Database,
   Filter,
+  KeyRound,
   MoreVertical,
   Package,
   RefreshCw,
@@ -346,6 +347,7 @@ export default function SuperAdminPage() {
 
   const schedulerService = overview?.services?.scheduler;
   const backupService = overview?.services?.backup;
+  const aiApiService = overview?.services?.aiApi;
 
   const renderStaffActionsMenu = (member: StaffAccount) => {
     const isSelf = currentUser?.userId === member._id;
@@ -769,6 +771,43 @@ export default function SuperAdminPage() {
                           "MMM d, h:mm a"
                         )}`
                       : "Daily maintenance & reconciliation cron"}
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </Link>
+
+            <Link
+              href="/admin/ai-api"
+              className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <KeyRound className="h-4 w-4 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">
+                      AI API Keys (Gemini)
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[11px]",
+                        (aiApiService?.activeKeys ?? 0) > 0
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      )}
+                    >
+                      {(aiApiService?.activeKeys ?? 0) > 0
+                        ? `${aiApiService?.activeKeys} Active`
+                        : "No Active Key"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {aiApiService?.primaryKeyName
+                      ? `Primary: ${aiApiService.primaryKeyName} (${aiApiService.totalKeys} total)`
+                      : (aiApiService?.totalKeys ?? 0) > 0
+                        ? `${aiApiService?.totalKeys} configured key(s), none active`
+                        : "Manage encrypted Gemini API keys"}
                   </p>
                 </div>
               </div>
