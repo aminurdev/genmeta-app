@@ -278,7 +278,7 @@ export function AdminErrorsDashboard() {
 
   const {
     data: response,
-    isLoading,
+    isPending: isLoading,
     isFetching,
     refetch,
   } = useAdminProcessErrorsQuery(queryParams);

@@ -148,7 +148,7 @@ export function PricingDashboard() {
 
   const {
     data: plansResponse,
-    isLoading: plansLoading,
+    isPending: plansLoading,
     isFetching: plansFetching,
     isError: plansIsError,
     refetch: refetchPlans,
@@ -156,7 +156,7 @@ export function PricingDashboard() {
 
   const {
     data: promoCodesResponse,
-    isLoading: promoLoading,
+    isPending: promoLoading,
     isFetching: promoFetching,
     isError: promoIsError,
     refetch: refetchPromoCodes,
@@ -226,8 +226,8 @@ export function PricingDashboard() {
       if (!plansRes.success || !promoRes.success) {
         toast.error(
           (!plansRes.success ? plansRes.message : null) ||
-            (!promoRes.success ? promoRes.message : null) ||
-            "Failed to sync pricing data",
+          (!promoRes.success ? promoRes.message : null) ||
+          "Failed to sync pricing data",
         );
         return;
       }
@@ -403,7 +403,7 @@ export function PricingDashboard() {
             className={cn(
               "h-full transition-colors hover:border-foreground/30",
               planTypeFilter === "credit" &&
-                "border-amber-500/50 bg-amber-500/5",
+              "border-amber-500/50 bg-amber-500/5",
             )}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -446,7 +446,7 @@ export function PricingDashboard() {
             className={cn(
               "h-full transition-colors hover:border-foreground/30",
               planTypeFilter === "subscription" &&
-                "border-blue-500/50 bg-blue-500/5",
+              "border-blue-500/50 bg-blue-500/5",
             )}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">

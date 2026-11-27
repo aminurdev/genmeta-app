@@ -140,12 +140,12 @@ function GrowthPill({ value }: { value: number }) {
       className={cn(
         "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-medium border",
         isPositive &&
-          "text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10",
+        "text-emerald-600 dark:text-emerald-400 border-emerald-500/25 bg-emerald-500/10",
         isNegative &&
-          "text-destructive border-destructive/25 bg-destructive/10",
+        "text-destructive border-destructive/25 bg-destructive/10",
         !isPositive &&
-          !isNegative &&
-          "text-muted-foreground border-border bg-muted/50"
+        !isNegative &&
+        "text-muted-foreground border-border bg-muted/50"
       )}
     >
       {isPositive ? (
@@ -198,7 +198,7 @@ export default function DashboardStats() {
 
   const {
     data,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     isError,
     error,
@@ -265,13 +265,13 @@ export default function DashboardStats() {
   const revenueChartData =
     revenueRange === "7days"
       ? (revenue.last7DaysRevenue || []).map((point) => ({
-          label: formatDateLabel(point.date),
-          value: point.amount || 0,
-        }))
+        label: formatDateLabel(point.date),
+        value: point.amount || 0,
+      }))
       : (revenue.last6MonthRevenue || []).map((point) => ({
-          label: formatMonthLabel(point.month),
-          value: point.amount || 0,
-        }));
+        label: formatMonthLabel(point.month),
+        value: point.amount || 0,
+      }));
 
   const revenueWindowTotal = revenueChartData.reduce(
     (sum, item) => sum + item.value,
@@ -281,13 +281,13 @@ export default function DashboardStats() {
   const processChartData =
     processRange === "7days"
       ? (appUsers.last7DaysProcess || []).map((point) => ({
-          label: formatDateLabel(point.date),
-          value: point.count || 0,
-        }))
+        label: formatDateLabel(point.date),
+        value: point.count || 0,
+      }))
       : (appUsers.last6MonthProcess || []).map((point) => ({
-          label: formatMonthLabel(point.month),
-          value: point.count || 0,
-        }));
+        label: formatMonthLabel(point.month),
+        value: point.count || 0,
+      }));
 
   const processWindowTotal = processChartData.reduce(
     (sum, item) => sum + item.value,
@@ -367,66 +367,66 @@ export default function DashboardStats() {
       {/* 2. Conditional Operational Alert Strip */}
       {(referrals.pendingWithdrawalsCount > 0 ||
         appUsers.expiredPendingDowngrade > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {referrals.pendingWithdrawalsCount > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-              <div className="flex items-start sm:items-center gap-2.5 text-amber-800 dark:text-amber-200 min-w-0">
-                <Wallet className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0" />
-                <span className="text-xs sm:text-sm">
-                  <span className="font-semibold">
-                    {referrals.pendingWithdrawalsCount} pending referral payout
-                    {referrals.pendingWithdrawalsCount === 1 ? "" : "s"}
-                  </span>{" "}
-                  totaling{" "}
-                  <span className="font-semibold">
-                    {formatBdt(referrals.pendingWithdrawalsAmount)}
-                  </span>{" "}
-                  awaiting approval.
-                </span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {referrals.pendingWithdrawalsCount > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+                <div className="flex items-start sm:items-center gap-2.5 text-amber-800 dark:text-amber-200 min-w-0">
+                  <Wallet className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0" />
+                  <span className="text-xs sm:text-sm">
+                    <span className="font-semibold">
+                      {referrals.pendingWithdrawalsCount} pending referral payout
+                      {referrals.pendingWithdrawalsCount === 1 ? "" : "s"}
+                    </span>{" "}
+                    totaling{" "}
+                    <span className="font-semibold">
+                      {formatBdt(referrals.pendingWithdrawalsAmount)}
+                    </span>{" "}
+                    awaiting approval.
+                  </span>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs shrink-0 self-start sm:self-auto border-amber-500/30 bg-background/80"
+                >
+                  <Link href="/admin/referral">
+                    Review Payouts
+                    <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               </div>
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs shrink-0 self-start sm:self-auto border-amber-500/30 bg-background/80"
-              >
-                <Link href="/admin/referral">
-                  Review Payouts
-                  <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </div>
-          )}
+            )}
 
-          {appUsers.expiredPendingDowngrade > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm">
-              <div className="flex items-start sm:items-center gap-2.5 text-blue-800 dark:text-blue-200 min-w-0">
-                <Clock className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0" />
-                <span className="text-xs sm:text-sm">
-                  <span className="font-semibold">
-                    {appUsers.expiredPendingDowngrade} expired paid account
-                    {appUsers.expiredPendingDowngrade === 1 ? "" : "s"}
-                  </span>{" "}
-                  pending plan reconciliation.
-                </span>
+            {appUsers.expiredPendingDowngrade > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm">
+                <div className="flex items-start sm:items-center gap-2.5 text-blue-800 dark:text-blue-200 min-w-0">
+                  <Clock className="h-4 w-4 shrink-0 mt-0.5 sm:mt-0" />
+                  <span className="text-xs sm:text-sm">
+                    <span className="font-semibold">
+                      {appUsers.expiredPendingDowngrade} expired paid account
+                      {appUsers.expiredPendingDowngrade === 1 ? "" : "s"}
+                    </span>{" "}
+                    pending plan reconciliation.
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isRefreshing}
+                  onClick={handleRefresh}
+                  className="h-7 text-xs shrink-0 self-start sm:self-auto border-blue-500/30 bg-background/80 gap-1.5"
+                >
+                  <RefreshCw
+                    className={cn("h-3 w-3", isRefreshing && "animate-spin")}
+                  />
+                  Sync Plans
+                </Button>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={isRefreshing}
-                onClick={handleRefresh}
-                className="h-7 text-xs shrink-0 self-start sm:self-auto border-blue-500/30 bg-background/80 gap-1.5"
-              >
-                <RefreshCw
-                  className={cn("h-3 w-3", isRefreshing && "animate-spin")}
-                />
-                Sync Plans
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
       {/* 3. Primary KPI Row (4 Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

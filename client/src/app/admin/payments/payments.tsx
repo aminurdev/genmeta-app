@@ -343,7 +343,7 @@ export function PaymentHistoryPage() {
 
   const {
     data: paymentsResponse,
-    isLoading: paymentsLoading,
+    isPending: paymentsLoading,
     isFetching: paymentsFetching,
     isError: paymentsIsError,
     refetch: refetchPayments,
@@ -351,7 +351,7 @@ export function PaymentHistoryPage() {
 
   const {
     data: transactionsResponse,
-    isLoading: txLoading,
+    isPending: txLoading,
     isFetching: txFetching,
     isError: txIsError,
     refetch: refetchTransactions,
@@ -469,8 +469,8 @@ export function PaymentHistoryPage() {
       if (!paymentsRes.success || !transactionsRes.success) {
         toast.error(
           (!paymentsRes.success ? paymentsRes.message : null) ||
-            (!transactionsRes.success ? transactionsRes.message : null) ||
-            "Failed to sync payment data",
+          (!transactionsRes.success ? transactionsRes.message : null) ||
+          "Failed to sync payment data",
         );
         return;
       }
@@ -537,8 +537,7 @@ export function PaymentHistoryPage() {
         toast.success(`Invoice ${invoiceNumber} verified & fulfilled`);
       } else {
         toast.info(
-          `Invoice ${invoiceNumber}: status "${outcome}"${
-            res.data?.error ? ` — ${res.data.error}` : ""
+          `Invoice ${invoiceNumber}: status "${outcome}"${res.data?.error ? ` — ${res.data.error}` : ""
           }`,
         );
       }
@@ -844,7 +843,7 @@ export function PaymentHistoryPage() {
                     className={cn(
                       "text-2xl font-bold tabular-nums",
                       pendingGatewayCount > 0 &&
-                        "text-amber-600 dark:text-amber-400",
+                      "text-amber-600 dark:text-amber-400",
                     )}
                   >
                     {pendingGatewayCount.toLocaleString()}
@@ -928,7 +927,7 @@ export function PaymentHistoryPage() {
                     className={cn(
                       "h-4 px-1.5 text-[10px] tabular-nums",
                       active &&
-                        "bg-background/20 text-inherit border-transparent",
+                      "bg-background/20 text-inherit border-transparent",
                     )}
                   >
                     {pill.count}
@@ -1108,7 +1107,7 @@ export function PaymentHistoryPage() {
 
         <CardContent className="space-y-4">
           {paymentsLoading ||
-          (paymentsFetching && payments.length === 0 && !paymentsHasError) ? (
+            (paymentsFetching && payments.length === 0 && !paymentsHasError) ? (
             <PaymentsTableSkeleton rows={pageSize} />
           ) : paymentsHasError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
@@ -1572,7 +1571,7 @@ export function PaymentHistoryPage() {
                     className={cn(
                       "h-4 px-1.5 text-[10px] tabular-nums",
                       active &&
-                        "bg-background/20 text-inherit border-transparent",
+                      "bg-background/20 text-inherit border-transparent",
                     )}
                   >
                     {pill.count}
@@ -1620,7 +1619,7 @@ export function PaymentHistoryPage() {
 
         <CardContent className="space-y-4">
           {txLoading ||
-          (txFetching && transactions.length === 0 && !txHasError) ? (
+            (txFetching && transactions.length === 0 && !txHasError) ? (
             <GatewayTransactionsTableSkeleton rows={txLimit} />
           ) : txHasError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
@@ -1700,7 +1699,7 @@ export function PaymentHistoryPage() {
                                     className="text-muted-foreground hover:text-foreground shrink-0"
                                   >
                                     {copiedKey ===
-                                    `inv-${tx.invoiceNumber}` ? (
+                                      `inv-${tx.invoiceNumber}` ? (
                                       <Check className="h-3 w-3 text-emerald-600" />
                                     ) : (
                                       <Copy className="h-3 w-3" />
@@ -1766,7 +1765,7 @@ export function PaymentHistoryPage() {
                             {tx.pricing?.paidAmount !== null &&
                               tx.pricing?.paidAmount !== undefined &&
                               tx.pricing.paidAmount !==
-                                tx.pricing.expectedAmount && (
+                              tx.pricing.expectedAmount && (
                                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                                   Paid {formatCurrency(tx.pricing.paidAmount)}
                                 </p>
@@ -1790,7 +1789,7 @@ export function PaymentHistoryPage() {
                               className={cn(
                                 "text-[11px] tabular-nums",
                                 completedSteps === 5 &&
-                                  "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400",
+                                "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400",
                               )}
                             >
                               {completedSteps}/5 steps
@@ -1980,8 +1979,8 @@ export function PaymentHistoryPage() {
             const customer = getCustomerFromPayment(selectedPayment);
             const detailsEntries = selectedPayment.paymentDetails
               ? Object.entries(selectedPayment.paymentDetails).filter(
-                  ([, v]) => v !== null && v !== undefined && v !== "",
-                )
+                ([, v]) => v !== null && v !== undefined && v !== "",
+              )
               : [];
 
             return (
@@ -2128,7 +2127,7 @@ export function PaymentHistoryPage() {
                   <p className="text-2xl font-bold tabular-nums mt-0.5">
                     {formatCurrency(
                       selectedTransaction.pricing?.expectedAmount ??
-                        selectedTransaction.amount,
+                      selectedTransaction.amount,
                     )}
                   </p>
                 </div>
@@ -2151,7 +2150,7 @@ export function PaymentHistoryPage() {
                         className="h-8 gap-1.5 text-xs"
                       >
                         {reconcilingInvoice ===
-                        selectedTransaction.invoiceNumber ? (
+                          selectedTransaction.invoiceNumber ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <ShieldCheck className="h-3.5 w-3.5" />
@@ -2203,7 +2202,7 @@ export function PaymentHistoryPage() {
                     <span className="tabular-nums">
                       {formatCurrency(
                         selectedTransaction.pricing?.expectedAmount ??
-                          selectedTransaction.amount,
+                        selectedTransaction.amount,
                       )}
                     </span>
                   </div>

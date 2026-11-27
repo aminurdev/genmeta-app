@@ -122,7 +122,7 @@ export function NotificationCenter({
     enableToast: false,
   });
 
-  const { data: listResponse, isLoading } = useNotificationsQuery({
+  const { data: listResponse, isPending: isLoading } = useNotificationsQuery({
     scope,
     status: statusFilter,
     page,
@@ -147,7 +147,7 @@ export function NotificationCenter({
   const markAllReadMutation = useMarkAllNotificationsReadMutation();
   const deleteMutation = useDeleteNotificationMutation();
 
-  const { data: prefsResponse, isLoading: prefsLoading } =
+  const { data: prefsResponse, isPending: prefsLoading } =
     useNotificationPreferencesQuery(scope);
   const updatePrefsMutation = useUpdateNotificationPreferencesMutation(scope);
   const prefs =
@@ -171,7 +171,7 @@ export function NotificationCenter({
   const [broadcastActionUrl, setBroadcastActionUrl] = useState("");
   const [broadcastSendEmail, setBroadcastSendEmail] = useState(false);
 
-  const { data: broadcastsResponse, isLoading: broadcastsLoading } =
+  const { data: broadcastsResponse, isPending: broadcastsLoading } =
     useAdminBroadcastsQuery(broadcastPage, 10, {
       enabled: isAdminConsole && activeTab === "broadcasts",
     });

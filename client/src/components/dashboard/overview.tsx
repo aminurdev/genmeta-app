@@ -81,7 +81,7 @@ export default function Overview() {
 
   const {
     data: overviewRes,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     refetch,
     isError,
@@ -95,8 +95,8 @@ export default function Overview() {
     if (res.isError || !res.data?.success) {
       toast.error(
         (res.data && !res.data.success ? res.data.message : null) ||
-          (res.error as Error)?.message ||
-          "Failed to refresh dashboard data"
+        (res.error as Error)?.message ||
+        "Failed to refresh dashboard data"
       );
       return;
     }

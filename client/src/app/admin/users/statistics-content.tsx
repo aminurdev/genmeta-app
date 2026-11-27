@@ -87,7 +87,7 @@ export default function StatisticsContent({
   onSyncPlans,
   isSyncing = false,
 }: StatisticsContentProps) {
-  const { data, isLoading, error, refetch } = useUserStatsQuery();
+  const { data, isPending: isLoading, error, refetch } = useUserStatsQuery();
 
   if (isLoading) {
     return <StatsLoadingState />;

@@ -68,7 +68,7 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const {
     data: profileRes,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     refetch,
     isError,
@@ -86,8 +86,8 @@ export default function Profile() {
         (profileResult.data && !profileResult.data.success
           ? profileResult.data.message
           : null) ||
-          (profileResult.error as Error)?.message ||
-          "Failed to refresh profile"
+        (profileResult.error as Error)?.message ||
+        "Failed to refresh profile"
       );
       return;
     }
@@ -266,7 +266,7 @@ export default function Profile() {
             <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
               <span>
                 {appUser?.remainingDays !== null &&
-                appUser?.remainingDays !== undefined
+                  appUser?.remainingDays !== undefined
                   ? `${appUser.remainingDays} days remaining`
                   : isSubscription
                     ? "Active subscription"

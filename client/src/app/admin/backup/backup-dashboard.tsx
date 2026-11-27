@@ -199,18 +199,18 @@ export function BackupDashboard() {
 
   const {
     data: connectionResponse,
-    isLoading: connectionLoading,
+    isPending: connectionLoading,
   } = useBackupConnectionQuery();
 
   const {
     data: statusResponse,
-    isLoading: statusLoading,
+    isPending: statusLoading,
     refetch: refetchStatus,
   } = useBackupStatusQuery();
 
   const {
     data: historyResponse,
-    isLoading: historyLoading,
+    isPending:  historyLoading,
     isFetching: historyFetching,
   } = useBackupHistoryQuery(historyParams);
 

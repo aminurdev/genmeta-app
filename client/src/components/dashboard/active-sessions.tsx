@@ -57,7 +57,7 @@ export function ActiveSessions() {
 
   const {
     data: sessionsRes,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     refetch,
   } = useActiveSessionsQuery();
@@ -72,7 +72,7 @@ export function ActiveSessions() {
     if (res.isError || !res.data?.success) {
       toast.error(
         (res.data && !res.data.success ? res.data.message : null) ||
-          "Failed to load active sessions"
+        "Failed to load active sessions"
       );
       return;
     }

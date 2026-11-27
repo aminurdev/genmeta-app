@@ -129,11 +129,11 @@ function PlanBadge({ type, name }: { type?: string; name?: string }) {
       className={cn(
         "capitalize text-[11px] font-medium",
         normalized === "subscription" &&
-          "text-purple-600 dark:text-purple-400 border-purple-500/25 bg-purple-500/10",
+        "text-purple-600 dark:text-purple-400 border-purple-500/25 bg-purple-500/10",
         normalized === "credit" &&
-          "text-amber-600 dark:text-amber-400 border-amber-500/25 bg-amber-500/10",
+        "text-amber-600 dark:text-amber-400 border-amber-500/25 bg-amber-500/10",
         normalized === "free" &&
-          "text-muted-foreground border-border bg-muted/50"
+        "text-muted-foreground border-border bg-muted/50"
       )}
     >
       {name || normalized}
@@ -303,7 +303,7 @@ export default function AppUserList({
     onQueryParamsChange?.(queryParamsString);
   }, [queryParamsString, onQueryParamsChange]);
 
-  const { data, isLoading, isFetching, isRefetching, error, refetch } =
+  const { data, isPending: isLoading, isFetching, isRefetching, error, refetch } =
     useAllUsersQuery(queryParamsString);
 
   const deleteMutation = useDeleteAppUserMutation();
@@ -361,7 +361,7 @@ export default function AppUserList({
       if (res.success) {
         toast.success(
           res.message ||
-            `App user ${mode === "suspend" ? "suspended" : "reactivated"}`
+          `App user ${mode === "suspend" ? "suspended" : "reactivated"}`
         );
       } else {
         toast.error(res.message || `Failed to ${mode} app user`);

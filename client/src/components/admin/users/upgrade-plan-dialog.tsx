@@ -118,7 +118,7 @@ function UpgradePlanForm({
   const [triggerReferralReward, setTriggerReferralReward] = useState(false);
   const [reason, setReason] = useState("");
 
-  const { data: pricingRes, isLoading: isPlansLoading } = usePricingPlansQuery({
+  const { data: pricingRes, isPending: isPlansLoading } = usePricingPlansQuery({
     isActive: true,
     limit: 100,
     sortBy: "basePrice",

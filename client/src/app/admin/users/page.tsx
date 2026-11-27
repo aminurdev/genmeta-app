@@ -11,6 +11,7 @@ import {
 } from "@/services/queries/admin-dashboard";
 import { CreateAppUserDialog } from "@/components/admin/users/create-app-user-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import StatisticsContent from "./statistics-content";
 import AppUserList from "./appuser-list";
@@ -26,7 +27,7 @@ export default function AdminUsersPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [activeQueryParams, setActiveQueryParams] = useState("page=1&limit=10");
 
-  const { data: statsRes } = useUserStatsQuery();
+  const { data: statsRes, isPending: isLoading } = useUserStatsQuery();
   const refreshMutation = useRefreshUsersManagementMutation();
 
   const generatedAt =
@@ -76,13 +77,17 @@ export default function AdminUsersPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Users
             </h1>
-            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2.5 py-0.5 rounded-full border bg-muted/50">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span>Synced {formatRelativeTime(generatedAt)}</span>
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-5 w-28 rounded-full" />
+            ) : (
+              <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2.5 py-0.5 rounded-full border bg-muted/50">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span>Synced {formatRelativeTime(generatedAt)}</span>
+              </div>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             Manage platform accounts, desktop app profiles, plans, credits, and
@@ -95,7 +100,7 @@ export default function AdminUsersPage() {
             variant="outline"
             size="sm"
             onClick={handleRefreshAll}
-            disabled={refreshMutation.isPending}
+            disabled={isLoading || refreshMutation.isPending}
             className="gap-2"
           >
             <RefreshCw

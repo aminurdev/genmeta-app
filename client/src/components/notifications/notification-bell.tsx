@@ -56,7 +56,7 @@ export function NotificationBell({ scope, className }: NotificationBellProps) {
 
   const {
     data: listResponse,
-    isLoading,
+    isPending: isLoading,
     refetch,
   } = useNotificationsQuery(
     {

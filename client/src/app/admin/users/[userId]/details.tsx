@@ -170,7 +170,7 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
 
   const {
     data: detailsRes,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     error,
     refetch,
@@ -222,9 +222,9 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
       if (res.success) {
         toast.success(
           res.message ||
-            (deviceId
-              ? "Desktop device removed"
-              : "All desktop devices reset")
+          (deviceId
+            ? "Desktop device removed"
+            : "All desktop devices reset")
         );
       } else {
         toast.error(res.message || "Failed to update desktop devices");
@@ -250,7 +250,7 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
       if (res.success) {
         toast.success(
           res.message ||
-            `App user ${mode === "suspend" ? "suspended" : "reactivated"}`
+          `App user ${mode === "suspend" ? "suspended" : "reactivated"}`
         );
       } else {
         toast.error(res.message || `Failed to ${mode} app user`);
@@ -353,13 +353,13 @@ export default function AppUserDetailsPage({ userId }: { userId: string }) {
   const activeChartData =
     chartView === "7days"
       ? (appUser.last7DaysProcess || []).map((pt) => ({
-          label: formatDayLabel(pt.date),
-          value: pt.count || 0,
-        }))
+        label: formatDayLabel(pt.date),
+        value: pt.count || 0,
+      }))
       : (appUser.last6MonthProcess || []).map((pt) => ({
-          label: formatMonthLabel(pt.month),
-          value: pt.count || 0,
-        }));
+        label: formatMonthLabel(pt.month),
+        value: pt.count || 0,
+      }));
 
   const chartWindowTotal = activeChartData.reduce(
     (sum, item) => sum + item.value,

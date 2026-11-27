@@ -104,7 +104,7 @@ function CreateAppUserForm({
   const [createdResult, setCreatedResult] =
     useState<CreateAppUserResponse | null>(null);
 
-  const { data: pricingRes, isLoading: isPlansLoading } = usePricingPlansQuery({
+  const { data: pricingRes, isPending: isPlansLoading } = usePricingPlansQuery({
     isActive: true,
     limit: 100,
     sortBy: "basePrice",

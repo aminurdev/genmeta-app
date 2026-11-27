@@ -163,12 +163,12 @@ export default function SuperAdminPage() {
 
   const {
     data: overviewResponse,
-    isLoading: isOverviewLoading,
+    isPending:  isOverviewLoading,
   } = useSuperAdminOverviewQuery();
 
   const {
     data: staffResponse,
-    isLoading: isStaffLoading,
+   isPending:  isStaffLoading,
   } = useAdminListQuery();
 
   const refreshMutation = useRefreshSuperAdminMutation();

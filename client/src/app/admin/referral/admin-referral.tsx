@@ -116,7 +116,7 @@ export function AdminReferralDashboard() {
 
   const {
     data: res,
-    isLoading,
+    isPending: isLoading,
     isFetching,
     isError,
     refetch,

@@ -169,7 +169,7 @@ export default function AdminUserReferralDashboard({
 
   const {
     data: res,
-    isLoading,
+    isPending: isLoading,
     isFetching,
     isError,
     refetch,

@@ -119,7 +119,7 @@ export function AiApiDashboard() {
 
   const {
     data: aiKeysResponse,
-    isLoading,
+    isPending: isLoading,
     isFetching,
     refetch,
   } = useAiApiKeysQuery();
@@ -441,12 +441,11 @@ export function AiApiDashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-1 truncate">
               {summary.primaryKey
-                ? `Updated ${
-                    safeFormatRelative(
-                      summary.primaryKey.updatedAt ||
-                        summary.primaryKey.createdAt
-                    ) || safeFormatDate(summary.primaryKey.updatedAt)
-                  }`
+                ? `Updated ${safeFormatRelative(
+                  summary.primaryKey.updatedAt ||
+                  summary.primaryKey.createdAt
+                ) || safeFormatDate(summary.primaryKey.updatedAt)
+                }`
                 : "No active key assigned"}
             </p>
           </CardContent>
@@ -765,12 +764,12 @@ export function AiApiDashboard() {
                               {safeFormatRelative(
                                 record.updatedAt || record.createdAt
                               ) && (
-                                <div className="text-[11px]">
-                                  {safeFormatRelative(
-                                    record.updatedAt || record.createdAt
-                                  )}
-                                </div>
-                              )}
+                                  <div className="text-[11px]">
+                                    {safeFormatRelative(
+                                      record.updatedAt || record.createdAt
+                                    )}
+                                  </div>
+                                )}
                             </TableCell>
 
                             <TableCell className="text-right">

@@ -91,12 +91,12 @@ function SchedulerRunningBadge({ isRunning }: { isRunning: boolean }) {
 export function SchedulerDashboard() {
   const {
     data: schedulerResponse,
-    isLoading: schedulerLoading,
+    isPending: schedulerLoading,
   } = useSchedulerStatusQuery();
 
   const {
     data: statsResponse,
-    isLoading: statsLoading,
+    isPending: statsLoading,
   } = useMaintenanceStatsQuery();
 
   const refreshMutation = useRefreshSchedulerMutation();
@@ -126,8 +126,8 @@ export function SchedulerDashboard() {
 
   const lastSyncedRelative = safeFormatRelative(
     schedulerStatus?.meta?.generatedAt ||
-      maintenanceStats?.meta?.generatedAt ||
-      maintenanceStats?.lastChecked
+    maintenanceStats?.meta?.generatedAt ||
+    maintenanceStats?.lastChecked
   );
 
   const isBusy =
@@ -302,28 +302,28 @@ export function SchedulerDashboard() {
       {/* API Error Alert */}
       {((schedulerResponse && !schedulerResponse.success) ||
         (statsResponse && !statsResponse.success)) && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Unable to load scheduler telemetry</AlertTitle>
-          <AlertDescription className="flex items-center justify-between gap-3">
-            <span>
-              {(schedulerResponse && !schedulerResponse.success
-                ? schedulerResponse.message
-                : statsResponse && !statsResponse.success
-                  ? statsResponse.message
-                  : "Request failed") || "Request failed"}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-            >
-              Retry
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Unable to load scheduler telemetry</AlertTitle>
+            <AlertDescription className="flex items-center justify-between gap-3">
+              <span>
+                {(schedulerResponse && !schedulerResponse.success
+                  ? schedulerResponse.message
+                  : statsResponse && !statsResponse.success
+                    ? statsResponse.message
+                    : "Request failed") || "Request failed"}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
       {/* 4 Compact KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
@@ -537,15 +537,15 @@ export function SchedulerDashboard() {
                 <p className="font-medium text-foreground">
                   {schedulerStatus?.paymentReconciliation?.nextRun
                     ? `Next: ${safeFormatDate(
-                        schedulerStatus.paymentReconciliation.nextRun
-                      )}`
+                      schedulerStatus.paymentReconciliation.nextRun
+                    )}`
                     : "Paused"}
                 </p>
                 <p>
                   {schedulerStatus?.paymentReconciliation?.lastRun
                     ? `Last: ${safeFormatRelative(
-                        schedulerStatus.paymentReconciliation.lastRun
-                      )}`
+                      schedulerStatus.paymentReconciliation.lastRun
+                    )}`
                     : "Pending first sweep"}
                 </p>
               </div>

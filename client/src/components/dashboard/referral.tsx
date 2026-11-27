@@ -109,7 +109,7 @@ function WithdrawalStatusBadge({
 export function ReferralDashboard() {
   const {
     data: referralResponse,
-    isLoading,
+    isPending: isLoading,
     isRefetching,
     refetch,
     isError,
