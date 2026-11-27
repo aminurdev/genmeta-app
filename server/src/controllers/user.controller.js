@@ -698,8 +698,8 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) {
-    const maxAttempts = config.max_login_attempts || 5;
-    const lockoutMs = config.lockout_duration_ms || 15 * 60 * 1000;
+    const maxAttempts = config.max_login_attempts;
+    const lockoutMs = config.lockout_duration_ms;
     const nextAttempts = (user.failedLoginAttempts || 0) + 1;
 
     if (nextAttempts >= maxAttempts) {

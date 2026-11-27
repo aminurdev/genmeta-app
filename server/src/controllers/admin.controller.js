@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import config from "../config/index.js";
 import { AppUser } from "../models/appUser.model.js";
 import { AppPayment } from "../models/appPayment.model.js";
 import { AppPricing } from "../models/appPricing.model.js";
@@ -2762,7 +2763,7 @@ export const getSuperAdminSystemOverview = asyncHandler(async (req, res) => {
       : null;
 
   const systemHealth = {
-    environment: process.env.NODE_ENV || "development",
+    environment: config.NODE_ENV,
     nodeVersion: process.version,
     platform: process.platform,
     uptimeSeconds,

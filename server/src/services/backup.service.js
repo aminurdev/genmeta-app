@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import config from "../config/index.js";
 import { BackupLog } from "../models/backupLog.model.js";
 
 /**
@@ -25,32 +26,28 @@ class BackupService {
    * Resolve main (source) database name
    */
   getSourceDbName() {
-    return mongoose.connection?.name || process.env.DB_NAME || "genmeta";
+    return mongoose.connection?.name || config.db_name;
   }
 
   /**
-   * Resolve target backup database name without falling back to "undefined_backup"
+   * Resolve target backup database name
    */
   getBackupDbName() {
-    return process.env.BACKUP_DB_NAME || `${this.getSourceDbName()}_backup`;
+    return config.backup_db_name;
   }
 
   /**
    * Whether backup connection URI is configured
    */
   isConfigured() {
-    return Boolean(process.env.MONGODB_BACKUP_URI?.trim());
+    return Boolean(config.mongodb_backup_uri);
   }
 
   /**
    * Get backup database URI from environment
    */
   getBackupUri() {
-    const rawUri = process.env.MONGODB_BACKUP_URI?.trim();
-    if (!rawUri) {
-      return null;
-    }
-
+    const rawUri = config.mongodb_backup_uri;
     const backupDbName = this.getBackupDbName();
     const [basePart, queryPart] = rawUri.split("?");
     const cleanBase = basePart.replace(/\/+$/, "");

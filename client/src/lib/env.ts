@@ -26,20 +26,18 @@ const getEnv = (key: string, defaultValue: string = ""): string => {
 export const ENV = {
   apiBaseUrl: getEnv(
     "NEXT_PUBLIC_API_BASE_URL",
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1"
+    process.env.NEXT_PUBLIC_API_BASE_URL
   ),
   backendApiUrl: (
-    process.env.BACKEND_API_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "http://localhost:5000/api/v1"
+    process.env.NEXT_PUBLIC_API_BASE_URL!
   ).replace(/\/+$/, ""),
   appUrl: getEnv(
     "NEXT_PUBLIC_APP_URL",
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_APP_URL
   ),
   gtmId: getEnv(
     "NEXT_PUBLIC_GTM_ID",
-    process.env.NEXT_PUBLIC_GTM_ID || ""
+    process.env.NEXT_PUBLIC_GTM_ID
   ),
   accessTokenExpiry:
     Number(

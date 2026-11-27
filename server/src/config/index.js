@@ -9,162 +9,180 @@ dotenv.config({
 const emptyToUndefined = (val) =>
   typeof val === "string" && val.trim() === "" ? undefined : val;
 
-const optionalNumberEnv = (schema) =>
-  z.preprocess(emptyToUndefined, schema);
+const requiredString = (name) =>
+  z.preprocess(
+    emptyToUndefined,
+    z
+      .string({ error: `${name} is required in .env` })
+      .trim()
+      .min(1, `${name} is required in .env`)
+  );
+
+const requiredInt = (name, { min, max } = {}) =>
+  z.preprocess(
+    (val) => {
+      const cleaned = emptyToUndefined(val);
+      if (cleaned === undefined) return undefined;
+      const parsed = Number(cleaned);
+      return Number.isNaN(parsed) ? cleaned : parsed;
+    },
+    (() => {
+      let schema = z
+        .number({ error: `${name} is required and must be a valid integer in .env` })
+        .int(`${name} must be an integer in .env`);
+      if (min !== undefined) schema = schema.min(min);
+      if (max !== undefined) schema = schema.max(max);
+      return schema;
+    })()
+  );
 
 const envSchema = z.object({
-  PORT: z.coerce.number().default(5000),
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-
-  DB_NAME: z.string().default("GenMetaApp"),
-  MONGODB_URI: z.string().default("mongodb://127.0.0.1:27017"),
-
-  BACKUP_DB_NAME: z.string().optional(),
-  MONGODB_BACKUP_URI: z.string().optional(),
-
-  GEMINI_ENCODER_KEY: z.string().min(1, "GEMINI_ENCODER_KEY is required in .env"),
-  MINIMUM_REQUIRED_APP_VERSION: z.string().default("1.0.0"),
-
-  CORS_ORIGIN: z.string().default("http://localhost:3000"),
-  SESSION_SECRET: z.string().min(1, "SESSION_SECRET is required in .env"),
-
-  GOOGLE_CLIENT_ID: z.string().optional().default(""),
-  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
-  GOOGLE_CALLBACK_URL: z.string().optional().default("http://localhost:5000/api/v1/users/google/callback"),
-
-  ACCESS_TOKEN_SECRET: z.string().min(1, "ACCESS_TOKEN_SECRET is required in .env"),
-  ACCESS_TOKEN_EXPIRY: z.string().default("15m"),
-
-  REFRESH_TOKEN_SECRET: z.string().min(1, "REFRESH_TOKEN_SECRET is required in .env"),
-  REFRESH_TOKEN_EXPIRY: z.string().default("30d"),
-
-  EMAIL_VERIFY_TOKEN_SECRET: z.string().min(1, "EMAIL_VERIFY_TOKEN_SECRET is required in .env"),
-  EMAIL_VERIFY_TOKEN_EXPIRY: z.string().default("1d"),
-
-  COOKIE_DOMAIN: z.string().optional().default(""),
-  COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).optional().default("lax"),
-  BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
-  MAX_LOGIN_ATTEMPTS: z.coerce.number().int().min(3).max(20).default(5),
-  LOCKOUT_DURATION_MS: z.coerce.number().int().min(60000).default(15 * 60 * 1000),
-
-  RESEND_API_KEY: z.string().optional().default(""),
-
-  PAYSTATION_BASE_URL: z.preprocess(
+  PORT: requiredInt("PORT", { min: 1, max: 65535 }),
+  NODE_ENV: z.preprocess(
     emptyToUndefined,
-    z.string().trim().default("https://sandbox.paystation.com.bd")
+    z.enum(["development", "production", "test"], {
+      error: "NODE_ENV is required in .env (development | production | test)",
+    })
   ),
-  PAYSTATION_MERCHANT_ID: z.string().optional().default(""),
-  PAYSTATION_PASSWORD: z.string().optional().default(""),
-  PAYSTATION_CALLBACK_URL: z.preprocess(
+
+  DB_NAME: requiredString("DB_NAME"),
+  MONGODB_URI: requiredString("MONGODB_URI"),
+
+  BACKUP_DB_NAME: requiredString("BACKUP_DB_NAME"),
+  MONGODB_BACKUP_URI: requiredString("MONGODB_BACKUP_URI"),
+
+  GEMINI_ENCODER_KEY: requiredString("GEMINI_ENCODER_KEY"),
+  MINIMUM_REQUIRED_APP_VERSION: requiredString("MINIMUM_REQUIRED_APP_VERSION"),
+
+  CORS_ORIGIN: requiredString("CORS_ORIGIN"),
+  SESSION_SECRET: requiredString("SESSION_SECRET"),
+
+  GOOGLE_CLIENT_ID: requiredString("GOOGLE_CLIENT_ID"),
+  GOOGLE_CLIENT_SECRET: requiredString("GOOGLE_CLIENT_SECRET"),
+  GOOGLE_CALLBACK_URL: requiredString("GOOGLE_CALLBACK_URL"),
+
+  ACCESS_TOKEN_SECRET: requiredString("ACCESS_TOKEN_SECRET"),
+  ACCESS_TOKEN_EXPIRY: requiredString("ACCESS_TOKEN_EXPIRY"),
+
+  REFRESH_TOKEN_SECRET: requiredString("REFRESH_TOKEN_SECRET"),
+  REFRESH_TOKEN_EXPIRY: requiredString("REFRESH_TOKEN_EXPIRY"),
+
+  EMAIL_VERIFY_TOKEN_SECRET: requiredString("EMAIL_VERIFY_TOKEN_SECRET"),
+  EMAIL_VERIFY_TOKEN_EXPIRY: requiredString("EMAIL_VERIFY_TOKEN_EXPIRY"),
+
+  COOKIE_DOMAIN: z.string({ error: "COOKIE_DOMAIN is required in .env" }).trim(),
+  COOKIE_SAME_SITE: z.preprocess(
     emptyToUndefined,
-    z.string().trim().default("http://localhost:5000/api/v1/payment/paystation-callback")
+    z.enum(["lax", "strict", "none"], {
+      error: "COOKIE_SAME_SITE is required in .env (lax | strict | none)",
+    })
   ),
-  PAYSTATION_PAY_WITH_CHARGE: optionalNumberEnv(
-    z.coerce.number().int().min(0).max(1).default(0)
-  ),
-  PAYSTATION_TIMEOUT_MS: optionalNumberEnv(
-    z.coerce.number().int().min(3000).max(60000).default(15000)
-  ),
-  PAYSTATION_PAYMENT_EXPIRY_MINUTES: optionalNumberEnv(
-    z.coerce.number().int().min(5).max(1440).default(30)
-  ),
-  PAYSTATION_DEFAULT_PHONE: z.preprocess(
-    emptyToUndefined,
-    z.string().trim().default("01700000000")
-  ),
-  PAYSTATION_RECONCILE_CRON: z.preprocess(
-    emptyToUndefined,
-    z.string().trim().default("*/10 * * * *")
-  ),
+  BCRYPT_ROUNDS: requiredInt("BCRYPT_ROUNDS", { min: 10, max: 15 }),
+  MAX_LOGIN_ATTEMPTS: requiredInt("MAX_LOGIN_ATTEMPTS", { min: 3, max: 20 }),
+  LOCKOUT_DURATION_MS: requiredInt("LOCKOUT_DURATION_MS", { min: 60000 }),
+
+  RESEND_API_KEY: requiredString("RESEND_API_KEY"),
+
+  PAYSTATION_BASE_URL: requiredString("PAYSTATION_BASE_URL"),
+  PAYSTATION_MERCHANT_ID: requiredString("PAYSTATION_MERCHANT_ID"),
+  PAYSTATION_PASSWORD: requiredString("PAYSTATION_PASSWORD"),
+  PAYSTATION_CALLBACK_URL: requiredString("PAYSTATION_CALLBACK_URL"),
+  PAYSTATION_PAY_WITH_CHARGE: requiredInt("PAYSTATION_PAY_WITH_CHARGE", { min: 0, max: 1 }),
+  PAYSTATION_TIMEOUT_MS: requiredInt("PAYSTATION_TIMEOUT_MS", { min: 3000, max: 60000 }),
+  PAYSTATION_PAYMENT_EXPIRY_MINUTES: requiredInt("PAYSTATION_PAYMENT_EXPIRY_MINUTES", {
+    min: 5,
+    max: 1440,
+  }),
+  PAYSTATION_DEFAULT_PHONE: requiredString("PAYSTATION_DEFAULT_PHONE"),
+  PAYSTATION_RECONCILE_CRON: requiredString("PAYSTATION_RECONCILE_CRON"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
-  console.error("❌ Environment configuration validation failed:");
-  console.error(parsedEnv.error.format());
-  if (process.env.NODE_ENV === "production") {
-    process.exit(1);
-  }
+  const details = parsedEnv.error.issues
+    .map((issue) => `${issue.path.join(".") || "ENV"}: ${issue.message}`)
+    .join("\n  - ");
+  throw new Error(
+    `❌ Environment configuration validation failed:\n  - ${details}`
+  );
 }
 
-const rawEnv = parsedEnv.success ? parsedEnv.data : process.env;
+const env = parsedEnv.data;
 
-const dbName = rawEnv.DB_NAME || "GenMetaApp";
-const mongoBaseUri = (rawEnv.MONGODB_URI || "mongodb://127.0.0.1:27017").replace(/\/$/, "");
+const dbName = env.DB_NAME;
+const mongoBaseUri = env.MONGODB_URI.replace(/\/+$/, "");
 const mongoFullUri = mongoBaseUri.includes("?")
   ? mongoBaseUri.replace("?", `/${dbName}?`)
   : `${mongoBaseUri}/${dbName}`;
 
+const corsOrigins = env.CORS_ORIGIN.split(",")
+  .map((origin) => origin.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
+if (corsOrigins.length === 0) {
+  throw new Error("❌ CORS_ORIGIN must contain at least one valid origin in .env");
+}
+
 const config = {
-  port: rawEnv.PORT || 5000,
-  NODE_ENV: rawEnv.NODE_ENV || "development",
-  isProduction: (rawEnv.NODE_ENV || "development") === "production",
+  port: env.PORT,
+  NODE_ENV: env.NODE_ENV,
+  isProduction: env.NODE_ENV === "production",
 
   db_name: dbName,
   mongodb_uri: mongoFullUri,
-  mongodb_backup_uri: rawEnv.MONGODB_BACKUP_URI || mongoBaseUri,
-  backup_db_name: rawEnv.BACKUP_DB_NAME || `${dbName}_backup`,
+  mongodb_backup_uri: env.MONGODB_BACKUP_URI.replace(/\/+$/, ""),
+  backup_db_name: env.BACKUP_DB_NAME,
 
-  encoderKey: rawEnv.GEMINI_ENCODER_KEY,
-  minimumRequiredAppVersion: rawEnv.MINIMUM_REQUIRED_APP_VERSION || "1.0.0",
+  encoderKey: env.GEMINI_ENCODER_KEY,
+  minimumRequiredAppVersion: env.MINIMUM_REQUIRED_APP_VERSION,
 
-  cors_origin: rawEnv.CORS_ORIGIN || "http://localhost:3000",
-  session_secret: rawEnv.SESSION_SECRET,
+  cors_origin: corsOrigins[0],
+  cors_origins: corsOrigins,
+  session_secret: env.SESSION_SECRET,
 
-  google_client_id: rawEnv.GOOGLE_CLIENT_ID || "",
-  google_client_secret: rawEnv.GOOGLE_CLIENT_SECRET || "",
-  google_callback_url: rawEnv.GOOGLE_CALLBACK_URL || "http://localhost:5000/api/v1/users/google/callback",
+  google_client_id: env.GOOGLE_CLIENT_ID,
+  google_client_secret: env.GOOGLE_CLIENT_SECRET,
+  google_callback_url: env.GOOGLE_CALLBACK_URL,
 
-  access_token_secret: rawEnv.ACCESS_TOKEN_SECRET,
-  access_token_expiry: rawEnv.ACCESS_TOKEN_EXPIRY || "15m",
+  access_token_secret: env.ACCESS_TOKEN_SECRET,
+  access_token_expiry: env.ACCESS_TOKEN_EXPIRY,
 
-  refresh_token_secret: rawEnv.REFRESH_TOKEN_SECRET,
-  refresh_token_expiry: rawEnv.REFRESH_TOKEN_EXPIRY || "30d",
+  refresh_token_secret: env.REFRESH_TOKEN_SECRET,
+  refresh_token_expiry: env.REFRESH_TOKEN_EXPIRY,
 
-  email_verify_token_secret: rawEnv.EMAIL_VERIFY_TOKEN_SECRET,
-  email_verify_token_expiry: rawEnv.EMAIL_VERIFY_TOKEN_EXPIRY || "1d",
+  email_verify_token_secret: env.EMAIL_VERIFY_TOKEN_SECRET,
+  email_verify_token_expiry: env.EMAIL_VERIFY_TOKEN_EXPIRY,
 
-  cookie_domain: rawEnv.COOKIE_DOMAIN || undefined,
-  cookie_secure: (rawEnv.NODE_ENV || "development") === "production",
-  cookie_same_site: rawEnv.COOKIE_SAME_SITE || "lax",
-  bcrypt_rounds: Number(rawEnv.BCRYPT_ROUNDS) || 12,
-  max_login_attempts: Number(rawEnv.MAX_LOGIN_ATTEMPTS) || 5,
-  lockout_duration_ms: Number(rawEnv.LOCKOUT_DURATION_MS) || 15 * 60 * 1000,
+  cookie_domain: env.COOKIE_DOMAIN || undefined,
+  cookie_secure: env.NODE_ENV === "production",
+  cookie_same_site: env.COOKIE_SAME_SITE,
+  bcrypt_rounds: env.BCRYPT_ROUNDS,
+  max_login_attempts: env.MAX_LOGIN_ATTEMPTS,
+  lockout_duration_ms: env.LOCKOUT_DURATION_MS,
 
-  resend_api_key: rawEnv.RESEND_API_KEY || "",
+  resend_api_key: env.RESEND_API_KEY,
 
   paystation: {
-    base_url: String(rawEnv.PAYSTATION_BASE_URL || "https://sandbox.paystation.com.bd")
-      .trim()
-      .replace(/\/+$/, ""),
-    merchant_id: String(rawEnv.PAYSTATION_MERCHANT_ID || "").trim(),
-    password: String(rawEnv.PAYSTATION_PASSWORD || "").trim(),
-    callback_url: String(
-      rawEnv.PAYSTATION_CALLBACK_URL ||
-        "http://localhost:5000/api/v1/payment/paystation-callback"
-    ).trim(),
-    pay_with_charge: Number(rawEnv.PAYSTATION_PAY_WITH_CHARGE) === 1 ? 1 : 0,
-    timeout_ms: Number(rawEnv.PAYSTATION_TIMEOUT_MS) || 15000,
-    payment_expiry_minutes: Number(rawEnv.PAYSTATION_PAYMENT_EXPIRY_MINUTES) || 30,
-    default_phone: String(rawEnv.PAYSTATION_DEFAULT_PHONE || "01700000000").trim(),
-    reconcile_cron: String(rawEnv.PAYSTATION_RECONCILE_CRON || "*/10 * * * *").trim(),
+    base_url: env.PAYSTATION_BASE_URL.replace(/\/+$/, ""),
+    merchant_id: env.PAYSTATION_MERCHANT_ID,
+    password: env.PAYSTATION_PASSWORD,
+    callback_url: env.PAYSTATION_CALLBACK_URL,
+    pay_with_charge: env.PAYSTATION_PAY_WITH_CHARGE,
+    timeout_ms: env.PAYSTATION_TIMEOUT_MS,
+    payment_expiry_minutes: env.PAYSTATION_PAYMENT_EXPIRY_MINUTES,
+    default_phone: env.PAYSTATION_DEFAULT_PHONE,
+    reconcile_cron: env.PAYSTATION_RECONCILE_CRON,
   },
 };
 
-if (config.isProduction) {
-  if (!config.paystation.merchant_id || !config.paystation.password) {
-    console.warn(
-      "⚠ PayStation merchant credentials are not configured in production."
-    );
-  }
-  if (config.paystation.base_url.includes("sandbox.paystation.com.bd")) {
-    console.warn(
-      "⚠ PAYSTATION_BASE_URL is pointing to sandbox in production mode."
-    );
-  }
+if (
+  config.isProduction &&
+  config.paystation.base_url.includes("sandbox.paystation.com.bd")
+) {
+  console.warn(
+    "⚠ PAYSTATION_BASE_URL is pointing to sandbox in production mode."
+  );
 }
 
 export default config;

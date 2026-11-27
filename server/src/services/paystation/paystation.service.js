@@ -22,8 +22,8 @@ function getPaystationConfig() {
 export function createPaystationHttpClient(options = {}) {
   const psConfig = getPaystationConfig();
   return axios.create({
-    baseURL: (options.baseUrl || psConfig.base_url || "").replace(/\/+$/, ""),
-    timeout: options.timeoutMs || psConfig.timeout_ms || 15000,
+    baseURL: (options.baseUrl || psConfig.base_url).replace(/\/+$/, ""),
+    timeout: options.timeoutMs || psConfig.timeout_ms,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",

@@ -38,8 +38,8 @@ export function NavUser({ user }: Props) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const isCollapsed = state === "collapsed";
-  const userName = user?.name || "User";
-  const userEmail = user?.email || "user@example.com";
+  const userName = user?.name || "Error";
+  const userEmail = user?.email || "Error";
   const userInitials = userName
     .split(" ")
     .map((n) => n[0])

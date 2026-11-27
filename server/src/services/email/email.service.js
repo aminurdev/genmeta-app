@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import config from "../../config/index.js";
 
-const resend = config.resend_api_key ? new Resend(config.resend_api_key) : null;
+const resend = new Resend(config.resend_api_key);
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -30,15 +30,6 @@ export const sendVerificationEmail = async (
   verificationCode,
   verificationLink = null
 ) => {
-  if (!resend) {
-    console.log(
-      `[EmailService] Resend not configured. Verification for ${email}: code=${verificationCode}${
-        verificationLink ? `, link=${verificationLink}` : ""
-      }`
-    );
-    return;
-  }
-
   const safeName = escapeHtml(name || "there");
   const safeCode = escapeHtml(verificationCode);
   const safeLink = verificationLink ? escapeHtml(verificationLink) : null;
@@ -92,11 +83,6 @@ export const sendVerificationEmail = async (
 };
 
 export const sendPasswordResetOTP = async (email, name, otp) => {
-  if (!resend) {
-    console.log(`[EmailService] Resend not configured. Password reset OTP for ${email}: ${otp}`);
-    return;
-  }
-
   const safeName = escapeHtml(name || "there");
   const safeOtp = escapeHtml(otp);
 
@@ -155,13 +141,6 @@ export const sendPaymentConfirmationEmail = async ({
 }) => {
   if (!email) return;
 
-  if (!resend) {
-    console.log(
-      `[EmailService] Resend not configured. Payment confirmation for ${email}: invoice=${invoiceNumber}, trxId=${trxId}, amount=${amount} ${currency}`
-    );
-    return;
-  }
-
   const safeName = escapeHtml(name || "there");
   const safeInvoice = escapeHtml(invoiceNumber || "");
   const safeTrxId = escapeHtml(trxId || "");
@@ -178,7 +157,7 @@ export const sendPaymentConfirmationEmail = async ({
     ? new Date(paidAt).toUTCString()
     : new Date().toUTCString();
   const dashboardUrl = escapeHtml(
-    `${String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "")}/dashboard`
+    `${config.cors_origin.replace(/\/+$/, "")}/dashboard`
   );
 
   const extraPlanRows = [
@@ -302,14 +281,7 @@ export const sendNotificationEmail = async ({
     return { sent: false, skipped: true };
   }
 
-  if (!resend) {
-    console.log(
-      `[EmailService] Resend not configured. Notification email for ${email}: [${category}/${priority}] ${title}`
-    );
-    return { sent: false, skipped: true };
-  }
-
-  const baseUrl = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const baseUrl = config.cors_origin.replace(/\/+$/, "");
   const safeName = escapeHtml(name || "there");
   const safeTitle = escapeHtml(title || "New Notification");
   const safeMessageHtml = escapeHtml(message || "").replace(/\r?\n/g, "<br />");

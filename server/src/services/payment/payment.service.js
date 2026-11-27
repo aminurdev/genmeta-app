@@ -399,7 +399,7 @@ export function createPaymentService(overrides = {}) {
       deps.psConfig.pay_with_charge
     );
 
-    const expiryMinutes = Number(deps.psConfig.payment_expiry_minutes) || 30;
+    const expiryMinutes = deps.psConfig.payment_expiry_minutes;
     const expiresAt = new Date(now.getTime() + expiryMinutes * 60 * 1000);
     const resolvedPhone = deps.paystation.sanitizeBdPhone(
       customerPhone,

@@ -9,7 +9,7 @@ export const LEGACY_COOKIE_NAMES = ["accessToken", "refreshToken"];
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
   crypto.randomBytes(16).toString("hex"),
-  config.bcrypt_rounds || 12
+  config.bcrypt_rounds
 );
 
 export const getDummyPasswordHash = () => DUMMY_PASSWORD_HASH;
@@ -117,7 +117,7 @@ export const sanitizeRedirectPath = (path, fallback = "/dashboard") => {
 export const getCookieOptions = (maxAgeMs) => ({
   httpOnly: true,
   secure: Boolean(config.cookie_secure),
-  sameSite: config.cookie_same_site || "lax",
+  sameSite: config.cookie_same_site,
   path: "/",
   maxAge: maxAgeMs,
   ...(config.cookie_domain ? { domain: config.cookie_domain } : {}),
@@ -149,7 +149,7 @@ export const clearAuthCookies = (res) => {
   const baseClearOptions = {
     httpOnly: true,
     secure: Boolean(config.cookie_secure),
-    sameSite: config.cookie_same_site || "lax",
+    sameSite: config.cookie_same_site,
     path: "/",
     ...(config.cookie_domain ? { domain: config.cookie_domain } : {}),
   };

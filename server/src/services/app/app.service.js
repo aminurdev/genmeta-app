@@ -28,7 +28,7 @@ export const fetchAppUserData = async (username) => {
 };
 
 export const redirectToPricing = (res, message, reason = "") => {
-  const base = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const base = config.cors_origin.replace(/\/+$/, "");
   const params = new URLSearchParams({ message });
   if (reason) {
     params.set("reason", reason);
@@ -37,7 +37,7 @@ export const redirectToPricing = (res, message, reason = "") => {
 };
 
 export const redirectToPaymentStatus = (res, paramsObj = {}) => {
-  const base = String(config.cors_origin || "http://localhost:3000").replace(/\/+$/, "");
+  const base = config.cors_origin.replace(/\/+$/, "");
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(paramsObj)) {
     if (v !== undefined && v !== null && v !== "") {

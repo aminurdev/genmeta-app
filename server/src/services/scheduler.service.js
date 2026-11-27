@@ -26,8 +26,7 @@ class SchedulerService {
     this.lastRun = null;
     this.cronExpression = "0 0 * * *"; // Daily at midnight UTC
     this.backupCronExpression = "0 12 * * 5"; // Every Friday at 12:00 PM UTC
-    this.paymentReconcileCronExpression =
-      config.paystation?.reconcile_cron || "*/10 * * * *";
+    this.paymentReconcileCronExpression = config.paystation.reconcile_cron;
     this.dailyMaintenanceJob = null;
     this.weeklyBackupJob = null;
     this.paymentReconciliationJob = null;

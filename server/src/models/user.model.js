@@ -117,7 +117,7 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();
-  this.password = await bcrypt.hash(this.password, config.bcrypt_rounds || 12);
+  this.password = await bcrypt.hash(this.password, config.bcrypt_rounds);
   if (!this.isNew) {
     this.passwordChangedAt = new Date(Date.now() - 1000);
   }

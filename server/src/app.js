@@ -12,7 +12,7 @@ import { ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME } from "./utils/auth.utils.js";
 import globalErrorHandler from "./middlewares/handleGlobal.error.js";
 import { initializePassport } from "./config/passport.js";
 
-// Routes import
+// Routes import 
 import adminRoutes from "./routes/admin.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import appRoutes from "./routes/app.routes.js";
@@ -73,14 +73,7 @@ if (config.NODE_ENV !== "test") {
   );
 }
 
-const allowedOrigins = [
-  config.cors_origin,
-  "https://www.genmeta.app",
-  "https://genmeta.app",
-  ...(config.isProduction
-    ? []
-    : ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173"]),
-].filter(Boolean);
+const allowedOrigins = config.cors_origins;
 
 // CORS setup
 app.use(
@@ -89,7 +82,7 @@ app.use(
       // Allow requests with no origin (like mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin) || !config.isProduction) {
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error("CORS not allowed for this origin"));
