@@ -1,5 +1,6 @@
 "use client";
 
+import { CACHE_TIME } from "@/lib/query-cache";
 import { QUERY_KEYS } from "@/services/constants";
 import {
   getActiveSessions,
@@ -20,8 +21,8 @@ export function useOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.overview,
     queryFn: getOverview,
-    staleTime: 60 * 1000, // 1 minute fresh
-    gcTime: 10 * 60 * 1000, // 10 minutes cache
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -31,8 +32,8 @@ export function useProfileQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.profile,
     queryFn: getProfile,
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -42,10 +43,11 @@ export function useActiveSessionsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.activeSessions,
     queryFn: getActiveSessions,
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
+    meta: { persist: false },
   });
 }
 
@@ -53,8 +55,8 @@ export function useReferralDetailsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.referralDetails,
     queryFn: getReferralDetails,
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });

@@ -33,8 +33,10 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { getPaymentStatus } from "@/services/pricing";
+import { QUERY_KEYS } from "@/services/constants";
+import { usePaymentStatusQuery } from "@/services/queries/pricing";
 import { useInvalidateDashboard } from "@/services/queries/dashboard";
 import type { PaymentStatusData } from "@/types/pricing";
 import { downloadReceiptPdf, type ReceiptPdfData } from "./receipt-pdf";
@@ -113,18 +115,52 @@ export function PaymentStatusClient({
   customerName,
   customerEmail,
 }: PaymentStatusClientProps) {
-  const [transaction, setTransaction] = useState<PaymentStatusData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(Boolean(invoice));
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isAutoPolling, setIsAutoPolling] = useState<boolean>(false);
-  const [pollAttempt, setPollAttempt] = useState<number>(0);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
 
+  const queryClient = useQueryClient();
   const invalidateDashboard = useInvalidateDashboard();
   const hasInvalidatedRef = useRef(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const {
+    data: statusRes,
+    isLoading: isQueryLoading,
+    refetch,
+  } = usePaymentStatusQuery(invoice, {
+    pollIntervalMs: AUTO_POLL_INTERVAL_MS,
+    maxAutoPolls: MAX_AUTO_POLLS,
+  });
+
+  const dataUpdateCount = invoice
+    ? (queryClient.getQueryState(QUERY_KEYS.paymentStatus(invoice))
+        ?.dataUpdateCount ?? 0)
+    : 0;
+
+  const transaction: PaymentStatusData | null =
+    statusRes?.success && statusRes.data?.transaction
+      ? statusRes.data.transaction
+      : null;
+
+  const fetchError: string | null =
+    statusRes && (!statusRes.success || !statusRes.data?.transaction)
+      ? (!statusRes.success && statusRes.message
+          ? statusRes.message
+          : "Unable to verify payment status right now.")
+      : null;
+
+  const isLoading = Boolean(invoice) && isQueryLoading;
+
+  const isPendingState = Boolean(
+    transaction &&
+      (transaction.status === "pending" ||
+        transaction.status === "processing" ||
+        transaction.status === "initiated")
+  );
+
+  const pollAttempt = Math.min(dataUpdateCount, MAX_AUTO_POLLS);
+  const isAutoPolling = isPendingState && dataUpdateCount <= MAX_AUTO_POLLS;
 
   useEffect(() => {
     return () => {
@@ -133,64 +169,6 @@ export function PaymentStatusClient({
       }
     };
   }, []);
-
-  const fetchLatestStatus = useCallback(
-    async (refresh = true): Promise<PaymentStatusData | null> => {
-      if (!invoice) return null;
-      const res = await getPaymentStatus(invoice, { refresh });
-      if (res.success && res.data?.transaction) {
-        setTransaction(res.data.transaction);
-        setFetchError(null);
-        return res.data.transaction;
-      }
-      setFetchError(
-        !res.success && res.message
-          ? res.message
-          : "Unable to verify payment status right now."
-      );
-      return null;
-    },
-    [invoice]
-  );
-
-  useEffect(() => {
-    if (!invoice) return;
-
-    let cancelled = false;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const runVerification = async (attempt: number) => {
-      const tx = await fetchLatestStatus(true);
-      if (cancelled) return;
-
-      setIsLoading(false);
-
-      const isPendingState =
-        tx &&
-        (tx.status === "pending" ||
-          tx.status === "processing" ||
-          tx.status === "initiated");
-
-      if (isPendingState && attempt < MAX_AUTO_POLLS) {
-        setIsAutoPolling(true);
-        setPollAttempt(attempt + 1);
-        pollTimer = setTimeout(() => {
-          if (!cancelled) {
-            void runVerification(attempt + 1);
-          }
-        }, AUTO_POLL_INTERVAL_MS);
-      } else {
-        setIsAutoPolling(false);
-      }
-    };
-
-    void runVerification(0);
-
-    return () => {
-      cancelled = true;
-      if (pollTimer) clearTimeout(pollTimer);
-    };
-  }, [invoice, fetchLatestStatus]);
 
   // Determine effective display state
   const normalizedInitial = (initialStatus || "").toLowerCase();
@@ -211,8 +189,13 @@ export function PaymentStatusClient({
   const handleManualRefresh = async () => {
     if (!invoice || isRefreshing) return;
     setIsRefreshing(true);
-    const tx = await fetchLatestStatus(true);
+    const result = await refetch();
     setIsRefreshing(false);
+
+    const tx =
+      result.data?.success && result.data.data?.transaction
+        ? result.data.data.transaction
+        : null;
 
     if (tx?.status === "completed") {
       toast.success("Payment confirmed! Your plan is now active.");

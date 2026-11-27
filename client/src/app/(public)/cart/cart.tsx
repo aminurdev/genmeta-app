@@ -56,7 +56,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { PricingPlan } from "@/services/admin-dashboard";
-import { getCurrentUser } from "@/services/auth-services";
+import { useAuth } from "@/components/providers/auth-provider";
 import { createPayment, validPromoCode } from "@/services/pricing";
 import { useAllPricing } from "@/services/queries/pricing";
 import type { PromoCodeRes } from "@/types/pricing";
@@ -114,6 +114,7 @@ function getDurationLabel(days: number): string {
 
 export default function Cart({ planId }: { planId?: string }) {
   const router = useRouter();
+  const { user: authUser, refreshUser } = useAuth();
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
@@ -242,7 +243,7 @@ export default function Cart({ planId }: { planId?: string }) {
     if (!activePlan || isProcessing || isRedirecting) return;
 
     try {
-      const user = await getCurrentUser();
+      const user = authUser ?? (await refreshUser());
       if (!user) {
         const redirectTarget = `/cart?planId=${encodeURIComponent(activePlan._id)}`;
         router.push(

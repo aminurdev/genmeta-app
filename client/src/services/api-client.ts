@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { ENV } from "../lib/env";
 import { getServerCookieHeader } from "../lib/cookies-server";
+import { clearPersistedQueryCache } from "../lib/query-cache";
 
 const isBrowser = typeof window !== "undefined";
 const API_BASE_URL = isBrowser ? "/api/v1" : ENV.backendApiUrl;
@@ -106,6 +107,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        clearPersistedQueryCache();
 
         const currentPath = window.location.pathname;
         const isProtectedPath =

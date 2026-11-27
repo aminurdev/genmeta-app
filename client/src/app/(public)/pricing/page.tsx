@@ -14,11 +14,10 @@ import {
 } from "@/components/ui/accordion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { useAllPricing } from "@/services/queries/pricing";
+import { useAllPricing, useVisitorCountryQuery } from "@/services/queries/pricing";
 import { WindowsIcon } from "@/components/Home";
 import {
   Currency,
-  detectVisitorCountry,
   formatPlanPrice,
   getInitialCurrencyFromTimezone,
   getSavedCurrency,
@@ -251,39 +250,39 @@ function PricingContent() {
 
   type DurationFilter = "1" | "3" | "6";
   const [selectedDuration, setSelectedDuration] = useState<DurationFilter>("1");
-  const [currency, setCurrency] = useState<Currency>("BDT");
+  const [manualCurrency, setManualCurrency] = useState<Currency | null>(null);
+  const [clientFallbackCurrency, setClientFallbackCurrency] =
+    useState<Currency>("BDT");
+  const [shouldDetectCountry, setShouldDetectCountry] = useState(false);
 
   useEffect(() => {
-    // 1. Check if user already picked a preference
     const saved = getSavedCurrency();
     if (saved) {
-      setCurrency(saved);
+      queueMicrotask(() => setManualCurrency(saved));
       return;
     }
 
-    // 2. Synchronous timezone check for instant best-guess
     const tzCurrency = getInitialCurrencyFromTimezone();
-    setCurrency(tzCurrency);
-
-    // 3. Country detection: BD -> BDT, other countries -> USD
-    let isCancelled = false;
-    detectVisitorCountry().then((country) => {
-      if (isCancelled || !country) return;
-
-      // Only apply auto-detected currency if user hasn't manually set a preference
-      const currentSaved = getSavedCurrency();
-      if (!currentSaved) {
-        setCurrency(country === "BD" ? "BDT" : "USD");
-      }
+    queueMicrotask(() => {
+      setClientFallbackCurrency(tzCurrency);
+      setShouldDetectCountry(true);
     });
-
-    return () => {
-      isCancelled = true;
-    };
   }, []);
 
+  const { data: detectedCountry } = useVisitorCountryQuery({
+    enabled: shouldDetectCountry && !manualCurrency,
+  });
+
+  const currency: Currency =
+    manualCurrency ??
+    (detectedCountry
+      ? detectedCountry === "BD"
+        ? "BDT"
+        : "USD"
+      : clientFallbackCurrency);
+
   const handleCurrencyChange = (newCurrency: Currency) => {
-    setCurrency(newCurrency);
+    setManualCurrency(newCurrency);
     saveCurrency(newCurrency);
   };
 

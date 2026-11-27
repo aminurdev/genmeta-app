@@ -4,6 +4,7 @@ import {
   useQueryClient,
   type QueryKey,
 } from "@tanstack/react-query";
+import { CACHE_TIME } from "@/lib/query-cache";
 import { QUERY_KEYS } from "@/services/constants";
 import {
   archiveNotification,
@@ -56,8 +57,9 @@ export function useNotificationsQuery(
     queryKey: QUERY_KEYS.notifications(params as Record<string, unknown>),
     queryFn: () => getNotifications(params),
     enabled: options?.enabled ?? true,
-    refetchOnWindowFocus: true,
-    staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    staleTime: CACHE_TIME.REALTIME.staleTime,
+    gcTime: CACHE_TIME.REALTIME.gcTime,
   });
 }
 
@@ -71,8 +73,9 @@ export function useUnreadNotificationCountQuery(
     queryFn: () => getUnreadNotificationCount(scope),
     enabled: options?.enabled ?? true,
     refetchInterval: sseConnected ? 5 * 60 * 1000 : 45 * 1000,
-    refetchOnWindowFocus: true,
-    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    staleTime: CACHE_TIME.REALTIME.staleTime,
+    gcTime: CACHE_TIME.REALTIME.gcTime,
   });
 }
 
@@ -84,7 +87,9 @@ export function useNotificationPreferencesQuery(
     queryKey: QUERY_KEYS.notificationPreferences(scope),
     queryFn: () => getNotificationPreferences(scope),
     enabled: options?.enabled ?? true,
-    staleTime: 2 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -432,7 +437,9 @@ export function useAdminBroadcastsQuery(
     queryKey: QUERY_KEYS.adminBroadcasts(page),
     queryFn: () => getAdminBroadcastHistory(page, limit),
     enabled: options?.enabled ?? true,
-    staleTime: 30_000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
+    refetchOnWindowFocus: false,
   });
 }
 

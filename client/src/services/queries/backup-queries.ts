@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { CACHE_TIME } from "@/lib/query-cache";
 import { QUERY_KEYS } from "@/services/constants";
 import {
   getBackupHistory,
@@ -28,8 +29,8 @@ export function useBackupConnectionQuery() {
   return useQuery({
     queryKey: BACKUP_QUERY_KEYS.connection,
     queryFn: () => testBackupConnection(),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -39,8 +40,8 @@ export function useBackupStatusQuery() {
   return useQuery({
     queryKey: BACKUP_QUERY_KEYS.status,
     queryFn: () => getBackupStatus(),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -51,8 +52,8 @@ export function useBackupHistoryQuery(params?: GetBackupHistoryParams) {
     queryKey: BACKUP_QUERY_KEYS.history(params),
     queryFn: () => getBackupHistory(params),
     placeholderData: keepPreviousData,
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -95,6 +96,7 @@ export function useRefreshBackupDashboardMutation() {
       queryClient.invalidateQueries({
         queryKey: BACKUP_QUERY_KEYS.historyRoot,
         exact: false,
+        refetchType: "inactive",
       });
     },
   });

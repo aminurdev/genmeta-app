@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CACHE_TIME } from "@/lib/query-cache";
 import { QUERY_KEYS } from "@/services/constants";
 import {
   createAiApiKey,
@@ -21,9 +22,9 @@ export function useSuperAdminOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.superAdminOverview,
     queryFn: () => getSuperAdminOverview(),
-    staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
-    refetchInterval: 30 * 1000,
+    staleTime: CACHE_TIME.REALTIME.staleTime,
+    gcTime: CACHE_TIME.REALTIME.gcTime,
+    refetchInterval: 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -33,8 +34,8 @@ export function useAdminListQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.superAdminStaff,
     queryFn: () => getAdminList(),
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -44,10 +45,12 @@ export function useAiApiKeysQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.superAdminAiKeys,
     queryFn: () => getAiApiKeys(),
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
+    // Keep decrypted API keys in memory only; never persist to browser storage
+    meta: { persist: false },
   });
 }
 

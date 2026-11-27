@@ -8,6 +8,10 @@ import type {
 } from "@/types/admin";
 
 export const QUERY_KEYS = {
+  currentUser: ["auth", "currentUser"],
+  visitorCountry: ["visitor", "country"],
+  paymentStatus: (invoiceNumber: string) => ["payment", "status", invoiceNumber],
+
   overview: ["dashboard", "overview"],
   profile: ["dashboard", "profile"],
   activeSessions: ["dashboard", "activeSessions"],

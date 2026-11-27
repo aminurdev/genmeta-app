@@ -1,5 +1,6 @@
 "use client";
 
+import { CACHE_TIME } from "@/lib/query-cache";
 import { QUERY_KEYS } from "@/services/constants";
 import {
   keepPreviousData,
@@ -63,8 +64,8 @@ export function useAdminOverviewQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.adminOverview,
     queryFn: () => getAdminOverview(),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -91,8 +92,8 @@ export function useUserStatsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.usersStats,
     queryFn: () => getUserStats(),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -102,8 +103,9 @@ export function useAllUsersQuery(queryParams: string) {
   return useQuery({
     queryKey: QUERY_KEYS.allUsers(queryParams),
     queryFn: () => getAllUsers(queryParams),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -114,8 +116,8 @@ export function useAppUserDetailsQuery(userId: string) {
     queryKey: QUERY_KEYS.appUserDetails(userId),
     queryFn: () => getAppUserDetails(userId),
     enabled: Boolean(userId),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -139,8 +141,14 @@ export function useRefreshUsersManagementMutation() {
       if (usersRes.success) {
         queryClient.setQueryData(QUERY_KEYS.allUsers(queryParams), usersRes);
       }
-      queryClient.invalidateQueries({ queryKey: ["users", "all"] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+      queryClient.invalidateQueries({
+        queryKey: ["users", "all"],
+        refetchType: "inactive",
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminOverview,
+        refetchType: "inactive",
+      });
     },
   });
 }
@@ -154,8 +162,14 @@ export function useRefreshAppUserDetailsMutation(userId: string) {
       if (res.success) {
         queryClient.setQueryData(QUERY_KEYS.appUserDetails(userId), res);
       }
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+      queryClient.invalidateQueries({
+        queryKey: ["users"],
+        refetchType: "inactive",
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminOverview,
+        refetchType: "inactive",
+      });
     },
   });
 }
@@ -255,8 +269,9 @@ export function usePaymentsHistoryQuery(params: GetPaymentsHistoryParams = {}) {
   return useQuery({
     queryKey: QUERY_KEYS.paymentsHistory(params),
     queryFn: () => getPaymentsHistory(params),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -268,8 +283,9 @@ export function useAdminPaymentTransactionsQuery(
   return useQuery({
     queryKey: QUERY_KEYS.adminPaymentTransactions(params),
     queryFn: () => getAdminPaymentTransactions(params),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -315,11 +331,18 @@ export function useRefreshPaymentsMutation() {
           transactionsRes
         );
       }
-      queryClient.invalidateQueries({ queryKey: ["admin", "paymentHistory"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "paymentHistory"],
+        refetchType: "inactive",
+      });
       queryClient.invalidateQueries({
         queryKey: ["admin", "payments", "transactions"],
+        refetchType: "inactive",
       });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminOverview,
+        refetchType: "inactive",
+      });
     },
   });
 }
@@ -378,8 +401,9 @@ export function useAllReferralQuery(params?: GetAllReferralsParams) {
   return useQuery({
     queryKey: QUERY_KEYS.allReferral(params),
     queryFn: () => getAllReferral(params),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -395,11 +419,18 @@ export function useRefreshReferralsMutation() {
       if (res.success) {
         queryClient.setQueryData(QUERY_KEYS.allReferral(params), res);
       }
-      queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "referral"],
+        refetchType: "inactive",
+      });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+        refetchType: "inactive",
       });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminOverview });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.adminOverview,
+        refetchType: "inactive",
+      });
     },
   });
 }
@@ -409,8 +440,8 @@ export function useReferralByUserIdQuery(userId: string) {
     queryKey: QUERY_KEYS.referralByUser(userId),
     queryFn: () => getAllReferralByUserId(userId),
     enabled: Boolean(userId),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -425,9 +456,13 @@ export function useRefreshReferralByUserMutation(userId: string) {
       if (res.success) {
         queryClient.setQueryData(QUERY_KEYS.referralByUser(userId), res);
       }
-      queryClient.invalidateQueries({ queryKey: ["admin", "referral"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "referral"],
+        refetchType: "inactive",
+      });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.adminWithdrawalNotifications,
+        refetchType: "inactive",
       });
     },
   });
@@ -437,8 +472,9 @@ export function usePricingPlansQuery(params?: GetPricingPlansParams) {
   return useQuery({
     queryKey: QUERY_KEYS.pricingPlans(params),
     queryFn: () => getPricingPlans(params),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -448,8 +484,9 @@ export function usePromoCodesQuery(params?: GetPromoCodesParams) {
   return useQuery({
     queryKey: QUERY_KEYS.promoCodes(params),
     queryFn: () => getPromoCodes(params),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -479,9 +516,18 @@ export function useRefreshPricingManagementMutation() {
       if (promoRes.success) {
         queryClient.setQueryData(QUERY_KEYS.promoCodes(promoParams), promoRes);
       }
-      queryClient.invalidateQueries({ queryKey: ["admin", "pricing", "plans"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "promo", "codes"] });
-      queryClient.invalidateQueries({ queryKey: ["pricing", "all"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "pricing", "plans"],
+        refetchType: "inactive",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "promo", "codes"],
+        refetchType: "inactive",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["pricing", "all"],
+        refetchType: "inactive",
+      });
     },
   });
 }
@@ -490,8 +536,8 @@ export function useSchedulerStatusQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.schedulerStatus,
     queryFn: () => getSchedulerStatus(),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -501,8 +547,8 @@ export function useMaintenanceStatsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.maintenanceStats,
     queryFn: () => getMaintenanceStats(),
-    staleTime: 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.DEFAULT.staleTime,
+    gcTime: CACHE_TIME.DEFAULT.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -686,8 +732,10 @@ export function useWithdrawalNotificationsQuery() {
   return useQuery({
     queryKey: QUERY_KEYS.adminWithdrawalNotifications,
     queryFn: getWithdrawalNotifications,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
+    staleTime: CACHE_TIME.REALTIME.staleTime,
+    gcTime: CACHE_TIME.REALTIME.gcTime,
+    refetchInterval: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -698,8 +746,8 @@ export function useAdminProcessErrorsQuery(
     queryKey: QUERY_KEYS.adminProcessErrors(params),
     queryFn: () => getAdminProcessErrors(params),
     placeholderData: keepPreviousData,
-    staleTime: 30 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: CACHE_TIME.REALTIME.staleTime,
+    gcTime: CACHE_TIME.REALTIME.gcTime,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -715,7 +763,10 @@ export function useRefreshAdminProcessErrorsMutation() {
       if (res.success) {
         queryClient.setQueryData(QUERY_KEYS.adminProcessErrors(params), res);
       }
-      queryClient.invalidateQueries({ queryKey: ["admin", "errors"] });
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "errors"],
+        refetchType: "inactive",
+      });
     },
   });
 }
