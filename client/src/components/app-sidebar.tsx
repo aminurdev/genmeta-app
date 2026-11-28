@@ -94,37 +94,6 @@ const adminSidebarData = [
     ],
   },
   {
-    label: "Super Admin",
-    isForAdmin: true,
-    isForSuperAdmin: true,
-    items: [
-      {
-        title: "Super Admin Hub",
-        url: "/admin/super-admin",
-        icon: ShieldAlert,
-        isForSuperAdmin: true,
-      },
-      {
-        title: "Scheduler",
-        url: "/admin/scheduler",
-        icon: Clock,
-        isForSuperAdmin: true,
-      },
-      {
-        title: "Database Backup",
-        url: "/admin/backup",
-        icon: Database,
-        isForSuperAdmin: true,
-      },
-      {
-        title: "AI API Keys",
-        url: "/admin/ai-api",
-        icon: KeyRound,
-        isForSuperAdmin: true,
-      },
-    ],
-  },
-  {
     label: "Management",
     isForAdmin: true,
     items: [
@@ -161,6 +130,37 @@ const adminSidebarData = [
     ],
   },
   {
+    label: "Super Admin",
+    isForAdmin: true,
+    isForSuperAdmin: true,
+    items: [
+      {
+        title: "Super Admin",
+        url: "/admin/super-admin",
+        icon: ShieldAlert,
+        isForSuperAdmin: true,
+      },
+      {
+        title: "Scheduler",
+        url: "/admin/scheduler",
+        icon: Clock,
+        isForSuperAdmin: true,
+      },
+      {
+        title: "Database Backup",
+        url: "/admin/backup",
+        icon: Database,
+        isForSuperAdmin: true,
+      },
+      {
+        title: "AI API Keys",
+        url: "/admin/ai-api",
+        icon: KeyRound,
+        isForSuperAdmin: true,
+      },
+    ],
+  },
+  {
     label: "User",
     isForAdmin: false,
     items: [
@@ -193,7 +193,10 @@ export function AppSidebar({ user, type }: AppSidebarProps) {
       <SidebarContent>
         {sidebarData.map((section) => {
           // If section is for superAdmin only, only show if user is superAdmin
-          if ((section as { isForSuperAdmin?: boolean }).isForSuperAdmin && !isSuperAdmin) {
+          if (
+            (section as { isForSuperAdmin?: boolean }).isForSuperAdmin &&
+            !isSuperAdmin
+          ) {
             return null;
           }
 
@@ -203,7 +206,8 @@ export function AppSidebar({ user, type }: AppSidebarProps) {
           }
 
           const visibleItems = section.items.filter((item) => {
-            const itemIsForSuperAdmin = (item as { isForSuperAdmin?: boolean }).isForSuperAdmin;
+            const itemIsForSuperAdmin = (item as { isForSuperAdmin?: boolean })
+              .isForSuperAdmin;
             if (itemIsForSuperAdmin && !isSuperAdmin) return false;
             return !section.isForAdmin || isAdmin;
           });

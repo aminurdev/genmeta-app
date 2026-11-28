@@ -213,7 +213,7 @@ export function UserMenu({
                     className="flex items-center gap-2.5 py-2 px-2.5 rounded-md"
                   >
                     <ShieldAlert className="h-4 w-4 text-amber-500" />
-                    <span className="font-medium text-sm">Super Admin Hub</span>
+                    <span className="font-medium text-sm">Overview</span>
                   </Link>
                 </DropdownMenuItem>
               )}
