@@ -154,7 +154,7 @@ const config = {
   email_verify_token_secret: env.EMAIL_VERIFY_TOKEN_SECRET,
   email_verify_token_expiry: env.EMAIL_VERIFY_TOKEN_EXPIRY,
 
-  cookie_domain: env.COOKIE_DOMAIN || undefined,
+  cookie_domain: env.COOKIE_DOMAIN || "",
   cookie_secure: env.NODE_ENV === "production",
   cookie_same_site: env.COOKIE_SAME_SITE,
   bcrypt_rounds: env.BCRYPT_ROUNDS,
