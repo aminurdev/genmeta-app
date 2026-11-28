@@ -70,7 +70,7 @@ const envSchema = z.object({
   EMAIL_VERIFY_TOKEN_SECRET: requiredString("EMAIL_VERIFY_TOKEN_SECRET"),
   EMAIL_VERIFY_TOKEN_EXPIRY: requiredString("EMAIL_VERIFY_TOKEN_EXPIRY"),
 
-  COOKIE_DOMAIN: z.string({ error: "COOKIE_DOMAIN is required in .env" }).trim(),
+  COOKIE_DOMAIN: z.string({ error: "COOKIE_DOMAIN is required in .env" }).trim().default(""),
   COOKIE_SAME_SITE: z.preprocess(
     emptyToUndefined,
     z.enum(["lax", "strict", "none"], {
